@@ -1,4 +1,4 @@
-#seq  seq                           seq                    ungapped      ungapped  ungapped  5'unaln  5'unaln   5'unaln  3'unaln  3'unaln   3'unaln
+#seq  seq                           seq                        seed          seed      seed  5'unaln  5'unaln   5'unaln  3'unaln  3'unaln   3'unaln
 #idx  name                          len  model      p/f         seq           mdl  fraction      seq      mdl  fraction      seq      mdl  fraction
 #---  ---------------------------  ----  ---------  ----  ---------  ------------  --------  -------  -------  --------  -------  -------  --------
 1     gi|924919779|gb|KR052021.1|  4140  NC_001959  FAIL          -             -         -        -        -         -        -        -         -

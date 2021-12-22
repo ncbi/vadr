@@ -1,0 +1,8 @@
+#      seq                                                  ftr   ftr          ftr  alert           alert                    seq  seq       mdl  mdl  alert 
+#idx   name                                      model      type  name         idx  code      fail  description           coords  len    coords  len  detail
+#----  ----------------------------------------  ---------  ----  -----------  ---  --------  ----  ------------------  --------  ---  --------  ---  ------
+2.1.1  ENTOY100A-af3-earlystop                   ENTOY100A  CDS   protein_one    2  cdsstopn  yes   CDS_HAS_STOP_CODON  23..25:+    3  23..25:+    3  in-frame stop codon exists 5' of stop position predicted by homology to reference [TAA, shifted S:6,M:6]
+#
+3.1.1  ENTOY100A-af3-earlystop-mut-first-start   ENTOY100A  CDS   protein_one    2  cdsstopn  yes   CDS_HAS_STOP_CODON  23..25:+    3  23..25:+    3  in-frame stop codon exists 5' of stop position predicted by homology to reference [TAA, shifted S:6,M:6]
+#
+4.1.1  ENTOY100A-af3-earlystop-mut-second-start  ENTOY100A  CDS   protein_one    4  cdsstopn  yes   CDS_HAS_STOP_CODON  23..25:+    3  23..25:+    3  in-frame stop codon exists 5' of stop position predicted by homology to reference [TAA, shifted S:6,M:6]

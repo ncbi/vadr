@@ -35,6 +35,81 @@
 			note	ncRNA 1
 91	82	stem_loop
 			note	stem-loop 1
+>Feature ENTOY100A-one-second-posn-N-12-rev
+3	17	CDS
+			product	protein four
+			protein_id	ENTOY100A-one-second-posn-N-12-rev_4
+34	22	CDS
+16	6
+			product	protein three
+			protein_id	ENTOY100A-one-second-posn-N-12-rev_3
+25	22	mat_peptide
+16	9
+			product	protein three mp2
+			protein_id	ENTOY100A-one-second-posn-N-12-rev_3
+34	26	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A-one-second-posn-N-12-rev_3
+69	54	CDS
+54	37
+35	28
+			product	protein two
+			protein_id	ENTOY100A-one-second-posn-N-12-rev_2
+<87	70	gene
+			gene	one
+<87	70	CDS
+			product	protein one
+			codon_start	1
+			protein_id	ENTOY100A-one-second-posn-N-12-rev_1
+78	73	mat_peptide
+			product	protein one mp2
+			protein_id	ENTOY100A-one-second-posn-N-12-rev_1
+<87	79	mat_peptide
+			product	protein one mp1
+			protein_id	ENTOY100A-one-second-posn-N-12-rev_1
+96	79	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+91	82	stem_loop
+			note	stem-loop 1
+>Feature ENTOY100A-one-second-to-final-posn-N-30-rev
+3	17	CDS
+			product	protein four
+			protein_id	ENTOY100A-one-second-to-final-posn-N-30-rev_4
+34	22	CDS
+16	6
+			product	protein three
+			protein_id	ENTOY100A-one-second-to-final-posn-N-30-rev_3
+25	22	mat_peptide
+16	9
+			product	protein three mp2
+			protein_id	ENTOY100A-one-second-to-final-posn-N-30-rev_3
+34	26	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A-one-second-to-final-posn-N-30-rev_3
+69	54	CDS
+54	37
+35	28
+			product	protein two
+			protein_id	ENTOY100A-one-second-to-final-posn-N-30-rev_2
+78	73	mat_peptide
+			product	protein one mp2
+			protein_id	ENTOY100A-one-second-to-final-posn-N-30-rev_1
+90	>73	gene
+			gene	one
+90	>73	CDS
+			product	protein one
+			protein_id	ENTOY100A-one-second-to-final-posn-N-30-rev_1
+90	79	mat_peptide
+			product	protein one mp1
+			protein_id	ENTOY100A-one-second-to-final-posn-N-30-rev_1
+96	79	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+91	82	stem_loop
+			note	stem-loop 1
 >Feature ENTOY100A-one-second-to-final-posn-R-30-pass-rev
 3	17	CDS
 			product	protein four

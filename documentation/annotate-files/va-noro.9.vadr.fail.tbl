@@ -38,7 +38,7 @@
 			note	similar to VP2
 
 Additional note(s) to submitter:
-ERROR: CDS_HAS_STOP_CODON: (VF1) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 5044..5277 (stop shifted 408 nt)]
-ERROR: CDS_HAS_STOP_CODON: (VF1) stop codon in protein-based alignment [stop codon(s) end at position(s) 5277]
-ERROR: INDEFINITE_ANNOTATION_END: (VF1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [36 > 5 (strand:+ CM:5685 blastx:5649, no valid stop codon in CM prediction)]
-ERROR: INDEFINITE_ANNOTATION_START: (VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [54 > 5 (strand:+ CM:6656 blastx:6710)]
+ERROR: CDS_HAS_STOP_CODON: (CDS:VF1) in-frame stop codon exists 5' of stop position predicted by homology to reference [TGA, shifted S:408,M:408]; seq-coords:5275..5277:+; mdl-coords:5300..5302:+; mdl:NC_008311;
+ERROR: CDS_HAS_STOP_CODON: (CDS:VF1) stop codon in protein-based alignment [-]; seq-coords:5275..5277:+; mdl-coords:5300..5302:+; mdl:NC_008311;
+ERROR: INDEFINITE_ANNOTATION_END: (CDS:VF1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [36>5, no valid stop codon in nucleotide-based prediction]; seq-coords:5650..5685:+; mdl-coords:5710..5710:+; mdl:NC_008311;
+ERROR: INDEFINITE_ANNOTATION_START: (CDS:VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [54>5]; seq-coords:6656..6709:+; mdl-coords:6681..6681:+; mdl:NC_008311;

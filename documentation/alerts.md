@@ -1,6 +1,6 @@
 # <a name="top"></a> Explanations and examples of `v-annotate.pl` detailed alert and error messages
 
-* [Output fields with detailed alert and error messages](#files)
+* [Output files with detailed alert and error messages](#files)
 * [Explanation of sequence and model coordinate fields in `.alt` files](#coords)
 * [`toy50` toy model used in examples of alert messages](#toy)
 * [Examples of different alert types and corresponding `.alt` output](#examples)
@@ -13,6 +13,7 @@
   * [Indefinite annotation at the end of a sequence or a feature](#example-indf3)
   * [Ambiguous nucleotides at the start of a sequence or a feature](#example-ambg5)
   * [Ambiguous nucleotides at the end of a sequence or a feature](#example-ambg3)
+  * [Ambiguous nucleotides in start/stop codon that starts/ends with canonical nt](#example-ambgcd)
   * [Mature peptide-specific alerts](#example-pep)
   * [Low similarity at the start of a sequence of a feature](#example-lowsim5)
   * [Low similarity at the end of a sequence of a feature](#example-lowsim3)
@@ -48,7 +49,7 @@ corresponding `.alt` file output [below](#examples).
 
 | alert code(s) | alert desc(s) | sequence coords description | model coords explanation | link to example | 
 |---------------|---------------|-----------------------------|--------------------------|-----------------|
-| *fsthicf5*, *fsthicf3*, *fsthicfi*, *fstlocf5*, *fstlocf3*, *fstlocfi*, *fstukcf5*, *fstukcf3*, *fstukcfi* | *POSSIBLE_FRAMESHIFT_HIGH_CONF*,  *POSSIBLE_FRAMESHIFT_LOW_CONF*, *POSSIBLE_FRAMESHIFT* | sequence positions of the frameshifted region | model (reference) positions of the frameshifted region, some nucleotides may be inserted **before or after** these positions | [frameshift example](#example-frameshift) | 
+| *fsthicft*, *fsthicfi*, *fstlocft*, *fstlocfi*, *fstukcft*, *fstukcfi* | *POSSIBLE_FRAMESHIFT_HIGH_CONF*,  *POSSIBLE_FRAMESHIFT_LOW_CONF*, *POSSIBLE_FRAMESHIFT* | sequence positions of the frameshifted region | model (reference) positions of the frameshifted region, some nucleotides may be inserted **before or after** these positions | [frameshift example](#example-frameshift) | 
 | *insertnn*, *insertnp* | *INSERTION_OF_NT* | sequence positions of inserted nucleotides with respect to the model | model (reference) position after which insertion occurs (always length 1) | [large insertion example](#example-insert) | 
 | *deletinn*, *deletinp* | *DELETION_OF_NT*  | sequence position just prior to (5' of) deletion with respect to the model (always length 1) | model (reference) positions that are deleted in sequence | [large deletion example](#example-delete) | 
 | *mutstart* | *MUTATION_AT_START*  | sequence positions of predicted start codon (length <= 3) | model (reference) positions that align to the predicted start codon | [mutated start codon example](#example-start) | 
@@ -65,10 +66,12 @@ corresponding `.alt` file output [below](#examples).
 | *indf3lcc* | *INDEFINITE_ANNOTATION_START* | sequence position of nucleotide aligned at the 3' feature boundary (always length 1) | model (reference) position of the 3' feature boundary (always length 1) | [examples of indefinite annotation at end](#example-indf3) | 
 | *indf3pst* | *INDEFINITE_ANNOTATION_START* | sequence positions of the nucleotide alignment of the 3' end of the CDS **not** covered by the protein-based alignment | model (reference) positions the sequences positions in `sequence coords` are aligned to in the nucleotide alignment | [examples of indefinite annotation at end](#example-indf3) |   
 | *indf3plg* | *INDEFINITE_ANNOTATION_START* | sequence positions of the protein-based alignment **not** covered by the nucleotide alignment at the 3' end of the CDS | model (reference) position of the 3' boundary of the CDS (always length 1) |  [examples of indefinite annotation at end](#example-indf3) | 
-| *ambgnt5f*, ambgnt5c* | *N_AT_FEATURE_START*, *N_AT_CDS_START* | sequence position(s) of stretch of 1 or more consecutive Ns ending at the 3' end of a feature | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of ambiguous nucleotides at start](#example-ambg5) | 
-| *ambgnt5s* | *N_AT_END* | sequence position(s) of 1 or more consecutive Ns starting at position 1 of the sequence | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of ambiguous nucleotides at start](#example-ambg5) | 
-| *ambgnt3f*, ambgnt3c* | *N_AT_FEATURE_END*, *N_AT_CDS_END* | sequence position(s) of 1 or more consecutive Ns starting at the predicted 5' end of a feature | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of ambiguous nucleotides at end](#example-ambg3) | 
-| *ambgnt3s* | *N_AT_END* | sequence position(s) of 1 or more consecutive Ns ending at the final position of the sequence | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of ambiguous nucleotides at end](#example-ambg3) | 
+| *ambgnt5f*, ambgnt5c* | *AMBIGUITY_AT_FEATURE_START*, *AMBIGUITY_AT_CDS_START* | sequence position(s) of stretch of 1 or more consecutive ambiguous (non-ACGTU) nts ending at the 3' end of a feature | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of ambiguous nucleotides at start](#example-ambg5) | 
+| *ambgnt5s* | *AMBIGUITY_AT_END* | sequence position(s) of 1 or more consecutive ambiguous (non-ACGTU) nts starting at position 1 of the sequence | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of ambiguous nucleotides at start](#example-ambg5) | 
+| *ambgnt3f*, ambgnt3c* | *AMBIGUITY_AT_FEATURE_END*, *AMBIGUITY_AT_CDS_END* | sequence position(s) of 1 or more consecutive ambiguous (non-ACGTU) nts starting at the predicted 5' end of a feature | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of ambiguous nucleotides at end](#example-ambg3) | 
+| *ambgnt3s* | *AMBIGUITY_AT_END* | sequence position(s) of 1 or more consecutive ambiguous (non-ACGTU) nts ending at the final position of the sequence | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of ambiguous nucleotides at end](#example-ambg3) | 
+| *ambgcd5c* | *AMBIGUITY_IN_START_CODON* | sequence position(s) of start codon | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of ambiguous nucleotides in start/stop codons](#example-ambgcd) | 
+| *ambgcd3c* | *AMBIGUITY_IN_STOP_CODON* | sequence position(s) of stop codon | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of ambiguous nucleotides in start/stop codons](#example-ambgcd) | 
 | *pepadjcy* | *PEPTIDE_ADJACENCY_PROBLEM* | sequence position(s) of nucleotides inserted between two mature peptide predictions that are expected to be adjacent | model (reference) position(s) corresponding to the end of the 5' mature peptide and the start of the 3' mature peptide (always length 2) | [mature peptide-specific alert examples](#example-pep) | 
 | *peptrans* | *PEPTIDE_TRANSLATION_PROBLEM* | will be blank  (`-`) | will be blank (`-`) | [mature peptide-specific alert examples](#example-pep) | 
 | *lowsim5c*, *lowsim5n* | *LOW_FEATURE_SIMILARITY_START* | sequence position(s) at 5' end of predicted feature that have low similarity to the reference model | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of low similarity at start](#example-lowsim5) | 
@@ -133,25 +136,28 @@ formats")
 
 ## <a name="example-frameshift"></a>Frameshift example
 
-The example below includes a sequence that generates an alert due to a
-frameshift and an explanation of output related to the alert.
-
-#### This example is relevant to alert codes: *fsthicf5*, *fsthicf3*, *fsthicfi*, *fstlocf5*, *fstlocf3*, *fstlocfi*, *fstukcf5*, *fstukcf3*, *fstukcfi* 
-
-#### Corresponding alert descriptions (GenBank error messages): *POSSIBLE_FRAMESHIFT_HIGH_CONF*,  *POSSIBLE_FRAMESHIFT_LOW_CONF*, *POSSIBLE_FRAMESHIFT*
+| relevant alert codes | corresponding alert descriptions | notes
+|----------------------|----------------------------------|---------
+| *fsthicft*, *fsthicfi* | *POSSIBLE_FRAMESHIFT_HIGH_CONF*| only possible if `--glsearch` *is not* used |
+| *fstlocft*, *fstlocfi* | *POSSIBLE_FRAMESHIFT_LOW_CONF* | only possible if `--glsearch` *is not* used |
+| *fstukcft*, *fstukcfi* | *POSSIBLE_FRAMESHIFT*          | only possible if `--glsearch` *is* used |
 
   **Instructions to reproduce this example and create the files discussed below:**
   ```
   > sh $VADRSCRIPTSDIR/documentation/alert-files/example-frameshift.sh
   ```
-  
-  The above command will run `v-annotate.pl` and create many output files in a newly created directory. **The relevant line with details on the error can be found in the `.alt` output file (`va-example-frameshift/va-example-frameshift.vadr.alt`) as shown below, a similar line with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** *You may have to scroll to the right to see the `alert detail` field.*
+
+
+
+  **The above command will run `v-annotate.pl` and create many output files in a newly created directory. The output shown in the box below is from the `.alt` output file (`va-example-frameshift/va-example-frameshift.vadr.alt`) . Similar information with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** ***You may have to scroll to the right to see the `alert detail` field.***
+
+#### Example lines from `.alt` file:
 
 ```
 #      seq               ftr          ftr              ftr  alert           alert                               seq  seq       mdl  mdl  alert 
 #idx   name       model  type         name             idx  code      fail  description                      coords  len    coords  len  detail
 #----  ---------  -----  -----------  ---------------  ---  --------  ----  -----------------------------  --------  ---  --------  ---  ------
-1.1.2  TOY50-FS1  toy50  CDS          protein_one        1  fsthicfi  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  13..25:+   13  14..23:+   10  high confidence possible frameshift in CDS (internal) [length:13; inserts:S:13..17(5),M:13; deletes:S:25,M:22..23(2); shifted_frame:3; dominant_frame:1; avgpp:0.825;]
+1.1.2  TOY50-FS1  toy50  CDS          protein_one        1  fsthicfi  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  13..25:+   13  14..23:+   10  high confidence possible frameshift in CDS (frame restored before end) [cause:insert,S:13..17(5),M:13; restore:delete,S:25,M:22..23(2); frame:1(3)1; length:3:(13):8; shifted_avgpp:0.825; exp_avgpp:0.892;]
 ```
 
   **Alignment of `TOY50-FS1` sequence to the toy50 model:** The output file 
@@ -184,16 +190,25 @@ TOY50-FS1         -AAATCACCGATGcccccGTGATCGC--TACCATAAATGAGCATTCTACGTGCAT
   positions 14 to 23 (`mdl coords: 14..23:+`).
 
   The `alert detail` field provides further information:
-  the indels that cause the frameshifted region are an insertion of length 5 of nucleotides
-  13 to 17 after model position 13 (`inserts:S:13..17(5),M:13;`) and a
-  deletion of length 2 *after* nucleotide 25 corresponding to model
-  positions 22 and 23 (`deletes:S:25,M:22..23(2);`). 
-  The frameshifted region is in frame 3 (`shifted_frame:3`), while the dominant frame for the CDS
-  (frame in which the most nucleotides are in) is frame 1 (`dominant_frame:1`). 
+  the indels that "cause" the frameshifted region are an insertion of length 5 of nucleotides
+  13 to 17 after model position 13 (`cause:insert,S:13..17(5),M:13;`).
+  The mutation that restores the frame is a deletion of length 2 *after* nucleotide 25 corresponding to model
+  positions 22 and 23 (`restore:delete:S:25,M:22..23(2);`). 
+  The CDS starts in frame 1 for 3 nt, shifts into frame 3 for the frameshifted region
+  for 13 nt and restores to frame 1 for 8 nt before the end of the CDS (`frame:1(3)1` and
+  `length:3:(13):8`). The [table below](#framelengths) show how to interpret different `frame` and `length`
+  strings. The frame that the CDS starts in is defined as the
+  'expected frame' (this will always be 1 unless the CDS is truncated
+  at the 5' end). 
+
   This frameshift is a high confidence
   frameshift in that the average posterior probability of the aligned
-  nucleotides in the frameshifted region is `0.825` which exceeds the
-  threshold for high confidence (`0.8` by default). Other possible
+  nucleotides in the frameshifted region is `0.825`
+  (`shifted_frame:0.825`) and of the expected region prior to (5' of) the
+  frameshift is 0.892 (`exp_frame:0.892`) both of which exceed the
+  threshold for high confidence (`0.8` by default). (The PP of both
+  the shifted and expected regions must exceed the high confidence threshold for a frameshift
+  to be defined as high confidence.) Other possible
   frameshifts with lower posterior probability values will be reported
   with the `POSSIBLE_FRAMESHIFT_LOW_CONF` error. If the `--glsearch`
   option is used with `v-annotate.pl`, as is recommended with
@@ -222,25 +237,31 @@ TOY50-FS1         ATGCCCCCGTGATCGC--TACCATAA
 #=GC RFCOL.X      123.....456789012345678901
 ```
 
+### <a name="framelengths"></a> Explanation of `frame` and `length` strings in POSSIBLE_FRAMESHIFT_* alert detail 
+
+| frame string | ......length_string...... | 5' truncated? | 3' truncated? | frame of shifted region | explanation    | 
+|--------------|---------------|---------------|---------------|-------------------------|----------------|
+| `1(2)`         | `10:(50)`       | no            | no            | 2 | frame 1 for 10 nt, frame 2 for 50 nt |
+| `<1(2)`        | `10:(50)`       | yes           | no            | 2 | frame 1 for 10 nt, frame 2 for 50 nt |
+| `<1(2)>`       | `10:(50)`       | yes           | yes           | 2 | frame 1 for 10 nt, frame 2 for 50 nt |
+| `1(23)131>`    | `10:(50:30)20:9:31` | no        | yes           | 2 then 3 | frame 1 for 10 nt, frame 2 for 50 nt, frame 3 for 30 nt, frame 1 for 20 nt, frame 3 for 9 nt, frame 1 for 31 nt |
+
 ---
 
 ## <a name="example-insert"></a>Large insertion example
 
-The example below includes a sequence that generates an alert due to a
-*large* insertion (where large can be defined by the user) and an
-explanation of output related to the alert.
-
-#### This example is relevant to alert codes: *insertnn*, *insertnp*
-
-#### Corresponding alert description (GenBank error message): *INSERTION_OF_NT*
+| relevant alert codes | corresponding alert descriptions |
+|----------------------|----------------------------------|
+| *insertnn*, *insertnp* | *INSERTION_OF_NT* |
 
   **Instructions to reproduce this example and create the files discussed below:**
   ```
   > sh $VADRSCRIPTSDIR/documentation/alert-files/example-insert.sh
   ```
   
-  The above command will run `v-annotate.pl` and create many output files in a newly created directory. **The relevant line with details on the error can be found in the `.alt` output file (`va-example-insert/va-example-insert.vadr.alt`) as shown below, a similar line with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** *You may have to scroll to the right to see the `alert detail` field.*
+  **The above command will run `v-annotate.pl` and create many output files in a newly created directory. The output shown in the box below is from the `.alt` output file (`va-example-insert/va-example-insert.vadr.alt`) . Similar information with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** ***You may have to scroll to the right to see the `alert detail` field.***
 
+#### Example lines from `.alt` file:
 
 ```
 #      seq              ftr   ftr          ftr  alert           alert                 seq  seq       mdl  mdl  alert 
@@ -288,16 +309,18 @@ TOY50-I1         -AAATCACCGATGGTGATCGCTTggggggTACCATAAATGAGCATTCTACGTGCAT
 ---
 ## <a name="example-delete"></a>Large deletion example
 
-#### This example is relevant to alert codes: *deletinn*, *deletinp*
-
-#### Corresponding alert description (GenBank error message): *DELETION_OF_NT*
+| relevant alert codes | corresponding alert descriptions |
+|----------------------|----------------------------------|
+| *deletinn*, *deletinp* | *DELETION_OF_NT* |
 
   **Instructions to reproduce this example and create the files discussed below:**
   ```
   > sh $VADRSCRIPTSDIR/documentation/alert-files/example-delete.sh
   ```
   
-  The above command will run `v-annotate.pl` and create many output files in a newly created directory. **The relevant line with details on the error can be found in the `.alt` output file (`va-example-delete/va-example-delete.vadr.alt`) as shown below, a similar line with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** *You may have to scroll to the right to see the `alert detail` field.*
+  **The above command will run `v-annotate.pl` and create many output files in a newly created directory. The output shown in the box below is from the `.alt` output file (`va-example-delete/va-example-delete.vadr.alt`) . Similar information with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** ***You may have to scroll to the right to see the `alert detail` field.***
+
+#### Example lines from `.alt` file:
 
 ```
 #      seq              ftr   ftr          ftr  alert           alert                seq  seq       mdl  mdl  alert 
@@ -345,16 +368,18 @@ TOY50-D1         -AAATCACCGATGGTG---GCTTTACCATAAATGAGCATTCTACGTGCAT
 ---
 ## <a name="example-start"></a>Mutated start codon example
 
-#### This example is relevant to alert code: *mutstart*
-
-#### Corresponding alert description (GenBank error message): *MUTATION_AT_START*
+| relevant alert code  | corresponding alert description  |
+|----------------------|----------------------------------|
+| *mutstart* | *MUTATION_AT_START* |
 
   **Instructions to reproduce this example and create the files discussed below:**
   ```
   > sh $VADRSCRIPTSDIR/documentation/alert-files/example-start.sh
   ```
   
-  The above command will run `v-annotate.pl` and create many output files in a newly created directory. **The relevant line with details on the error can be found in the `.alt` output file (`va-example-start/va-example-start.vadr.alt`) as shown below, a similar line with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** *You may have to scroll to the right to see the `alert detail` field.*
+  **The above command will run `v-annotate.pl` and create many output files in a newly created directory. The output shown in the box below is from the `.alt` output file (`va-example-start/va-example-start.vadr.alt`) . Similar information with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** ***You may have to scroll to the right to see the `alert detail` field.***
+
+#### Example lines from `.alt` file:
 
 ```
 #      seq              ftr          ftr          ftr  alert           alert                  seq  seq       mdl  mdl  alert 
@@ -400,16 +425,20 @@ TOY50-S1         -AAATCACCGATTGTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
 ---
 ## <a name="example-stop"></a>Examples of stop codon problems
 
-#### This example is relevant to alert codes: *mutendcd*, *mutendns*, *mutendex*, *cdsstopn*, *cdsstopp*, *unexleng*
-
-#### Corresponding alert descriptions (GenBank error messages): *MUTATION_AT_END*, *UNEXPECTED_LENGTH*
+| relevant alert codes  | corresponding alert descriptions  |
+|----------------------|------------------------------------|
+| *mutendcd*, *mutendns*, *mutendex* | *MUTATION_AT_END*    |
+| *cdsstopn*, *cdsstopp*             | *CDS_HAS_STOP_CODON* |
+| *unexleng*                         | *UNEXPECTED_LENGTH*  |
 
   **Instructions to reproduce this example and create the files discussed below:**
   ```
   > sh $VADRSCRIPTSDIR/documentation/alert-files/example-stop.sh
   ```
 
-  The above command will run `v-annotate.pl` and create many output files in a newly created directory. **The relevant line with details on the error can be found in the `.alt` output file (`va-example-stop/va-example-stop.vadr.alt`) as shown below, a similar line with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** *You may have to scroll to the right to see the `alert detail` field.*
+  **The above command will run `v-annotate.pl` and create many output files in a newly created directory. The output shown in the box below is from the `.alt` output file (`va-example-stop/va-example-stop.vadr.alt`) . Similar information with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** ***You may have to scroll to the right to see the `alert detail` field.***
+
+#### Example lines from `.alt` file:
 
 ```
 #      seq               ftr   ftr          ftr  alert           alert                     seq  seq       mdl  mdl  alert 
@@ -501,16 +530,18 @@ TOY50-SP3         -AAATCACCGATGGTGATCGCTTAACCATACATGAGCATTCTACGTGCAT
 ---
 ## <a name="example-indf5"></a>Examples of indefinite annotation at the start of a sequence or a feature
 
-#### This example is relevant to alert codes: *indf5gap*, *indf5lcc*, *indf5pst*, *indf5lcn* (not shown), *indf5plg* (not shown)
-
-#### Corresponding alert description (GenBank error message): *INDEFINITE_ANNOTATION_START*
+| relevant alert codes  | corresponding alert descriptions  |
+|----------------------|------------------------------------|
+| *indf5gap*, *indf5lcc*, indf5pst*, *indf5lcn* (not shown), *indf5plg* (not shown) | *INDEFINITE_ANNOTATION_START* |
 
   **Instructions to reproduce this example and create the files discussed below:**
   ```
   > sh $VADRSCRIPTSDIR/documentation/alert-files/example-indefstart.sh
   ```
 
-  The above command will run `v-annotate.pl` and create many output files in a newly created directory. **The relevant line with details on the error can be found in the `.alt` output file (`va-example-indefstart/va-example-indefstart.vadr.alt`) as shown below, a similar line with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** *You may have to scroll to the right to see the `alert detail` field.*
+  **The above command will run `v-annotate.pl` and create many output files in a newly created directory. The output shown in the box below is from the `.alt` output file (`va-example-indefstart/va-example-indefstart.vadr.alt`) . Similar information with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** ***You may have to scroll to the right to see the `alert detail` field.***
+
+#### Example lines from `.alt` file:
 
 ```
 #      seq               ftr   ftr          ftr  alert           alert                             seq  seq       mdl  mdl  alert 
@@ -599,16 +630,18 @@ TOY50-IS2         -AAATCAC--ATGGTGATCGCTTTACCATAAATGAGCAT-----------
 ---
 ## <a name="example-indf3"></a>Examples of indefinite annotation at end of a feature
 
-#### This example is relevant to alert codes: *indf3gap*, *indf3lcc*, *indf3pst*, *indf3lcn* (not shown), *indf3plg* (not shown)
-
-#### Corresponding alert description (GenBank error message): *INDEFINITE_ANNOTATION_END*
+| relevant alert codes  | corresponding alert descriptions  |
+|----------------------|------------------------------------|
+| *indf3gap*, *indf3lcc*, indf3pst*, *indf3lcn* (not shown), *indf3plg* (not shown) | *INDEFINITE_ANNOTATION_END* |
 
   **Instructions to reproduce this example and create the files discussed below:**
   ```
   > sh $VADRSCRIPTSDIR/documentation/alert-files/example-indefend.sh
   ```
 
-  The above command will run `v-annotate.pl` and create many output files in a newly created directory. **The relevant line with details on the error can be found in the `.alt` output file (`va-example-indefend/va-example-indefend.vadr.alt`) as shown below, a similar line with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** *You may have to scroll to the right to see the `alert detail` field.*
+  **The above command will run `v-annotate.pl` and create many output files in a newly created directory. The output shown in the box below is from the `.alt` output file (`va-example-indefend/va-example-indefend.vadr.alt`) . Similar information with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** ***You may have to scroll to the right to see the `alert detail` field.***
+
+#### Example lines from `.alt` file:
 
 ```
 #      seq               ftr   ftr          ftr  alert           alert                             seq  seq       mdl  mdl  alert 
@@ -694,29 +727,31 @@ TOY50-IE2         -AAATCACCGATGGTGATCCCTCTAGCATAGA-GAGCAT-----------
 ---
 ## <a name="example-ambg5"></a>Examples of ambiguous nucleotides at the start of a sequence or a feature
 
-#### This example is relevant to alert codes: *ambgnt5s*, *ambgnt5c*, *ambgnt5f* 
-
-#### Corresponding alert descriptions (GenBank error messages): *N_AT_START*, *N_AT_CDS_START*, *N_AT_FEATURE_START*
+| relevant alert codes  | corresponding alert descriptions  |
+|----------------------|------------------------------------|
+| *ambgnt5s* | *AMBIGUITY_AT_START* | 
+| *ambgnt5c* | *AMBIGUITY_AT_CDS_START* | 
+| *ambgnt5f* | *AMBIGUITY_AT_FEATURE_START* | 
 
   **Instructions to reproduce this example and create the files discussed below:**
   ```
   > sh $VADRSCRIPTSDIR/documentation/alert-files/example-ambigstart.sh
   ```
 
-  The above command will run `v-annotate.pl` and create many output files in a newly created directory. **The relevant line with details on the error can be found in the `.alt` output file (`va-example-ambigstart/va-example-ambigstart.vadr.alt`) as shown below, a similar line with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** *You may have to scroll to the right to see the `alert detail` field.*
+  **The above command will run `v-annotate.pl` and create many output files in a newly created directory. The output shown in the box below is from the `.alt` output file (`va-example-ambigstart/va-example-ambigstart.vadr.alt`) . Similar information with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** ***You may have to scroll to the right to see the `alert detail` field.***
 
 #### Example lines from `.alt` file:
 
 ```
-#      seq               ftr          ftr              ftr  alert           alert                    seq  seq       mdl  mdl  alert 
-#idx   name       model  type         name             idx  code      fail  description           coords  len    coords  len  detail
-#----  ---------  -----  -----------  ---------------  ---  --------  ----  ------------------  --------  ---  --------  ---  ------
-1.1.1  TOY50-AS1  toy50  CDS          protein_one        1  ambgnt5c  no    N_AT_CDS_START      10..13:+    4  11..14:+    4  first nucleotide of CDS is an N [-]
-1.2.1  TOY50-AS1  toy50  mat_peptide  protein_one_mp1    2  ambgnt5f  no    N_AT_FEATURE_START  10..13:+    4  11..14:+    4  first nucleotide of non-CDS feature is an N [-]
+#      seq               ftr          ftr              ftr  alert           alert                            seq  seq       mdl  mdl  alert 
+#idx   name       model  type         name             idx  code      fail  description                   coords  len    coords  len  detail
+#----  ---------  -----  -----------  ---------------  ---  --------  ----  --------------------------  --------  ---  --------  ---  ------
+1.1.1  TOY50-AS1  toy50  CDS          protein_one        1  ambgnt5c  no    AMBIGUITY_AT_CDS_START      10..13:+    4  11..14:+    4  first nucleotide of CDS is an ambiguous nucleotide [-]
+1.2.1  TOY50-AS1  toy50  mat_peptide  protein_one_mp1    2  ambgnt5f  no    AMBIGUITY_AT_FEATURE_START  10..13:+    4  11..14:+    4  first nucleotide of non-CDS feature is an ambiguous nucleotide [-]
 #
-2.1.1  TOY50-AS2  toy50  -            -                  -  ambgnt5s  no    N_AT_START           1..13:+   13   2..14:+   13  first nucleotide of the sequence is an N [-]
-2.2.1  TOY50-AS2  toy50  CDS          protein_one        1  ambgnt5c  no    N_AT_CDS_START      10..13:+    4  11..14:+    4  first nucleotide of CDS is an N [-]
-2.3.1  TOY50-AS2  toy50  mat_peptide  protein_one_mp1    2  ambgnt5f  no    N_AT_FEATURE_START  10..13:+    4  11..14:+    4  first nucleotide of non-CDS feature is an N [-]
+2.1.1  TOY50-AS2  toy50  -            -                  -  ambgnt5s  no    AMBIGUITY_AT_START           1..13:+   13   2..14:+   13  first nucleotide of the sequence is an ambiguous nucleotide [-]
+2.2.1  TOY50-AS2  toy50  CDS          protein_one        1  ambgnt5c  no    AMBIGUITY_AT_CDS_START      10..13:+    4  11..14:+    4  first nucleotide of CDS is an ambiguous nucleotide [-]
+2.3.1  TOY50-AS2  toy50  mat_peptide  protein_one_mp1    2  ambgnt5f  no    AMBIGUITY_AT_FEATURE_START  10..13:+    4  11..14:+    4  first nucleotide of non-CDS feature is an ambiguous nucleotide [-]
 ```
 
   **Alignment of `TOY50-AS1` and `TOY50-AS2` sequences to the toy50 model:** The output
@@ -746,14 +781,14 @@ TOY50-AS2         -NNNNNNNNNNNNNTGATCGCTTTACCATAAATGAGCAT-----------
 
   * `TOY50-AS1` sequence: 
 
-  The *ambgnt5c* alert with description *N_AT_CDS_START*
+  The *ambgnt5c* alert with description *AMBIGUITY_AT_CDS_START*
   is reported because the predicted CDS named `protein one` begins
   with 4 consecutive Ns from sequence positions 10
   to 13 (`seq coords:10..13:+`) that align to the model (reference) positions 11 to 14 (`mdl coords:11..14:+`). These positions
   are marked with `vvvv` in the alignment above. This alert is specific
   to CDS features.
 
-  Similarly, the *ambgnt5f* alert with description *N_AT_FEATURE_START*
+  Similarly, the *ambgnt5f* alert with description *AMBIGUITY_AT_FEATURE_START*
   is reported because the predicted mat_peptide named `protein one mp1` begins
   with 4 consecutive Ns from sequence positions 10
   to 13 (`seq coords:10..13:+`) that align to the model (reference) positions 11 to 14 (`mdl coords:11..14:+`). These positions
@@ -766,13 +801,13 @@ TOY50-AS2         -NNNNNNNNNNNNNTGATCGCTTTACCATAAATGAGCAT-----------
   position 1 and extends to position 13 (`seq coords:1..13:+`). Because the first 4 nucleotides of
   the CDS and mat_peptide are Ns like in `TOY50-AS1`, the same *ambgnt5c* and
   *ambgnt5f* alerts are reported, but now with an additional *ambgnt5s* alert
-  with description *N_AT_START* because the beginning of the sequence begins
+  with description *AMBIGUITY_AT_START* because the beginning of the sequence begins
   with a consecutive string of 13 Ns.
 
   This sequence is similar to `TOY50-AS1` except the stretch of Ns
   begins at position 1 and extends to position 13 
   position of the sequence causing the *ambgnt5s*
-  alert with description *N_AT_START* to be reported because the sequence ends 
+  alert with description *AMBIGUITY_AT_START* to be reported because the sequence ends 
   with a stretch of 13 consecutive Ns. Because the first 4 nucleotides of
   the CDS and mat_peptide are Ns like in `TOY50-AS1`, the same *ambgnt5c* and
   *ambgnt5f* alerts are reported as well.
@@ -781,27 +816,29 @@ TOY50-AS2         -NNNNNNNNNNNNNTGATCGCTTTACCATAAATGAGCAT-----------
 
 ## <a name="example-ambg3"></a>Examples of ambiguous nucleotides at end of a sequence or a feature
 
-#### This example is relevant to alert codes: *ambgnt3s*, *ambgnt3c*, *ambgnt3f* 
-
-#### Corresponding alert descriptions (GenBank error messages): *N_AT_END*, *N_AT_CDS_END*, *N_AT_FEATURE_END*
+| relevant alert codes  | corresponding alert descriptions  |
+|----------------------|------------------------------------|
+| *ambgnt3s* | *AMBIGUITY_AT_END* | 
+| *ambgnt3c* | *AMBIGUITY_AT_CDS_END* | 
+| *ambgnt3f* | *AMBIGUITY_AT_FEATURE_END* | 
 
   **Instructions to reproduce this example and create the files discussed below:**
   ```
   > sh $VADRSCRIPTSDIR/documentation/alert-files/example-ambigend.sh
   ```
 
-  The above command will run `v-annotate.pl` and create many output files in a newly created directory. **The relevant line with details on the error can be found in the `.alt` output file (`va-example-ambigend/va-example-ambigend.vadr.alt`) as shown below, a similar line with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** *You may have to scroll to the right to see the `alert detail` field.*
+  **The above command will run `v-annotate.pl` and create many output files in a newly created directory. The output shown in the box below is from the `.alt` output file (`va-example-ambigend/va-example-ambigend.vadr.alt`) . Similar information with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** ***You may have to scroll to the right to see the `alert detail` field.***
 
 #### Example lines from `.alt` file:
 
 ```
-#      seq               ftr   ftr          ftr  alert           alert              seq  seq       mdl  mdl  alert 
-#idx   name       model  type  name         idx  code      fail  description     coords  len    coords  len  detail
-#----  ---------  -----  ----  -----------  ---  --------  ----  ------------  --------  ---  --------  ---  ------
-1.1.1  TOY50-AE1  toy50  CDS   protein_one    1  ambgnt3c  no    N_AT_CDS_END  29..30:+    2  30..31:+    2  final nucleotide of CDS is an N [-]
+#      seq               ftr   ftr          ftr  alert           alert                      seq  seq       mdl  mdl  alert 
+#idx   name       model  type  name         idx  code      fail  description             coords  len    coords  len  detail
+#----  ---------  -----  ----  -----------  ---  --------  ----  --------------------  --------  ---  --------  ---  ------
+1.1.1  TOY50-AE1  toy50  CDS   protein_one    1  ambgnt3c  no    AMBIGUITY_AT_CDS_END  29..30:+    2  30..31:+    2  final nucleotide of CDS is an ambiguous nucleotide [-]
 #
-2.1.1  TOY50-AE2  toy50  -     -              -  ambgnt3s  no    N_AT_END      29..38:+   10  30..39:+   10  final nucleotide of the sequence is an N [-]
-2.2.1  TOY50-AE2  toy50  CDS   protein_one    1  ambgnt3c  no    N_AT_CDS_END  29..30:+    2  30..31:+    2  final nucleotide of CDS is an N [-]
+2.1.1  TOY50-AE2  toy50  -     -              -  ambgnt3s  no    AMBIGUITY_AT_END      29..38:+   10  30..39:+   10  final nucleotide of the sequence is an ambiguous nucleotide [-]
+2.2.1  TOY50-AE2  toy50  CDS   protein_one    1  ambgnt3c  no    AMBIGUITY_AT_CDS_END  29..30:+    2  30..31:+    2  final nucleotide of CDS is an ambiguous nucleotide [-]
 ```
 
   **Alignment of `TOY50-AE1` and `TOY50-AE2` sequences to the toy50 model:** The output
@@ -831,7 +868,7 @@ TOY50-AE2         -AAATCACCGATGGTGATCGCTTTACCATNNNNNNNNNN-----------
 
   * `TOY50-AE1` sequence: 
 
-  The *ambgnt3c* alert with description *N_AT_CDS_END*
+  The *ambgnt3c* alert with description *AMBIGUITY_AT_CDS_END*
   is reported because the predicted CDS named `protein one` ends
   with 2 consecutive Ns from sequence positions 29
   to 30 (`seq coords:29..30:+`) that align to the model (reference) positions 30 to 31 (`mdl coords:30..31:+`). These positions
@@ -849,24 +886,98 @@ TOY50-AE2         -AAATCACCGATGGTGATCGCTTTACCATNNNNNNNNNN-----------
   This sequence is similar to `TOY50-AE1` except the stretch of Ns
   begins at position 29 and continues to the position 38 (`seq coords:29..38:+`) which is the final
   position of the sequence causing the *ambgnt3s*
-  alert with description *N_AT_END* to be reported because the sequence ends 
+  alert with description *AMBIGUITY_AT_END* to be reported because the sequence ends 
   with a stretch of 10 consecutive Ns. Because the
   final 2 nucleotides of the CDS are Ns like in `TOY50-AS1`, the same
   *ambgnt3c* alert is reported. 
 
 ---
+## <a name="example-ambgcd"></a>Examples of ambiguous nucleotides in start/stop codons that start/stop with canonical nt
+
+| relevant alert codes  | corresponding alert descriptions  |
+|----------------------|------------------------------------|
+| *ambgcd5c* | *AMBIGUITY_IN_START_CODON* |
+| *ambgcd3c* | *AMBIGUITY_IN_STOP_CODON* |
+
+  **Instructions to reproduce this example and create the files discussed below:**
+  ```
+  > sh $VADRSCRIPTSDIR/documentation/alert-files/example-ambigcodon.sh
+  ```
+
+  **The above command will run `v-annotate.pl` and create many output files in a newly created directory. The output shown in the box below is from the `.alt` output file (`va-example-ambigend/va-example-ambigend.vadr.alt`) . Similar information with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** *****You may have to scroll to the right to see the `alert detail` field.*****
+
+#### Example lines from `.alt` file:
+
+```
+#      seq               ftr   ftr          ftr  alert           alert                      seq  seq       mdl  mdl  alert 
+#idx   name       model  type  name         idx  code      fail  description             coords  len    coords  len  detail
+#----  ---------  -----  ----  -----------  ---  --------  ----  --------------------  --------  ---  --------  ---  ------
+1.1.1  TOY50-AC1  toy50  CDS   protein_one    1  ambgcd5c  no    AMBIGUITY_IN_START_CODON  10..12:+    3  11..13:+    3  5' complete CDS starts with canonical nt but includes ambiguous nt in its start codon [ANG]
+#
+2.1.1  TOY50-AC2  toy50  CDS   protein_one    1  ambgcd3c  no    AMBIGUITY_IN_STOP_CODON   28..30:+    3  29..31:+    3  3' complete CDS ends with canonical nt but includes ambiguous nt in its stop codon [TNA]
+```
+
+  **Alignment of `TOY50-AC1` and `TOY50-AC2` sequences to the toy50 model:** The output
+  file `va-example-ambigcodon/va-example-ambigcodon.vadr.toy50.align.stk`.
+  includes the alignment shown below. Looking at this alignment, or an
+  alignment of the sequence generated by a different program, can be 
+  helpful in understanding the alerts.
+  The `#=GC RF` line shows the toy50 reference model sequence.  The `#=GR PP` line
+  indicates confidence estimates for each aligned nucleotide as
+  explained more [here](#pp).  This alignment is only output when the
+  `--keep` or `--out_stk` options are used with `v-annotate.pl`.
+
+```
+                            vvv               
+TOY50-AC1         -AAATCACCGANGNTGATCGCTTTACCATAAATGAGCAT-----------
+#=GR TOY50-AC1 PP .**************************************...........
+TOY50-AC2         -AAATCACCGATGGTGATCGCTTTACCATNAATGAGCAT-----------
+#=GR TOY50-AC2 PP .**************************************...........
+#=GC RF           GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
+#=GC RFCOLX.      00000000011111111112222222222333333333344444444445
+#=GC RFCOL.X      12345678901234567890123456789012345678901234567890
+                                              ^^^
+```
+  **How to interpret these alerts based on the above output**: 
+  If the first position of each sequence or predicted feature 
+  is an N, an alert is reported.
+
+  * `TOY50-AC1` sequence: 
+
+  The *ambgcd5c* alert with description *AMBIGUITY_IN_START_CODON*
+  is reported because the predicted CDS named `protein one` begins
+  with a start codon `ANG` that includes an ambiguous nucleotide *but*
+  starts with a canonical nt at sequence positions 10 to 12 (`seq coords:10..12:+`)
+  that align to the model (reference) positions 11 to 13 (`mdl coords:11..13:+`). These positions
+  are marked with `vv` in the alignment above. This alert is specific
+  to CDS features that are not truncated at the 5' end.
+
+  * `TOY50-AC2` sequence: 
+
+  The *ambgcd3c* alert with description *AMBIGUITY_IN_STOP_CODON*
+  is reported because the predicted CDS named `protein one` ends
+  with a stop codon `TNA` that includes an ambiguous nucleotide *but*
+  ends with a canonical nt at sequence positions 28 to 30 (`seq coords:28..30:+`)
+  that align to the model (reference) positions 29 to 31 (`mdl coords:29..31:+`). These positions
+  are marked with `^^` in the alignment above. This alert is specific
+  to CDS features that are not truncated at the 3' end.
+
+---
 ## <a name="example-pep"></a>Examples of mature peptide-specific alerts
 
-#### This example is relevant to alert codes: *pepadjcy*, *peptrans*
-
-#### Corresponding alert descriptions (GenBank error messages): *PEPTIDE_ADJACENCY_PROBLEM*, *PEPTIDE_TRANSLATION_PROBLEM*
+| relevant alert codes  | corresponding alert descriptions  |
+|----------------------|------------------------------------|
+| *pepadjcy* | *PEPTIDE_ADJACENCY_PROBLEM* | 
+| *peptrans* | *PEPTIDE_TRANSLATION_PROBLEM* |
 
   **Instructions to reproduce this example and create the files discussed below:**
   ```
   > sh $VADRSCRIPTSDIR/documentation/alert-files/example-matpep.sh
   ```
 
-  The above command will run `v-annotate.pl` and create many output files in a newly created directory. **The relevant line with details on the error can be found in the `.alt` output file (`va-example-matpep/va-example-matpep.vadr.alt`) as shown below, a similar line with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** *You may have to scroll to the right to see the `alert detail` field.*
+  **The above command will run `v-annotate.pl` and create many output files in a newly created directory. The output shown in the box below is from the `.alt` output file (`va-example-matpep/va-example-matpep.vadr.alt`) . Similar information with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** ***You may have to scroll to the right to see the `alert detail` field.***
+
+#### Example lines from `.alt` file:
 
 ```
 #      seq               ftr          ftr              ftr  alert           alert                             seq  seq       mdl  mdl  alert 
@@ -935,16 +1046,19 @@ TOY50-MP2         -AAATCACCGGTGGTGATCGCT...TTACCATAAATGAGCAT-----------
 ---
 ## <a name="example-lowsim5"></a>Examples of low similarity to the model at the start of a sequence or a feature
 
-#### This example is relevant to alert codes: *lowsim5c*, *lowsim5n* (not shown), *lowsim5s*
-
-#### Corresponding alert descriptions (GenBank error messages): *LOW_FEATURE_SIMILARITY_START*, *LOW_SIMILARITY_START*
+| relevant alert codes  | corresponding alert descriptions  |
+|----------------------|------------------------------------|
+| *lowsim5c*, *lowsim5n* (not shown) | *LOW_FEATURE_SIMILARITY_START* |
+| *lowsim5s*                         | *LOW_SIMILARITY_START* |
 
   **Instructions to reproduce this example and create the files discussed below:**
   ```
   > sh $VADRSCRIPTSDIR/documentation/alert-files/example-lowsimstart.sh
   ```
 
-  The above command will run `v-annotate.pl` and create many output files in a newly created directory. **The relevant line with details on the error can be found in the `.alt` output file (`va-example-lowsimstart/va-example-lowsimstart.vadr.alt`) as shown below, a similar line with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** *You may have to scroll to the right to see the `alert detail` field.*
+  **The above command will run `v-annotate.pl` and create many output files in a newly created directory. The output shown in the box below is from the `.alt` output file (`va-example-lowsimstart/va-example-lowsimstart.vadr.alt`) . Similar information with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** ***You may have to scroll to the right to see the `alert detail` field.***
+
+#### Example lines from `.alt` file:
 
 ```
 #      seq                ftr   ftr          ftr  alert           alert                             seq  seq       mdl  mdl  alert 
@@ -1007,16 +1121,19 @@ TOY50-LSS2         --GTTTAGTGgcATG....GTGATCGCTTTACCATAAATGAGCAT-----------
 ---
 ## <a name="example-lowsim3"></a>Examples of low similarity to the model at the end of a sequence or a feature
 
-#### This example is relevant to alert codes: *lowsim3c*, *lowsim3n* (not shown), *lowsim3s*
-
-#### Corresponding alert descriptions (GenBank error messages): *LOW_FEATURE_SIMILARITY_END*, *LOW_SIMILARITY_END*
+| relevant alert codes  | corresponding alert descriptions  |
+|----------------------|------------------------------------|
+| *lowsim3c*, *lowsim3n* (not shown) | *LOW_FEATURE_SIMILARITY_END* |
+| *lowsim3s*                         | *LOW_SIMILARITY_END* |
 
   **Instructions to reproduce this example and create the files discussed below:**
   ```
   > sh $VADRSCRIPTSDIR/documentation/alert-files/example-lowsimend.sh
   ```
 
-  The above command will run `v-annotate.pl` and create many output files in a newly created directory. **The relevant line with details on the error can be found in the `.alt` output file (`va-example-lowsimend/va-example-lowsimend.vadr.alt`) as shown below, a similar line with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** *You may have to scroll to the right to see the `alert detail` field.*
+  **The above command will run `v-annotate.pl` and create many output files in a newly created directory. The output shown in the box below is from the `.alt` output file (`va-example-lowsimend/va-example-lowsimend.vadr.alt`) . Similar information with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** ***You may have to scroll to the right to see the `alert detail` field.***
+
+#### Example lines from `.alt` file:
 
 ```
 #      seq                ftr          ftr              ftr  alert           alert                             seq  seq       mdl  mdl  alert 
@@ -1077,16 +1194,19 @@ TOY50-LSE2         -AAATCACCGATGGTGATCGCTTTAC.......CATAAATGAcgatacacGAACTGCACGA
 ---
 ## <a name="example-lowsimi"></a>Examples of low similarity to the model in a region internal to a sequence or feature
 
-#### This example is relevant to alert codes: *lowsimic*, *lowsimin* (not shown), *lowsimis (not shown)*
-
-#### Corresponding alert descriptions (GenBank error messages): *LOW_FEATURE_SIMILARITY*, *LOW_SIMILARITY*
+| relevant alert codes  | corresponding alert descriptions  |
+|----------------------|------------------------------------|
+| *lowsimic*, *lowsimin* (not shown) | *LOW_FEATURE_SIMILARITY* |
+| *lowsimis*                         | *LOW_SIMILARITY* |
 
   **Instructions to reproduce this example and create the files discussed below:**
   ```
   > sh $VADRSCRIPTSDIR/documentation/alert-files/example-lowsimint.sh
   ```
 
-  The above command will run `v-annotate.pl` and create many output files in a newly created directory. **The relevant line with details on the error can be found in the `.alt` output file (`va-example-lowsimint/va-example-lowsimint.vadr.alt`) as shown below, a similar line with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** *You may have to scroll to the right to see the `alert detail` field.*
+  **The above command will run `v-annotate.pl` and create many output files in a newly created directory. The output shown in the box below is from the `.alt` output file (`va-example-lowsimint/va-example-lowsimint.vadr.alt`) . Similar information with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** ***You may have to scroll to the right to see the `alert detail` field.***
+
+#### Example lines from `.alt` file:
 
 ```
 #      seq                ftr   ftr          ftr  alert           alert                         seq  seq       mdl  mdl  alert 
@@ -1144,16 +1264,19 @@ TOY50-LSI1         -AAATCACCGATGGTGATCGCTTTACCaaagcagtacaggcacatgacaaagcagtacagg
 ---
 ## <a name="example-delftr"></a>Example of a deleted feature
 
-#### This example is relevant to alert codes: *deletins*, *deletinf* (not shown)
-
-#### Corresponding alert descriptions (GenBank error messages): *DELETION_OF_FEATURE*, *DELETION_OF_FEATURE_SECTION*
+| relevant alert codes  | corresponding alert descriptions  |
+|----------------------|------------------------------------|
+| *deletins*, *deletina* (not shown) | *DELETION_OF_FEATURE* |
+| *deletinf* (not shown)             | *DELETION_OF_FEATURE_SECTION* |
 
   **Instructions to reproduce this example and create the files discussed below:**
   ```
   > sh $VADRSCRIPTSDIR/documentation/alert-files/example-delftr.sh
   ```
 
-  The above command will run `v-annotate.pl` and create many output files in a newly created directory. **The relevant line with details on the error can be found in the `.alt` output file (`va-example-delftr/va-example-delftr.vadr.alt`) as shown below, a similar line with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** *You may have to scroll to the right to see the `alert detail` field.*
+  **The above command will run `v-annotate.pl` and create many output files in a newly created directory. The output shown in the box below is from the `.alt` output file (`va-example-delftr/va-example-delftr.vadr.alt`) . Similar information with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** ***You may have to scroll to the right to see the `alert detail` field.***
+
+#### Example lines from `.alt` file:
 
 ```
 #      seq               ftr   ftr   ftr  alert           alert                   seq  seq       mdl  mdl  alert 
@@ -1187,7 +1310,11 @@ TOY50-DF1         -AAATCACCGATGGTGATCGC--------AAATGAGCATTCTACGTGCAT
   `.alt` file above. That mature peptide spans model positions 23 to 28 (`model coords:23..28:+`) which can be
   seen as gaps in the above alignment, and are marked with positions `v`.
 
-  A similar `deletinf` alert exists for *multi-segment* features for which
+  A similar `deletina` alert will be reported if the feature that is deleted
+  has the `is_deletable` field set to `1` in the input `.minfo` file.
+  No example of this alert is shown here.
+
+A similar `deletinf` alert exists for *multi-segment* features for which
   one or more but not all segments are deleted. The associated value for this
   alert in the `alert desc` field is `DELETION_OF_FEATURE_SECTION`. 
   No example of this alert is shown here.
@@ -1195,16 +1322,18 @@ TOY50-DF1         -AAATCACCGATGGTGATCGC--------AAATGAGCATTCTACGTGCAT
 ---
 ## <a name="example-dupregin"></a>Example of duplicate regions
 
-#### This example is relevant to alert codes: *dupregin*
-
-#### Corresponding alert description (GenBank error message): *DUPLICATE_REGION*
+| relevant alert codes  | corresponding alert descriptions  |
+|----------------------|------------------------------------|
+| *dupregin* | *DUPLICATE_REGION* |
 
   **Instructions to reproduce this example and create the files discussed below:**
   ```
   > sh $VADRSCRIPTSDIR/documentation/alert-files/example-dupregin.sh
   ```
 
-  The above command will run `v-annotate.pl` and create many output files in a newly created directory. **The relevant line with details on the error can be found in the `.alt` output file (`va-example-dupregin/va-example-dupregin.vadr.alt`) as shown below, a similar line with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** *You may have to scroll to the right to see the `alert detail` field.*
+  **The above command will run `v-annotate.pl` and create many output files in a newly created directory. The output shown in the box below is from the `.alt` output file (`va-example-dupregin/va-example-dupregin.vadr.alt`) . Similar information with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** ***You may have to scroll to the right to see the `alert detail` field.***
+
+#### Example lines from `.alt` file:
 
 ```
 #      seq               ftr   ftr   ftr  alert           alert                           seq  seq              mdl  mdl  alert 
@@ -1257,16 +1386,18 @@ TOY50-DR1         -AAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCataccgatggtgat
 ---
 ## <a name="example-discontn"></a>Example of discontinuous similarity
 
-#### This example is relevant to alert code: *discontn*
-
-#### Corresponding alert description (GenBank error message): *DISCONTINUOUS_SIMILARITY*
+| relevant alert codes  | corresponding alert descriptions  |
+|----------------------|------------------------------------|
+| *discontn* | *DISCONTINUOUS_SIMILARITY |
 
   **Instructions to reproduce this example and create the files discussed below:**
   ```
   > sh $VADRSCRIPTSDIR/documentation/alert-files/example-discontn.sh
   ```
 
-  The above command will run `v-annotate.pl` and create many output files in a newly created directory. **The relevant line with details on the error can be found in the `.alt` output file (`va-example-discontn/va-example-discontn.vadr.alt`) as shown below, a similar line with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** *You may have to scroll to the right to see the `alert detail` field.*
+  **The above command will run `v-annotate.pl` and create many output files in a newly created directory. The output shown in the box below is from the `.alt` output file (`va-example-discontn/va-example-discontn.vadr.alt`) . Similar information with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** ***You may have to scroll to the right to see the `alert detail` field.***
+
+#### Example lines from `.alt` file:
 
 ```
 #      seq               ftr   ftr   ftr  alert           alert                                  seq  seq               mdl  mdl  alert 
@@ -1323,16 +1454,18 @@ TOY50-DS1         ------------------------ACCATAAATGAGCATTCTACGTGCAtaaatcaccgatg
 ---
 ## <a name="example-indfstrn"></a>Example of indefinite strand
 
-#### This example is relevant to alert codes: *indfstrn*, *indfstrp* (not shown)
-
-#### Corresponding alert description (GenBank error message): *INDEFINITE_STRAND*
+| relevant alert codes  | corresponding alert descriptions  |
+|----------------------|------------------------------------|
+| *indfstrn*, *indfstrp* (not shown) | *INDEFINITE_STRAND* |
 
   **Instructions to reproduce this example and create the files discussed below:**
   ```
   > sh $VADRSCRIPTSDIR/documentation/alert-files/example-indfstrn.sh
   ```
 
-  The above command will run `v-annotate.pl` and create many output files in a newly created directory. **The relevant line with details on the error can be found in the `.alt` output file (`va-example-indfstrn/va-example-indfstrn.vadr.alt`) as shown below, a similar line with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** *You may have to scroll to the right to see the `alert detail` field.*
+  **The above command will run `v-annotate.pl` and create many output files in a newly created directory. The output shown in the box below is from the `.alt` output file (`va-example-indfstrn/va-example-indfstrn.vadr.alt`) . Similar information with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** ***You may have to scroll to the right to see the `alert detail` field.***
+
+#### Example lines from `.alt` file:
 
 ```
 #      seq               ftr   ftr   ftr  alert           alert                   seq  seq       mdl  mdl  alert 
@@ -1397,16 +1530,18 @@ TOY50-IS1         -AAATCACCGATGGTGATCGCTTTAATGCAcgtagAATGCTCATTTATGG-----
 ---
 ## <a name="example-lowcovrg"></a>Example of low coverage
 
-#### This example is relevant to alert codes: *lowcovrg*
-
-#### Corresponding alert description (GenBank error message): *LOW_COVERAGE*
+| relevant alert codes  | corresponding alert descriptions  |
+|----------------------|------------------------------------|
+| *lowcovrg* | *LOW_COVERAGE* |
 
   **Instructions to reproduce this example and create the files discussed below:**
   ```
   > sh $VADRSCRIPTSDIR/documentation/alert-files/example-lowcovrg.sh
   ```
 
-  The above command will run `v-annotate.pl` and create many output files in a newly created directory. **The relevant line with details on the error can be found in the `.alt` output file (`va-example-lowcovrg/va-example-lowcovrg.vadr.alt`) as shown below, a similar line with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** *You may have to scroll to the right to see the `alert detail` field.*
+  **The above command will run `v-annotate.pl` and create many output files in a newly created directory. The output shown in the box below is from the `.alt` output file (`va-example-lowcovrg/va-example-lowcovrg.vadr.alt`) . Similar information with the `seq` and `mdl coords` fields can be found in the `.alt.list` output file and in the detailed error report `.tsv` file generated by the GenBank submission portal.** ***You may have to scroll to the right to see the `alert detail` field.***
+
+#### Example lines from `.alt` file:
 
 ```
 #      seq               ftr   ftr   ftr  alert           alert                                  seq  seq               mdl  mdl  alert 
@@ -1560,7 +1695,6 @@ PP values are used by `v-annotate.pl` in two contexts:
 2. To report alerts when feature boundaries have low confidence (*indf5lc** and *indf3lc** alerts, see example at [5' end](#example-indf5) and [3' end](#example-indf3).
 
 ---
-#### Questions, comments or feature requests? Send a
-mail to eric.nawrocki@nih.gov.
+#### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
 
 

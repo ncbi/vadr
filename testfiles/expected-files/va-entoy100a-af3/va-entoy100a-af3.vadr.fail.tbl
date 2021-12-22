@@ -1,0 +1,18 @@
+>Feature ENTOY100A-af3-earlystop
+11	31	misc_feature
+			note	similar to protein one
+
+Additional note(s) to submitter:
+ERROR: CDS_HAS_STOP_CODON: (CDS:protein one) in-frame stop codon exists 5' of stop position predicted by homology to reference [TAA, shifted S:6,M:6]; seq-coords:23..25:+; mdl-coords:23..25:+; mdl:ENTOY100A;
+>Feature ENTOY100A-af3-earlystop-mut-first-start
+14	31	misc_feature
+			note	similar to protein one
+
+Additional note(s) to submitter:
+ERROR: CDS_HAS_STOP_CODON: (CDS:protein one) in-frame stop codon exists 5' of stop position predicted by homology to reference [TAA, shifted S:6,M:6]; seq-coords:23..25:+; mdl-coords:23..25:+; mdl:ENTOY100A;
+>Feature ENTOY100A-af3-earlystop-mut-second-start
+11	31	misc_feature
+			note	similar to protein one
+
+Additional note(s) to submitter:
+ERROR: CDS_HAS_STOP_CODON: (CDS:protein one) in-frame stop codon exists 5' of stop position predicted by homology to reference [TAA, shifted S:6,M:6]; seq-coords:23..25:+; mdl-coords:23..25:+; mdl:ENTOY100A;

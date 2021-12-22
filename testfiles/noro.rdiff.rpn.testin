@@ -1,0 +1,116 @@
+# format of this file:
+# '#' prefixed files are comments, and are not parsed.
+# 'command:' prefix indicates remainder of line is a command to run
+# 'desc:' prefix indicates description of test for dnaorg_test.pl output        
+# 'out:' prefix indicates output file to check against an expected file
+# 'exp:' prefix indicates expected file to check against an output file
+# 'rmdir:' prefix indicates name of output directory to remove after 
+# command is run and all output files have been checked.
+#
+# All 'out:' and 'exp:' lines following a 'command:' line (and before the 
+# next 'command:' line, will be checked after that command runs. The first
+# 'out:' file is compared against the first 'exp:' file, the second 
+# 'out:' file is compared against the second 'exp:' file, the second 'out:'
+# file, etc.
+# 
+# -r only
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --r_diffmaxins 10 --r_diffmaxdel 10 --fstlowthr 0.0001 --fsthighthr 0.001 --r_minfract5 0.5 --r_minfract3 0.5 --alt_fail ambgnt5c,ambgnt3c --keep --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r $VADRSCRIPTSDIR/testfiles/noro.rdiff.rpn.fa va-noro-rpn.rdiff > va-noro-rpn.rdiff.out
+desc: annotate-noro-rpn-rdiff
+out: va-noro-rpn.rdiff/va-noro-rpn.rdiff.vadr.pass.tbl
+out: va-noro-rpn.rdiff/va-noro-rpn.rdiff.vadr.fail.tbl
+out: va-noro-rpn.rdiff/va-noro-rpn.rdiff.vadr.alt.list
+out: va-noro-rpn.rdiff/va-noro-rpn.rdiff.vadr.alt
+out: va-noro-rpn.rdiff/va-noro-rpn.rdiff.vadr.rpn
+out: va-noro-rpn.rdiff/va-noro-rpn.rdiff.vadr.rpn.fa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff/va-noro-rpn.rdiff.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff/va-noro-rpn.rdiff.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff/va-noro-rpn.rdiff.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff/va-noro-rpn.rdiff.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff/va-noro-rpn.rdiff.vadr.rpn
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff/va-noro-rpn.rdiff.vadr.rpn.fa
+rmdir: va-noro-rpn.rdiff
+#
+# -r --r_diffminnonn 0
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --r_diffminnonn 0  --r_diffmaxins 10 --r_diffmaxdel 10 --fstlowthr 0.0001 --fsthighthr 0.001 --r_minfract5 0.5 --r_minfract3 0.5 --alt_fail ambgnt5c,ambgnt3c --keep --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r $VADRSCRIPTSDIR/testfiles/noro.rdiff.rpn.fa va-noro-rpn.rdiff.nonn0 > va-noro-rpn.rdiff.nonn0.out
+desc: annotate-noro-rpn-rdiff-nonn0
+out: va-noro-rpn.rdiff.nonn0/va-noro-rpn.rdiff.nonn0.vadr.pass.tbl
+out: va-noro-rpn.rdiff.nonn0/va-noro-rpn.rdiff.nonn0.vadr.fail.tbl
+out: va-noro-rpn.rdiff.nonn0/va-noro-rpn.rdiff.nonn0.vadr.alt.list
+out: va-noro-rpn.rdiff.nonn0/va-noro-rpn.rdiff.nonn0.vadr.alt
+out: va-noro-rpn.rdiff.nonn0/va-noro-rpn.rdiff.nonn0.vadr.rpn
+out: va-noro-rpn.rdiff.nonn0/va-noro-rpn.rdiff.nonn0.vadr.rpn.fa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.nonn0/va-noro-rpn.rdiff.nonn0.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.nonn0/va-noro-rpn.rdiff.nonn0.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.nonn0/va-noro-rpn.rdiff.nonn0.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.nonn0/va-noro-rpn.rdiff.nonn0.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.nonn0/va-noro-rpn.rdiff.nonn0.vadr.rpn
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.nonn0/va-noro-rpn.rdiff.nonn0.vadr.rpn.fa
+rmdir: va-noro-rpn.nonn.rdiff.nonn0
+#
+# -r --r_diffminfract 0.6
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --r_diffminfract 0.6 --r_diffmaxins 10 --r_diffmaxdel 10 --fstlowthr 0.0001 --fsthighthr 0.001 --r_minfract5 0.5 --r_minfract3 0.5 --alt_fail ambgnt5c,ambgnt3c --keep --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r $VADRSCRIPTSDIR/testfiles/noro.rdiff.rpn.fa va-noro-rpn.rdiff.fract6 > va-noro-rpn.rdiff.fract6.out
+desc: annotate-noro-rpn-rdiff-fract6
+out: va-noro-rpn.rdiff.fract6/va-noro-rpn.rdiff.fract6.vadr.pass.tbl
+out: va-noro-rpn.rdiff.fract6/va-noro-rpn.rdiff.fract6.vadr.fail.tbl
+out: va-noro-rpn.rdiff.fract6/va-noro-rpn.rdiff.fract6.vadr.alt.list
+out: va-noro-rpn.rdiff.fract6/va-noro-rpn.rdiff.fract6.vadr.alt
+out: va-noro-rpn.rdiff.fract6/va-noro-rpn.rdiff.fract6.vadr.rpn
+out: va-noro-rpn.rdiff.fract6/va-noro-rpn.rdiff.fract6.vadr.rpn.fa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.fract6/va-noro-rpn.rdiff.fract6.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.fract6/va-noro-rpn.rdiff.fract6.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.fract6/va-noro-rpn.rdiff.fract6.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.fract6/va-noro-rpn.rdiff.fract6.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.fract6/va-noro-rpn.rdiff.fract6.vadr.rpn
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.fract6/va-noro-rpn.rdiff.fract6.vadr.rpn.fa
+rmdir: va-noro-rpn.nonn.rdiff.fract6
+#
+# -r --r_diffno
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --r_diffno --fstlowthr 0.0001 --fsthighthr 0.001 --r_minfract5 0.5 --r_minfract3 0.5 --alt_fail ambgnt5c,ambgnt3c --keep --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r $VADRSCRIPTSDIR/testfiles/noro.rdiff.rpn.fa va-noro-rpn.rdiff.diffno > va-noro-rpn.rdiff.diffno.out
+desc: annotate-noro-rpn-rdiff-diffno
+out: va-noro-rpn.rdiff.diffno/va-noro-rpn.rdiff.diffno.vadr.pass.tbl
+out: va-noro-rpn.rdiff.diffno/va-noro-rpn.rdiff.diffno.vadr.fail.tbl
+out: va-noro-rpn.rdiff.diffno/va-noro-rpn.rdiff.diffno.vadr.alt.list
+out: va-noro-rpn.rdiff.diffno/va-noro-rpn.rdiff.diffno.vadr.alt
+out: va-noro-rpn.rdiff.diffno/va-noro-rpn.rdiff.diffno.vadr.rpn
+out: va-noro-rpn.rdiff.diffno/va-noro-rpn.rdiff.diffno.vadr.rpn.fa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.diffno/va-noro-rpn.rdiff.diffno.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.diffno/va-noro-rpn.rdiff.diffno.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.diffno/va-noro-rpn.rdiff.diffno.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.diffno/va-noro-rpn.rdiff.diffno.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.diffno/va-noro-rpn.rdiff.diffno.vadr.rpn
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.diffno/va-noro-rpn.rdiff.diffno.vadr.rpn.fa
+rmdir: va-noro-rpn.nonn.rdiff.diffno
+#
+# -r --r_diffmaxins 0
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --r_diffmaxins 0 --r_diffmaxdel 10 --fstlowthr 0.0001 --fsthighthr 0.001 --r_minfract5 0.5 --r_minfract3 0.5 --alt_fail ambgnt5c,ambgnt3c --keep --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r $VADRSCRIPTSDIR/testfiles/noro.rdiff.rpn.fa va-noro-rpn.rdiff.maxins0 > va-noro-rpn.rdiff.maxins0.out
+desc: annotate-noro-rpn-rdiff-maxins0
+out: va-noro-rpn.rdiff.maxins0/va-noro-rpn.rdiff.maxins0.vadr.pass.tbl
+out: va-noro-rpn.rdiff.maxins0/va-noro-rpn.rdiff.maxins0.vadr.fail.tbl
+out: va-noro-rpn.rdiff.maxins0/va-noro-rpn.rdiff.maxins0.vadr.alt.list
+out: va-noro-rpn.rdiff.maxins0/va-noro-rpn.rdiff.maxins0.vadr.alt
+out: va-noro-rpn.rdiff.maxins0/va-noro-rpn.rdiff.maxins0.vadr.rpn
+out: va-noro-rpn.rdiff.maxins0/va-noro-rpn.rdiff.maxins0.vadr.rpn.fa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.maxins0/va-noro-rpn.rdiff.maxins0.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.maxins0/va-noro-rpn.rdiff.maxins0.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.maxins0/va-noro-rpn.rdiff.maxins0.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.maxins0/va-noro-rpn.rdiff.maxins0.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.maxins0/va-noro-rpn.rdiff.maxins0.vadr.rpn
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.maxins0/va-noro-rpn.rdiff.maxins0.vadr.rpn.fa
+rmdir: va-noro-rpn.nonn.rdiff.maxins0
+#
+# -r --r_diffmaxdel 0
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --r_diffmaxdel 0 --r_diffmaxins 10 --fstlowthr 0.0001 --fsthighthr 0.001 --r_minfract5 0.5 --r_minfract3 0.5 --alt_fail ambgnt5c,ambgnt3c --keep --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r $VADRSCRIPTSDIR/testfiles/noro.rdiff.rpn.fa va-noro-rpn.rdiff.maxdel0 > va-noro-rpn.rdiff.maxdel0.out
+desc: annotate-noro-rpn-rdiff-maxdel0
+out: va-noro-rpn.rdiff.maxdel0/va-noro-rpn.rdiff.maxdel0.vadr.pass.tbl
+out: va-noro-rpn.rdiff.maxdel0/va-noro-rpn.rdiff.maxdel0.vadr.fail.tbl
+out: va-noro-rpn.rdiff.maxdel0/va-noro-rpn.rdiff.maxdel0.vadr.alt.list
+out: va-noro-rpn.rdiff.maxdel0/va-noro-rpn.rdiff.maxdel0.vadr.alt
+out: va-noro-rpn.rdiff.maxdel0/va-noro-rpn.rdiff.maxdel0.vadr.rpn
+out: va-noro-rpn.rdiff.maxdel0/va-noro-rpn.rdiff.maxdel0.vadr.rpn.fa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.maxdel0/va-noro-rpn.rdiff.maxdel0.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.maxdel0/va-noro-rpn.rdiff.maxdel0.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.maxdel0/va-noro-rpn.rdiff.maxdel0.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.maxdel0/va-noro-rpn.rdiff.maxdel0.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.maxdel0/va-noro-rpn.rdiff.maxdel0.vadr.rpn
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.rdiff.maxdel0/va-noro-rpn.rdiff.maxdel0.vadr.rpn.fa
+rmdir: va-noro-rpn.nonn.rdiff.maxdel0

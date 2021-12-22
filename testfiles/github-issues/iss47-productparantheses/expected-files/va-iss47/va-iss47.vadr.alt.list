@@ -1,0 +1,4 @@
+#sequence	model	feature-type	feature-name	error	seq-coords	mdl-coords	error-description
+ENTOY100A-fs1	ENTOY100A	CDS	protein one (bad parantheses)	POSSIBLE_FRAMESHIFT_HIGH_CONF	14..32:+	14..31:+	high confidence possible frameshift in CDS (frame not restored before end) [cause:insert,S:14(1),M:13; frame:1(2); length:3:(19); shifted_avgpp:0.962; exp_avgpp:0.917;]
+ENTOY100A-fs1	ENTOY100A	CDS	protein one (bad parantheses)	MUTATION_AT_END	-	-	expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon [-]
+ENTOY100A-fs1	ENTOY100A	CDS	protein one (bad parantheses)	UNEXPECTED_LENGTH	11..32:+	11..31:+	length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [22]

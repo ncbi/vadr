@@ -180,7 +180,7 @@ command.
 | `.hmmbuild` | HMMER `hmmbuild` output file | - | no further documentation |
 | `.hmmpress` | HMMER `hmmpress` output file | - | no further documentation |
 
-For examples of file types not included above, see files in the `vadr/testfiles/models` directory.
+#### For examples of file types not included above, see files in the `vadr/testfiles/models` directory.
 ---
 ### Explanation of VADR model info `.minfo`-suffixed output files<a name="minfo"></a>
 
@@ -250,6 +250,8 @@ FEATURE NC_039897 type:"mat_peptide" coords:"3872..5401:+" parent_idx_str:"1" pr
 | `parent_idx_str` | comma-delimited string that lists *parent* feature indices (in range `[0..<nftr-1>]`) for this feature, `nftr` is the total number of features for this model | no | some alerts are propagated from parent features to children | 
 | `product` | product name for this feature | no | used as name of feature in `.tbl` output files, if present |
 | `gene` | gene name for this feature | no | used as name of feature in `.tbl` output files, if present and `product` not present |
+| `misc_not_failure` | usually `1` | no | if the corresponding feature has specific types of fatal alerts, still allow sequence to pass, just make feature a `misc_feature` in output `.tbl` file, see [here](annotate.md#mnf) for details |
+| `is_deletable` | usually `1` | no | if the corresponding feature is completely deleted, non-fatal `deletina` alert is reported instead of fatal `deletins` |
 
 #### VADR model library `.minfo` files are just individual model `.minfo` files concatenated together
 
@@ -532,16 +534,18 @@ each sequence. For more information on bit scores and `bias` see the Infernal Us
 `.sda` data lines have 14 fields, the names of which appear in the
 first two comment lines in each file. There is one data line for each
 **sequence** in the input sequence file file that `v-annotate.pl`
-processed. With `-s`, the largest ungapped region from the top blastn
-hit is fixed, and only the 5' and 3' regions before and after the
-ungapped region are aligned with cmalign as described more
-[here](annotate.md#options-seed).  `.sda` files include information
-about these ungapped, 5' and 3' regions.  Note that the sequence
-length fractions in `ungapped fraction`, `5'unaln fraction`, and
-`3'unaln fraction` will not add up to `1.0` due to overlap between
+processed. With `-s`, the alignment from the best-scoring blastn HSP
+hit is fixed (with some caveats to avoid large gaps and gaps that
+include start and stop codons) and used as a seed, and only the 5' and 3' regions before
+and after the seed region are aligned with cmalign or glsearch as described
+more [here](annotate.md#options-seed).  `.sda` files include
+information about the seed, 5' and 3' regions.  Note that the
+sequence length fractions in `seed fraction`, `5'unaln fraction`,
+and `3'unaln fraction` will not add up to `1.0` due to overlap between
 these regions, which is typically 100nt, but can be adjusted with the
 [`--s_overhang` option to `v-annotate.pl`](annotate.md#options-seed).
-[Example file](annotate-files/va-noro-s.9.vadr.sda) created with the command `v-annotate.pl -s
+[Example file](annotate-files/va-noro-s.9.vadr.sda) created with the
+command `v-annotate.pl -s
 $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-noro-s.9`.
 
 | idx | field                 | description |
@@ -551,14 +555,14 @@ $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-noro-s.9`.
 |   3 | `seq len`             | length of the sequence with name `seq name` | 
 |   4 | `model`               | name of the best-matching model for this sequence, this is the model with the top-scoring hit for this sequence in the classification stage |
 |   5 | `p/f`                 | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alerts) |
-|   6 | `ungapped seq`        | sequence coordinates of longest ungapped region in top blastn hit, in vadr coords [format](#coords) |
-|   7 | `ungapped mdl`        | model coordinates of longest ungapped region in top blastn hit, in vadr coords [format](#coords) |
-|   8 | `ungapped fraction`   | fraction of `seq len` in ungapped region in `ungapped seq` | 
-|   9 | `5'unaln seq`         | sequence coordinates of 5' region not covered by `ungapped seq` plus some overlap (typically 100nt) subsequently aligned with cmalign, in vadr coords [format](#coords) |
+|   6 | `seed seq`            | sequence coordinates of seed region from blastn, in vadr coords [format](#coords) |
+|   7 | `seed mdl`            | model coordinates of seed region from blastn, in vadr coords [format](#coords) |
+|   8 | `seed fraction`       | fraction of `seq len` in seed region in `ungapped seq` | 
+|   9 | `5'unaln seq`         | sequence coordinates of 5' region not covered by `seed seq` plus some overlap (typically 100nt) subsequently aligned with cmalign or glsearch, in vadr coords [format](#coords) |
 |  10 | `5'unaln mdl`         | model start/stop coordinates for cmalign alignment of 5' region `5'unaln seq`, in vadr coords [format](#coords) |
 |  11 | `5'unaln fraction`    | fraction of `seq len` in 5' region in `5'unaln seq` |
-|  12 | `3'unaln seq`         | sequence coordinates of 3' region not covered by `ungapped seq` plus some overlap (typically 100nt) subsequently aligned with cmalign, in vadr coords [format](#coords) |
-|  13 | `3'unaln mdl`         | model start/stop coordinates for cmalign alignment of 3' region `3'unaln seq`, in vadr coords [format](#coords) |
+|  12 | `3'unaln seq`         | sequence coordinates of 3' region not covered by `seed seq` plus some overlap (typically 100nt) subsequently aligned with cmalign or glsearch, in vadr coords [format](#coords) |
+|  13 | `3'unaln mdl`         | model start/stop coordinates for cmalign or glsearch alignment of 3' region `3'unaln seq`, in vadr coords [format](#coords) |
 |  14 | `3'unaln fraction`    | fraction of `seq len` in 3' region in `3'unaln seq` |
 
 
@@ -590,14 +594,14 @@ va-noro-r.9`.
 |   6 | `num_Ns tot`          | total number of Ns in the sequence |
 |   7 | `num_Ns rp`           | number of Ns in the sequence replaced with expected nucleotides from the model consensus |
 |   8 | `fract_Ns rp`         | fraction of Ns replaced: `num_Ns rp`/`num_Ns tot` |
-|   9 | `ngaps tot`           | number of gaps between preprocessing stage blastn hits, including gaps at 5' and 3' ends |
-|  10 | `ngaps int`           | number of internal gaps between preprocessing stage blastn hits, `ngaps tot` minus number of gaps at 5' and/or 3' end |
-|  11 | `ngaps rp`            | number of gaps in which one or more Ns were replaced | 
-|  12 | `ngaps rp-full`       | number of gaps in which entire gap was Ns and all Ns were replaced |
-|  13 | `ngaps rp-part`       | number of gaps in which entire gap was not Ns, but all Ns were replaced |
-|  14 | `nnt rp-full`         | number of Ns replaced in the `ngaps rp-full` gaps |
-|  15 | `nnt rp-part`         | number of Ns replaced in the `ngaps rp-part` gaps |
-|  16 | `replaced_coords seq(S),mdl(M),#rp(N)` | string indicated location of gaps and number of Ns replaced per gap with one 'token' per gap in which one or more Ns were replaced (`ngaps rp` total), with each token in format `S:<s_start>..<s_end>,M:<m_start>..<m..end>,N:<num_Ns>/<num_nts>;`, describing a gap in sequence from `<s_start>` to `<s_end>` corresponding to model positions `<m_start>` to `<m_end>` in which `<num_Ns>` of `<num_nts>` nucleotides were Ns are were replaced. |
+|   9 | `nregs tot`           | number of region between preprocessing stage blastn hits, including region at 5' and 3' ends |
+|  10 | `nregs int`           | number of internal region between preprocessing stage blastn hits, `nreg tot` minus number of region at 5' and/or 3' end |
+|  11 | `nregs rp`            | number of region in which one or more Ns were replaced | 
+|  12 | `nregs rp-full`       | number of region in which entire region was Ns and all Ns were replaced |
+|  13 | `nregs rp-part`       | number of region in which entire region was not Ns, but all Ns were replaced |
+|  14 | `nnt rp-full`         | number of Ns replaced in the `nreg rp-full` reg |
+|  15 | `nnt rp-part`         | number of Ns replaced in the `nreg rp-part` reg |
+|  16 | `detail_on_regions [S:seq,M:mdl,D:lendiff,N:#Ns, E:#non_N_match_expected, F:flush_direction,R:region_replaced?];` | string with details on each region; `S`: sequence positions of region; `M`: model positions of region; `D`:sequence length - model length; `N`: number of Ns in region; `E`: number of non-Ns that match expected / total non-Ns or `?/?` if replacement not attempted or `D` is 0 and region is entirely Ns; `F`: if `D` is 0 or `E` is `?/?` then `-`, else `5'` if shifting sequence region left gave higher `E` or `3'` if shifting right gave higher `E`; `R`: `Y` if region was replaced, `N` if not;
 
 ---
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # 
-# version: 1.3 [Aug 2021]
+# version: 1.4 [Dec 2021]
 #
 # vadr.pm
 # Eric Nawrocki
@@ -65,7 +65,13 @@ require "sqp_utils.pm";
 # vdr_FeatureInfoImpute3paFtrIdx()
 # vdr_FeatureInfoImputeByOverlap()
 # vdr_FeatureInfoInitializeMiscNotFailure()
+# vdr_FeatureInfoInitializeIsDeletable()
+# vdr_FeatureInfoInitializeAlternativeFeatureSet()
+# vdr_FeatureInfoInitializeAlternativeFeatureSetSubstitution()
 # vdr_FeatureInfoValidateMiscNotFailure()
+# vdr_FeatureInfoValidateIsDeletable()
+# vdr_FeatureInfoValidateAlternativeFeatureSet()
+# vdr_FeatureInfoValidateAlternativeFeatureSetSubstitution()
 # vdr_FeatureInfoStartStopStrandArrays()
 # vdr_FeatureInfoCountType()
 # vdr_FeatureInfoValidateCoords()
@@ -73,17 +79,20 @@ require "sqp_utils.pm";
 # vdr_FeatureInfoChildrenArrayOfArrays()
 # vdr_FeatureInfoMapFtrTypeIndicesToFtrIndices()
 # vdr_FeatureInfoMerge()
+# vdr_FeatureInfoCdsStartStopCodonCoords()
 #
 # vdr_SegmentInfoPopulate()
 # 
 # vdr_FeatureTypeAndTypeIndexString()
 # vdr_FeatureTypeIndex()
 # vdr_FeatureTypeIsCds()
+# vdr_FeatureTypeIsCdsOrIdStartAndStop()
 # vdr_FeatureTypeIsMatPeptide()
 # vdr_FeatureTypeIsGene()
 # vdr_FeatureTypeIsCdsOrGene()
 # vdr_FeatureTypeIsCdsOrMatPeptide()
 # vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords()
+# vdr_FeatureTypeIsCdsOrMatPeptideOrIdStartAndStop()
 # vdr_FeatureTypeIsCdsOrMatPeptideOrGene()
 # vdr_FeatureTypeCanBecomeMiscFeature()
 # vdr_FeatureNumSegments()
@@ -95,6 +104,7 @@ require "sqp_utils.pm";
 # vdr_FeatureStartStopStrandArrays()
 # vdr_FeatureSummaryStrand()
 # vdr_FeaturePositionSpecificValueBreakdown()
+# vdr_FeatureCoordsListBreakdown()
 #
 # vdr_SegmentStartIdenticalToCds()
 # vdr_SegmentStopIdenticalToCds()
@@ -137,6 +147,7 @@ require "sqp_utils.pm";
 # vdr_CoordsMergeAllAdjacentSegments()
 # vdr_CoordsMergeTwoSegmentsIfAdjacent()
 # vdr_CoordsMaxLengthSegment()
+# vdr_CoordsFromStartStopStrandArrays()
 #
 # Subroutines related to eutils:
 # vdr_EutilsFetchToFile()
@@ -145,6 +156,7 @@ require "sqp_utils.pm";
 # Subroutines related to model info files:
 # vdr_ModelInfoFileWrite()
 # vdr_ModelInfoFileParse()
+# vdr_ModelInfoCoordListValueBreakdown()
 #
 # Subroutines related to cmalign output:
 # vdr_CmalignCheckStdOutput()
@@ -519,6 +531,114 @@ sub vdr_FeatureInfoInitializeMiscNotFailure {
 }
 
 #################################################################
+# Subroutine: vdr_FeatureInfoInitializeIsDeletable
+# Incept:     EPN, Tue Sep 28 21:09:22 2021
+# 
+# Purpose:    Set "is_deletable" value to 0 for any feature 
+#             in which it is not already defined in @{$ftr_info_AHR}.
+#             If $force_zero, set all values to 0 even if they are
+#             already defined.
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $force_zero:    '1' to set values to '0' for all features, even if already defined
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#
+#################################################################
+sub vdr_FeatureInfoInitializeIsDeletable {
+  my $sub_name = "vdr_FeatureInfoInitializeIsDeletable";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_AHR, $force_zero, $FH_HR) = @_;
+
+  my $nftr = scalar(@{$ftr_info_AHR});
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(($force_zero) || (! defined $ftr_info_AHR->[$ftr_idx]{"is_deletable"})) { 
+      $ftr_info_AHR->[$ftr_idx]{"is_deletable"} = 0;
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureInfoInitializeAlternativeFeatureSet
+# Incept:     EPN, Tue Oct 12 19:43:46 2021
+# 
+# Purpose:    Set "alternative_ftr_set" value to "" for any feature 
+#             in which it is not already defined in @{$ftr_info_AHR}.
+#             If $force_empty, set all values to "" even if they are
+#             already defined.
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $force_empty:   '1' to set values to "" for all features, even if already defined
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#
+#################################################################
+sub vdr_FeatureInfoInitializeAlternativeFeatureSet {
+  my $sub_name = "vdr_FeatureInfoInitializeAlternativeFeatureSet";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_AHR, $force_empty, $FH_HR) = @_;
+
+  my $nftr = scalar(@{$ftr_info_AHR});
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(($force_empty) || (! defined $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set"})) { 
+      $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set"} = "";
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureInfoInitializeAlternativeFeatureSetSubstitution
+# Incept:     EPN, Thu Oct 14 21:22:20 2021
+# 
+# Purpose:    Set "alternative_ftr_set_subn" value to "" for any feature 
+#             in which it is not already defined in @{$ftr_info_AHR}.
+#             If $force_empty, set all values to "" even if they are
+#             already defined.
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $force_empty:   '1' to set values to "" for all features, even if already defined
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#
+#################################################################
+sub vdr_FeatureInfoInitializeAlternativeFeatureSetSubstitution {
+  my $sub_name = "vdr_FeatureInfoInitializeAlternativeFeatureSetSubstitution";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_AHR, $force_empty, $FH_HR) = @_;
+
+  my $nftr = scalar(@{$ftr_info_AHR});
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(($force_empty) || (! defined $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set_subn"})) { 
+      $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set_subn"} = "";
+    }
+  }
+
+  return;
+}
+
+#################################################################
 # Subroutine: vdr_FeatureInfoValidateMiscNotFailure
 # Incept:     EPN, Fri Feb  5 11:45:29 2021
 # 
@@ -569,6 +689,206 @@ sub vdr_FeatureInfoValidateMiscNotFailure {
 
   return;
   
+}
+
+#################################################################
+# Subroutine: vdr_FeatureInfoValidateIsDeletable
+# Incept:     EPN, Tue Sep 28 21:09:10 2021
+# 
+# Purpose:    Validate "is_deletable" values are either 0 or 1.
+#             Should probably be called after vdr_FeatureInfoInitializeIsDeletable()
+#
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#
+#################################################################
+sub vdr_FeatureInfoValidateIsDeletable {
+  my $sub_name = "vdr_FeatureInfoValidateIsDeletable";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  
+  my ($ftr_info_AHR, $FH_HR) = @_;
+  
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $fail_str = ""; # added to if any elements are out of range
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(! defined $ftr_info_AHR->[$ftr_idx]{"is_deletable"}) { 
+      $fail_str .= "ftr_idx: $ftr_idx, undefined\n"; 
+    }
+    elsif(($ftr_info_AHR->[$ftr_idx]{"is_deletable"} != 1) && ($ftr_info_AHR->[$ftr_idx]{"is_deletable"} != 0)) { 
+      $fail_str .= "ftr_idx: $ftr_idx, " . $ftr_info_AHR->[$ftr_idx]{"is_deletable"} . " != 0 and != 1\n"; 
+    }
+  }
+  
+  if($fail_str ne "") { 
+    ofile_FAIL("ERROR in $sub_name, some is_deletable values are invalid or don't make sense:\n$fail_str\n", 1, $FH_HR);
+  }
+
+  return;
+  
+}
+
+#################################################################
+# Subroutine: vdr_FeatureInfoValidateAlternativeFeatureSet
+# Incept:     EPN, Tue Sep 28 21:09:10 2021
+# 
+
+# Purpose:    Validate "alternative_ftr_set" values are either "" or another
+#             string. If another string, each other string must be the
+#             value for "alternative_ftr_set" in more than one
+#             feature. Also ensure that for any sets that have >= 1
+#             children, all the features in that set are all the
+#             children of the same parent.
+#           
+#             Should probably be called after
+#             vdr_FeatureInfoInitializeAlternativeFeatureSet() 
+#             and 
+#             vdr_FeatureInfoValidateParentIndexStrings()
+#
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    '1' if there are any 'alternative_ftr_set' values ne ""
+#             '0' if all 'alternative_ftr_set' values are ""
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#             if any alternative_ftr_set values are undefined
+#             if any alternative_ftr_set values exist only once 
+#
+#################################################################
+sub vdr_FeatureInfoValidateAlternativeFeatureSet {
+  my $sub_name = "vdr_FeatureInfoValidateAlternativeFeatureSet";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  
+  my ($ftr_info_AHR, $FH_HR) = @_;
+  
+  my $nftr     = scalar(@{$ftr_info_AHR});
+  my $ret_val  = 0; # set to '1' if we see any values ne ""
+  my $fail_str = ""; # added to if any elements are out of range
+  my %set_HA = (); # key is set value, array is feature indices in that set
+  my $ftr_idx = undef;
+
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(! defined $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set"}) {
+      $fail_str .= "ftr_idx: $ftr_idx, undefined\n"; 
+    }
+    else { 
+      my $value = $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set"};
+      if($value ne "") { 
+        $ret_val = 1;
+        if(! defined $set_HA{$value}) { 
+          @{$set_HA{$value}} = ();
+        }
+        push(@{$set_HA{$value}}, $ftr_idx);
+      }
+    }    
+  }
+
+  # make sure that each alternative_ftr_set has >= 2 members
+  # and that for any set that has >= 1 children, all members are children with the same parent
+  foreach my $key (sort keys (%set_HA)) { 
+    my $nset = scalar(@{$set_HA{$key}});
+    if($nset == 1) { 
+      $fail_str .= "alternative_ftr_set value: $key exists only once, each value must exist at least twice\n"; 
+    }
+    else { 
+      my $nchildren = 0;
+      my $common_parent_idx = undef;
+      foreach $ftr_idx (@{$set_HA{$key}}) { 
+        my $parent_idx = $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"};
+        if((defined $parent_idx) && ($parent_idx ne "GBNULL")) { 
+          $nchildren++;
+          if(! defined $common_parent_idx) { 
+            $common_parent_idx = $parent_idx;
+          }
+          elsif($parent_idx != $common_parent_idx) { 
+            $fail_str .= "ftr_idx: $ftr_idx is child of parent $parent_idx but >= 1 other feature(s) in same set ($key) have a different parent ($common_parent_idx), this is not allowed\n";
+          }
+        }
+      }
+      # make sure if any members are children, then all members are children
+      if(($nchildren != 0) && ($nchildren != $nset)) { 
+        $fail_str .= "for alternative_ftr_set with key $key, some but not all members are children of $common_parent_idx\n";
+      }        
+    }
+  }
+
+  if($fail_str ne "") { 
+    ofile_FAIL("ERROR in $sub_name, some is_deletable values are invalid or don't make sense:\n$fail_str\n", 1, $FH_HR);
+  }
+
+  return $ret_val;
+  
+}
+
+#################################################################
+# Subroutine: vdr_FeatureInfoValidateAlternativeFeatureSetSubstitution
+# Incept:     EPN, Fri Oct 15 10:07:54 2021
+# 
+
+# Purpose:    Validate "alternative_ftr_set_subn" values are either "" 
+#             or a valid feature index (other than self idx).
+#             value for "alternative_ftr_set" in more than one
+#             feature.
+
+#             Should probably be called after
+#             vdr_FeatureInfoInitializeAlternativeFeatureSetSubstitution() 
+#
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#             if any alternative_ftr_set_subn values are undefined
+#             if any alternative_ftr_set_subn values are invalid
+#
+#################################################################
+sub vdr_FeatureInfoValidateAlternativeFeatureSetSubstitution {
+  my $sub_name = "vdr_FeatureInfoValidateAlternativeFeatureSetSubstitution";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  
+  my ($ftr_info_AHR, $FH_HR) = @_;
+  
+  my $nftr     = scalar(@{$ftr_info_AHR});
+  my $fail_str = ""; # added to if any elements are out of range
+
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    my $subn_idx = $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set_subn"};
+    if(! defined $subn_idx) { 
+      $fail_str .= "ftr_idx: $ftr_idx, undefined\n"; 
+    }
+    elsif($subn_idx ne "") { 
+      if($subn_idx !~ /^\d+$/) { 
+        $fail_str .= "ftr_idx: $ftr_idx, " . $subn_idx . " not an integer\n"; 
+      }
+      elsif($subn_idx < 0) { 
+        $fail_str .= "ftr_idx: $ftr_idx, " . $subn_idx . " < 0\n"; 
+      }
+      elsif($subn_idx >= $nftr) { 
+        $fail_str .= "ftr_idx: $ftr_idx, " . $subn_idx . " >= $nftr (num features, should be 0.." . ($nftr-1) . ")\n";
+      }
+      elsif($subn_idx == $ftr_idx) { 
+        $fail_str .= "ftr_idx: $ftr_idx, is its own substitute, this is not allowed\n";
+      }
+      # else valid feature index
+    }
+  }
+
+  if($fail_str ne "") { 
+    ofile_FAIL("ERROR in $sub_name, some alternative_ftr_set_subn index strings are undefined or don't make sense:\n$fail_str\n", 1, $FH_HR);
+  }
+
+  return;
 }
 
 #################################################################
@@ -705,9 +1025,11 @@ sub vdr_FeatureInfoValidateCoords {
 # Incept:     EPN, Wed Feb 19 11:44:28 2020
 # 
 # Purpose:    Validate "parent_idx_str" values are either "GBNULL"
-#             or a valid feature index [0..$nftr-1]. Should probably
-#             be called after vdr_FeatureInfoInitializeParentIndexStrings().
-# 
+#             or a valid feature index [0..$nftr-1]. Also make sure that
+#             all parents are not themselves children of another feature.
+#             This subroutine should probably be called after 
+#             vdr_FeatureInfoInitializeParentIndexStrings().
+#             
 # Arguments:
 #   $ftr_info_AHR:  REF to feature information, added to here
 #   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
@@ -715,7 +1037,8 @@ sub vdr_FeatureInfoValidateCoords {
 # Returns:    void
 # 
 # Dies:       if $ftr_info_AHR is invalid upon entry
-#
+#             if any feature that is a parent is also a child of a different feature
+#             if any feature is a child of itself
 #################################################################
 sub vdr_FeatureInfoValidateParentIndexStrings {
   my $sub_name = "vdr_FeatureInfoValidateParentIndexStrings";
@@ -726,20 +1049,44 @@ sub vdr_FeatureInfoValidateParentIndexStrings {
   
   my $nftr = scalar(@{$ftr_info_AHR});
   my $fail_str = ""; # added to if any elements are out of range
+  my @parent_idx_A = (); # array of all features that are parents >= 1 children
+  my %parent_idx_H = (); # hash used to avoid duplicates in @parent_A
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if(! defined $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"}) { 
+    my $parent_idx_str = $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"};
+    if(! defined $parent_idx_str) { 
       $fail_str .= "ftr_idx: $ftr_idx, undefined\n"; 
     }
-    elsif($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} ne "GBNULL") { 
-      if($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} < 0) { 
-        $fail_str .= "ftr_idx: $ftr_idx, " . $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} . " < 0\n"; 
+    elsif($parent_idx_str ne "GBNULL") { 
+      if($parent_idx_str !~ /^\d+$/) { 
+        $fail_str .= "ftr_idx: $ftr_idx, " . $parent_idx_str . " not an integer\n"; 
       }
-      elsif($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} >= $nftr) { 
-        $fail_str .= "ftr_idx: $ftr_idx, " . $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} . " >= $nftr (num features, should be 0.." . ($nftr-1) . ")\n";
+      elsif($parent_idx_str < 0) { 
+        $fail_str .= "ftr_idx: $ftr_idx, " . $parent_idx_str . " < 0\n"; 
+      }
+      elsif($parent_idx_str >= $nftr) { 
+        $fail_str .= "ftr_idx: $ftr_idx, " . $parent_idx_str . " >= $nftr (num features, should be 0.." . ($nftr-1) . ")\n";
+      }
+      elsif($parent_idx_str == $ftr_idx) { 
+        $fail_str .= "ftr_idx: $ftr_idx, is its own parent, this is not allowed\n";
+      }
+      else { # valid feature index
+        # printf("in $sub_name, adding $parent_idx_str to parent_idx_A\n");
+        if(! defined $parent_idx_H{$parent_idx_str}) { 
+          push(@parent_idx_A, $parent_idx_str);
+          $parent_idx_H{$parent_idx_str} = 1;
+        }
       }
     }
   }
-  
+
+  # make sure all parents are not children themselves
+  foreach my $parent_idx (@parent_idx_A) { 
+    my $parent_idx_str = $ftr_info_AHR->[$parent_idx]{"parent_idx_str"};
+    if((defined $parent_idx_str) && ($parent_idx_str ne "GBNULL")) { 
+      $fail_str .= "ftr_idx: $parent_idx, is a parent but is also a child of parent " . $parent_idx_str . ", this is not allowed\n";
+    }
+  }
+
   if($fail_str ne "") { 
     ofile_FAIL("ERROR in $sub_name, some parent index strings are undefined or don't make sense:\n$fail_str\n", 1, $FH_HR);
   }
@@ -759,41 +1106,53 @@ sub vdr_FeatureInfoValidateParentIndexStrings {
 #   $ftr_info_AHR:   REF to hash of arrays with information on the features, PRE-FILLED
 #   $type_or_undef:  feature type of children (e.g. mat_peptide) we want information on
 #                    caller should set as 'undef' to get information on all types of children
-#   $AAR:            REF to array of arrays of children feature indices, FILLED HERE
+#   $i_am_child_AR:  REF to array of 1/0 values for each feature, '1' if child of type $type_or_undef,
+#                    '0' if not, FILLED HERE, can be undef
+#   $children_AAR:   REF to array of arrays of children feature indices, FILLED HERE, can be undef
 #   $FH_HR:          REF to hash of file handles
 # 
-# Returns:     Nothing.
+# Returns:     Number of features that are children of type $type_or_undef (or any type if $type_or_undef is not defined)
 # 
-#
 ################################################################# 
 sub vdr_FeatureInfoChildrenArrayOfArrays { 
-  my $nargs_expected = 4;
+  my $nargs_expected = 5;
   my $sub_name = "vdr_FeatureInfoChildrenArrayOfArrays";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($ftr_info_AHR, $type_or_undef, $AAR, $FH_HR) = @_;
+  my ($ftr_info_AHR, $type_or_undef, $i_am_child_AR, $children_AAR, $FH_HR) = @_;
 
-  @{$AAR} = ();
+  my @children_AA  = ();
+  my @i_am_child_A = ();
   my $nftr = scalar(@{$ftr_info_AHR});
 
   my ($parent_ftr_idx, $child_ftr_idx);
 
   # initialize
   for($parent_ftr_idx = 0; $parent_ftr_idx < $nftr; $parent_ftr_idx++) { 
-    @{$AAR->[$parent_ftr_idx]} = ();
+    @{$children_AA[$parent_ftr_idx]} = ();
   }
 
   # fill
+  my $ret_val = 0;
   for($child_ftr_idx = 0; $child_ftr_idx < $nftr; $child_ftr_idx++) { 
+    $i_am_child_A[$child_ftr_idx] = 0;
     if((! defined $type_or_undef) || ($ftr_info_AHR->[$child_ftr_idx]{"type"} eq $type_or_undef)) { 
       if($ftr_info_AHR->[$child_ftr_idx]{"parent_idx_str"} ne "GBNULL") { 
-        my @parent_ftr_idx_A = split(",", $ftr_info_AHR->[$child_ftr_idx]{"parent_idx_str"});
-        foreach $parent_ftr_idx (@parent_ftr_idx_A) { 
-          push(@{$AAR->[$parent_ftr_idx]}, $child_ftr_idx);
-        }
+        $parent_ftr_idx = $ftr_info_AHR->[$child_ftr_idx]{"parent_idx_str"};
+        push(@{$children_AA[$parent_ftr_idx]}, $child_ftr_idx);
+        $i_am_child_A[$child_ftr_idx] = 1;
+        $ret_val++;
       }
     }
   }
-  return;
+  
+  if(defined $i_am_child_AR) { 
+    @{$i_am_child_AR} = (@i_am_child_A);
+  }
+  if(defined $children_AAR) { 
+    @{$children_AAR} = (@children_AA);
+  }
+
+  return $ret_val;
 }
 
 #################################################################
@@ -847,10 +1206,9 @@ sub vdr_FeatureInfoMapFtrTypeIndicesToFtrIndices {
 # 
 # Arguments:
 #  $src_ftr_info_AHR:   REF to source feature info array of hashes to 
-#                       add to $
-#  $dst_ftr_info2_AHR:   REF to hash of array of hashes with information 
-#                    on the features to add to  $ftr_info1_HAHR
-#  $FH_HR:           REF to hash of file handles, including "log" and "cmd"
+#                       add to $dst_ftr_info_AHR
+#  $dst_ftr_info_AHR:   REF to hash of array of hashes we are adding to
+#  $FH_HR:              REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
 #
@@ -904,6 +1262,59 @@ sub vdr_FeatureInfoMerge {
   }
 
   return;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureInfoCdsStartStopCodonCoords()
+# Incept:     EPN, Mon Sep 13 17:55:41 2021
+#
+# Synopsis: Return coords strings of for start and stop codon
+#           coordinates for all CDS. Start/stop codon coords will be
+#           concatenated into long coords strings with multiple
+#           segments. If a single start or stop codon is actually
+#           N>1 segments, it will contribute N segments to the 
+#           returned string.
+# 
+# Arguments:
+#  $ftr_info_AHR: REF to array of hashes with information on the features, PRE-FILLED
+#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    Two values:
+#             $start_codon_coords: >= 1 segment coords string with coordinates of all start codons,
+#                                  "" if no CDS exist in @{$ftr_info_AHR}
+#             $stop_codon_coords:  >= 1 segment coords string with coordinates of all stop codons
+#                                  "" if no CDS exist in @{$ftr_info_AHR}
+#
+# Dies:       If a CDS has length < 6
+#################################################################
+sub vdr_FeatureInfoCdsStartStopCodonCoords {
+  my $sub_name = "vdr_FeatureInfoCdsStartStopCodonCoords";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($ftr_info_AHR, $FH_HR) = @_;
+
+  my $ret_start_codon_coords = "";
+  my $ret_stop_codon_coords = "";
+  # for each feature in src_ftr_info_AHR, find the single consistent feature in dst_ftr_info_AHR
+  my $nftr = scalar(@{$ftr_info_AHR});
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") { 
+      my $coords = $ftr_info_AHR->[$ftr_idx]{"coords"};
+      my $length = vdr_CoordsLength($coords, $FH_HR);
+      if($length < 6) { 
+        ofile_FAIL("ERROR in $sub_name, CDS (ftr_idx: $ftr_idx) coords length is below 6", 1, $FH_HR); 
+      }
+      if($ret_start_codon_coords ne "") { 
+        $ret_start_codon_coords .= ",";
+        $ret_stop_codon_coords  .= ",";
+      }
+      $ret_start_codon_coords .= vdr_CoordsRelativeToAbsolute($coords, "1..3:+", $FH_HR);
+      $ret_stop_codon_coords  .= vdr_CoordsRelativeToAbsolute($coords, ($length-2) . ".." . $length . ":+", $FH_HR);
+    }
+  }
+
+  return($ret_start_codon_coords, $ret_stop_codon_coords);
 }
 
 #################################################################
@@ -1073,6 +1484,50 @@ sub vdr_FeatureTypeIsCds {
 }
 
 #################################################################
+# Subroutine: vdr_FeatureTypeIsCdsOrIdStartAndStop()
+# Incept:     EPN, Thu Dec  9 10:22:21 2021
+#
+# Purpose:    Is feature $ftr_idx either a CDS or does it have 
+#             same start/stop coords as another feature
+#             that is a CDS?
+#  
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $ftr_idx:        feature index
+#
+# Returns:    1 or 0
+#
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub vdr_FeatureTypeIsCdsOrIdStartAndStop { 
+  my $sub_name = "vdr_FeatureTypeIsCdsOrIdStartAndStop";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+
+  if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
+    return 1;
+  }
+  else { 
+    my $nftr = scalar(@{$ftr_info_AHR});
+    my $start1 = vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, undef);
+    my $stop1  = vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, undef);
+    for(my $ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
+      if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx2)) { 
+        my $start2 = vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, undef);
+        my $stop2  = vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, undef);
+        if(($start1 == $start2) && ($stop1 == $stop2)) { 
+          return 1; 
+        }
+      }
+    }
+  }
+  return 0;
+}
+
+#################################################################
 # Subroutine: vdr_FeatureTypeIsMatPeptide()
 # Incept:     EPN, Fri Apr  5 14:32:28 2019
 #
@@ -1207,6 +1662,50 @@ sub vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords {
       if((vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx2)) && 
          ($ftr_info_AHR->[$ftr_idx]{"coords"} eq $ftr_info_AHR->[$ftr_idx2]{"coords"})) { 
         return 1; 
+      }
+    }
+  }
+  return 0;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureTypeIsCdsOrMatPeptideOrIdStartAndStop()
+# Incept:     EPN, Wed Sep  1 15:42:19 2021
+#
+# Purpose:    Is feature $ftr_idx either a CDS or mature peptide
+#             or does it have same start/stop coords as another feature
+#             that is a CDS or mature peptide?
+#  
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $ftr_idx:        feature index
+#
+# Returns:    1 or 0
+#
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub vdr_FeatureTypeIsCdsOrMatPeptideOrIdStartAndStop { 
+  my $sub_name = "vdr_FeatureTypeIsCdsOrMatPeptideOrIdStartAndStop";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+
+  if(vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx)) { 
+    return 1;
+  }
+  else { 
+    my $nftr = scalar(@{$ftr_info_AHR});
+    my $start1 = vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, undef);
+    my $stop1  = vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, undef);
+    for(my $ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
+      if(vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx2)) { 
+        my $start2 = vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, undef);
+        my $stop2  = vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, undef);
+        if(($start1 == $start2) && ($stop1 == $stop2)) { 
+          return 1; 
+        }
       }
     }
   }
@@ -1577,7 +2076,7 @@ sub vdr_FeatureSummaryStrand {
 #             String must be in format of one or more tokens
 #             of: "<d>:<s>" separated by ";" if more than one.
 #
-#             If $ftr_info_AHR->[$ftr_idx] does not exist just
+#             If $ftr_info_AHR->[$ftr_idx]{$key} does not exist just
 #             return.
 #
 # Arguments: 
@@ -1608,6 +2107,56 @@ sub vdr_FeaturePositionSpecificValueBreakdown {
       }
       else { 
         ofile_FAIL("ERROR, in $sub_name, unable to parse token $tok parsed out of " . $ftr_info_AHR->[$ftr_idx]{$key}, 1, $FH_HR);
+      }
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureCoordsListValueBreakdown()
+# Incept:     EPN, Mon Oct 18 14:26:17 2021
+#
+# Purpose:    Breakdown a list of coords values 
+#             from a string in %{$ftr_info_AHR->[$ftr_idx]}
+#             and fill @{$AR} with key/value pairs.
+# 
+#             String must be in format of one or more single
+#             segment coords tokens, "<d>..<d>:[+-]" separated 
+#             by ";" if more than one.
+#
+#             If $ftr_info_AHR->[$ftr_idx]{$key} does not exist just
+#             return.
+#
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $ftr_idx:        feature index
+#  $key:            key in $ftr_info_AHR->[$ftr_idx]
+#  $AR:             ref to array to fill
+#  $FH_HR:          ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if $ftr_info_AHR->[$ftr_idx] exists but cannot
+#             be parsed.
+#
+################################################################# 
+sub vdr_FeatureCoordsListValueBreakdown { 
+  my $sub_name = "vdr_FeatureCoordsListValueBreakdown";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $ftr_idx, $key, $AR, $FH_HR) = @_;
+ 
+  if(defined $ftr_info_AHR->[$ftr_idx]{$key}) { 
+    my @tok_A = split(";", $ftr_info_AHR->[$ftr_idx]{$key});
+    foreach my $tok (@tok_A) { 
+      if($tok =~ /^\d+\.\.\d+\:[\+\-]$/) { 
+        push(@{$AR}, $tok);
+      }
+      else { 
+        ofile_FAIL("ERROR, in $sub_name, unable to parse coords token $tok parsed out of " . $ftr_info_AHR->[$ftr_idx]{$key}, 1, $FH_HR);
       }
     }
   }
@@ -1777,14 +2326,14 @@ sub vdr_AlertInfoInitialize {
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt5s", "sequence",
-                   "N_AT_START", # short description
-                   "first nucleotide of the sequence is an N", # long  description
+                   "AMBIGUITY_AT_START", # short description
+                   "first nucleotide of the sequence is an ambiguous nucleotide", # long  description
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt3s", "sequence",
-                   "N_AT_END", # short description
-                   "final nucleotide of the sequence is an N", # long  description
+                   "AMBIGUITY_AT_END", # short description
+                   "final nucleotide of the sequence is an ambiguous nucleotide", # long  description
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
@@ -1856,7 +2405,7 @@ sub vdr_AlertInfoInitialize {
 
   vdr_AlertInfoAdd($alt_info_HHR, "unjoinbl", "sequence",
                    "UNJOINABLE_SUBSEQ_ALIGNMENTS", # short description
-                   "inconsistent alignment of overlapping region between ungapped seed and flanking region", # long description
+                   "inconsistent alignment of overlapping region between seed and flanking region", # long description
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
@@ -1889,6 +2438,18 @@ sub vdr_AlertInfoInitialize {
                    "internal deletion of a complete feature", # long description
                    0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "deletina", "sequence",
+                   "DELETION_OF_FEATURE", # short description
+                   "allowed internal deletion of a complete feature", # long description
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "ambgntrp", "sequence",
+                   "N_RICH_REGION_NOT_REPLACED", # short description
+                   "N-rich region of unexpected length not replaced", # long description
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "mutstart", "feature",
                    "MUTATION_AT_START", # short description
@@ -1932,57 +2493,39 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "fsthicf5", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "fsthicft", "feature",
                    "POSSIBLE_FRAMESHIFT_HIGH_CONF", # short description
-                   "high confidence possible frameshift at 5' end of CDS", # long description
-                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
-                   $FH_HR);
-
-  vdr_AlertInfoAdd($alt_info_HHR, "fsthicf3", "feature",
-                   "POSSIBLE_FRAMESHIFT_HIGH_CONF", # short description
-                   "high confidence possible frameshift at 3' end of CDS", # long description
+                   "high confidence possible frameshift in CDS (frame not restored before end)", # long description
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "fsthicfi", "feature",
                    "POSSIBLE_FRAMESHIFT_HIGH_CONF", # short description
-                   "high confidence possible frameshift in CDS (internal)", # long description
+                   "high confidence possible frameshift in CDS (frame restored before end)", # long description
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "fstlocf5", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "fstlocft", "feature",
                    "POSSIBLE_FRAMESHIFT_LOW_CONF", # short description
-                   "low confidence possible frameshift at 5' end of CDS", # long description
-                   0, 0, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
-                   $FH_HR);
-
-  vdr_AlertInfoAdd($alt_info_HHR, "fstlocf3", "feature",
-                   "POSSIBLE_FRAMESHIFT_LOW_CONF", # short description
-                   "low confidence possible frameshift at 3' end of CDS", # long description
+                   "low confidence possible frameshift in CDS (frame not restored before end)", # long description
                    0, 0, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "fstlocfi", "feature",
                    "POSSIBLE_FRAMESHIFT_LOW_CONF", # short description
-                   "low confidence possible frameshift in CDS (internal)", # long description
+                   "low confidence possible frameshift in CDS (frame restored before end)", # long description
                    0, 0, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "fstukcf5", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "fstukcft", "feature",
                    "POSSIBLE_FRAMESHIFT", # short description
-                   "possible frameshift at 5' end of CDS", # long description
-                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
-                   $FH_HR);
-
-  vdr_AlertInfoAdd($alt_info_HHR, "fstukcf3", "feature",
-                   "POSSIBLE_FRAMESHIFT", # short description
-                   "possible frameshift at 3' end of CDS", # long description
+                   "possible frameshift in CDS (frame not restored before end)", # long description
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "fstukcfi", "feature",
                    "POSSIBLE_FRAMESHIFT", # short description
-                   "possible frameshift in CDS (internal)", # long description
+                   "possible frameshift in CDS (frame restored before end)", # long description
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
@@ -2143,26 +2686,38 @@ sub vdr_AlertInfoInitialize {
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt5f", "feature",
-                   "N_AT_FEATURE_START", # short description
-                   "first nucleotide of non-CDS feature is an N", # long  description
+                   "AMBIGUITY_AT_FEATURE_START", # short description
+                   "first nucleotide of non-CDS feature is an ambiguous nucleotide", # long  description
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt3f", "feature",
-                   "N_AT_FEATURE_END", # short description
-                   "final nucleotide of non-CDS feature is an N", # long  description
+                   "AMBIGUITY_AT_FEATURE_END", # short description
+                   "final nucleotide of non-CDS feature is an ambiguous nucleotide", # long  description
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt5c", "feature",
-                   "N_AT_CDS_START", # short description
-                   "first nucleotide of CDS is an N", # long  description
+                   "AMBIGUITY_AT_CDS_START", # short description
+                   "first nucleotide of CDS is an ambiguous nucleotide", # long  description
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt3c", "feature",
-                   "N_AT_CDS_END", # short description
-                   "final nucleotide of CDS is an N", # long  description
+                   "AMBIGUITY_AT_CDS_END", # short description
+                   "final nucleotide of CDS is an ambiguous nucleotide", # long  description
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR); 
+
+  vdr_AlertInfoAdd($alt_info_HHR, "ambgcd5c", "feature",
+                   "AMBIGUITY_IN_START_CODON", # short description
+                   "5' complete CDS starts with canonical nt but includes ambiguous nt in its start codon", # long description
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR); 
+
+  vdr_AlertInfoAdd($alt_info_HHR, "ambgcd3c", "feature",
+                   "AMBIGUITY_IN_STOP_CODON", # short description
+                   "3' complete CDS ends with canonical nt but includes ambiguous nt in its stop codon", # long description
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
@@ -4020,6 +4575,48 @@ sub vdr_CoordsMaxLengthSegment {
 }
 
 #################################################################
+# Subroutine: vdr_CoordsFromStartStopStrandArrays()
+#
+# Incept:     EPN, Wed Sep  8 18:32:20 2021
+#
+# Synopsis: Given references to arrays of start, stop and strand
+#           values for 1 or more segments, combine them to 
+#           create a coords string with 1 or more segments.
+#
+# Arguments:
+#  $start_AR:  reference to array of start positions
+#  $stop_AR:   reference to array of stop positions
+#  $strand_AR: reference to array of strand values
+#  $FH_HR:     REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:  coords string with all segments combined
+#
+# Dies: If unable to parse any segment 
+#
+#################################################################
+sub vdr_CoordsFromStartStopStrandArrays {
+  my $sub_name = "vdr_CoordsFromStartStopStrandArrays";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($start_AR, $stop_AR, $strand_AR, $FH_HR) = @_;
+
+  my $coords = "";
+  my $nsgm = scalar(@{$start_AR});
+  if($nsgm != scalar(@{$stop_AR}))   { ofile_FAIL("ERROR in $sub_name, different number of start and stop elements",   1, $FH_HR); }
+  if($nsgm != scalar(@{$strand_AR})) { ofile_FAIL("ERROR in $sub_name, different number of start and strand elements", 1, $FH_HR); }
+
+  for(my $s = 0; $s < $nsgm; $s++) { 
+    if($s > 0) { 
+      $coords .= ","; 
+    }
+    $coords .= vdr_CoordsSegmentCreate($start_AR->[$s], $stop_AR->[$s], $strand_AR->[$s], $FH_HR);
+  }
+
+  return $coords;
+}
+
+#################################################################
 # Subroutine: vdr_EutilsFetchToFile()
 # Incept:     EPN, Tue Mar 12 12:18:37 2019
 #
@@ -4347,6 +4944,56 @@ sub vdr_ModelInfoFileParse {
 }
 
 #################################################################
+# Subroutine: vdr_ModelInfoCoordsListValueBreakdown()
+# Incept:     EPN, Tue Nov  2 14:33:10 2021
+#
+# Purpose:    Breakdown a list of coords values 
+#             from a string in %{$mdl_info_AHR->[$mdl_idx]}
+#             and fill @{$AR} with key/value pairs.
+# 
+#             String must be in format of one or more single
+#             segment coords tokens, "<d>..<d>:[+-]" separated 
+#             by ";" if more than one.
+#
+#             If $mdl_info_AHR->[$mdl_idx]{$key} does not exist just
+#             return.
+#
+# Arguments: 
+#  $mdl_info_AHR:   ref to the feature info array of hashes 
+#  $mdl_idx:        model index
+#  $key:            key in $mdl_info_AHR->[$mdl_idx]
+#  $AR:             ref to array to fill
+#  $FH_HR:          ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if $mdl_info_AHR->[$mdl_idx] exists but cannot
+#             be parsed.
+#
+################################################################# 
+sub vdr_ModelInfoCoordsListValueBreakdown { 
+  my $sub_name = "vdr_ModelInfoCoordsListValueBreakdown";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mdl_info_AHR, $mdl_idx, $key, $AR, $FH_HR) = @_;
+ 
+  if(defined $mdl_info_AHR->[$mdl_idx]{$key}) { 
+    my @tok_A = split(";", $mdl_info_AHR->[$mdl_idx]{$key});
+    foreach my $tok (@tok_A) { 
+      if($tok =~ /^\d+\.\.\d+\:[\+\-]$/) { 
+        push(@{$AR}, $tok);
+      }
+      else { 
+        ofile_FAIL("ERROR, in $sub_name, unable to parse coords token $tok parsed out of " . $mdl_info_AHR->[$mdl_idx]{$key}, 1, $FH_HR);
+      }
+    }
+  }
+
+  return;
+}
+
+#################################################################
 # Subroutine:  vdr_CmalignCheckStdOutput()
 # Incept:      EPN, Wed Feb  6 14:18:59 2019
 #
@@ -4382,7 +5029,7 @@ sub vdr_CmalignCheckStdOutput {
     ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file does not exist", 1, $FH_HR);
   }
   if(! -s $stdout_file) { 
-    ofile_FAIL("ERROR in $sub_name, cmalign $stdout_file exists but is empty", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, cmalign $stdout_file exists but is empty. v-annotate.pl may have run out of available memory, especially if you see a 'Killed' message.", 1, $FH_HR);
   }
 
   # if we get here, the file exists and is non-empty
@@ -5128,7 +5775,7 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
       $line = <IN>; $line_ctr++;
       # line with the info on the alignment we need to parse
       # Two examples below ("The best scores" line kept only to show field names
-      # note the space in the parantheses before the model name, we have to take special care to deal with that
+      # note the space in the parentheses before the model name, we have to take special care to deal with that
       #The best scores are:                                                n-w	%_id  %_sim  gnw  alen  an0  ax0  pn0  px0  an1  ax1 pn1 px1 gapq gapl  fs  aln_code
       #NC_045512                                                (29903) [f] 21396	0.516 0.516 21396 10248    1 10248    1 10248 17633 27872    1 29903 4952   8   0	2949M1D5129M7D2162M
       #entoy100a-dcr                                            ( 100) [f]  500	1.000 1.000  500  100    1  100    1  100    1  100    1  100   0   0   0	100M

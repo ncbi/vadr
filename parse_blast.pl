@@ -15,7 +15,7 @@
 # Usage: parse_blast.pl --program x --input <blastx output file>
 # OR     parse_blast.pl --program n --input <blastn output file>
 #        
-# vadr 1.3 Aug 2021
+# vadr 1.4 Dec 2021
 
 use strict;
 use warnings;
@@ -69,10 +69,12 @@ my $bitscore;               #bit score for one alignment
 my $rawscore;               #raw score for one alignment
 my $hdef;                   #defline for matching sequence
 my $nmatches;               #number of matching sequences
-my $subject_start;          # first aligned position in one block of the subject sequence
-my $subject_end;            # last aligned position in one block of the subject sequence
-my $query_start;            # first aligned position in one block of the query sequence
-my $query_end;              # last aligned position in one block of the query  sequence
+my $subject_start = 0;      # first aligned position in one block of the subject sequence
+my $subject_end = 0;        # last aligned position in one block of the subject sequence
+my $old_subject_end = 0;    # last aligned position in previous block of the subject sequence
+my $query_start = 0;        # first aligned position in one block of the query sequence
+my $query_end = 0;          # last aligned position in one block of the query  sequence
+my $old_query_end = 0;      # last aligned position in previous block of the query  sequence
 my $query_alignment_part;   # string representing the query part of the alignment       
 my $subject_alignment_part; # string representing the subject part of the alignment       
 my $processing_alignment;   # are we possibly in the middle of processing an alignment
@@ -98,8 +100,8 @@ my $old_query_gap_overhang;                     #how many gaps in the query are 
 my $new_query_gap_overhang;                     #how many gaps in the query are at the end of the current line
 my $overall_subject_gap_representation = "";    #representation of gaps in one row of subject alignment
 my $one_row_subject_gap_representation = "";    #representation of gaps in one row of subject alignment
-my $old_subject_gap_overhang;                   #how many gaps in the subject are at the end of the current line
-my $new_subject_gap_overhang;                   #how many gaps in the subject are at the end of the current line
+my $old_subject_gap_overhang = 0;               #how many gaps in the subject are at the end of the current line
+my $new_subject_gap_overhang = 0;               #how many gaps in the subject are at the end of the current line
 my $maximum_query_gap       = 0;                #largest gap in the query
 my $maximum_subject_gap     = 0;                #largest gap in the subject
 my $maximum_query_gap_str   = "";               #string representing largest gap in the query, format Q<d1>:S<d2>:-<d3>
@@ -280,10 +282,16 @@ while($keep_going) {
         $one_row_query_gap_representation = "";
         $overall_subject_gap_representation = "";
         $one_row_subject_gap_representation = "";
-        $maximum_subject_gap = 0;
         $maximum_query_gap = 0;	    
-        $maximum_subject_gap_str = "";
+        $maximum_subject_gap = 0;
         $maximum_query_gap_str = "";	    
+        $maximum_subject_gap_str = "";
+        $query_start     = 0;
+        $query_end       = 0;
+        $old_query_end   = 0;
+        $subject_start   = 0;
+        $subject_end     = 0;
+        $old_subject_end = 0;
       }	
     }
     if (($state == $State_SeenDefline) && ($Linetype_length == $linetype)) {
@@ -339,6 +347,12 @@ while($keep_going) {
         $maximum_subject_gap = 0;
         $maximum_query_gap_str = "";
         $maximum_subject_gap_str = "";
+        $query_start     = 0;
+        $query_end       = 0;
+        $old_query_end   = 0;
+        $subject_start   = 0;
+        $subject_end     = 0;
+        $old_subject_end = 0;
       }
       print "HSP\t".$nhsp."\n";          #print HSP and the number of the hsp
       print "BITSCORE\t".$bitscore."\n"; #print SCORE and the bit score
@@ -352,6 +366,8 @@ while($keep_going) {
     if ($linetype == $Linetype_frame) {
       if($program eq "n") { die "ERROR read Frame line: $nextline but program is blastn (--program n), this line is only expected in blastx output"; }
       $frame = getFrame($nextline);	
+      $query_strand   = ($frame =~ m/^\+/) ? "+" : "-";
+      $subject_strand = "+"; # for blastx, subject is a protein so always "+"
       print "HLEN\t".$hlen."\n";   #print HLEN and the alignment length
       print "IDENT\t".$identities."\n";   #print IDENTITIES and the number of identities
       print "GAPS\t".$gaps."\n";   #print GAPS and the number of gaps
@@ -377,7 +393,8 @@ while($keep_going) {
         $processing_alignment = 1;
       }
       # Query alignment line:line that begins with "Query "including a segment of the query in an alignment
-      ($query_start, $query_end, $query_alignment_part) = getAlignmentPositions($nextline);
+      ($query_start, $query_end, $query_alignment_part) = getAlignmentPositions($nextline, $old_query_end);
+      $old_query_end = $query_end;
       if ($first_line_query) {
         $overall_query_start = $query_start;
         $overall_query_end = $query_end;
@@ -389,7 +406,8 @@ while($keep_going) {
     }
     if($linetype == $Linetype_subject_aln) {
       # Subject alignment line: line that begins with "Sbjct "  including a segment of the vector (subject) in an alignment
-      ($subject_start, $subject_end, $subject_alignment_part) = getAlignmentPositions($nextline);
+      ($subject_start, $subject_end, $subject_alignment_part) = getAlignmentPositions($nextline, $old_subject_end);
+      $old_subject_end = $subject_end;
       if ($first_line_subject) {
         $overall_subject_start = $subject_start;
         $overall_subject_end = $subject_end;
@@ -399,14 +417,14 @@ while($keep_going) {
         updateOverallPositions($processing_alignment, $subject_start, $subject_end, \$overall_subject_start, \$overall_subject_end);
       }
       ($one_row_query_stop_representation, $one_row_subject_stop_representation) = 
-          ($program eq "x") ? findQueryStops($query_alignment_part, $subject_alignment_part, $query_start, $query_end, $subject_start, $subject_end) : "";
+          ($program eq "x") ? findQueryStops($query_alignment_part, $subject_alignment_part, $query_start, $query_end, $subject_start, $subject_end, $query_strand) : "";
 
       if ($one_row_query_stop_representation) {
         $overall_query_stop_representation   .= $one_row_query_stop_representation;
         $overall_subject_stop_representation .= $one_row_subject_stop_representation;
       }
       if ($gaps > 0) {
-        ($new_query_gap_overhang, $one_row_query_gap_representation, $one_line_query_gap_str, $one_line_query_gap) = findQueryGaps($query_alignment_part, $subject_alignment_part, $query_start, $query_end, $subject_start, $subject_end, $old_query_gap_overhang, $program);
+        ($new_query_gap_overhang, $one_row_query_gap_representation, $one_line_query_gap_str, $one_line_query_gap) = findQueryGaps($query_alignment_part, $subject_alignment_part, $query_start, $query_end, $subject_start, $subject_end, $old_query_gap_overhang, $program, $query_strand);
         if ($DEBUG) {
           print "From findQueryGaps returned $one_row_query_gap_representation $new_query_gap_overhang\n";
         }
@@ -432,7 +450,7 @@ while($keep_going) {
         }
         $old_query_gap_overhang = $new_query_gap_overhang;
         if(($subject_start <= $subject_end) || ($allow_subject_minus)) { 
-          ($new_subject_gap_overhang, $one_row_subject_gap_representation, $one_line_subject_gap_str, $one_line_subject_gap) = findSubjectGaps($query_alignment_part, $subject_alignment_part, $query_start, $query_end, $subject_start, $subject_end, $old_subject_gap_overhang, $program);
+          ($new_subject_gap_overhang, $one_row_subject_gap_representation, $one_line_subject_gap_str, $one_line_subject_gap) = findSubjectGaps($query_alignment_part, $subject_alignment_part, $query_start, $query_end, $subject_start, $subject_end, $old_subject_gap_overhang, $program, $query_strand, $subject_strand);
           if ($one_line_subject_gap > $maximum_subject_gap) {
             $maximum_subject_gap     = $one_line_subject_gap;
             $maximum_subject_gap_str = $one_line_subject_gap_str;
@@ -510,10 +528,14 @@ while($keep_going) {
   $one_row_query_gap_representation    = "";
   $overall_subject_gap_representation  = "";
   $one_row_subject_gap_representation  = "";
-  $maximum_subject_gap = 0;
   $maximum_query_gap = 0;	    
-  $maximum_subject_gap_str = "";
+  $maximum_subject_gap = 0;
   $maximum_query_gap_str = "";
+  $maximum_subject_gap_str = "";
+  $query_start = 0;
+  $query_end   = 0;
+  $subject_start = 0;
+  $subject_end   = 0;
 }
 ################################################
 # List of subroutines:
@@ -581,7 +603,9 @@ sub determineLineType {
       { return $Linetype_score;       }
     if($line =~ m/^\s*Identities\s*=\s+\S+/)             { return $Linetype_identities;  }    
     if($line =~ m/^Query\s+\d+\s+\D+\d+/)                { return $Linetype_query_aln;   }
-    if($line =~ m/^Sbjct\s+\d+\s+\D+\d+/)                { return $Linetype_subject_aln; }
+    if($line =~ m/^Query\s+\-+\s*$/)                     { return $Linetype_query_aln;   } # all gaps in query
+    if($line =~ m/^Sbjct\s+\d+\s+\D+\d+/)                { return $Linetype_subject_aln; } 
+    if($line =~ m/^Sbjct\s+\-+\s*$/)                     { return $Linetype_subject_aln; } # all gaps in subject
     if($line =~ m/^\s*Frame\s*=\s+\S+/)                  { return $Linetype_frame;       }        
     if($line =~ m/^\s*Strand\s*=\S+/)                    { return $Linetype_strand;      }        
     if($line =~ m/^Effective search space used/)         { return $Linetype_searchspace; }        
@@ -730,34 +754,54 @@ sub getStrand {
 
 ##########################################################################################
 # Subroutine: getAlignmentPositions()
-# Synopsis:   Extracts two numerical positions from
+# Synopsis:   Extracts two numerical positions and
+#             the alignment string from
 #             a query or subject alignment line.
+#             In rare cases, the alignment string can
+#             be all gaps in which case no numerical positions
+#             are included. This function can deal with that
+#             by returning $prv_end as return values for both 
+#             $start and $end.
 #
 # Args: $line: query alignment or vector alignment line of
 #              input file
-#
-# Returns: TWO values:
+#       $prv_end: end position of previous alignment string
+#      
+# Returns: Three values:
 #          $start: the start position
 #          $end:   the end position
+#          $aln:   alignment string
 #
 # Dies: if $line is not a query or vector alignment line;
 #       does not match either of
-#       /Query\s+(\d+)\s+\D+(\d+)/ or
-#       /Sbjct\s+(\d+)\s+\D+(\d+)/
+#       /Query\s+(\d+)\s+(\S+)\s+(\d+)/ or
+#       /Sbjct\s+(\d+)\s+(\S+)\s+(\d+)/ or
+#       /Query\s+(\-+)\s* or (all gaps in query)
+#       /Sbjct\s+(\-+)\s* or (all gaps in subject)
 #
 ##########################################################################################
 sub getAlignmentPositions {
     my $sub_name = "getAlignmentPositions()";
-    my $nargs_exp = 1;
+    my $nargs_exp = 2;
     if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+    
+    my ($line, $prv_end) = @_;
 
-    my ($line) = @_;
+    if($DEBUG) { 
+      printf("in getAlignmentPositions(), line: $line, prv_end: $prv_end\n");
+    }
 
     if($line =~ m/^Query\s+(\d+)\s+(\S+)\s+(\d+)/) {
-	return ($1, $3, $2);
+      return ($1, $3, $2);
     }
     elsif($line =~ m/^Sbjct\s+(\d+)\s+(\S+)\s+(\d+)/) {
-	return ($1, $3, $2);
+      return ($1, $3, $2);
+    }
+    elsif($line =~ m/^Query\s+(\-+)\s*/) {
+      return ($prv_end, $prv_end, $1);
+    }
+    elsif($line =~ m/^Sbjct\s+(\-+)\s*/) {
+      return ($prv_end, $prv_end, $1);
     }
     else {
 	die "in $sub_name(), unexpected format for input line: $line\n";
@@ -824,6 +868,7 @@ sub updateOverallPositions {
 #   $subject_end:                subject end  position for current block we are processing
 #   $old_gap_overhang:           number of gap positions overhanging from previous row
 #   $program:                    from --program, "x" if blastx, "n" if blastn
+#   $query_strand:               "+" if query is positive strand, "-" if minus strand
 #
 # Returns:    Four values:
 #             1) the number of gap characters at the end of the row 
@@ -838,10 +883,19 @@ sub updateOverallPositions {
 ##########################################################################################
 sub findQueryGaps {
   my $sub_name = "findQueryGaps()";
-  my $nargs_expected = 8;
+  my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
 
-  my ($query_alignment_string, $subject_alignment_string, $query_start, $query_end, $subject_start, $subject_end, $old_gap_overhang, $program) = @_;
+  my ($query_alignment_string, $subject_alignment_string, $query_start, $query_end, $subject_start, $subject_end, $old_gap_overhang, $program, $query_strand) = @_;
+
+  if($DEBUG) { 
+    print("in $sub_name,\n\tquery_alignment_string: $query_alignment_string\n\tsubject_alignment_string: $subject_alignment_string\n");
+  }
+
+  if((! defined $query_strand) || 
+     (($query_strand ne "+") && ($query_strand ne "-"))) { 
+    die "ERROR read in $sub_name, strand is not + or - (or is undefed"; 
+  }
 
   my $local_residue_qlen = ($program eq "x") ? 3 : 1; # length of one query position in nt in query (3 if blastx, else 1 (blast))
   my $local_length = length($query_alignment_string);  #length of this alignment block
@@ -866,9 +920,9 @@ sub findQueryGaps {
   $local_QueryPositionIndex = $query_start;
   $local_SubjectPositionIndex = $subject_start;
   if ($DEBUG) {
-    print "In findQueryGaps: Subject start is $subject_start\n";
+    print "In $sub_name: Subject start is $subject_start, old_gap_overhang is: $old_gap_overhang query_start: $query_start query_end: $query_end\n";
   }
-  if ($query_start < $query_end) {
+  if ($query_strand eq "+") { 
     if ($old_gap_overhang) {
       $local_QueryStartDeletion = $query_start - 1;
       $local_SubjectStartDeletion = $subject_start - $old_gap_overhang - 1;
@@ -942,8 +996,8 @@ sub findQueryGaps {
       }
     }
     return($local_new_gap_overhang,$local_AllDeletionString, $local_longest_gap_str, $local_longest_gap);
-  } # end of if($query_start < $query_end) (strand is +)
-  else { # $query_start >= $query_end (strand is -)
+  } # end of if($query_start eq "+"
+  else { # $query_strand is "-"
     if ($old_gap_overhang) {
       $local_QueryStartDeletion = $query_start + 1;
       $local_SubjectStartDeletion = $subject_start - $old_gap_overhang - 1;
@@ -1034,6 +1088,8 @@ sub findQueryGaps {
 #   $subject_end:                subject end  position for current block we are processing
 #   $old_gap_overhang:           number of gap positions overhanging from previous row
 #   $program:                    from --program, "x" if blastx, "n" if blastn
+#   $query_strand:               "+" if query is positive strand, "-" if minus strand
+#   $subject_strand:             "+" if subject is positive strand, "-" if minus strand
 #
 #
 #  Returns:   4 values:
@@ -1049,10 +1105,10 @@ sub findQueryGaps {
 ##########################################################################################
 sub findSubjectGaps {
   my $sub_name = "findSubjectGaps()";
-  my $nargs_expected = 8;
+  my $nargs_expected = 10;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
 
-  my ($query_alignment_string, $subject_alignment_string, $query_start, $query_end, $subject_start, $subject_end, $old_gap_overhang, $program) = @_;
+  my ($query_alignment_string, $subject_alignment_string, $query_start, $query_end, $subject_start, $subject_end, $old_gap_overhang, $program, $query_strand, $subject_strand) = @_;
 
   my $local_residue_qlen = ($program eq "x") ? 3 : 1; # length of one query position in nt in query (3 if blastx, else 1 (blast))
   my $local_length = length($query_alignment_string);  #length of this alignment block
@@ -1074,127 +1130,135 @@ sub findSubjectGaps {
   my $local_longest_gap     = 0;
   my $local_longest_gap_str = "0"; # string representing longest gap "Q<d1>:S<d2>+<d3>" <d1> is query position, <d2> is subject position, <d3> is length in nt
   
-  $local_QueryPositionIndex = $query_start;
-  $local_SubjectPositionIndex = $subject_start;
+  if((! defined $query_strand) || 
+     (($query_strand ne "+") && ($query_strand ne "-"))) { 
+    die "ERROR read in $sub_name, query strand is not + or - (or is undefed"; 
+  }
+  if((! defined $subject_strand) || 
+     (($subject_strand ne "+") && ($subject_strand ne "-"))) { 
+    die "ERROR read in $sub_name, subject strand is not + or - (or is undefed"; 
+  }
+
   # It is always true that $subject_start < $subject_end
-  if ($subject_start > $subject_end) {
+  if ($subject_strand eq "-") { 
     die "ERROR in $sub_name, subject is minus strand, NOT YET IMPLEMENTED (use --splus to skip alignment parsing for such hits)";
   }
-  if ($subject_start <= $subject_end) {
-    if ($old_gap_overhang) {
-      $local_QueryStartDeletion = $query_start - $old_gap_overhang - 1;
-      $local_SubjectStartDeletion = $subject_start - 1;
-      $local_state = $local_StateInGap;
-    }
-    else {
-      $local_state = $local_StateNotGap;	    
-    }
-    for ($local_i = 0; $local_i < $local_length; $local_i++) {
-      if ((!($local_query_array[$local_i] eq "-")) && (!($local_subject_array[$local_i] eq "-"))) {
-        if ($local_StateNotGap == $local_state) {
-          ;
-        }
-        else {
-          $local_QueryEndDeletion = $local_QueryPositionIndex;
-          $local_SubjectEndDeletion = $local_SubjectPositionIndex;
-          if ($DEBUG) {
-            print "In findSubjectGaps: Setting local_QueryEndDeletion to $local_QueryEndDeletion, when local_QueryStartDeletion is $local_QueryStartDeletion\n";
-          }
-          if ($query_start < $query_end) {
-            $local_OneInsertionString = "Q" . $local_QueryStartDeletion . ":" . "S" . $local_SubjectStartDeletion . "+" . ($local_residue_qlen * $local_new_gap_overhang);
-          }
-          else {
-            $local_OneInsertionString = "Q" . $local_QueryEndDeletion . ":" . "S" . $local_SubjectEndDeletion . "+" . ($local_residue_qlen * $local_new_gap_overhang);		    
-          }
-          if (($local_residue_qlen * $local_new_gap_overhang) > $local_longest_gap) {
-            $local_longest_gap = $local_residue_qlen * $local_new_gap_overhang;
-            $local_longest_gap_str = $local_OneInsertionString;
-          }
-          if ($local_AllInsertionString) {
-            if ($query_start < $query_end) {
-              $local_AllInsertionString = $local_AllInsertionString . ";" . $local_OneInsertionString;
-            }
-            else {
-              $local_AllInsertionString = $local_OneInsertionString . ";" . $local_AllInsertionString;			
-            }
-          }
-          else {
-            $local_AllInsertionString = $local_OneInsertionString;			
-          }
-          $local_state = $local_StateNotGap;
-          $local_new_gap_overhang = 0;
-        }
-        $local_SubjectPositionIndex += 1;
-        if ($query_start < $query_end) {
-          $local_QueryPositionIndex += $local_residue_qlen;
-        }
-        else {
-          $local_QueryPositionIndex -= $local_residue_qlen;		
-        }
+  # following block assumes $subject_strand is "+", which we just checked for above
+  $local_QueryPositionIndex = $query_start;
+  $local_SubjectPositionIndex = $subject_start;
+  if ($old_gap_overhang) {
+    $local_QueryStartDeletion = $query_start - $old_gap_overhang - 1;
+    $local_SubjectStartDeletion = $subject_start - 1;
+    $local_state = $local_StateInGap;
+  }
+  else {
+    $local_state = $local_StateNotGap;	    
+  }
+  for ($local_i = 0; $local_i < $local_length; $local_i++) {
+    if ((!($local_query_array[$local_i] eq "-")) && (!($local_subject_array[$local_i] eq "-"))) {
+      if ($local_StateNotGap == $local_state) {
+        ;
       }
       else {
-        if ((!($local_query_array[$local_i] eq "-")) && (($local_subject_array[$local_i] eq "-"))) {
-          if ($local_StateNotGap == $local_state) {   #this is the start of an insertion in the query
-            $local_new_gap_overhang = 1;
-            $local_SubjectStartDeletion = $local_SubjectPositionIndex-1;
-            if ($query_start < $query_end) {		    
-              $local_QueryStartDeletion = $local_QueryPositionIndex-1;
-            }
-            else {
-              $local_QueryStartDeletion = $local_QueryPositionIndex+1;			
-            }
-            $local_state = $local_StateInGap;
+        $local_QueryEndDeletion = $local_QueryPositionIndex;
+        $local_SubjectEndDeletion = $local_SubjectPositionIndex;
+        if ($DEBUG) {
+          print "In findSubjectGaps: Setting local_QueryEndDeletion to $local_QueryEndDeletion, when local_QueryStartDeletion is $local_QueryStartDeletion\n";
+        }
+        if ($query_strand eq "+") { 
+          $local_OneInsertionString = "Q" . $local_QueryStartDeletion . ":" . "S" . $local_SubjectStartDeletion . "+" . ($local_residue_qlen * $local_new_gap_overhang);
+        }
+        else { # $query_strand is "-"
+          $local_OneInsertionString = "Q" . $local_QueryEndDeletion . ":" . "S" . $local_SubjectEndDeletion . "+" . ($local_residue_qlen * $local_new_gap_overhang);		    
+        }
+        if (($local_residue_qlen * $local_new_gap_overhang) > $local_longest_gap) {
+          $local_longest_gap = $local_residue_qlen * $local_new_gap_overhang;
+          $local_longest_gap_str = $local_OneInsertionString;
+        }
+        if ($local_AllInsertionString) {
+          if ($query_strand eq "+") { 
+            $local_AllInsertionString = $local_AllInsertionString . ";" . $local_OneInsertionString;
           }
-          else {
-            $local_new_gap_overhang++;
+          else { # query_strand is -
+            $local_AllInsertionString = $local_OneInsertionString . ";" . $local_AllInsertionString;			
           }
-          if ($query_start < $query_end) {
-            $local_QueryPositionIndex += $local_residue_qlen;
-          }
-          else {
-            $local_QueryPositionIndex -= $local_residue_qlen;		
-          }		    
         }
         else {
-          if ((($local_query_array[$local_i] eq "-")) && (!($local_subject_array[$local_i] eq "-"))) {
-            if ($local_StateNotGap == $local_state) {
-              ;
-            }
-            else {
-              if ($query_start < $query_end) {
-                $local_OneInsertionString = "Q" . $local_QueryStartDeletion . ":" . "S" . $local_SubjectStartDeletion . "+" . ($local_residue_qlen * $local_new_gap_overhang);
-              }
-              else {
-                $local_OneInsertionString = "Q" . $local_QueryEndDeletion . ":" . "S" . $local_SubjectEndDeletion . "+" . ($local_residue_qlen * $local_new_gap_overhang);		    
-              }
-              if (($local_residue_qlen * $local_new_gap_overhang) > $local_longest_gap) {
-                $local_longest_gap     = $local_residue_qlen * $local_new_gap_overhang;
-                $local_longest_gap_str = $local_OneInsertionString;
-              }
-              if ($local_AllInsertionString) {
-                if ($query_start < $query_end) {
-                  $local_AllInsertionString = $local_AllInsertionString . ";" . $local_OneInsertionString;
-                }
-                else {
-                  $local_AllInsertionString = $local_OneInsertionString . ";" . $local_AllInsertionString;			
-                }
-              }			
-              else {
-                $local_AllInsertionString = $local_OneInsertionString;			
-              }
-              $local_state = $local_StateNotGap;
-              $local_new_gap_overhang = 0;
-            }
-            $local_SubjectPositionIndex += 1;
+          $local_AllInsertionString = $local_OneInsertionString;			
+        }
+        $local_state = $local_StateNotGap;
+        $local_new_gap_overhang = 0;
+      }
+      $local_SubjectPositionIndex += 1;
+      if ($query_strand eq "+") { 
+        $local_QueryPositionIndex += $local_residue_qlen;
+      }
+      else { # $query_strand is -
+        $local_QueryPositionIndex -= $local_residue_qlen;		
+      }
+    }
+    else {
+      if ((!($local_query_array[$local_i] eq "-")) && (($local_subject_array[$local_i] eq "-"))) {
+        if ($local_StateNotGap == $local_state) {   #this is the start of an insertion in the query
+          $local_new_gap_overhang = 1;
+          $local_SubjectStartDeletion = $local_SubjectPositionIndex-1;
+          if ($query_strand eq "+") { 
+            $local_QueryStartDeletion = $local_QueryPositionIndex-1;
           }
+          else { # query_strand is -
+            $local_QueryStartDeletion = $local_QueryPositionIndex+1;			
+          }
+          $local_state = $local_StateInGap;
+        }
+        else {
+          $local_new_gap_overhang++;
+        }
+        if ($query_strand eq "+") { 
+          $local_QueryPositionIndex += $local_residue_qlen;
+        }
+        else { # query_strand is -
+          $local_QueryPositionIndex -= $local_residue_qlen;		
+        }		    
+      }
+      else {
+        if ((($local_query_array[$local_i] eq "-")) && (!($local_subject_array[$local_i] eq "-"))) {
+          if ($local_StateNotGap == $local_state) {
+            ;
+          }
+          else {
+            if ($query_strand eq "+") { 
+              $local_OneInsertionString = "Q" . $local_QueryStartDeletion . ":" . "S" . $local_SubjectStartDeletion . "+" . ($local_residue_qlen * $local_new_gap_overhang);
+            }
+            else { # query_strand is -
+              $local_OneInsertionString = "Q" . $local_QueryEndDeletion . ":" . "S" . $local_SubjectEndDeletion . "+" . ($local_residue_qlen * $local_new_gap_overhang);		    
+            }
+            if (($local_residue_qlen * $local_new_gap_overhang) > $local_longest_gap) {
+              $local_longest_gap     = $local_residue_qlen * $local_new_gap_overhang;
+              $local_longest_gap_str = $local_OneInsertionString;
+            }
+            if ($local_AllInsertionString) {
+              if ($query_strand eq "+") { 
+                $local_AllInsertionString = $local_AllInsertionString . ";" . $local_OneInsertionString;
+              }
+              else { # query_strand is -
+                $local_AllInsertionString = $local_OneInsertionString . ";" . $local_AllInsertionString;			
+              }
+            }			
+            else {
+              $local_AllInsertionString = $local_OneInsertionString;			
+            }
+            $local_state = $local_StateNotGap;
+            $local_new_gap_overhang = 0;
+          }
+          $local_SubjectPositionIndex += 1;
         }
       }
     }
-    if ($DEBUG) {
-      print "In findSubjectGaps: about to return $local_new_gap_overhang  $local_AllInsertionString\n";
-    }    
-    return($local_new_gap_overhang,$local_AllInsertionString,$local_longest_gap_str, $local_longest_gap);
   }
+  if ($DEBUG) {
+    print "In findSubjectGaps: about to return $local_new_gap_overhang  $local_AllInsertionString\n";
+  }    
+  return($local_new_gap_overhang,$local_AllInsertionString,$local_longest_gap_str, $local_longest_gap);
 }
 
 ##########################################################################################
@@ -1209,6 +1273,7 @@ sub findSubjectGaps {
 #   $query_end:                  query end  position for current block we are processing
 #   $subject_start:              subject start position for current block we are processing
 #   $subject_end:                subject end  position for current block we are processing
+#   $query_strand:               "+" if query is positive strand, "-" if minus strand
 #
 # Returns:    1) a string of query positions (nt coords) with stop codons or NULL. 
 #             2) a string of subject positions (AA coords) that align to stop codons or NULL
@@ -1217,10 +1282,10 @@ sub findSubjectGaps {
 ##########################################################################################
 sub findQueryStops {
     my $sub_name = "findQueryStops()";
-    my $nargs_expected = 6;
+    my $nargs_expected = 7;
     if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
 
-    my ($query_alignment_string, $subject_alignment_string, $query_start, $query_end, $subject_start, $subject_end) = @_;
+    my ($query_alignment_string, $subject_alignment_string, $query_start, $query_end, $subject_start, $subject_end, $query_strand) = @_;
 
     my $local_length = length($query_alignment_string);          #length of this alignment block
     my @local_query_array   = split("",$query_alignment_string);   #query line in the alignment split into an array of characters
@@ -1234,9 +1299,15 @@ sub findQueryStops {
     if ($DEBUG) {
       print "In findQueryStops: Query start is $query_start\n$query_alignment_string\n$subject_alignment_string";
     }
+
+    if((! defined $query_strand) || 
+       (($query_strand ne "+") && ($query_strand ne "-"))) { 
+      die "ERROR read in $sub_name, strand is not + or - (or is undefed"; 
+    }
+    
     my $query_idx   = $query_start;
     my $subject_idx = $subject_start;
-    if ($query_start < $query_end) {
+    if ($query_strand eq "+") { 
       for ($local_i = 0; $local_i < $local_length; $local_i++) {
         if ($local_query_array[$local_i] eq "*") {
           $local_QueryAllStopString   .= sprintf("%d..%d:+;", $query_idx, $query_idx + 2); # nt coords (3 positions)
@@ -1250,7 +1321,7 @@ sub findQueryStops {
         }
       }
     }
-    else {
+    else { # query_strand is "-"
       for ($local_i = 0; $local_i < $local_length; $local_i++) {
         if ($local_query_array[$local_i] eq "*") {
           $local_QueryAllStopString   .= sprintf("%d..%d:-;", $query_idx, $query_idx - 2); # nt coords (3 positions)

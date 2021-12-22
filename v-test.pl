@@ -79,8 +79,8 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-test.pl";
 my $usage         = "Usage: $executable [-options] <input test file e.g. testfiles/testin.1> <output directory to create>\n";
 my $synopsis      = "$executable :: test VADR scripts [TEST SCRIPT]";
 my $date          = scalar localtime();
-my $version       = "1.3";
-my $releasedate   = "Aug 2021";
+my $version       = "1.4";
+my $releasedate   = "Dec 2021";
 my $pkgname       = "VADR";
 
 # print help and exit if necessary

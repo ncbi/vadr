@@ -1,16 +1,15 @@
 >Feature NC_001959-10extraNs-at-start
 <221	>1200	gene
 			gene	ORF1
-<221	>1200	CDS
-			product	nonstructural polyprotein
-			codon_start	2
-			protein_id	NC_001959-10extraNs-at-start_1
-<221	>1200	mat_peptide
-			product	p48
-			protein_id	NC_001959-10extraNs-at-start_1
+<221	>1200	misc_feature
+			note	similar to nonstructural polyprotein
+<221	>1200	misc_feature
+			note	similar to p48
 
 Additional note(s) to submitter:
 ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.818<0.900]; seq-coords:1..219:+; mdl-coords:-; mdl:NC_001959;
+ERROR: CDS_HAS_STOP_CODON: (CDS:nonstructural polyprotein) in-frame stop codon exists 5' of stop position predicted by homology to reference [TAA, shifted S:971,M:971]; seq-coords:227..229:+; mdl-coords:217..219:+; mdl:NC_001959;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:p48) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_001959;
 >Feature NC_001959-10extraNs-at-end
 <1	510	gene
 			gene	ORF2

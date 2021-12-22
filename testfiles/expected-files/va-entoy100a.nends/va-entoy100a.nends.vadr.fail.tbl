@@ -38,7 +38,7 @@
 			protein_id	ENTOY100A/one-4Ns-start-11-14_4
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_START: (CDS:protein one) first nucleotide of CDS is an N [-]; seq-coords:11..14:+; mdl-coords:11..14:+; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:protein one) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:11..14:+; mdl-coords:11..14:+; mdl:ENTOY100A;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A-one-4Ns-end-28-31
@@ -80,7 +80,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide ma
 			protein_id	ENTOY100A-one-4Ns-end-28-31_4
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_END: (CDS:protein one) final nucleotide of CDS is an N [-]; seq-coords:28..31:+; mdl-coords:28..31:+; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_END: (CDS:protein one) final nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:28..31:+; mdl-coords:28..31:+; mdl:ENTOY100A;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A-one-4Ns-start-4Ns-end-11-14,28-31
@@ -123,92 +123,8 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide ma
 			protein_id	ENTOY100A-one-4Ns-start-4Ns-end-11-14,28-31_4
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_END: (CDS:protein one) final nucleotide of CDS is an N [-]; seq-coords:28..31:+; mdl-coords:28..31:+; mdl:ENTOY100A;
-ERROR: N_AT_CDS_START: (CDS:protein one) first nucleotide of CDS is an N [-]; seq-coords:11..14:+; mdl-coords:11..14:+; mdl:ENTOY100A;
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
->Feature ENTOY100A-one-second-posn-N-12
-5	22	ncRNA
-			product	enRNA
-			ncRNA_class	lncRNA
-			note	ncRNA 1
-10	19	stem_loop
-			note	stem-loop 1
-11	31	gene
-			gene	one
-11	31	CDS
-			product	protein one
-			protein_id	ENTOY100A-one-second-posn-N-12_1
-11	22	mat_peptide
-			product	protein one mp1
-			protein_id	ENTOY100A-one-second-posn-N-12_1
-23	28	mat_peptide
-			product	protein one mp2
-			protein_id	ENTOY100A-one-second-posn-N-12_1
-32	47	CDS
-47	64
-66	73
-			product	protein two
-			protein_id	ENTOY100A-one-second-posn-N-12_2
-67	79	CDS
-85	95
-			product	protein three
-			protein_id	ENTOY100A-one-second-posn-N-12_3
-67	75	mat_peptide
-			product	protein three mp1
-			protein_id	ENTOY100A-one-second-posn-N-12_3
-76	79	mat_peptide
-85	92
-			product	protein three mp2
-			protein_id	ENTOY100A-one-second-posn-N-12_3
-98	84	CDS
-			product	protein four
-			protein_id	ENTOY100A-one-second-posn-N-12_4
-
-Additional note(s) to submitter:
-ERROR: MUTATION_AT_START: (CDS:protein one) expected start codon could not be identified [ANG]; seq-coords:11..13:+; mdl-coords:11..13:+; mdl:ENTOY100A;
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
->Feature ENTOY100A-one-second-to-final-posn-N-30
-5	22	ncRNA
-			product	enRNA
-			ncRNA_class	lncRNA
-			note	ncRNA 1
-10	19	stem_loop
-			note	stem-loop 1
-11	31	gene
-			gene	one
-11	31	CDS
-			product	protein one
-			protein_id	ENTOY100A-one-second-to-final-posn-N-30_1
-11	22	mat_peptide
-			product	protein one mp1
-			protein_id	ENTOY100A-one-second-to-final-posn-N-30_1
-23	28	mat_peptide
-			product	protein one mp2
-			protein_id	ENTOY100A-one-second-to-final-posn-N-30_1
-32	47	CDS
-47	64
-66	73
-			product	protein two
-			protein_id	ENTOY100A-one-second-to-final-posn-N-30_2
-67	79	CDS
-85	95
-			product	protein three
-			protein_id	ENTOY100A-one-second-to-final-posn-N-30_3
-67	75	mat_peptide
-			product	protein three mp1
-			protein_id	ENTOY100A-one-second-to-final-posn-N-30_3
-76	79	mat_peptide
-85	92
-			product	protein three mp2
-			protein_id	ENTOY100A-one-second-to-final-posn-N-30_3
-98	84	CDS
-			product	protein four
-			protein_id	ENTOY100A-one-second-to-final-posn-N-30_4
-
-Additional note(s) to submitter:
-ERROR: MUTATION_AT_END: (CDS:protein one) expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [TAG]; seq-coords:71..73:+; mdl-coords:71..73:+; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_END: (CDS:protein one) final nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:28..31:+; mdl-coords:28..31:+; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:protein one) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:11..14:+; mdl-coords:11..14:+; mdl:ENTOY100A;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A-one-first-position-N-11
@@ -251,7 +167,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide ma
 			protein_id	ENTOY100A-one-first-position-N-11_4
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_START: (CDS:protein one) first nucleotide of CDS is an N [-]; seq-coords:11..11:+; mdl-coords:11..11:+; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:protein one) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:11..11:+; mdl-coords:11..11:+; mdl:ENTOY100A;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A-one-final-position-N
@@ -293,7 +209,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide ma
 			protein_id	ENTOY100A-one-final-position-N_4
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_END: (CDS:protein one) final nucleotide of CDS is an N [-]; seq-coords:31..31:+; mdl-coords:31..31:+; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_END: (CDS:protein one) final nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:31..31:+; mdl-coords:31..31:+; mdl:ENTOY100A;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A-one-12Ns-start
@@ -333,7 +249,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide ma
 			protein_id	ENTOY100A-one-12Ns-start_4
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_START: (CDS:protein one) first nucleotide of CDS is an N [-]; seq-coords:11..22:+; mdl-coords:11..22:+; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:protein one) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:11..22:+; mdl-coords:11..22:+; mdl:ENTOY100A;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A/one-cds-two-codons-len6-26-31
 5	>10	ncRNA
@@ -372,7 +288,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide ma
 			protein_id	ENTOY100A/one-cds-two-codons-len6-26-31_4
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_START: (CDS:protein one) first nucleotide of CDS is an N [-]; seq-coords:11..25:+; mdl-coords:11..25:+; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:protein one) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:11..25:+; mdl-coords:11..25:+; mdl:ENTOY100A;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A/one-cds-only-stop-len5-27-31
 5	>10	ncRNA
@@ -404,7 +320,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide ma
 			protein_id	ENTOY100A/one-cds-only-stop-len5-27-31_4
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_START: (CDS:protein one) first nucleotide of CDS is an N [-]; seq-coords:11..26:+; mdl-coords:11..26:+; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:protein one) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:11..26:+; mdl-coords:11..26:+; mdl:ENTOY100A;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A/one-cds-only-stop-len4-28-31
 5	>10	ncRNA
@@ -436,7 +352,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide ma
 			protein_id	ENTOY100A/one-cds-only-stop-len4-28-31_4
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_START: (CDS:protein one) first nucleotide of CDS is an N [-]; seq-coords:11..27:+; mdl-coords:11..27:+; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:protein one) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:11..27:+; mdl-coords:11..27:+; mdl:ENTOY100A;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A/one-cds-only-stop-len3-29-31
 5	>10	ncRNA
@@ -468,7 +384,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide ma
 			protein_id	ENTOY100A/one-cds-only-stop-len3-29-31_4
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_START: (CDS:protein one) first nucleotide of CDS is an N [-]; seq-coords:11..28:+; mdl-coords:11..28:+; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:protein one) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:11..28:+; mdl-coords:11..28:+; mdl:ENTOY100A;
 >Feature ENTOY100A/two-cds-all-Ns-but-47-and-48
 5	22	ncRNA
 			product	enRNA
@@ -506,9 +422,9 @@ ERROR: N_AT_CDS_START: (CDS:protein one) first nucleotide of CDS is an N [-]; se
 			protein_id	ENTOY100A/two-cds-all-Ns-but-47-and-48_4
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_END: (CDS:protein two) final nucleotide of CDS is an N [-]; seq-coords:49..73:+; mdl-coords:49..73:+; mdl:ENTOY100A;
-ERROR: N_AT_CDS_START: (CDS:protein two) first nucleotide of CDS is an N [-]; seq-coords:32..46:+; mdl-coords:32..46:+; mdl:ENTOY100A;
-ERROR: N_AT_CDS_START: (CDS:protein three) first nucleotide of CDS is an N [-]; seq-coords:67..73:+; mdl-coords:67..73:+; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_END: (CDS:protein two) final nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:49..73:+; mdl-coords:49..73:+; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:protein two) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:32..46:+; mdl-coords:32..46:+; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:protein three) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:67..73:+; mdl-coords:67..73:+; mdl:ENTOY100A;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein three mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein three mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A/two-cds-all-Ns-but-47
@@ -543,9 +459,9 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein three mp2) mat_peptide 
 			protein_id	ENTOY100A/two-cds-all-Ns-but-47_4
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_END: (CDS:protein two) final nucleotide of CDS is an N [-]; seq-coords:48..73:+; mdl-coords:48..73:+; mdl:ENTOY100A;
-ERROR: N_AT_CDS_START: (CDS:protein two) first nucleotide of CDS is an N [-]; seq-coords:32..46:+; mdl-coords:32..46:+; mdl:ENTOY100A;
-ERROR: N_AT_CDS_START: (CDS:protein three) first nucleotide of CDS is an N [-]; seq-coords:67..73:+; mdl-coords:67..73:+; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_END: (CDS:protein two) final nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:48..73:+; mdl-coords:48..73:+; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:protein two) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:32..46:+; mdl-coords:32..46:+; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:protein three) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:67..73:+; mdl-coords:67..73:+; mdl:ENTOY100A;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein three mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein three mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A/three-cds-two-codons-len6-90-95
@@ -583,10 +499,10 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein three mp2) mat_peptide 
 			protein_id	ENTOY100A/three-cds-two-codons-len6-90-95_4
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_END: (CDS:protein two) final nucleotide of CDS is an N [-]; seq-coords:67..73:+; mdl-coords:67..73:+; mdl:ENTOY100A;
-ERROR: N_AT_CDS_START: (CDS:protein three) first nucleotide of CDS is an N [-]; seq-coords:67..89:+; mdl-coords:67..89:+; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_END: (CDS:protein two) final nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:67..73:+; mdl-coords:67..73:+; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:protein three) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:67..89:+; mdl-coords:67..89:+; mdl:ENTOY100A;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein three mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
-ERROR: N_AT_CDS_END: (CDS:protein four) final nucleotide of CDS is an N [-]; seq-coords:89..84:-; mdl-coords:89..84:-; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_END: (CDS:protein four) final nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:89..84:-; mdl-coords:89..84:-; mdl:ENTOY100A;
 >Feature ENTOY100A/three-cds-only-stop-len5-91-95
 5	22	ncRNA
 			product	enRNA
@@ -616,10 +532,10 @@ ERROR: N_AT_CDS_END: (CDS:protein four) final nucleotide of CDS is an N [-]; seq
 
 Additional note(s) to submitter:
 ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.740<0.900]; seq-coords:75..100:+; mdl-coords:-; mdl:ENTOY100A;
-ERROR: N_AT_CDS_END: (CDS:protein two) final nucleotide of CDS is an N [-]; seq-coords:67..73:+; mdl-coords:67..73:+; mdl:ENTOY100A;
-ERROR: N_AT_CDS_START: (CDS:protein three) first nucleotide of CDS is an N [-]; seq-coords:67..90:+; mdl-coords:67..90:+; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_END: (CDS:protein two) final nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:67..73:+; mdl-coords:67..73:+; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:protein three) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:67..90:+; mdl-coords:67..90:+; mdl:ENTOY100A;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein three mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
-ERROR: N_AT_CDS_END: (CDS:protein four) final nucleotide of CDS is an N [-]; seq-coords:90..84:-; mdl-coords:90..84:-; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_END: (CDS:protein four) final nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:90..84:-; mdl-coords:90..84:-; mdl:ENTOY100A;
 >Feature ENTOY100A/three-cds-only-stop-len4-92-95
 5	22	ncRNA
 			product	enRNA
@@ -649,10 +565,10 @@ ERROR: N_AT_CDS_END: (CDS:protein four) final nucleotide of CDS is an N [-]; seq
 
 Additional note(s) to submitter:
 ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.690<0.900]; seq-coords:70..100:+; mdl-coords:-; mdl:ENTOY100A;
-ERROR: N_AT_CDS_END: (CDS:protein two) final nucleotide of CDS is an N [-]; seq-coords:67..73:+; mdl-coords:67..73:+; mdl:ENTOY100A;
-ERROR: N_AT_CDS_START: (CDS:protein three) first nucleotide of CDS is an N [-]; seq-coords:67..91:+; mdl-coords:67..91:+; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_END: (CDS:protein two) final nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:67..73:+; mdl-coords:67..73:+; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:protein three) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:67..91:+; mdl-coords:67..91:+; mdl:ENTOY100A;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein three mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
-ERROR: N_AT_CDS_END: (CDS:protein four) final nucleotide of CDS is an N [-]; seq-coords:91..84:-; mdl-coords:91..84:-; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_END: (CDS:protein four) final nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:91..84:-; mdl-coords:91..84:-; mdl:ENTOY100A;
 >Feature ENTOY100A/three-cds-only-stop-len3-93-95
 5	22	ncRNA
 			product	enRNA
@@ -682,6 +598,122 @@ ERROR: N_AT_CDS_END: (CDS:protein four) final nucleotide of CDS is an N [-]; seq
 
 Additional note(s) to submitter:
 ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.680<0.900]; seq-coords:69..100:+; mdl-coords:-; mdl:ENTOY100A;
-ERROR: N_AT_CDS_END: (CDS:protein two) final nucleotide of CDS is an N [-]; seq-coords:67..73:+; mdl-coords:67..73:+; mdl:ENTOY100A;
-ERROR: N_AT_CDS_START: (CDS:protein three) first nucleotide of CDS is an N [-]; seq-coords:67..92:+; mdl-coords:67..92:+; mdl:ENTOY100A;
-ERROR: N_AT_CDS_END: (CDS:protein four) final nucleotide of CDS is an N [-]; seq-coords:92..84:-; mdl-coords:92..84:-; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_END: (CDS:protein two) final nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:67..73:+; mdl-coords:67..73:+; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:protein three) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:67..92:+; mdl-coords:67..92:+; mdl:ENTOY100A;
+ERROR: AMBIGUITY_AT_CDS_END: (CDS:protein four) final nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:92..84:-; mdl-coords:92..84:-; mdl:ENTOY100A;
+>Feature ENTOY100A/one-startA-then-allNs
+5	>11	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+10	>11	stem_loop
+			note	stem-loop 1
+32	47	CDS
+47	64
+66	73
+			product	protein two
+			protein_id	ENTOY100A/one-startA-then-allNs_1
+67	79	CDS
+85	95
+			product	protein three
+			protein_id	ENTOY100A/one-startA-then-allNs_2
+67	75	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A/one-startA-then-allNs_2
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+			protein_id	ENTOY100A/one-startA-then-allNs_2
+98	84	CDS
+			product	protein four
+			protein_id	ENTOY100A/one-startA-then-allNs_3
+
+Additional note(s) to submitter:
+ERROR: UNREPORTED_FEATURE_PROBLEM: (*sequence*) only fatal alerts are for feature(s) not output to feature table [see .ftr and .alt output files for details]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+>Feature ENTOY100A/one-startANA-then-allNs
+5	>13	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+10	>13	stem_loop
+			note	stem-loop 1
+32	47	CDS
+47	64
+66	73
+			product	protein two
+			protein_id	ENTOY100A/one-startANA-then-allNs_1
+67	79	CDS
+85	95
+			product	protein three
+			protein_id	ENTOY100A/one-startANA-then-allNs_2
+67	75	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A/one-startANA-then-allNs_2
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+			protein_id	ENTOY100A/one-startANA-then-allNs_2
+98	84	CDS
+			product	protein four
+			protein_id	ENTOY100A/one-startANA-then-allNs_3
+
+Additional note(s) to submitter:
+ERROR: UNREPORTED_FEATURE_PROBLEM: (*sequence*) only fatal alerts are for feature(s) not output to feature table [see .ftr and .alt output files for details]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+>Feature ENTOY100A/one-allNs-endsA
+5	>10	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+10	>10	stem_loop
+			note	stem-loop 1
+32	47	CDS
+47	64
+66	73
+			product	protein two
+			protein_id	ENTOY100A/one-allNs-endsA_1
+67	79	CDS
+85	95
+			product	protein three
+			protein_id	ENTOY100A/one-allNs-endsA_2
+67	75	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A/one-allNs-endsA_2
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+			protein_id	ENTOY100A/one-allNs-endsA_2
+98	84	CDS
+			product	protein four
+			protein_id	ENTOY100A/one-allNs-endsA_3
+
+Additional note(s) to submitter:
+ERROR: UNREPORTED_FEATURE_PROBLEM: (*sequence*) only fatal alerts are for feature(s) not output to feature table [see .ftr and .alt output files for details]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+>Feature ENTOY100A/one-allNs-endsTNA
+5	>10	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+10	>10	stem_loop
+			note	stem-loop 1
+32	47	CDS
+47	64
+66	73
+			product	protein two
+			protein_id	ENTOY100A/one-allNs-endsTNA_1
+67	79	CDS
+85	95
+			product	protein three
+			protein_id	ENTOY100A/one-allNs-endsTNA_2
+67	75	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A/one-allNs-endsTNA_2
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+			protein_id	ENTOY100A/one-allNs-endsTNA_2
+98	84	CDS
+			product	protein four
+			protein_id	ENTOY100A/one-allNs-endsTNA_3
+
+Additional note(s) to submitter:
+ERROR: UNREPORTED_FEATURE_PROBLEM: (*sequence*) only fatal alerts are for feature(s) not output to feature table [see .ftr and .alt output files for details]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;

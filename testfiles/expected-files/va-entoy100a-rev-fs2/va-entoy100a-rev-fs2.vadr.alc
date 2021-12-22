@@ -6,13 +6,12 @@
 3     mutendex  yes      MUTATION_AT_END                feature      4     4  expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position
 4     unexleng  yes      UNEXPECTED_LENGTH              feature     28    16  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3
 5     cdsstopn  yes      CDS_HAS_STOP_CODON             feature      9     8  in-frame stop codon exists 5' of stop position predicted by homology to reference
-6     fsthicf5  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF  feature      7     7  high confidence possible frameshift at 5' end of CDS
-7     fsthicf3  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF  feature     13    11  high confidence possible frameshift at 3' end of CDS
-8     fsthicfi  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF  feature      8     8  high confidence possible frameshift in CDS (internal)
-9     peptrans  yes      PEPTIDE_TRANSLATION_PROBLEM    feature     20    10  mat_peptide may not be translated because its parent CDS has a problem
-10    pepadjcy  yes      PEPTIDE_ADJACENCY_PROBLEM      feature      2     2  predictions of two mat_peptides expected to be adjacent are not adjacent
-11    indf5gap  yes      INDEFINITE_ANNOTATION_START    feature      2     2  alignment to homology model is a gap at 5' boundary
-12    indf5lcn  yes      INDEFINITE_ANNOTATION_START    feature      1     1  alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS
-13    indf3gap  yes      INDEFINITE_ANNOTATION_END      feature      7     5  alignment to homology model is a gap at 3' boundary
-14    indf3lcn  yes      INDEFINITE_ANNOTATION_END      feature      2     2  alignment to homology model has low confidence at 3' boundary for feature that does not match a CDS
+6     fsthicft  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF  feature     20    16  high confidence possible frameshift in CDS (frame not restored before end)
+7     fsthicfi  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF  feature      8     8  high confidence possible frameshift in CDS (frame restored before end)
+8     peptrans  yes      PEPTIDE_TRANSLATION_PROBLEM    feature     20    10  mat_peptide may not be translated because its parent CDS has a problem
+9     pepadjcy  yes      PEPTIDE_ADJACENCY_PROBLEM      feature      2     2  predictions of two mat_peptides expected to be adjacent are not adjacent
+10    indf5gap  yes      INDEFINITE_ANNOTATION_START    feature      2     2  alignment to homology model is a gap at 5' boundary
+11    indf5lcn  yes      INDEFINITE_ANNOTATION_START    feature      1     1  alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS
+12    indf3gap  yes      INDEFINITE_ANNOTATION_END      feature      7     5  alignment to homology model is a gap at 3' boundary
+13    indf3lcn  yes      INDEFINITE_ANNOTATION_END      feature      2     2  alignment to homology model has low confidence at 3' boundary for feature that does not match a CDS
 #---  --------  -------  -----------------------------  -------  -----  ----  -----------
