@@ -197,12 +197,18 @@ TOY50-FS1         -AAATCACCGATGcccccGTGATCGC--TACCATAAATGAGCATTCTACGTGCAT
   The CDS starts in frame 1 for 3 nt, shifts into frame 3 for the frameshifted region
   for 13 nt and restores to frame 1 for 8 nt before the end of the CDS (`frame:1(3)1` and
   `length:3:(13):8`). The [table below](#framelengths) show how to interpret different `frame` and `length`
-  strings.
+  strings. The frame that the CDS starts in is defined as the
+  'expected frame' (this will always be 1 unless the CDS is truncated
+  at the 5' end). 
 
   This frameshift is a high confidence
   frameshift in that the average posterior probability of the aligned
-  nucleotides in the frameshifted region is `0.825` which exceeds the
-  threshold for high confidence (`0.8` by default). Other possible
+  nucleotides in the frameshifted region is `0.825`
+  (`shifted_frame:0.825`) and of the expected region prior to (5' of) the
+  frameshift is 0.892 (`exp_frame:0.892`) both of which exceed the
+  threshold for high confidence (`0.8` by default). (The PP of both
+  the shifted and expected regions must exceed the high confidence threshold for a frameshift
+  to be defined as high confidence.) Other possible
   frameshifts with lower posterior probability values will be reported
   with the `POSSIBLE_FRAMESHIFT_LOW_CONF` error. If the `--glsearch`
   option is used with `v-annotate.pl`, as is recommended with
