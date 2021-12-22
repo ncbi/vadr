@@ -6,7 +6,7 @@ VADR is a suite of tools for classifying and analyzing sequences
 homologous to a set of reference models of viral genomes or gene
 families. It has been mainly tested for analysis of Norovirus, Dengue,
 and SARS-CoV-2 virus sequences in preparation for submission to the
-GenBank database. 
+GenBank database.
 
 The VADR `v-annotate.pl` script is used to classify a sequence, by
 determining which in a set of reference models it is most similar to,
