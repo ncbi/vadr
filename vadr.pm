@@ -148,6 +148,8 @@ require "sqp_utils.pm";
 # vdr_CoordsMergeTwoSegmentsIfAdjacent()
 # vdr_CoordsMaxLengthSegment()
 # vdr_CoordsFromStartStopStrandArrays()
+# vdr_CoordsSegmentActualToFractional()
+# vdr_CoordsSegmentFractionalToActual()
 #
 # Subroutines related to eutils:
 # vdr_EutilsFetchToFile()
@@ -4614,6 +4616,174 @@ sub vdr_CoordsFromStartStopStrandArrays {
   }
 
   return $coords;
+}
+
+#################################################################
+# Subroutine: vdr_CoordsSegmentActualToFractional()
+# Incept:     EPN, Tue Jan  4 09:00:48 2022
+#
+# Purpose:    Given two coords segments, one of a larger region and 
+#             one of smaller region within that larger region, calculate
+#             the fractional position of start and stop of the smaller
+#             region within the larger one.
+#
+# Arguments:
+#  $full_coords:     coordinates of full region
+#  $subseq_coords:   coordinates of subsequence
+#  $FH_HR:           ref to hash of file handles
+#
+# Returns:  2 values:
+#           $fract_start: fractional start position [0.0 to 1.0], undef if $full_coords and subseq_coords are not same strand or do not overlap
+#           $fract_stop:  fractional start position [0.0 to 1.0], undef if $full_coords and subseq_coords are not same strand or do not overlap
+#           Always true that $fract_start <= $fract_stop
+#
+# Dies: If $full_coords or $subseq_coords is not a single parseable coords segment
+#       If $strand from $full_coords or $subseq_coords is not "+" or "-"
+#       If $strand from $full_coords or $subseq_coords is "+" and start > stop
+#       If $strand from $full_coords or $subseq_coords is "-" and start < stop
+#
+#################################################################
+sub vdr_CoordsSegmentActualToFractional { 
+  my $sub_name = "vdr_CoordsActualToFractional";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($full_coords, $subseq_coords, $FH_HR) = (@_);
+
+  printf("in $sub_name, full_coords: $full_coords subseq_coords: $subseq_coords\n");
+
+  my ($full_start,   $full_stop,   $full_strand)   = vdr_CoordsSegmentParse($full_coords, $FH_HR);
+  my ($subseq_start, $subseq_stop, $subseq_strand) = vdr_CoordsSegmentParse($subseq_coords, $FH_HR);
+
+  my $ret_fract_start = undef;
+  my $ret_fract_stop  = undef;
+
+  my $small_value = 0.0000000001;
+
+  if(($full_strand ne "+") && ($full_strand ne "-")) { 
+    ofile_FAIL("ERROR in $sub_name, full_coords $full_coords strand is not + or -", 1, $FH_HR);
+  }
+  if(($subseq_strand ne "+") && ($subseq_strand ne "-")) { 
+    ofile_FAIL("ERROR in $sub_name, subseq_coords $subseq_coords strand is not + or -", 1, $FH_HR);
+  }
+  if(($full_strand eq "+") && ($full_start > $full_stop)) { 
+    ofile_FAIL("ERROR in $sub_name, full_coords $full_coords + strand but start > stop", 1, $FH_HR);
+  }
+  if(($full_strand eq "-") && ($full_start < $full_stop)) { 
+    ofile_FAIL("ERROR in $sub_name, full_coords $full_coords - strand but start < stop", 1, $FH_HR);
+  }
+  if(($subseq_strand eq "+") && ($subseq_start > $subseq_stop)) { 
+    ofile_FAIL("ERROR in $sub_name, subseq_coords $subseq_coords + strand but start > stop", 1, $FH_HR);
+  }
+  if(($subseq_strand eq "-") && ($subseq_start < $subseq_stop)) { 
+    ofile_FAIL("ERROR in $sub_name, subseq_coords $subseq_coords - strand but start < stop", 1, $FH_HR);
+  }
+
+  if($full_strand ne $subseq_strand) { 
+    printf("in $sub_name, return 1\n");
+    return (undef, undef); 
+  }
+
+  if($full_strand eq "+") { # positive strand
+    if(($full_start > $full_stop) || ($subseq_start > $subseq_stop) || 
+       ($subseq_start < $full_start) || ($subseq_start > $full_stop) || 
+       ($subseq_stop  < $full_start) || ($subseq_stop  > $full_stop)) { 
+      printf("in $sub_name, return 2\n");
+      return (undef, undef); 
+    }
+    my $full_len = $full_stop - $full_start + 1;
+    $ret_fract_start = ($subseq_start - $full_start + 1) / $full_len;
+    $ret_fract_stop  = ($subseq_stop  - $full_start + 1) / $full_len;
+  }
+  else { # negative strand
+    if(($full_start < $full_stop) || ($subseq_start < $subseq_stop) || 
+       ($subseq_start > $full_start) || ($subseq_start < $full_stop) || 
+       ($subseq_stop  > $full_start) || ($subseq_stop  < $full_stop)) { 
+      printf("in $sub_name, return 3\n");
+      return (undef, undef); 
+    }
+    my $full_len = $full_start - $full_stop + 1;
+    $ret_fract_start = ($full_start - $subseq_start + 1) / $full_len;
+    $ret_fract_stop  = ($full_start - $subseq_stop  + 1) / $full_len;
+  }
+
+  if(($ret_fract_start < (0 - $small_value)) || 
+     ($ret_fract_stop  > (1 + $small_value))) { 
+      printf("in $sub_name, return 4\n");
+      return (undef, undef); 
+  }
+
+  printf("in $sub_name returning %.5f .. %.5f\n", $ret_fract_start, $ret_fract_stop);
+  return ($ret_fract_start, $ret_fract_stop);
+}
+
+#################################################################
+# Subroutine: vdr_CoordsSegmentFractionalToActual()
+# Incept:     EPN, Tue Jan  4 11:08:23 2022
+#
+# Purpose:    Given a coords segment and two fractional positions [0..1]
+#             within it estimate the actual positions those fractional 
+#             positions correspond to.
+#
+# Arguments:
+#  $coords:   coordinates of full region (1 segment)
+#  $fstart:   fractional start position
+#  $fstop:    fractional stop  position
+#  $FH_HR:    ref to hash of file handles
+#
+# Returns:  3 values:
+#           $start:  start position (rounded)
+#           $stop:   stop position (rounded)
+#           $strand: strand 
+#
+# Dies: If $coords is not a single parseable coords segment
+#       If $strand from $coords is not "+" or "-"
+#       If $strand from $coords is "+" and start > stop
+#       If $strand from $coords is "-" and start < stop
+#################################################################
+sub vdr_CoordsSegmentFractionalToActual {
+  my $sub_name = "vdr_CoordsFractionalToActual";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($coords, $fstart, $fstop, $FH_HR) = (@_);
+
+  printf("in $sub_name, coords: $coords fstart: $fstart fstop: $fstop\n");
+
+  my ($full_start, $full_stop, $full_strand) = vdr_CoordsSegmentParse($coords, $FH_HR);
+
+  if(($full_strand ne "+") && ($full_strand ne "-")) { 
+    ofile_FAIL("ERROR in $sub_name, coords $coords strand is not + or -", 1, $FH_HR);
+  }
+  if(($full_strand eq "+") && ($full_start > $full_stop)) { 
+    ofile_FAIL("ERROR in $sub_name, coords $coords + strand but start > stop", 1, $FH_HR);
+  }
+  if(($full_strand eq "-") && ($full_start < $full_stop)) { 
+    ofile_FAIL("ERROR in $sub_name, coords $coords - strand but start < stop", 1, $FH_HR);
+  }
+
+  my $ret_start = undef;
+  my $ret_stop  = undef;
+
+  my $full_len = abs($full_stop - $full_start) + 1;
+  if($full_strand eq "+") { # positive strand 
+    $ret_start = int($full_start + ($fstart * $full_len) - 1);
+    if($ret_start < $full_start) { $ret_start = $full_start; }
+
+    $ret_stop = int($full_start + ($fstop * $full_len) - 1);
+    if($ret_stop > $full_stop) { $ret_stop = $full_stop; }
+
+  }
+  else { # negative strand
+    $ret_start = int($full_start - ($fstart * $full_len) + 1);
+    if($ret_start > $full_start) { $ret_start = $full_start; }
+
+    $ret_stop = int($full_start - ($fstop * $full_len) + 1);
+    if($ret_stop < $full_stop) { $ret_stop = $full_stop; }
+  }
+
+  printf("in $sub_name returning $ret_start..$ret_stop:$full_strand\n");
+  return($ret_start, $ret_stop, $full_strand);
 }
 
 #################################################################
