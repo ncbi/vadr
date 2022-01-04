@@ -4300,7 +4300,7 @@ sub vdr_CoordsRelativeSingleCoordToAbsolute {
 }
 
 #################################################################
-# Subroutine: vdr_CoordsProteinRelativeToAbsoluate()
+# Subroutine: vdr_CoordsProteinRelativeToAbsolute()
 #
 # Incept:     EPN, Fri Mar 20 07:12:19 2020
 #
