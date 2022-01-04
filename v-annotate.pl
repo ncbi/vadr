@@ -13888,25 +13888,24 @@ sub helper_dupregin {
   my $ret_alt_scoords = "";
   my $ret_alt_mcoords = "";
 
-  my $m_coords1 = vdr_CoordsSegmentCreate($m_start_AR->[$i], $m_stop_AR->[$i], $m_strand_AR->[$i], $FH_HR); 
-  my $m_coords2 = vdr_CoordsSegmentCreate($m_start_AR->[$j], $m_stop_AR->[$j], $m_strand_AR->[$j], $FH_HR); 
-  my $s_coords1 = vdr_CoordsSegmentCreate($s_start_AR->[$i], $s_stop_AR->[$i], $s_strand_AR->[$i], $FH_HR); 
-  my $s_coords2 = vdr_CoordsSegmentCreate($s_start_AR->[$j], $s_stop_AR->[$j], $s_strand_AR->[$j], $FH_HR); 
+  my $mcoords1 = vdr_CoordsSegmentCreate($m_start_AR->[$i], $m_stop_AR->[$i], $m_strand_AR->[$i], $FH_HR); 
+  my $mcoords2 = vdr_CoordsSegmentCreate($m_start_AR->[$j], $m_stop_AR->[$j], $m_strand_AR->[$j], $FH_HR); 
+  my $scoords1 = vdr_CoordsSegmentCreate($s_start_AR->[$i], $s_stop_AR->[$i], $s_strand_AR->[$i], $FH_HR); 
+  my $scoords2 = vdr_CoordsSegmentCreate($s_start_AR->[$j], $s_stop_AR->[$j], $s_strand_AR->[$j], $FH_HR); 
 
-  my ($mdl_noverlap, $mdl_overlap_str) = vdr_CoordsSegmentOverlap($m_coords1, $m_coords2, $FH_HR);
-  my ($seq_noverlap, $seq_overlap_str) = vdr_CoordsSegmentOverlap($s_coords1, $s_coords2, $FH_HR);
+  my ($mdl_noverlap, $mdl_overlap_str) = vdr_CoordsSegmentOverlap($mcoords1, $mcoords2, $FH_HR);
+  my ($seq_noverlap, $seq_overlap_str) = vdr_CoordsSegmentOverlap($scoords1, $scoords2, $FH_HR);
 
   ###my $noverlap = $mdl_noverlap - $seq_noverlap;
   my $noverlap = $mdl_noverlap;
   printf("mdl_noverlap: $mdl_noverlap $mdl_overlap_str ($m_start_AR->[$i]..$m_stop_AR->[$i] and $m_start_AR->[$j]..$m_stop_AR->[$j])\n");
   printf("seq_noverlap: $seq_noverlap $seq_overlap_str ($s_start_AR->[$i]..$s_stop_AR->[$i] and $s_start_AR->[$j]..$s_stop_AR->[$j])\n");
 
-  if($mdl_noverlap > 0) { 
+  if($mdl_noverlap >= $dupregolp_opt) { 
     # determine what sequence region aligns to the mdl_overlap region in each hit, 
     # if that region DOES NOT overlap in sequence -> dupregin alert
     # if that region DOES     overlap in sequence -> no alert
-    
-    # determine fractional position of mdl_overlap in each hit
+
     my $mdl_overlap_coords = undef;
     if($mdl_overlap_str =~ /^(\d+)\-(\d+)$/) { 
       my ($tmp_start, $tmp_stop) = ($1, $2); 
@@ -13920,43 +13919,64 @@ sub helper_dupregin {
     else { 
       ofile_FAIL("ERROR in $sub_name, unable to parse mdl_overlap_str: $mdl_overlap_str in $sub_name", 1, $FH_HR);
     }
+
+    # determine fractional position of overlapping model region within model coords
+    my ($f_mstart1, $f_mstop1) = vdr_CoordsSegmentActualToFractional($mcoords1, $mdl_overlap_coords,   $FH_HR);
+    my ($f_mstart2, $f_mstop2) = vdr_CoordsSegmentActualToFractional($mcoords2, $mdl_overlap_coords,   $FH_HR);
+
+    # determine actual sequence positions of model overlap, this is an estimate as to what positions
+    # in the sequence the model overlap region aligns to in each of the two hits
+    my ($m_sstart1, $m_sstop1, $m_sstrand1) = vdr_CoordsSegmentFractionalToActual($scoords1, $f_mstart1, $f_mstop1, $FH_HR);
+    my ($m_sstart2, $m_sstop2, $m_sstrand2) = vdr_CoordsSegmentFractionalToActual($scoords2, $f_mstart2, $f_mstop2, $FH_HR);
+
+    my $m_slen1 = (abs($m_sstop1 - $m_sstart1)) + 1;
+    my $m_slen2 = (abs($m_sstop2 - $m_sstart2)) + 1;
+    my $m_sminlen = ($m_slen1 < $m_slen2) ? $m_slen1 : $m_slen2; # currently we don't use this but we could by letting
+                                                                 # 'm_seq_noverlap < 0.5 * $m_sminlen' qualify as dupregin alert too
     
-    my ($f_mstart1, $f_mstop1) = vdr_CoordsSegmentActualToFractional($m_coords1, $mdl_overlap_coords, $FH_HR);
-    my ($f_mstart2, $f_mstop2) = vdr_CoordsSegmentActualToFractional($m_coords2, $mdl_overlap_coords, $FH_HR);
-    exit 0;
-  }
-  if($noverlap >= $dupregolp_opt) { 
-    $ret_alt_scoords = sprintf("%s,%s", 
-                               vdr_CoordsSegmentCreate($s_start_AR->[$i], $s_stop_AR->[$i], $s_strand_AR->[$i], $FH_HR), 
-                               vdr_CoordsSegmentCreate($s_start_AR->[$j], $s_stop_AR->[$j], $s_strand_AR->[$j], $FH_HR));
-    $ret_alt_mcoords = sprintf("%s,%s", 
+    # do the sequence positions 'aligned' to overlapping model region in each hit overlap (in sequence)?
+    # NO  OVERLAP -    dupregin alert (same model region aligned to two different seq regions in the two hits)
+    # YES OVERLAP - no dupregin alert ('duplicate hits': same model region aligned to same seq region in the two hits, 
+    #                                  impossible in cmsearch but possible in blastn (although instances I've seen are 
+    #                                  due to what I think must be a bug))
+    my $m_scoords1 = vdr_CoordsSegmentCreate($m_sstart1, $m_sstop1, $m_sstrand1, $FH_HR); 
+    my $m_scoords2 = vdr_CoordsSegmentCreate($m_sstart2, $m_sstop2, $m_sstrand2, $FH_HR); 
+    my ($m_seq_noverlap, $m_seq_overlap_str) = vdr_CoordsSegmentOverlap($m_scoords1, $m_scoords2, $FH_HR);
+
+    if($m_seq_noverlap == 0) {
+      $ret_alt_scoords = sprintf("%s,%s", 
+                                 vdr_CoordsSegmentCreate($s_start_AR->[$i], $s_stop_AR->[$i], $s_strand_AR->[$i], $FH_HR), 
+                                 vdr_CoordsSegmentCreate($s_start_AR->[$j], $s_stop_AR->[$j], $s_strand_AR->[$j], $FH_HR));
+      $ret_alt_mcoords = sprintf("%s,%s", 
                                vdr_CoordsSegmentCreate($m_start_AR->[$i], $m_stop_AR->[$i], $m_strand_AR->[$i], $FH_HR), 
                                vdr_CoordsSegmentCreate($m_start_AR->[$j], $m_stop_AR->[$j], $m_strand_AR->[$j], $FH_HR));
     
-      # check if this is an exempted region
-    my $exempted_region = 0;
-    foreach my $exc_coords (@{$dupregin_exc_AR}) { 
-      if(vdr_CoordsCheckIfSpans($exc_coords, $mdl_overlap_str, $FH_HR)) { 
-          $exempted_region = 1;
-      }
-    }
-    printf("HEYA! %s (len %d>=%d) hits %d (%.1f bits) and %d (%.1f bits)",
-           $mdl_overlap_str, $noverlap, $dupregolp_opt, 
-           ($i+1), $score_AR->[$i], 
-           ($j+1), $score_AR->[$j]);
-    printf("exempted_region: $exempted_region\n");
-    if(! $exempted_region) { # only report if not exempted
-      $ret_alt_str = sprintf("%s (len %d>=%d) hits %d (%.1f bits) and %d (%.1f bits)",
-                              $mdl_overlap_str, $noverlap, $dupregolp_opt, 
-                              ($i+1), $score_AR->[$i], 
-                              ($j+1), $score_AR->[$j]);
-    }
-    else { # it is exempted, reset ret values
-      $ret_alt_str     = "";
-      $ret_alt_scoords = "";
-      $ret_alt_mcoords = "";
+       # check if this is an exempted region
+       my $exempted_region = 0;
+       foreach my $exc_coords (@{$dupregin_exc_AR}) { 
+         if(vdr_CoordsCheckIfSpans($exc_coords, $mdl_overlap_str, $FH_HR)) { 
+           $exempted_region = 1;
+         }
+       }
+       printf("HEYA! %s (len %d>=%d) hits %d (%.1f bits) and %d (%.1f bits)",
+              $mdl_overlap_str, $noverlap, $dupregolp_opt, 
+              ($i+1), $score_AR->[$i], 
+              ($j+1), $score_AR->[$j]);
+       printf("exempted_region: $exempted_region\n");
+       if(! $exempted_region) { # only report if not exempted
+         $ret_alt_str = sprintf("%s (len %d>=%d) hits %d (%.1f bits) and %d (%.1f bits)",
+                                $mdl_overlap_str, $noverlap, $dupregolp_opt, 
+                                ($i+1), $score_AR->[$i], 
+                                ($j+1), $score_AR->[$j]);
+       }
+       else { # it is exempted, reset ret values
+         $ret_alt_str     = "";
+         $ret_alt_scoords = "";
+         $ret_alt_mcoords = "";
+       }
     }
   }
+        
   return ($ret_alt_str, $ret_alt_scoords, $ret_alt_mcoords);
 }
 
@@ -13980,6 +14000,9 @@ sub helper_dupregin {
 #           Always true that $fract_start <= $fract_stop
 #
 # Dies: If $full_coords or $subseq_coords is not a single parseable coords segment
+#       If $strand from $full_coords or $subseq_coords is not "+" or "-"
+#       If $strand from $full_coords or $subseq_coords is "+" and start > stop
+#       If $strand from $full_coords or $subseq_coords is "-" and start < stop
 #
 #################################################################
 sub vdr_CoordsSegmentActualToFractional { 
@@ -13989,21 +14012,41 @@ sub vdr_CoordsSegmentActualToFractional {
 
   my ($full_coords, $subseq_coords, $FH_HR) = (@_);
 
+  printf("in $sub_name, full_coords: $full_coords subseq_coords: $subseq_coords\n");
+
   my ($full_start,   $full_stop,   $full_strand)   = vdr_CoordsSegmentParse($full_coords, $FH_HR);
   my ($subseq_start, $subseq_stop, $subseq_strand) = vdr_CoordsSegmentParse($subseq_coords, $FH_HR);
 
   my $ret_fract_start = undef;
   my $ret_fract_stop  = undef;
 
-  printf("in $sub_name, full_coords: $full_coords subseq_coords: $subseq_coords\n");
+  my $small_value = 0.0000000001;
 
-  if(($full_strand ne $subseq_strand) || 
-     (($full_strand ne "+") && ($full_strand ne "-"))) { 
+  if(($full_strand ne "+") && ($full_strand ne "-")) { 
+    ofile_FAIL("ERROR in $sub_name, full_coords $full_coords strand is not + or -", 1, $FH_HR);
+  }
+  if(($subseq_strand ne "+") && ($subseq_strand ne "-")) { 
+    ofile_FAIL("ERROR in $sub_name, subseq_coords $subseq_coords strand is not + or -", 1, $FH_HR);
+  }
+  if(($full_strand eq "+") && ($full_start > $full_stop)) { 
+    ofile_FAIL("ERROR in $sub_name, full_coords $full_coords + strand but start > stop", 1, $FH_HR);
+  }
+  if(($full_strand eq "-") && ($full_start < $full_stop)) { 
+    ofile_FAIL("ERROR in $sub_name, full_coords $full_coords - strand but start < stop", 1, $FH_HR);
+  }
+  if(($subseq_strand eq "+") && ($subseq_start > $subseq_stop)) { 
+    ofile_FAIL("ERROR in $sub_name, subseq_coords $subseq_coords + strand but start > stop", 1, $FH_HR);
+  }
+  if(($subseq_strand eq "-") && ($subseq_start < $subseq_stop)) { 
+    ofile_FAIL("ERROR in $sub_name, subseq_coords $subseq_coords - strand but start < stop", 1, $FH_HR);
+  }
+
+  if($full_strand ne $subseq_strand) { 
     printf("in $sub_name, return 1\n");
     return (undef, undef); 
   }
 
-  if($full_strand ne "-") { # positive strand
+  if($full_strand eq "+") { # positive strand
     if(($full_start > $full_stop) || ($subseq_start > $subseq_stop) || 
        ($subseq_start < $full_start) || ($subseq_start > $full_stop) || 
        ($subseq_stop  < $full_start) || ($subseq_stop  > $full_stop)) { 
@@ -14026,6 +14069,81 @@ sub vdr_CoordsSegmentActualToFractional {
     $ret_fract_stop  = ($full_start - $subseq_start + 1) / $full_len;
   }
 
+  if(($ret_fract_start < (0 - $small_value)) || 
+     ($ret_fract_stop  > (1 + $small_value))) { 
+      printf("in $sub_name, return 4\n");
+      return (undef, undef); 
+  }
+
   printf("in $sub_name returning %.5f .. %.5f\n", $ret_fract_start, $ret_fract_stop);
   return ($ret_fract_start, $ret_fract_stop);
+}
+
+#################################################################
+# Subroutine: vdr_CoordsSegmentFractionalToActual()
+# Incept:     EPN, Tue Jan  4 11:08:23 2022
+#
+# Purpose:    Given a coords segment and two fractional positions [0..1]
+#             within it estimate the actual positions those fractional 
+#             positions correspond to.
+#
+# Arguments:
+#  $coords:   coordinates of full region (1 segment)
+#  $fstart:   fractional start position
+#  $fstop:    fractional stop  position
+#  $FH_HR:    ref to hash of file handles
+#
+# Returns:  3 values:
+#           $start:  start position (rounded)
+#           $stop:   stop position (rounded)
+#           $strand: strand 
+#
+# Dies: If $coords is not a single parseable coords segment
+#       If $strand from $coords is not "+" or "-"
+#       If $strand from $coords is "+" and start > stop
+#       If $strand from $coords is "-" and start < stop
+#################################################################
+sub vdr_CoordsSegmentFractionalToActual {
+  my $sub_name = "vdr_CoordsFractionalToActual";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($coords, $fstart, $fstop, $FH_HR) = (@_);
+
+  printf("in $sub_name, coords: $coords fstart: $fstart fstop: $fstop\n");
+
+  my ($full_start, $full_stop, $full_strand) = vdr_CoordsSegmentParse($coords, $FH_HR);
+
+  if(($full_strand ne "+") && ($full_strand ne "-")) { 
+    ofile_FAIL("ERROR in $sub_name, coords $coords strand is not + or -", 1, $FH_HR);
+  }
+  if(($full_strand eq "+") && ($full_start > $full_stop)) { 
+    ofile_FAIL("ERROR in $sub_name, coords $coords + strand but start > stop", 1, $FH_HR);
+  }
+  if(($full_strand eq "-") && ($full_start < $full_stop)) { 
+    ofile_FAIL("ERROR in $sub_name, coords $coords - strand but start < stop", 1, $FH_HR);
+  }
+
+  my $ret_start = undef;
+  my $ret_stop  = undef;
+
+  my $full_len = abs($full_stop - $full_start) + 1;
+  if($full_strand eq "+") { # positive strand 
+    $ret_start = int($full_start + ($fstart * $full_len) - 1);
+    if($ret_start < $full_start) { $ret_start = $full_start; }
+
+    $ret_stop = int($full_start + ($fstop * $full_len) - 1);
+    if($ret_stop > $full_stop) { $ret_stop = $full_stop; }
+
+  }
+  else { # negative strand
+    $ret_start = int($full_start - ($fstart * $full_len) + 1);
+    if($ret_start > $full_start) { $ret_start = $full_start; }
+
+    $ret_stop = int($full_start - ($fstop * $full_len) + 1);
+    if($ret_stop < $full_stop) { $ret_stop = $full_stop; }
+  }
+
+  printf("in $sub_name returning $ret_start..$ret_stop:$full_strand\n");
+  return($ret_start, $ret_stop, $full_strand);
 }
