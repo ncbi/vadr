@@ -4650,7 +4650,7 @@ sub vdr_CoordsSegmentActualToFractional {
 
   my ($full_coords, $subseq_coords, $FH_HR) = (@_);
 
-  printf("in $sub_name, full_coords: $full_coords subseq_coords: $subseq_coords\n");
+  # printf("in $sub_name, full_coords: $full_coords subseq_coords: $subseq_coords\n");
 
   my ($full_start,   $full_stop,   $full_strand)   = vdr_CoordsSegmentParse($full_coords, $FH_HR);
   my ($subseq_start, $subseq_stop, $subseq_strand) = vdr_CoordsSegmentParse($subseq_coords, $FH_HR);
@@ -4680,7 +4680,6 @@ sub vdr_CoordsSegmentActualToFractional {
   }
 
   if($full_strand ne $subseq_strand) { 
-    printf("in $sub_name, return 1\n");
     return (undef, undef); 
   }
 
@@ -4688,7 +4687,6 @@ sub vdr_CoordsSegmentActualToFractional {
     if(($full_start > $full_stop) || ($subseq_start > $subseq_stop) || 
        ($subseq_start < $full_start) || ($subseq_start > $full_stop) || 
        ($subseq_stop  < $full_start) || ($subseq_stop  > $full_stop)) { 
-      printf("in $sub_name, return 2\n");
       return (undef, undef); 
     }
     my $full_len = $full_stop - $full_start + 1;
@@ -4699,7 +4697,6 @@ sub vdr_CoordsSegmentActualToFractional {
     if(($full_start < $full_stop) || ($subseq_start < $subseq_stop) || 
        ($subseq_start > $full_start) || ($subseq_start < $full_stop) || 
        ($subseq_stop  > $full_start) || ($subseq_stop  < $full_stop)) { 
-      printf("in $sub_name, return 3\n");
       return (undef, undef); 
     }
     my $full_len = $full_start - $full_stop + 1;
@@ -4709,11 +4706,10 @@ sub vdr_CoordsSegmentActualToFractional {
 
   if(($ret_fract_start < (0 - $small_value)) || 
      ($ret_fract_stop  > (1 + $small_value))) { 
-      printf("in $sub_name, return 4\n");
       return (undef, undef); 
   }
 
-  printf("in $sub_name returning %.5f .. %.5f\n", $ret_fract_start, $ret_fract_stop);
+  # printf("in $sub_name returning %.5f .. %.5f\n", $ret_fract_start, $ret_fract_stop);
   return ($ret_fract_start, $ret_fract_stop);
 }
 
@@ -4748,7 +4744,7 @@ sub vdr_CoordsSegmentFractionalToActual {
 
   my ($coords, $fstart, $fstop, $FH_HR) = (@_);
 
-  printf("in $sub_name, coords: $coords fstart: $fstart fstop: $fstop\n");
+  # printf("in $sub_name, coords: $coords fstart: $fstart fstop: $fstop\n");
 
   my ($full_start, $full_stop, $full_strand) = vdr_CoordsSegmentParse($coords, $FH_HR);
 
@@ -4782,7 +4778,7 @@ sub vdr_CoordsSegmentFractionalToActual {
     if($ret_stop < $full_stop) { $ret_stop = $full_stop; }
   }
 
-  printf("in $sub_name returning $ret_start..$ret_stop:$full_strand\n");
+  # printf("in $sub_name returning $ret_start..$ret_stop:$full_strand\n");
   return($ret_start, $ret_stop, $full_strand);
 }
 
