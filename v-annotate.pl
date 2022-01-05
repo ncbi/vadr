@@ -13932,6 +13932,8 @@ sub helper_dupregin {
     my $m_scoords1 = vdr_CoordsSegmentCreate($m_sstart1, $m_sstop1, $m_sstrand1, $FH_HR); 
     my $m_scoords2 = vdr_CoordsSegmentCreate($m_sstart2, $m_sstop2, $m_sstrand2, $FH_HR); 
     my ($m_seq_noverlap, $m_seq_overlap_str) = vdr_CoordsSegmentOverlap($m_scoords1, $m_scoords2, $FH_HR);
+    printf("m_scoords1: $m_scoords1 m_scoords2: $m_scoords2 m_seq_noverlap: $m_seq_noverlap\n");
+    printf("HEYAA fract overlap: $m_seq_noverlap/$m_sminlen (%.3f)\n", ($m_seq_noverlap / $m_sminlen));
 
     if($m_seq_noverlap == 0) {
       $ret_alt_scoords = sprintf("%s,%s", 
