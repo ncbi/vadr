@@ -1,14 +1,14 @@
 # VADR 1.x release notes 
 
 ### VADR 1.4.1 release (January 2022): Bug fix update
-  * fixes bug that prevented some dupregin alerts (DUPLICATE_REGIONS) 
-    previously reported in vadr 1.3 and earlier versions, only
+  * fixes bug that prevented reporting of some *dupregin* alerts (DUPLICATE_REGIONS) 
+    previously reported in vadr 1.3 and earlier versions; only
     relevant when -s is used.
-  * nmiscftr alert (TOO_MANY_MISC_FEATURES) now only reported if 
+  * *nmiscftr* alert (TOO_MANY_MISC_FEATURES) now only reported if 
     a sequence has >= 4 misc_features due to 'misc_not_failure' 
     attributes in model info file. Previously a sequence with >=
-    3 misc_features caused a nmiscftr alert. (Default value of
-    `--nmiscftrthr` change from 3 to 4.)
+    3 misc_features caused a *nmiscftr* alert. (Default value of
+    `--nmiscftrthr` changed from 3 to 4.)
 
 ### VADR 1.4 release (December 2021): Minor update
 
