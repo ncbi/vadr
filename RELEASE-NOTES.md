@@ -1,6 +1,6 @@
 # VADR 1.x release notes 
 
-### VADR 1.4.1 release (January 2022): Bug fix update
+### VADR 1.4.1 release (January 2022): Bug fix release
   * fixes bug that prevented reporting of some *dupregin* alerts (DUPLICATE_REGIONS) 
     previously reported in vadr 1.3 and earlier versions; only
     relevant when -s is used.
