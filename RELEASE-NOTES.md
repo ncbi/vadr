@@ -1,6 +1,18 @@
 # VADR 1.x release notes 
 
-### VADR 1.4 release (December 2021): Minor update
+### VADR 1.4.1 release (January 2022): Bug fix release
+  * fixes bug that prevented reporting of some *dupregin* alerts (DUPLICATE_REGIONS) 
+    previously reported in vadr 1.3 and earlier versions; only
+    relevant when -s is used.
+  * *nmiscftr* alert (TOO_MANY_MISC_FEATURES) now only reported if 
+    a sequence has >= 4 misc_features due to 'misc_not_failure' 
+    attributes in model info file. Previously a sequence with >=
+    3 misc_features caused a *nmiscftr* alert. (Default value of
+    `--nmiscftrthr` changed from 3 to 4.)
+
+---
+
+### VADR 1.4 release (December 2021): Major update
 
   `v-annotate.pl` changes summary:
   * frameshift detection and alerts have changed
@@ -101,7 +113,9 @@
       Relevant information in '.rpn' output file has
       been expanded.
 
-### VADR 1.3 release (July 2021): Minor update
+---
+
+### VADR 1.3 release (July 2021): Major update
 
   v-annotate.pl changes:
   * adds new alerts and new options for controlling alert
@@ -186,6 +200,8 @@
   * fixes bug that allows use of blastn .fa database in model
     directory created by v-build.pl 
 
+---
+
 ### VADR 1.2.1 release (June 2021): Bug fix update
 
   * The vadr-install.sh script was updated in two ways:
@@ -201,7 +217,9 @@
     is no need to upgrade to v1.2.1 from v1.2 if you already have v1.2
     installed.
 
-### VADR 1.2 release (April 2021): Minor update
+---
+
+### VADR 1.2 release (April 2021): Major update
 
   v-annotate.pl changes:
   * adds support for an alternative alignment program, glsearch from
@@ -241,7 +259,9 @@
   * updates versions of Bio-Easel dependency installed with vadr to
     Bio-Easel 0.14
 
-### VADR 1.1.3 release (Feb 2021): Minor update
+---
+
+### VADR 1.1.3 release (February 2021): Minor update
 
   v-annotate.pl changes:
   * adds support for allowing sequences to pass with some
@@ -274,7 +294,9 @@
     - Bio-Easel 0.13
     - sequip 0.08
 
-### VADR 1.1.2 release (Nov 2020): Minor update
+---
+
+### VADR 1.1.2 release (November 2020): Minor update
 
   * adds v-annotate.pl option --mlist to specify only a subset of
     models in the model info file be used
@@ -290,6 +312,8 @@
     #22)
   * fixes bug in install script that prevented building on some Ubuntu
     OS versions (github issue #24)
+
+---
 
 ### VADR 1.1.1 release (July 2020): Minor update
 
@@ -341,13 +365,19 @@
 * protein_id qualifiers now accession-only unless --forceid used.
 * --execname option added to v-{annotate,build,test}.pl
 
+---
+
 ### VADR 1.0.5 release (March 2020): Minor update
 * adds protein_id qualifiers to CDS and mat_peptide
   features in output feature tables.
 
+---
+
 ### VADR 1.0.4 release (March 2020): Bug fix release
 * fixes installation test (do-install-tests-{local,parallel}.sh),
   which failed in 1.0.3.
+
+---
 
 ### VADR 1.0.3 release (March 2020): Minor update
 * Adds frameshift detection capability with associated fsthicnf and
@@ -356,16 +386,22 @@
   strand and multisegment features.
 * More tests (entoy100a model).
 
+---
+
 ### VADR 1.0.2 release (January 2020): Bug fix release
 * Minor update: CDS features that are 5' truncated but not 3'
   truncated are now inspected for a valid stop codon (mutendcd alert
   reported if stop is invalid). Also, adds more informative error
   message for mutstart alerts.
 
+---
+
 ### VADR 1.0.1 release (December 2019): Minor update
 * Minor update: adds `--nomisc` option to `v-annotate.pl` for
   preventing conversion of some types of features to `misc_feature` if
   they have fatal alerts. 
+
+---
 
 ### VADR 1.0 release (November 2019): First major release
 * The version used in the [VADR manuscript currently in press at BMC
