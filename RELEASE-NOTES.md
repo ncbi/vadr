@@ -12,7 +12,7 @@
 
 ---
 
-### VADR 1.4 release (December 2021): Minor update
+### VADR 1.4 release (December 2021): Major update
 
   `v-annotate.pl` changes summary:
   * frameshift detection and alerts have changed
@@ -115,7 +115,7 @@
 
 ---
 
-### VADR 1.3 release (July 2021): Minor update
+### VADR 1.3 release (July 2021): Major update
 
   v-annotate.pl changes:
   * adds new alerts and new options for controlling alert
@@ -219,7 +219,7 @@
 
 ---
 
-### VADR 1.2 release (April 2021): Minor update
+### VADR 1.2 release (April 2021): Major update
 
   v-annotate.pl changes:
   * adds support for an alternative alignment program, glsearch from
