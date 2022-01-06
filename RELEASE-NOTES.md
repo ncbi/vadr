@@ -6,8 +6,8 @@
     relevant when -s is used.
   * nmiscftr alert (TOO_MANY_MISC_FEATURES) now only reported if 
     a sequence has >= 4 misc_features due to 'misc_not_failure' 
-    attributes in model info file. Previously a sequence with 
-    >= 3 misc_features caused a nmiscftr alert. (Default value of
+    attributes in model info file. Previously a sequence with >=
+    3 misc_features caused a nmiscftr alert. (Default value of
     `--nmiscftrthr` change from 3 to 4.)
 
 ### VADR 1.4 release (December 2021): Minor update
