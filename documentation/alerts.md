@@ -19,8 +19,8 @@
   * [Low similarity at the end of a sequence of a feature](#example-lowsim3)
   * [Low similarity internal to a sequence of a feature](#example-lowsimi)
   * [Deleted feature](#example-delftr)
-  * [Duplicate regions](#example-dupreg)
-  * [Discontinuous similarity](#example-dupreg)
+  * [Duplicate regions](#example-dupregin)
+  * [Discontinuous similarity](#example-discontn)
   * [Indefinite strand](#example-indfstrn)
   * [Low coverage](#example-lowcovrg)
 * [Posterior probability annotation in VADR output Stockholm alignments](#pp)
@@ -1241,7 +1241,7 @@ TOY50-LSI1         -AAATCACCGATGGTGATCGCTTTACCaaagcagtacaggcacatgacaaagcagtacagg
   of the predicted CDS `protein one` but are not similar to the reference
   model. These 76 nucleotides align to reference model positions 27 to 28 (`mdl coords:27..28:+`),
   but are all actually inserted after those two reference positions as marked with 
-  'v' characters in the alignment shown above.
+  `v` characters in the alignment shown above.
 
   A similar `lowsimin` alert exists for non-coding (non-CDS and
   non-mature peptide) features, but no example is shown here.  Having
@@ -1381,7 +1381,7 @@ TOY50-DR1         -AAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCataccgatggtgat
   In the alignment of the sequence above sequence positions 50 to 86
   are marked marked by `v` characters at the top of the alignment,
   which match identically to positions 7 to 43 in the reference model,
-  marked by '^' at the bottom of the alignment.
+  marked by `^` at the bottom of the alignment.
 
 ---
 ## <a name="example-discontn"></a>Example of discontinuous similarity
@@ -1445,7 +1445,7 @@ TOY50-DS1         ------------------------ACCATAAATGAGCATTCTACGTGCAtaaatcaccgatg
   In the alignment of the sequence above, sequence positions 27 to 49
   are marked marked by `v` characters at the top of the alignment.
   These sequence positions match identically to positions 2 to 24 in
-  the reference model, marked by '^' at the bottom of the alignment,
+  the reference model, marked by `^` at the bottom of the alignment,
   showing why the second hit is to the end of the sequence and the
   beginning of the model. The first hit pertains to the the beginning
   of the sequence which matches well to the end of the model (the
@@ -1518,7 +1518,7 @@ TOY50-IS1         -AAATCACCGATGGTGATCGCTTTAATGCAcgtagAATGCTCATTTATGG-----
   In the alignment of the sequence above, sequence positions 25 to
   49 are marked marked by `v` characters at the top of the alignment,
   *after reverse complementing* these match identically to positions 26
-  to 50 in the reference model, marked by '^' at the bottom of the
+  to 50 in the reference model, marked by `^` at the bottom of the
   alignment.
 
   The `indftrsn` alert is detected in the coverage determination stage

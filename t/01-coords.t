@@ -1,6 +1,6 @@
 use strict;
 use warnings FATAL => 'all';
-use Test::More tests => 460;
+use Test::More tests => 478;
 
 BEGIN {
     use_ok( 'vadr' )      || print "Bail out!\n";
@@ -24,6 +24,9 @@ my @abs_coords_A  = ();
 my @rel_coords_A = ();
 my @rel_pt_coords_A  = ();
 my ($rel_length, $cur_val_length, $cur_rel_coords, $cur_rel_coord);
+my @full_coords_A   = ();
+my @subseq_coords_A = ();
+my ($fract_start, $fract_stop, $ret_start, $ret_stop, $ret_strand);
 
 ###########################################
 # vdr_CoordsReverseComplement() tests
@@ -933,4 +936,93 @@ for($i = 0; $i < $ntests; $i++) {
                                           $min_sgm_len_A[$i]);
   $cur_val = vdr_CoordsFromStartStopStrandArrays(\@seq_start_A, \@seq_stop_A, \@seq_strand_A, undef);
   is($cur_val, $exp_val_A[$i], "prune_seed_given_minimum_length_segment(): $desc_A[$i]");
+}
+
+#############################################
+# vdr_CoordsSegmentActualToFractional() and 
+# vdr_CoordsSegmentFractionalToActual() tests
+#############################################
+@desc_A          = ();
+@full_coords_A   = ();
+@subseq_coords_A = ();
+@exp_val_A       = ();
+
+push(@desc_A,          "full (+), subseq (+) 1");
+push(@full_coords_A,   "1..100:+");
+push(@subseq_coords_A, "11..90:+");    
+push(@exp_val_A,       "0.110/0.900");
+
+push(@desc_A,          "full (+), subseq (+) 2");
+push(@full_coords_A,   "11..90:+");
+push(@subseq_coords_A, "20..60:+");    
+push(@exp_val_A,       "0.125/0.625");
+
+push(@desc_A,          "full (+), subseq (+) 3");
+push(@full_coords_A,   "11..90:+");
+push(@subseq_coords_A, "20..91:+");    
+push(@exp_val_A,       "undef");
+
+push(@desc_A,          "full (+), subseq (+) 4");
+push(@full_coords_A,   "11..90:+");
+push(@subseq_coords_A, "10..90:+");    
+push(@exp_val_A,       "undef");
+
+push(@desc_A,          "full (+), subseq (+) 5");
+push(@full_coords_A,   "11..110:+");
+push(@subseq_coords_A, "11..110:+");    
+push(@exp_val_A,       "0.010/1.000");
+
+push(@desc_A,          "full (-), subseq (-) 1");
+push(@full_coords_A,   "100..1:-");
+push(@subseq_coords_A, "90..11:-");    
+push(@exp_val_A,       "0.110/0.900");
+
+push(@desc_A,          "full (-), subseq (-) 2");
+push(@full_coords_A,   "90..11:-");
+push(@subseq_coords_A, "81..41:-");    
+push(@exp_val_A,       "0.125/0.625");
+
+push(@desc_A,          "full (-), subseq (-) 3");
+push(@full_coords_A,   "90..11:-");
+push(@subseq_coords_A, "91..20:-");    
+push(@exp_val_A,       "undef");
+
+push(@desc_A,          "full (-), subseq (-) 4");
+push(@full_coords_A,   "90..11:-");
+push(@subseq_coords_A, "90..10:-");    
+push(@exp_val_A,       "undef");
+
+push(@desc_A,          "full (-), subseq (-) 5");
+push(@full_coords_A,   "110..11:-");
+push(@subseq_coords_A, "110..11:-");    
+push(@exp_val_A,       "0.010/1.000");
+
+push(@desc_A,          "full (+), subseq (-) 1");
+push(@full_coords_A,   "1..100:+");
+push(@subseq_coords_A, "90..11:-");    
+push(@exp_val_A,       "undef");
+
+push(@desc_A,          "full (-), subseq (+) 1");
+push(@full_coords_A,   "100..1:-");
+push(@subseq_coords_A, "11..90:+");    
+push(@exp_val_A,       "undef");
+
+$ntests = scalar(@desc_A);
+for($i = 0; $i < $ntests; $i++) { 
+  # vdr_CoordsSegmentActualToFractional
+  ($fract_start, $fract_stop) = vdr_CoordsSegmentActualToFractional($full_coords_A[$i], $subseq_coords_A[$i], undef);
+  if((defined $fract_start) && (defined $fract_stop)) { 
+    $cur_val = sprintf("%.3f/%.3f", $fract_start, $fract_stop);
+  }
+  else { 
+    $cur_val = "undef";
+  }
+  is($cur_val, $exp_val_A[$i], "vdr_CoordsSegmentActualToFractional(): $desc_A[$i]");
+
+  if($cur_val ne "undef") { 
+    # vdr_CoordsSegmentFractionalToActual
+    ($ret_start, $ret_stop, $ret_strand) = vdr_CoordsSegmentFractionalToActual($full_coords_A[$i], $fract_start, $fract_stop, undef);
+    $cur_val  = vdr_CoordsSegmentCreate($ret_start, $ret_stop, $ret_strand, undef);
+    is($cur_val, $subseq_coords_A[$i], "vdr_CoordsSegmentFractionalToActual(): $desc_A[$i]");
+  }
 }
