@@ -1,114 +1,3 @@
->Feature ENTOY100A-fs1
-5	23	ncRNA
-			product	enRNA
-			ncRNA_class	lncRNA
-			note	ncRNA 1
-8	34	gene
-			gene	one
-10	20	stem_loop
-			note	stem-loop 1
-11	32	misc_feature
-			note	similar to protein one
-11	23	misc_feature
-			note	similar to protein one mp1
-24	29	misc_feature
-			note	similar to protein one mp2
-33	48	CDS
-48	65
-67	74
-			product	protein two
-			protein_id	ENTOY100A-fs1_1
-68	80	CDS
-86	96
-			product	protein three
-			protein_id	ENTOY100A-fs1_2
-68	76	mat_peptide
-			product	protein three mp1
-			protein_id	ENTOY100A-fs1_2
-77	80	mat_peptide
-86	93
-			product	protein three mp2
-			protein_id	ENTOY100A-fs1_2
-99	85	CDS
-			product	protein four
-			protein_id	ENTOY100A-fs1_3
-
-Additional note(s) to submitter:
-ERROR: TOO_MANY_MISC_FEATURES: (*sequence*) too many features are reported as misc_features [3>=3]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
->Feature ENTOY100A-fs2
-5	27	ncRNA
-			product	enRNA
-			ncRNA_class	lncRNA
-			note	ncRNA 1
-8	38	gene
-			gene	one
-10	24	stem_loop
-			note	stem-loop 1
-11	36	misc_feature
-			note	similar to protein one
-11	27	misc_feature
-			note	similar to protein one mp1
-28	33	misc_feature
-			note	similar to protein one mp2
-37	52	CDS
-52	69
-71	78
-			product	protein two
-			protein_id	ENTOY100A-fs2_1
-72	84	CDS
-90	100
-			product	protein three
-			protein_id	ENTOY100A-fs2_2
-72	80	mat_peptide
-			product	protein three mp1
-			protein_id	ENTOY100A-fs2_2
-81	84	mat_peptide
-90	97
-			product	protein three mp2
-			protein_id	ENTOY100A-fs2_2
-103	89	CDS
-			product	protein four
-			protein_id	ENTOY100A-fs2_3
-
-Additional note(s) to submitter:
-ERROR: TOO_MANY_MISC_FEATURES: (*sequence*) too many features are reported as misc_features [3>=3]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
->Feature ENTOY100A-fs3
-5	25	ncRNA
-			product	enRNA
-			ncRNA_class	lncRNA
-			note	ncRNA 1
-8	36	gene
-			gene	one
-10	20	stem_loop
-			note	stem-loop 1
-11	34	misc_feature
-			note	similar to protein one
-11	25	misc_feature
-			note	similar to protein one mp1
-26	31	misc_feature
-			note	similar to protein one mp2
-35	50	CDS
-50	67
-69	76
-			product	protein two
-			protein_id	ENTOY100A-fs3_1
-70	82	CDS
-88	98
-			product	protein three
-			protein_id	ENTOY100A-fs3_2
-70	78	mat_peptide
-			product	protein three mp1
-			protein_id	ENTOY100A-fs3_2
-79	82	mat_peptide
-88	95
-			product	protein three mp2
-			protein_id	ENTOY100A-fs3_2
-101	87	CDS
-			product	protein four
-			protein_id	ENTOY100A-fs3_3
-
-Additional note(s) to submitter:
-ERROR: TOO_MANY_MISC_FEATURES: (*sequence*) too many features are reported as misc_features [3>=3]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A-fs4
 5	28	misc_feature
 			note	similar to enRNA
@@ -143,7 +32,7 @@ ERROR: TOO_MANY_MISC_FEATURES: (*sequence*) too many features are reported as mi
 			protein_id	ENTOY100A-fs4_3
 
 Additional note(s) to submitter:
-ERROR: TOO_MANY_MISC_FEATURES: (*sequence*) too many features are reported as misc_features [4>=3]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+ERROR: TOO_MANY_MISC_FEATURES: (*sequence*) too many features are reported as misc_features [4>=4]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A-fs5
 5	22	misc_feature
 			note	similar to enRNA
@@ -178,7 +67,7 @@ ERROR: TOO_MANY_MISC_FEATURES: (*sequence*) too many features are reported as mi
 			protein_id	ENTOY100A-fs5_3
 
 Additional note(s) to submitter:
-ERROR: TOO_MANY_MISC_FEATURES: (*sequence*) too many features are reported as misc_features [4>=3]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+ERROR: TOO_MANY_MISC_FEATURES: (*sequence*) too many features are reported as misc_features [4>=4]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A-fs6
 5	25	misc_feature
 			note	similar to enRNA
@@ -213,81 +102,7 @@ ERROR: TOO_MANY_MISC_FEATURES: (*sequence*) too many features are reported as mi
 			protein_id	ENTOY100A-fs6_3
 
 Additional note(s) to submitter:
-ERROR: TOO_MANY_MISC_FEATURES: (*sequence*) too many features are reported as misc_features [4>=3]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
->Feature ENTOY100A-fs7
-5	21	ncRNA
-			product	enRNA
-			ncRNA_class	lncRNA
-			note	ncRNA 1
-8	32	gene
-			gene	one
-10	18	stem_loop
-			note	stem-loop 1
-11	30	misc_feature
-			note	similar to protein one
-11	21	misc_feature
-			note	similar to protein one mp1
-22	27	misc_feature
-			note	similar to protein one mp2
-31	46	CDS
-46	63
-65	72
-			product	protein two
-			protein_id	ENTOY100A-fs7_1
-66	78	CDS
-84	94
-			product	protein three
-			protein_id	ENTOY100A-fs7_2
-66	74	mat_peptide
-			product	protein three mp1
-			protein_id	ENTOY100A-fs7_2
-75	78	mat_peptide
-84	91
-			product	protein three mp2
-			protein_id	ENTOY100A-fs7_2
-97	83	CDS
-			product	protein four
-			protein_id	ENTOY100A-fs7_3
-
-Additional note(s) to submitter:
-ERROR: TOO_MANY_MISC_FEATURES: (*sequence*) too many features are reported as misc_features [3>=3]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
->Feature ENTOY100A-fs8
-5	20	ncRNA
-			product	enRNA
-			ncRNA_class	lncRNA
-			note	ncRNA 1
-8	31	gene
-			gene	one
-10	17	stem_loop
-			note	stem-loop 1
-11	29	misc_feature
-			note	similar to protein one
-11	20	misc_feature
-			note	similar to protein one mp1
-21	26	misc_feature
-			note	similar to protein one mp2
-30	45	CDS
-45	62
-64	71
-			product	protein two
-			protein_id	ENTOY100A-fs8_1
-65	77	CDS
-83	93
-			product	protein three
-			protein_id	ENTOY100A-fs8_2
-65	73	mat_peptide
-			product	protein three mp1
-			protein_id	ENTOY100A-fs8_2
-74	77	mat_peptide
-83	90
-			product	protein three mp2
-			protein_id	ENTOY100A-fs8_2
-96	82	CDS
-			product	protein four
-			protein_id	ENTOY100A-fs8_3
-
-Additional note(s) to submitter:
-ERROR: TOO_MANY_MISC_FEATURES: (*sequence*) too many features are reported as misc_features [3>=3]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+ERROR: TOO_MANY_MISC_FEATURES: (*sequence*) too many features are reported as misc_features [4>=4]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A-fs9
 5	19	misc_feature
 			note	similar to enRNA
@@ -322,7 +137,7 @@ ERROR: TOO_MANY_MISC_FEATURES: (*sequence*) too many features are reported as mi
 			protein_id	ENTOY100A-fs9_3
 
 Additional note(s) to submitter:
-ERROR: TOO_MANY_MISC_FEATURES: (*sequence*) too many features are reported as misc_features [4>=3]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+ERROR: TOO_MANY_MISC_FEATURES: (*sequence*) too many features are reported as misc_features [4>=4]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A-fs10
 5	19	misc_feature
 			note	similar to enRNA
@@ -357,7 +172,7 @@ ERROR: TOO_MANY_MISC_FEATURES: (*sequence*) too many features are reported as mi
 			protein_id	ENTOY100A-fs10_3
 
 Additional note(s) to submitter:
-ERROR: TOO_MANY_MISC_FEATURES: (*sequence*) too many features are reported as misc_features [4>=3]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+ERROR: TOO_MANY_MISC_FEATURES: (*sequence*) too many features are reported as misc_features [4>=4]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A-fs11
 5	22	misc_feature
 			note	similar to enRNA
@@ -392,41 +207,4 @@ ERROR: TOO_MANY_MISC_FEATURES: (*sequence*) too many features are reported as mi
 			protein_id	ENTOY100A-fs11_3
 
 Additional note(s) to submitter:
-ERROR: TOO_MANY_MISC_FEATURES: (*sequence*) too many features are reported as misc_features [4>=3]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
->Feature ENTOY100A-fs12
-5	22	ncRNA
-			product	enRNA
-			ncRNA_class	lncRNA
-			note	ncRNA 1
-8	33	gene
-			gene	one
-10	17	stem_loop
-			note	stem-loop 1
-11	31	misc_feature
-			note	similar to protein one
-11	22	misc_feature
-			note	similar to protein one mp1
-23	28	misc_feature
-			note	similar to protein one mp2
-32	47	CDS
-47	64
-66	73
-			product	protein two
-			protein_id	ENTOY100A-fs12_1
-67	79	CDS
-85	95
-			product	protein three
-			protein_id	ENTOY100A-fs12_2
-67	75	mat_peptide
-			product	protein three mp1
-			protein_id	ENTOY100A-fs12_2
-76	79	mat_peptide
-85	92
-			product	protein three mp2
-			protein_id	ENTOY100A-fs12_2
-98	84	CDS
-			product	protein four
-			protein_id	ENTOY100A-fs12_3
-
-Additional note(s) to submitter:
-ERROR: TOO_MANY_MISC_FEATURES: (*sequence*) too many features are reported as misc_features [3>=3]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+ERROR: TOO_MANY_MISC_FEATURES: (*sequence*) too many features are reported as misc_features [4>=4]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;

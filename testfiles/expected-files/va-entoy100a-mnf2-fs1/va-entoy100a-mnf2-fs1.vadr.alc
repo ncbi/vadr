@@ -1,7 +1,7 @@
 #     alert     causes   short                               per    num   num  long       
 #idx  code      failure  description                        type  cases  seqs  description
 #---  --------  -------  -----------------------------  --------  -----  ----  -----------
-1     nmiscftr  yes      TOO_MANY_MISC_FEATURES         sequence     12    12  too many features are reported as misc_features
+1     nmiscftr  yes      TOO_MANY_MISC_FEATURES         sequence      6     6  too many features are reported as misc_features
 2     mutstart  yes*     MUTATION_AT_START               feature      3     3  expected start codon could not be identified
 3     mutendns  yes*     MUTATION_AT_END                 feature      2     2  expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
 4     unexleng  yes*     UNEXPECTED_LENGTH               feature      8     4  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3
