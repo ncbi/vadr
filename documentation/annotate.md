@@ -1129,7 +1129,7 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*biasdseq*](#biasdseq1)  | BIASED_SEQUENCE                 | [`--biasfrac`](#options-alerts-biasfrac) | - | - <a name="biasdseq2"></a> | 
 | [*unjoinbl*](#unjoinbl1)  | UNJOINABLE_SUBSEQ_ALIGNMENTS    | none | - | <a name="unjoinbl12"></a> |
 | [*deletina*](#deletina1)  | DELETION_OF_FEATURE             | [`--ignore_isdel`](#options-alerts-ignore) | all | - <a name="deletina2"></a> | 
-| [*ambgntrp*](#ambgntrp1)  | N_RICH_DELETION_OF_FEATURE      | [`--r_diffno`, `--r_diffmaxdel`, `--r_diffmaxins`, `--r_diffminnonn`, `--r_diffminfract`](#options-replace) | all | - <a name="ambgntrp2"></a> | 
+| [*ambgntrp*](#ambgntrp1)  | N_RICH_REGION_NOT_REPLACED      | [`--r_diffno`, `--r_diffmaxdel`, `--r_diffmaxins`, `--r_diffminnonn`, `--r_diffminfract`](#options-replace) | - | - <a name="ambgntrp2"></a> | 
 | [*fstlocft*](#fstlocft1)  | POSSIBLE_FRAMESHIFT_LOW_CONF    | [`--fstlothr`, `--fstminntt`](#options-alerts-fstminntt) | CDS | - <a name="fstlocft2"></a> |
 | [*fstlocfi*](#fstlocfi1)  | POSSIBLE_FRAMESHIFT_LOW_CONF    | [`--fstlothr`, `--fstminnti`](#options-alerts-fstminnti) | CDS | - <a name="fstlocfi2"></a> |
 | [*indf5lcc*](#indf5lcc1)  | INDEFINITE_ANNOTATION_START     | [`--indefann`, `--indefann_mp`](#options-alerts-indefann) | CDS and any gene or mat_peptide with identical start coordinate to a CDS | - <a name="indf5lcc2"></a> | 
