@@ -361,6 +361,13 @@ User's Guide manual page for `cmbuild` (section 8 of http://eddylab.org/infernal
 Follow these steps to build a VADR model library:
 
 1. Run `v-build.pl` multiple (`N>1`) times for different accessions.
+If your model is larger than 30Kb, or you know that you will use the
+`-s` and `--glsearch` options with `v-annotate.pl` as is recommended
+for coronavirus annotation
+(https://github.com/ncbi/vadr/wiki/Coronavirus-annotation), you should
+also use the `--skipbuild` option with `v-build.pl`. If you do, no CM
+files will be created so you can skip steps 4 and 8 below and ignore
+any other steps involving a `.cm` file.
 
 2. Create a new directory call it `my-vadr-model-dir`, for example.
 
@@ -388,13 +395,13 @@ $VADRBLASTDIR/makeblastdb -dbtype nucl -in my-vadr-model-dir/my.vadr.fa
 `.vadr.protein.fa.p{hr,in,sq,db,ot,tf,to}`) from all `N` runs into the same directory, call it `my-vadr-blastdb-dir`
 for example.
 
-8. Run `cmpress` on the `my.vadr.cm` file created in step 3 like this:
+8. Run `cmpress` on the `my.vadr.cm` file created in step 4 like this:
 
 ```
 $VADRINFERNALDIR/cmpress my-vadr-model-dir/my.vadr.cm
 ```
 
-8. Run `hmmpress` on the `my.vadr.hmm` file created in step 3 like this:
+9. Run `hmmpress` on the `my.vadr.hmm` file created in step 5 like this:
 
 ```
 $VADRHMMERDIR/hmmpress my-vadr-model-dir/my.vadr.hmm
@@ -417,6 +424,8 @@ v-annotate.pl -m my-vadr-model-dir/my.vadr.cm -a my-vadr-model-dir/my.vadr.hmm -
 my-vadr-model-dir/my.vadr.fa -x my-vadr-model-dir <fasta-file> <output directory>
 ```
 
+***If you used `--skipbuild` with `v-build.pl`, you will also have
+to use the `-s` and `--glsearch` options with `v-annotate.pl`.***
 
 If you ever move `.cm`, `.hmm`, or BLAST `.fa` files into new
 directories, make sure you also move the corresponding index files 
