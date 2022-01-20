@@ -1864,7 +1864,10 @@ if($do_pv_blastx) {
                              $ftr_info_blastx_HR, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
         
         add_protein_validation_alerts($mdl_name, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
-                                      \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
+                                      \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, 
+                                      ($do_replace_ns) ? \%rpn_output_HH : undef, 
+                                      \%opt_HH, \%{$ofile_info_HH{"FH"}});
+
         ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
       }
     }
@@ -1891,7 +1894,9 @@ if($do_pv_hmmer) {
         parse_hmmer_domtblout($ofile_info_HH{"fullpath"}{($mdl_name . ".domtblout")}, 0, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
                                   \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
         add_protein_validation_alerts($mdl_name, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
-                                      \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
+                                      \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, 
+                                      ($do_replace_ns) ? \%rpn_output_HH : undef, 
+                                      \%opt_HH, \%{$ofile_info_HH{"FH"}});
         ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
         push(@to_remove_A, 
              ($ofile_info_HH{"fullpath"}{$mdl_name . ".pv.hmmer.esl_translate.aa.fa"}, 
@@ -6536,7 +6541,7 @@ sub make_protein_validation_fasta_file {
 #                         too long of a delete (only possibly reported if BLASTX used)
 #             "cdsstopp": adds this alert if protein validation of a CDS prediction fails due to
 #                         an in-frame stop codon in the protein alignment (only possibly reported
-#                         if blastx used
+#                         if blastx used)
 #
 # Arguments: 
 #  $mdl_name:               name of model we are adding alerts for
@@ -6546,6 +6551,7 @@ sub make_protein_validation_fasta_file {
 #  $alt_info_HHR:           REF to array of hashes with information on the alerts, PRE-FILLED
 #  $ftr_results_HAHR:       REF to feature results HAH, PRE-FILLED
 #  $alt_ftr_instances_HHHR: REF to alert instances HAH, ADDED TO HERE
+#  $rpn_output_HHR:         REF to rpn output data HH, PRE-FILLED, will be undef if -r not used
 #  $opt_HHR:                REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $FH_HR:                  REF to hash of file handles
 #
@@ -6554,10 +6560,11 @@ sub make_protein_validation_fasta_file {
 ################################################################# 
 sub add_protein_validation_alerts { 
   my $sub_name = "add_protein_validation_alerts";
-  my $nargs_expected = 9;
+  my $nargs_expected = 10;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($mdl_name, $seq_name_AR, $seq_len_HR, $ftr_info_AHR, $alt_info_HHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, $opt_HHR, $FH_HR) = @_;
+  my ($mdl_name, $seq_name_AR, $seq_len_HR, $ftr_info_AHR, $alt_info_HHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, 
+      $rpn_output_HHR, $opt_HHR, $FH_HR) = @_;
   
   my $do_pv_hmmer = opt_Get("--pv_hmmer", $opt_HHR) ? 1 : 0;
 
@@ -6602,6 +6609,7 @@ sub add_protein_validation_alerts {
   for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     # for each feature
     $seq_name = $seq_name_AR->[$seq_idx];
+    my $rpn_seq_coords = undef; # only defined if we need to report a cdsstopp for this sequence
     if($seq_len_HR->{$seq_name} >= $minpvlen) { 
       for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
         if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
@@ -6907,7 +6915,35 @@ sub add_protein_validation_alerts {
                     elsif($beginning_of_detail ne "VADRNULL") { 
                       $cdsstopp_detail = "mdl-coords_wrt:" . $cdsstopp_detail;
                     }
-                    $alt_str_H{"cdsstopp"} = "seq:" . $cdsstopp_scoords . ";mdl:" . $cdsstopp_mcoords . ";" . $cdsstopp_detail;
+                    # check if we exclude this alert because the early stop overlaps with a region
+                    # replaced during the N replacement stage (-r option)
+                    my $found_overlap = 0; # set to 1 if we find an overlap
+                    if(defined $rpn_output_HHR) { 
+                      if(! defined $rpn_seq_coords) { 
+                        $rpn_seq_coords = replace_pseudo_coords_to_coords($rpn_output_HHR->{$seq_name}{"pseudo_coords"}, 0, $FH_HR);
+                      }
+                      if($rpn_seq_coords ne "") { 
+                        # rpn coords are *always* + strand, so convert stop codon coords to + too, 
+                        # we could have this in multiple segments, rare but possible
+                        my @cdsstopp_sstart_A = ();
+                        my @cdsstopp_sstop_A  = ();
+                        vdr_FeatureStartStopStrandArrays($cdsstopp_scoords, \@cdsstopp_sstart_A, \@cdsstopp_sstop_A, undef, $FH_HR);
+                        my @rpn_seq_sgm_A = split(",", $rpn_seq_coords);
+                        foreach my $rpn_seq_sgm (@rpn_seq_sgm_A) { 
+                          for(my $z = 0; $z < scalar(@cdsstopp_sstart_A); $z++) { 
+                            my ($cdsstopp_noverlap, undef) = vdr_CoordsSegmentOverlap($rpn_seq_sgm, vdr_CoordsSegmentCreate($cdsstopp_sstart_A[$z], $cdsstopp_sstop_A[$z], "+", $FH_HR), $FH_HR);
+                            if($cdsstopp_noverlap != 0) { 
+                              printf("\n\nHEYA! found overlap between $rpn_seq_sgm, $cdsstopp_sstart_A[$z]..$cdsstopp_sstop_A[$z]\n\n");
+                              $found_overlap = 1;
+                            }
+                          }
+                        }
+                      }
+                    }
+                    printf("found_overlap: $found_overlap\n");
+                    if(! $found_overlap) { # if we found an overlap with a replaced region, don't report this alert
+                      $alt_str_H{"cdsstopp"} = "seq:" . $cdsstopp_scoords . ";mdl:" . $cdsstopp_mcoords . ";" . $cdsstopp_detail;
+                    }
                   }
                 }
               }
@@ -9276,7 +9312,7 @@ sub output_tabular {
     my $rpn_ngaps_rp_part  = (($do_rpn) && (defined $rpn_output_HR->{"ngaps_rp_part"}))  ? $rpn_output_HR->{"ngaps_rp_part"}  : "-";
     my $rpn_nnt_rp_full    = (($do_rpn) && (defined $rpn_output_HR->{"nnt_rp_full"}))    ? $rpn_output_HR->{"nnt_rp_full"}    : "-";
     my $rpn_nnt_rp_part    = (($do_rpn) && (defined $rpn_output_HR->{"nnt_rp_part"}))    ? $rpn_output_HR->{"nnt_rp_part"}    : "-";
-    my $rpn_coords         = (($do_rpn) && (defined $rpn_output_HR->{"coords"}) && ($rpn_output_HR->{"coords"} ne "")) ? $rpn_output_HR->{"coords"} : "-";
+    my $rpn_coords         = (($do_rpn) && (defined $rpn_output_HR->{"pseudo_coords"}) && ($rpn_output_HR->{"pseudo_coords"} ne "")) ? $rpn_output_HR->{"pseudo_coords"} : "-";
 
     # deal with --msub and model subs, we need this ONLY for mdl_{pass,fail}_ct_H and for ftr_info_HAHR in check_if_sequence_passes
     my $tmp_mdl = $seq_mdl1;
@@ -11591,7 +11627,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
     $rpn_output_HHR->{$seq_name}{"ngaps_rp_part"}  = 0;  # number of regions in which not all Ns are replaced
     $rpn_output_HHR->{$seq_name}{"nnt_rp_full"}    = 0;  # number of N nts replaced in regions in which all Ns are replaced
     $rpn_output_HHR->{$seq_name}{"nnt_rp_part"}    = 0;  # number of N nts replaced in regions in which all Ns are replaced
-    $rpn_output_HHR->{$seq_name}{"coords"}         = ""; # pseudo-coordinate string describing number of Ns replaced per region
+    $rpn_output_HHR->{$seq_name}{"pseudo_coords"}  = ""; # pseudo-coordinate string describing number of Ns replaced per region
 
     # get start and stop arrays for all seq and mdl coords (remember all strands are +)
     my $ncoords = scalar(@cur_seq_tblout_coords_AH);
@@ -11838,10 +11874,10 @@ sub parse_cdt_tblout_file_and_replace_ns {
             }
           }
           # update coords field
-          $rpn_output_HHR->{$seq_name}{"coords"} .= 
-              helper_replace_coords_string($missing_seq_start_A[$i], $missing_seq_stop_A[$i], 
-                                           $missing_mdl_start_A[$i], $missing_mdl_stop_A[$i], 
-                                           $count_n, $region_non_n_match, $region_non_n_mismatch, $flush_direction, $replaced_flag);
+          $rpn_output_HHR->{$seq_name}{"pseudo_coords"} .= 
+              helper_replace_pseudo_coords_string($missing_seq_start_A[$i], $missing_seq_stop_A[$i], 
+                                                  $missing_mdl_start_A[$i], $missing_mdl_stop_A[$i], 
+                                                  $count_n, $region_non_n_match, $region_non_n_mismatch, $flush_direction, $replaced_flag);
         } # end of 'if($missing_seq_len >= $r_minlen_opt)'
       } # end of 'for($i = 0; $i < nmissing; $i++);'
     } # end of 'if($nmissing > 0)'
@@ -11969,7 +12005,7 @@ sub helper_replace_ns_in_region  {
 }
 
 #################################################################
-# Subroutine: helper_replace_coords_string()
+# Subroutine: helper_replace_pseudo_coords_string()
 # Incept:     EPN, Sat Dec 18 08:31:23 2021
 #
 # Purpose:    Format the "coords" string for \%{$rpn_output_HHR}
@@ -11989,8 +12025,8 @@ sub helper_replace_ns_in_region  {
 # Returns: substring to append to $rpn_output_HHR->{$seq_name}{"coords"}
 #
 #################################################################
-sub helper_replace_coords_string { 
-  my $sub_name = "helper_replace_coord_string()";
+sub helper_replace_pseudo_coords_string { 
+  my $sub_name = "helper_replace_pseudo_coords_string()";
   my $nargs_exp = 9;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
@@ -12030,6 +12066,51 @@ sub helper_replace_coords_string {
   }
 
   return $ret_str;
+}
+
+#################################################################
+# Subroutine: replace_pseudo_coords_to_coords()
+# Incept:     EPN, Thu Jan 20 13:49:23 2022
+#
+# Purpose:    Given a .rpn "pseudo_coords" string from \%{$rpn_output_HHR}
+#             return a valid VADR coords string. 
+#
+# Args:
+#  $pseudo_coords:     the rpn_output_HHR->{}{"pseudo_coords"} string 
+#  $only_diff:         only keep segments for which diff is non-zero (not "D:0")
+#  $FH_HR:             REF to hash of file handles
+#
+# Returns: coords string derived from $pseudo_coords
+#
+#################################################################
+sub replace_pseudo_coords_to_coords { 
+  my $sub_name = "replace_pseudo_coords_to_coords()";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($pseudo_coords, $only_diff, $FH_HR) = @_;
+
+  my $ret_coords = "";
+  if($pseudo_coords eq "") { 
+    return $ret_coords;
+  }
+
+  my @pseudo_tok_A = split(";", $pseudo_coords); 
+  foreach my $pseudo_tok (@pseudo_tok_A) { 
+    if($pseudo_tok =~ /^\[S\:(\d+)\.\.(\d+)\,M\:\d+\.\.\d+,D\:(\-?\d+\!?),N\:\d+\/\d+.+\]$/) { 
+      my($sstart, $sstop, $diff) = ($1, $2, $3);
+      if((! $only_diff) || ($diff ne "0")) { 
+        if($ret_coords ne "") { $ret_coords .= ","; }
+        $ret_coords .= vdr_CoordsSegmentCreate($sstart, $sstop, "+", $FH_HR);
+      }
+    }
+    else { 
+      ofile_FAIL("ERROR in $sub_name, unable to parse pseudo_coords token $pseudo_tok", 1, $FH_HR);
+    }
+  }
+
+  printf("in $sub_name, input pseudo_coords: $pseudo_coords, returning $ret_coords\n");
+  return $ret_coords;
 }
 
 
