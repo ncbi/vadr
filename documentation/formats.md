@@ -742,8 +742,9 @@ for naming subsequences in some output fasta files.
 VADR coordinate strings are made up of one or more tokens with format
 `<d1>..<d2>:<s>`, where `<d1>` is the start position, `<d2>` is the
 end position, and `<s>` is the strand, either `+` or `-`, or rarely
-`?` if unknown/uncertain. Tokens are separated by a `,`. Each token is
-defines what VADR code and output refers to as a `segment`.
+`?` if unknown/uncertain. Tokens are separated by a `,`. Each token
+defines what is referred to as a single `segment` in VADR code and
+output.
 
 Here are some examples:
 
