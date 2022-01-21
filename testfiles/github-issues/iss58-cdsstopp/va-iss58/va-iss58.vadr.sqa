@@ -1,0 +1,11 @@
+#seq  seq                                seq             best                  sub                             seq   
+#idx  name                               len  p/f   ant  model      grp        grp  nfa  nfn  nf5  nf3  nfalt  alerts
+#---  --------------------------------  ----  ----  ---  ---------  ---------  ---  ---  ---  ---  ---  -----  ------
+1     JX439803.1-with-Ns                1336  FAIL  yes  NC_029646  Norovirus  GII    5    7    3    2      4  -     
+2     JX439803.1-with-Ns-cdsstopp1      1336  FAIL  yes  NC_029646  Norovirus  GII    5    7    3    2      6  -     
+3     JX439803.1-with-Ns-cdsstopp2      1336  FAIL  yes  NC_029646  Norovirus  GII    5    7    3    2      6  -     
+4     JX439803.1-with-Ns-cdsstopp3      1336  FAIL  yes  NC_029646  Norovirus  GII    5    7    3    2      7  -     
+5     JX439803.1-3shorter-Ns-cdsstopp1   977  FAIL  yes  NC_029646  Norovirus  GII    5    7    3    2      2  -     
+6     JX439803.1-3shorter-Ns-cdsstopp2   977  FAIL  yes  NC_029646  Norovirus  GII    5    7    3    2      3  -     
+7     JX439803.1-3shorter-Ns-cdsstopp3   983  FAIL  yes  NC_029646  Norovirus  GII    5    7    3    2      2  -     
+8     JX439803.1-3shorter-Ns-cdsstopp4   983  FAIL  yes  NC_029646  Norovirus  GII    5    7    3    2      3  -     

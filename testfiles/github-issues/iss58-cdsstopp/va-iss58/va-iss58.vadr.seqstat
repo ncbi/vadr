@@ -1,0 +1,15 @@
+= JX439803.1-with-Ns            1336 
+= JX439803.1-with-Ns-cdsstopp1     1336 
+= JX439803.1-with-Ns-cdsstopp2     1336 
+= JX439803.1-with-Ns-cdsstopp3     1336 
+= JX439803.1-3shorter-Ns-cdsstopp1      977 
+= JX439803.1-3shorter-Ns-cdsstopp2      977 
+= JX439803.1-3shorter-Ns-cdsstopp3      983 
+= JX439803.1-3shorter-Ns-cdsstopp4      983 
+Format:              FASTA
+Alphabet type:       DNA
+Number of sequences: 8
+Total # residues:    9264
+Smallest:            977
+Largest:             1336
+Average length:      1158.0

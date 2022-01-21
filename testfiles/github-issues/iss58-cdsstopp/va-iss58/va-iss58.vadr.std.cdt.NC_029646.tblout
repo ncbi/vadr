@@ -1,0 +1,20 @@
+#target name                     accession query name           accession mdl mdl from   mdl to seq from   seq to strand trunc pass   gc  bias  score   E-value inc description of target
+#------------------------------- --------- -------------------- --------- --- -------- -------- -------- -------- ------ ----- ---- ---- ----- ------ --------- --- ---------------------
+JX439803.1-with-Ns               -         NC_029646            -         hmm     4295     5546        1     1252      +     -    6 0.49   0.0 1027.2         0 !   -
+JX439803.1-with-Ns-cdsstopp1     -         NC_029646            -         hmm     4295     5546        1     1252      +     -    6 0.49   0.0 1025.7         0 !   -
+JX439803.1-with-Ns-cdsstopp2     -         NC_029646            -         hmm     4295     5546        1     1252      +     -    6 0.49   0.0 1025.7         0 !   -
+JX439803.1-with-Ns-cdsstopp3     -         NC_029646            -         hmm     4295     5546        1     1252      +     -    6 0.49   0.0 1025.7         0 !   -
+JX439803.1-3shorter-Ns-cdsstopp3 -         NC_029646            -         hmm     4366     5343        2      982      +     -    6 0.50   0.0  846.9  3.8e-258 !   -
+JX439803.1-3shorter-Ns-cdsstopp4 -         NC_029646            -         hmm     4366     5343        2      982      +     -    6 0.50   0.0  844.7  1.7e-257 !   -
+JX439803.1-3shorter-Ns-cdsstopp1 -         NC_029646            -         hmm     4366     5343        2      976      +     -    6 0.50   0.0  843.5    4e-257 !   -
+JX439803.1-3shorter-Ns-cdsstopp2 -         NC_029646            -         hmm     4366     5343        2      976      +     -    6 0.50   0.0  841.4  1.8e-256 !   -
+#
+# Program:         cmsearch
+# Version:         1.1.4 (Dec 2020)
+# Pipeline mode:   SEARCH
+# Query file:      -
+# Target file:     va-iss58/va-iss58.vadr.NC_029646.fa
+# Option settings: /panfs/pan1/infernal/notebook/22_0106_vadr_1p4p1_release/post-release-install-20220106/infernal/binaries/cmsearch --tblout va-iss58/va-iss58.vadr.std.cdt.s0.tblout --noali -T -10 --hmmonly --cpu 1 - va-iss58/va-iss58.vadr.NC_029646.fa 
+# Current dir:     /home/nawrocke/git/nawrockie/vadr/testfiles/github-issues/iss58-cdsstopp
+# Date:            Thu Jan 20 21:25:15 2022
+# [ok]

@@ -1,0 +1,97 @@
+# v-annotate.pl :: classify and annotate sequences using a model library
+# VADR 1.4.1 (Jan 2022)
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# date:              Thu Jan 20 21:25:09 2022
+# $VADRBIOEASELDIR:  /panfs/pan1/infernal/notebook/22_0106_vadr_1p4p1_release/post-release-install-20220106/Bio-Easel
+# $VADRBLASTDIR:     /panfs/pan1/infernal/notebook/22_0106_vadr_1p4p1_release/post-release-install-20220106/ncbi-blast/bin
+# $VADREASELDIR:     /panfs/pan1/infernal/notebook/22_0106_vadr_1p4p1_release/post-release-install-20220106/infernal/binaries
+# $VADRINFERNALDIR:  /panfs/pan1/infernal/notebook/22_0106_vadr_1p4p1_release/post-release-install-20220106/infernal/binaries
+# $VADRMODELDIR:     /panfs/pan1/infernal/notebook/22_0106_vadr_1p4p1_release/post-release-install-20220106/vadr-models-calici
+# $VADRSCRIPTSDIR:   /home/nawrocke/git/nawrockie/vadr
+#
+# sequence file:                                                                  /home/nawrocke/git/nawrockie/vadr/testfiles/github-issues/iss58-cdsstopp/iss58.fa
+# output directory:                                                               va-iss58
+# force directory overwrite:                                                      yes [-f]
+# leaving intermediate files on disk:                                             yes [--keep]
+# .cm, .minfo, blastn .fa files in $VADRMODELDIR start with key <s>, not 'vadr':  noro.3 [--mkey]
+# model files are in directory <s>, not in $VADRMODELDIR:                         /home/nawrocke/git/nawrockie/vadr/testfiles/models [--mdir]
+# replace stretches of Ns with expected nts, where possible:                      yes [-r]
+# minimum fraction of Ns in subseq at 5' end to trigger replacement is <x>:       0.5 [--r_minfract5]
+# minimum fraction of Ns in subseq at 3' end to trigger replacement is <x>:       0.5 [--r_minfract3]
+# for debugging, check aligned sequence vs input sequence for identity:           yes [--alicheck]
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Validating input                                                                        ... done. [    0.2 seconds]
+# Preprocessing for N replacement: blastn classification (8 seqs)                         ... done. [    1.0 seconds]
+# Preprocessing for N replacement: coverage determination from blastn results (8 seqs)    ... done. [    0.0 seconds]
+# Replacing Ns based on results of blastn-based pre-processing                            ... done. [    0.0 seconds]
+# Classifying sequences (8 seqs)                                                          ... done. [    1.8 seconds]
+# Determining sequence coverage (NC_029646: 8 seqs)                                       ... done. [    2.6 seconds]
+# Aligning sequences (NC_029646: 8 seqs)                                                  ... done. [    6.6 seconds]
+# Determining annotation                                                                  ... done. [    0.7 seconds]
+# Validating proteins with blastx (NC_029646: 8 seqs)                                     ... done. [    1.1 seconds]
+# Generating feature table output                                                         ... done. [    0.0 seconds]
+# Generating tabular output                                                               ... done. [    0.0 seconds]
+#
+# Summary of classified sequences:
+#
+#                                      num   num   num
+#idx  model      group      subgroup  seqs  pass  fail
+#---  ---------  ---------  --------  ----  ----  ----
+1     NC_029646  Norovirus  GII          8     0     8
+#---  ---------  ---------  --------  ----  ----  ----
+-     *all*      -          -            8     0     8
+-     *none*     -          -            0     0     0
+#---  ---------  ---------  --------  ----  ----  ----
+#
+# Summary of reported alerts:
+#
+#     alert     causes   short                            per    num   num  long
+#idx  code      failure  description                     type  cases  seqs  description
+#---  --------  -------  ---------------------------  -------  -----  ----  -----------
+1     insertnn  no       INSERTION_OF_NT              feature      4     4  too large of an insertion in nucleotide-based alignment of CDS feature
+2     lowsim3c  no       LOW_FEATURE_SIMILARITY_END   feature      8     4  region within annotated feature that is or matches a CDS at 3' end of sequence lacks significant similarity
+#---  --------  -------  ---------------------------  -------  -----  ----  -----------
+3     cdsstopn  yes      CDS_HAS_STOP_CODON           feature      3     3  in-frame stop codon exists 5' of stop position predicted by homology to reference
+4     cdsstopp  yes      CDS_HAS_STOP_CODON           feature      7     7  stop codon in protein-based alignment
+5     peptrans  yes      PEPTIDE_TRANSLATION_PROBLEM  feature      7     7  mat_peptide may not be translated because its parent CDS has a problem
+6     indf3pst  yes      INDEFINITE_ANNOTATION_END    feature      4     4  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
+#---  --------  -------  ---------------------------  -------  -----  ----  -----------
+#
+# Output printed to screen saved in:                                        va-iss58.vadr.log
+# List of executed commands saved in:                                       va-iss58.vadr.cmd
+# List and description of all output files saved in:                        va-iss58.vadr.filelist
+# copy of input fasta file saved in:                                        va-iss58.vadr.in.fa
+# copy of input fasta file with descriptions removed for blastn saved in:   va-iss58.vadr.blastn.fa
+# esl-seqstat -a output for input fasta file saved in:                      va-iss58.vadr.seqstat
+# model NC_029646 feature gene#1 predicted seqs saved in:                   va-iss58.vadr.NC_029646.gene.1.fa
+# model NC_029646 feature CDS#1 predicted seqs saved in:                    va-iss58.vadr.NC_029646.CDS.1.fa
+# model NC_029646 feature gene#2 predicted seqs saved in:                   va-iss58.vadr.NC_029646.gene.2.fa
+# model NC_029646 feature CDS#2 predicted seqs saved in:                    va-iss58.vadr.NC_029646.CDS.2.fa
+# model NC_029646 feature mat_peptide#6 predicted seqs saved in:            va-iss58.vadr.NC_029646.mat_peptide.6.fa
+# model NC_029646 replaced sequence alignment (stockholm) saved in:         va-iss58.vadr.NC_029646.align.rpstk
+# model NC_029646 full original sequence alignment (stockholm) saved in:    va-iss58.vadr.NC_029646.align.stk
+# model NC_029646 full replaced sequence alignment (afa) saved in:          va-iss58.vadr.NC_029646.align.rpafa
+# model NC_029646 full original sequence alignment (afa) saved in:          va-iss58.vadr.NC_029646.align.afa
+# 5 column feature table output for passing sequences saved in:             va-iss58.vadr.pass.tbl
+# 5 column feature table output for failing sequences saved in:             va-iss58.vadr.fail.tbl
+# list of passing sequences saved in:                                       va-iss58.vadr.pass.list
+# list of failing sequences saved in:                                       va-iss58.vadr.fail.list
+# list of alerts in the feature tables saved in:                            va-iss58.vadr.alt.list
+# fasta file with passing sequences saved in:                               va-iss58.vadr.pass.fa
+# fasta file with failing sequences saved in:                               va-iss58.vadr.fail.fa
+# per-sequence tabular annotation summary file saved in:                    va-iss58.vadr.sqa
+# per-sequence tabular classification summary file saved in:                va-iss58.vadr.sqc
+# per-feature tabular summary file saved in:                                va-iss58.vadr.ftr
+# per-model-segment tabular summary file saved in:                          va-iss58.vadr.sgm
+# per-model tabular summary file saved in:                                  va-iss58.vadr.mdl
+# per-alert tabular summary file saved in:                                  va-iss58.vadr.alt
+# alert count tabular summary file saved in:                                va-iss58.vadr.alc
+# alignment doctoring tabular summary file saved in:                        va-iss58.vadr.dcr
+# replaced stretches of Ns summary file (-r) saved in:                      va-iss58.vadr.rpn
+#
+# All output files created in directory ./va-iss58/
+#
+# Elapsed time:  00:00:14.78
+#                hh:mm:ss
+# 
+[ok]

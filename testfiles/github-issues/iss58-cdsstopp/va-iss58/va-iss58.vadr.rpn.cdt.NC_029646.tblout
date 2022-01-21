@@ -1,0 +1,16 @@
+JX439803.1-with-Ns  -  NC_029646  -  blastn  4365  4994  71  700  +  -  -  -  0.0     961.0  0.0  ?  -
+JX439803.1-with-Ns  -  NC_029646  -  blastn  5065  5401  771  1107  +  -  -  -  0.0     235.0  4e-64  ?  -
+JX439803.1-with-Ns-cdsstopp1  -  NC_029646  -  blastn  4365  4994  71  700  +  -  -  -  0.0     961.0  0.0  ?  -
+JX439803.1-with-Ns-cdsstopp1  -  NC_029646  -  blastn  5065  5401  771  1107  +  -  -  -  0.0     235.0  4e-64  ?  -
+JX439803.1-with-Ns-cdsstopp2  -  NC_029646  -  blastn  4365  4994  71  700  +  -  -  -  0.0     961.0  0.0  ?  -
+JX439803.1-with-Ns-cdsstopp2  -  NC_029646  -  blastn  5065  5401  771  1107  +  -  -  -  0.0     235.0  4e-64  ?  -
+JX439803.1-with-Ns-cdsstopp3  -  NC_029646  -  blastn  4365  4994  71  700  +  -  -  -  0.0     961.0  0.0  ?  -
+JX439803.1-with-Ns-cdsstopp3  -  NC_029646  -  blastn  5065  5401  771  1107  +  -  -  -  0.0     235.0  4e-64  ?  -
+JX439803.1-3shorter-Ns-cdsstopp1  -  NC_029646  -  blastn  4365  4994  1  630  +  -  -  -  0.0     961.0  0.0  ?  -
+JX439803.1-3shorter-Ns-cdsstopp1  -  NC_029646  -  blastn  5065  5344  698  977  +  -  -  -  0.0     196.0  2e-52  ?  -
+JX439803.1-3shorter-Ns-cdsstopp2  -  NC_029646  -  blastn  4365  4994  1  630  +  -  -  -  0.0     961.0  0.0  ?  -
+JX439803.1-3shorter-Ns-cdsstopp2  -  NC_029646  -  blastn  5065  5344  698  977  +  -  -  -  0.0     196.0  2e-52  ?  -
+JX439803.1-3shorter-Ns-cdsstopp3  -  NC_029646  -  blastn  4365  4994  1  630  +  -  -  -  0.0     961.0  0.0  ?  -
+JX439803.1-3shorter-Ns-cdsstopp3  -  NC_029646  -  blastn  5065  5344  704  983  +  -  -  -  0.0     196.0  2e-52  ?  -
+JX439803.1-3shorter-Ns-cdsstopp4  -  NC_029646  -  blastn  4365  4994  1  630  +  -  -  -  0.0     961.0  0.0  ?  -
+JX439803.1-3shorter-Ns-cdsstopp4  -  NC_029646  -  blastn  5065  5344  704  983  +  -  -  -  0.0     196.0  2e-52  ?  -
