@@ -6933,14 +6933,12 @@ sub add_protein_validation_alerts {
                           for(my $z = 0; $z < scalar(@cdsstopp_sstart_A); $z++) { 
                             my ($cdsstopp_noverlap, undef) = vdr_CoordsSegmentOverlap($rpn_seq_sgm, vdr_CoordsSegmentCreate($cdsstopp_sstart_A[$z], $cdsstopp_sstop_A[$z], "+", $FH_HR), $FH_HR);
                             if($cdsstopp_noverlap != 0) { 
-                              printf("\n\nHEYA! found overlap between $rpn_seq_sgm, $cdsstopp_sstart_A[$z]..$cdsstopp_sstop_A[$z]\n\n");
                               $found_overlap = 1;
                             }
                           }
                         }
                       }
                     }
-                    printf("found_overlap: $found_overlap\n");
                     if(! $found_overlap) { # if we found an overlap with a replaced region, don't report this alert
                       $alt_str_H{"cdsstopp"} = "seq:" . $cdsstopp_scoords . ";mdl:" . $cdsstopp_mcoords . ";" . $cdsstopp_detail;
                     }
@@ -12109,7 +12107,7 @@ sub replace_pseudo_coords_to_coords {
     }
   }
 
-  printf("in $sub_name, input pseudo_coords: $pseudo_coords, returning $ret_coords\n");
+  # printf("in $sub_name, input pseudo_coords: $pseudo_coords, returning $ret_coords\n");
   return $ret_coords;
 }
 
