@@ -391,17 +391,23 @@ database from it with the command:
 $VADRBLASTDIR/makeblastdb -dbtype nucl -in my-vadr-model-dir/my.vadr.fa
 ```
 
-7. Move all resulting BLAST protein DB files (`.vadr.protein.fa`,
+7. Create an Easel index file for the `.vadr.fa` file you created and
+moved in step 6 with the command: 
+```
+$VADREASELDIR/esl-sfetch --index my-vadr-model-dir/my.vadr.fa
+```
+
+8. Move all resulting BLAST protein DB files (`.vadr.protein.fa`,
 `.vadr.protein.fa.p{hr,in,sq,db,ot,tf,to}`) from all `N` runs into the same directory, call it `my-vadr-blastdb-dir`
 for example.
 
-8. Run `cmpress` on the `my.vadr.cm` file created in step 4 like this:
+9. Run `cmpress` on the `my.vadr.cm` file created in step 4 like this:
 
 ```
 $VADRINFERNALDIR/cmpress my-vadr-model-dir/my.vadr.cm
 ```
 
-9. Run `hmmpress` on the `my.vadr.hmm` file created in step 5 like this:
+10. Run `hmmpress` on the `my.vadr.hmm` file created in step 5 like this:
 
 ```
 $VADRHMMERDIR/hmmpress my-vadr-model-dir/my.vadr.hmm
