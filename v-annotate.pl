@@ -716,7 +716,9 @@ my $do_glsearch = opt_Get("--glsearch",  \%opt_HH) ? 1 : 0;
 my $cmd;               # a command to run with utl_RunCommand()
 my @early_cmd_A = ();  # array of commands we run before our log file is opened
 
-if($dir !~ m/\/$/) { $dir =~ s/\/$//; } # remove final '/' if it exists
+if($dir =~ m/\/$/) { 
+  $dir =~ s/\/$//; # remove final '/' if it exists
+} 
 if(-d $dir) { 
   $cmd = "rm -rf $dir";
   if(opt_Get("-f", \%opt_HH)) { utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
