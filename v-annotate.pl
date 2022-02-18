@@ -296,11 +296,12 @@ opt_Add("--gls_gapopen",  "integer", -17,       $g,"--glsearch", undef,      "se
 opt_Add("--gls_gapextend","integer", -4,        $g,"--glsearch", undef,      "set glsearch gap extend score to <n> < 0 with glsearch -g option",             "set glsearch gap extend score to <n> < 0 with glsearch -g option", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling blastx protein validation stage";
-#        option               type   default  group  requires incompat            preamble-output                                                                                 help-output    
-opt_Add("--xmatrix",     "string",   undef,      $g,     undef,"--pv_skip,--pv_hmmer", "use the matrix <s> with blastx (e.g. BLOSUM45)",                                                "use the matrix <s> with blastx (e.g. BLOSUM45)", \%opt_HH, \@opt_order_A);
-opt_Add("--xdrop",       "integer",  25,         $g,     undef,"--pv_skip,--pv_hmmer", "set the xdrop value for blastx to <n>",                                                         "set the xdrop value for blastx to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xnumali",     "integer",  20,         $g,     undef,"--pv_skip,--pv_hmmer", "number of alignments to keep in blastx output and consider if --xlongest is <n>",               "number of alignments to keep in blastx output and consider if --xlongest is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xlongest",    "boolean",  0,          $g,     undef,"--pv_skip,--pv_hmmer", "keep the longest blastx hit, not the highest scoring one",                                      "keep the longest blastx hit, not the highest scoring one", \%opt_HH, \@opt_order_A);
+#        option               type   default  group  requires incompat            preamble-output                                                                          help-output    
+opt_Add("--xmatrix",     "string",   undef,      $g,     undef,"--pv_skip,--pv_hmmer", "use the matrix <s> with blastx (e.g. BLOSUM45)",                                   "use the matrix <s> with blastx (e.g. BLOSUM45)", \%opt_HH, \@opt_order_A);
+opt_Add("--xdrop",       "integer",  25,         $g,     undef,"--pv_skip,--pv_hmmer", "set the xdrop value for blastx to <n>",                                            "set the xdrop value for blastx to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xnumali",     "integer",  20,         $g,     undef,"--pv_skip,--pv_hmmer", "number of alignments to keep in blastx output and consider if --xlongest is <n>",  "number of alignments to keep in blastx output and consider if --xlongest is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xlongest",    "boolean",  0,          $g,     undef,"--pv_skip,--pv_hmmer", "keep the longest blastx hit, not the highest scoring one",                         "keep the longest blastx hit, not the highest scoring one", \%opt_HH, \@opt_order_A);
+opt_Add("--xnocomp",     "boolean",  0,          $g,     undef,"--pv_skip,--pv_hmmer", "turn off composition-based for blastx statistics with -comp_based_stats 0",        "turn off composition-based for blastx statistics with comp_based_stats 0", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for using hmmer instead of blastx for protein validation";
 #     option          type       default group   requires    incompat   preamble-output                                     help-output    
@@ -486,6 +487,7 @@ my $options_okay =
                 'xdrop=s'       => \$GetOptions_H{"--xdrop"},
                 'xnumali=s'     => \$GetOptions_H{"--xnumali"},
                 'xlongest'      => \$GetOptions_H{"--xlongest"},
+                'xnocomp'       => \$GetOptions_H{"--xnocomp"},
 # options for using hmmer instead of blastx for protein validation
                 'pv_hmmer'      => \$GetOptions_H{"--pv_hmmer"},
                 'h_max'         => \$GetOptions_H{"--h_max"},
@@ -7019,6 +7021,9 @@ sub run_blastx_and_summarize_output {
   if(opt_IsUsed("--xdrop", $opt_HHR)) { 
     my $xdrop_opt = opt_Get("--xdrop", $opt_HHR);
     $blastx_options .= " -xdrop_ungap $xdrop_opt -xdrop_gap $xdrop_opt -xdrop_gap_final $xdrop_opt";
+  }
+  if(opt_IsUsed("--xnocomp", $opt_HHR)) { 
+    $blastx_options .= " -comp_based_stats 0"
   }
   my $xnumali = opt_Get("--xnumali", $opt_HHR);
 
