@@ -557,7 +557,7 @@ $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-noro-s.9`.
 |   5 | `p/f`                 | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alerts) |
 |   6 | `seed seq`            | sequence coordinates of seed region from blastn, in vadr coords [format](#coords) |
 |   7 | `seed mdl`            | model coordinates of seed region from blastn, in vadr coords [format](#coords) |
-|   8 | `seed fraction`       | fraction of `seq len` in seed region in `ungapped seq` | 
+|   8 | `seed fraction`       | fraction of `seq len` in seed region in `seed seq` | 
 |   9 | `5'unaln seq`         | sequence coordinates of 5' region not covered by `seed seq` plus some overlap (typically 100nt) subsequently aligned with cmalign or glsearch, in vadr coords [format](#coords) |
 |  10 | `5'unaln mdl`         | model start/stop coordinates for cmalign alignment of 5' region `5'unaln seq`, in vadr coords [format](#coords) |
 |  11 | `5'unaln fraction`    | fraction of `seq len` in 5' region in `5'unaln seq` |
