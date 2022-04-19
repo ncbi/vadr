@@ -2660,7 +2660,7 @@ sub vdr_AlertInfoInitialize {
   vdr_AlertInfoAdd($alt_info_HHR, "lowsim5n", "feature",
                    "LOW_FEATURE_SIMILARITY_START", # short description
                    "region within annotated feature that does not match a CDS at 5' end of sequence lacks significant similarity", # long description
-                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "lowsim3c", "feature",
@@ -2672,7 +2672,7 @@ sub vdr_AlertInfoInitialize {
   vdr_AlertInfoAdd($alt_info_HHR, "lowsim3n", "feature",
                    "LOW_FEATURE_SIMILARITY_END", # short description
                    "region within annotated feature that does not match a CDS at 3' end of sequence lacks significant similarity", # long description
-                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "lowsimic", "feature",
@@ -2684,7 +2684,7 @@ sub vdr_AlertInfoInitialize {
   vdr_AlertInfoAdd($alt_info_HHR, "lowsimin", "feature",
                    "LOW_FEATURE_SIMILARITY", # short description
                    "region within annotated feature that does not match a CDS lacks significant similarity", # long description
-                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt5f", "feature",
