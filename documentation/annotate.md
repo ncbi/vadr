@@ -291,7 +291,7 @@ with lengths for each sequence in the input file.
 (`va-noro9.vadr.pass.tbl`) and failing (`va-noro9.vadr.fail.tbl`)
 sequences. 
 The format of the `.tbl` files is described here:
-https://www.ncbi.nlm.nih.gov/Sequin/table.html.
+https://www.ncbi.nlm.nih.gov/genbank/feature_table/
 These files contain some of the same information as the `.ftr` files
 discussed above, with some additional information on *qualifiers* for
 features read from the [model info file](formats.md#minfo). 
