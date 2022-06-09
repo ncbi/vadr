@@ -2663,6 +2663,12 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
+  vdr_AlertInfoAdd($alt_info_HHR, "lowsim5l", "feature",
+                   "LOW_FEATURE_SIMILARITY_START", # short description
+                   "long region within annotated feature that does not match a CDS at 5' end of sequence lacks significant similarity", # long description
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
   vdr_AlertInfoAdd($alt_info_HHR, "lowsim3c", "feature",
                    "LOW_FEATURE_SIMILARITY_END", # short description
                    "region within annotated feature that is or matches a CDS at 3' end of sequence lacks significant similarity", # long description
@@ -2675,6 +2681,12 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
+  vdr_AlertInfoAdd($alt_info_HHR, "lowsim3l", "feature",
+                   "LOW_FEATURE_SIMILARITY_END", # short description
+                   "long region within annotated feature that does not match a CDS at 3' end of sequence lacks significant similarity", # long description
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
   vdr_AlertInfoAdd($alt_info_HHR, "lowsimic", "feature",
                    "LOW_FEATURE_SIMILARITY", # short description
                    "region within annotated feature that is or matches a CDS lacks significant similarity", # long description
@@ -2685,6 +2697,12 @@ sub vdr_AlertInfoInitialize {
                    "LOW_FEATURE_SIMILARITY", # short description
                    "region within annotated feature that does not match a CDS lacks significant similarity", # long description
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "lowsimil", "feature",
+                   "LOW_FEATURE_SIMILARITY", # short description
+                   "long region within annotated feature that does not match a CDS lacks significant similarity", # long description
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt5f", "feature",
