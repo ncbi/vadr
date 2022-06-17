@@ -6417,22 +6417,22 @@ sub add_low_similarity_alerts_for_one_sequence {
                     else { 
                       ofile_FAIL("ERROR, in $sub_name, unable to parse overlap region: $overlap_reg", 1, $FH_HR);
                     }
-                    $alt_scoords = "seq:" . vdr_CoordsSegmentCreate($soverlap_start, $soverlap_stop, $f_strand, $FH_HR) . ";"; 
+                    $alt_scoords = "seq:" . vdr_CoordsSegmentCreate($start, $stop, $f_strand, $FH_HR) . ";"; 
                     if(defined $ua2rf_AR) { 
-                      $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$soverlap_start]), abs($ua2rf_AR->[$soverlap_stop]), $f_strand, $FH_HR) . ";"; 
+                      $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$start]), abs($ua2rf_AR->[$stop]), $f_strand, $FH_HR) . ";"; 
                     }
                     else { 
                       $alt_mcoords = "mdl:VADRNULL;";
                     }
                     $alt_msg = sprintf("%s%s%d nt overlap b/t low similarity region of length %d (%d..%d) and annotated feature (%d..%d)",
                                        $alt_scoords, $alt_mcoords, $noverlap, $length, $start, $stop, $f_start, $f_stop);
-                    if(($is_start) && ($noverlap >= $terminal_ftr_5_min_length)) { 
+                    if(($is_start) && ($length >= $terminal_ftr_5_min_length)) { 
                       $ftr_overlap_flag = 1;
                       if($ftr_matches_coding) { 
                         alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsim5c", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
                       }
                       else { # non-coding
-                        if($noverlap >= $long_terminal_ftr_5_min_length) { 
+                        if($length >= $long_terminal_ftr_5_min_length) { 
                           alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsim5l", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
                         }
                         else { 
@@ -6440,13 +6440,13 @@ sub add_low_similarity_alerts_for_one_sequence {
                         }
                       }
                     }
-                    if(($is_end) && ($noverlap >= $terminal_ftr_3_min_length)) { 
+                    if(($is_end) && ($length >= $terminal_ftr_3_min_length)) { 
                       $ftr_overlap_flag = 1;
                       if($ftr_matches_coding) { 
                         alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsim3c", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
                       }
                       else { # non-coding
-                        if($noverlap >= $long_terminal_ftr_3_min_length) { 
+                        if($length >= $long_terminal_ftr_3_min_length) { 
                           alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsim3l", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
                         }
                         else { 
@@ -6454,13 +6454,13 @@ sub add_low_similarity_alerts_for_one_sequence {
                         }
                       }
                     }
-                    if((! $is_start) && (! $is_end) && ($noverlap >= $internal_ftr_min_length)) { 
+                    if((! $is_start) && (! $is_end) && ($length >= $internal_ftr_min_length)) { 
                       $ftr_overlap_flag = 1;
                       if($ftr_matches_coding) { 
                         alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsimic", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
                       }
                       else { # non-coding
-                        if($noverlap >= $long_internal_ftr_min_length) { 
+                        if($length >= $long_internal_ftr_min_length) { 
                           alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsimil", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
                         }
                         else { 
