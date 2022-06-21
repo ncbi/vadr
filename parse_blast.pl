@@ -433,7 +433,7 @@ while($keep_going) {
           $maximum_query_gap_str = $one_line_query_gap_str;
         }
         if (($overall_query_gap_representation) && ($one_row_query_gap_representation)) {
-          if ($subject_start < $subject_end) {
+          if ($subject_strand eq "+") { 
             $overall_query_gap_representation = $overall_query_gap_representation . ";" . $one_row_query_gap_representation;
           }
           else {
@@ -441,7 +441,7 @@ while($keep_going) {
           }
         }
         else {
-          if ($subject_start < $subject_end) {
+          if ($subject_strand eq "+") { 
             $overall_query_gap_representation = $overall_query_gap_representation . $one_row_query_gap_representation;
           }
           else {
@@ -449,7 +449,7 @@ while($keep_going) {
           }
         }
         $old_query_gap_overhang = $new_query_gap_overhang;
-        if(($subject_start <= $subject_end) || ($allow_subject_minus)) { 
+        if(($subject_strand eq "+") || ($allow_subject_minus)) { 
           ($new_subject_gap_overhang, $one_row_subject_gap_representation, $one_line_subject_gap_str, $one_line_subject_gap) = findSubjectGaps($query_alignment_part, $subject_alignment_part, $query_start, $query_end, $subject_start, $subject_end, $old_subject_gap_overhang, $program, $query_strand, $subject_strand);
           if ($one_line_subject_gap > $maximum_subject_gap) {
             $maximum_subject_gap     = $one_line_subject_gap;
