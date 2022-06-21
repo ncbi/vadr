@@ -1,0 +1,72 @@
+>Feature NC_029646/1-5000,6000-5042-2inserts-deletes
+5	5098	gene
+			gene	ORF1
+5	5098	misc_feature
+			note	similar to nonstructural polyprotein
+5	994	misc_feature
+			note	similar to p48
+995	2092	misc_feature
+			note	similar to NTPase
+2093	2629	misc_feature
+			note	similar to p22
+2630	3028	misc_feature
+			note	similar to VPg
+3029	3571	misc_feature
+			note	similar to Pro
+3572	5095	misc_feature
+			note	similar to RdRp
+5081	>5959	gene
+			gene	ORF2
+5081	>5959	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_STRAND: (*sequence*) significant similarity detected on both strands [score:1767.0>25.0]; seq-coords:5959..5001:-; mdl-coords:5042..6000:+; mdl:NC_029646;
+ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.839<0.900]; seq-coords:5001..5959:+; mdl-coords:-; mdl:NC_029646;
+ERROR: CDS_HAS_STOP_CODON: (CDS:nonstructural polyprotein) in-frame stop codon exists 5' of stop position predicted by homology to reference [TGA, shifted S:54,M:54]; seq-coords:5042..5044:+; mdl-coords:5048..5050:+; mdl:NC_029646;
+ERROR: INDEFINITE_ANNOTATION_END: (CDS:nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [99>5, no valid stop codon in nucleotide-based prediction]; seq-coords:5000..5098:+; mdl-coords:5104..5104:+; mdl:NC_029646;
+ERROR: CDS_HAS_STOP_CODON: (CDS:VP1) in-frame stop codon exists 5' of stop position predicted by homology to reference [TGA, shifted S:870,M:854]; seq-coords:5087..5089:+; mdl-coords:5093..5095:+; mdl:NC_029646;
+ERROR: INDEFINITE_STRAND: (CDS:VP1) strand mismatch between protein-based and nucleotide-based predictions [-]; seq-coords:5916..5002:-; mdl-coords:5999..5085:-; mdl:NC_029646;
+ERROR: MUTATION_AT_START: (CDS:VP1) expected start codon could not be identified [AGG]; seq-coords:5081..5083:+; mdl-coords:5085..5087:+; mdl:NC_029646;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:p48) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_029646;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:NTPase) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_029646;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:p22) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_029646;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:VPg) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_029646;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:Pro) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_029646;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:RdRp) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_029646;
+>Feature NC_029646/1-5000,6000-5041-2inserts-deletes
+5	5098	gene
+			gene	ORF1
+5	5098	misc_feature
+			note	similar to nonstructural polyprotein
+5	994	misc_feature
+			note	similar to p48
+995	2092	misc_feature
+			note	similar to NTPase
+2093	2629	misc_feature
+			note	similar to p22
+2630	3028	misc_feature
+			note	similar to VPg
+3029	3571	misc_feature
+			note	similar to Pro
+3572	5095	misc_feature
+			note	similar to RdRp
+5081	>5958	gene
+			gene	ORF2
+5081	>5958	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_STRAND: (*sequence*) significant similarity detected on both strands [score:1765.0>25.0]; seq-coords:5958..5001:-; mdl-coords:5043..6000:+; mdl:NC_029646;
+ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.839<0.900]; seq-coords:5001..5958:+; mdl-coords:-; mdl:NC_029646;
+ERROR: CDS_HAS_STOP_CODON: (CDS:nonstructural polyprotein) in-frame stop codon exists 5' of stop position predicted by homology to reference [TGA, shifted S:54,M:54]; seq-coords:5042..5044:+; mdl-coords:5048..5050:+; mdl:NC_029646;
+ERROR: INDEFINITE_ANNOTATION_END: (CDS:nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [99>5, no valid stop codon in nucleotide-based prediction]; seq-coords:5000..5098:+; mdl-coords:5104..5104:+; mdl:NC_029646;
+ERROR: CDS_HAS_STOP_CODON: (CDS:VP1) in-frame stop codon exists 5' of stop position predicted by homology to reference [TGA, shifted S:869,M:853]; seq-coords:5087..5089:+; mdl-coords:5093..5095:+; mdl:NC_029646;
+ERROR: INDEFINITE_STRAND: (CDS:VP1) strand mismatch between protein-based and nucleotide-based predictions [-]; seq-coords:5916..5002:-; mdl-coords:5999..5085:-; mdl:NC_029646;
+ERROR: MUTATION_AT_START: (CDS:VP1) expected start codon could not be identified [AGG]; seq-coords:5081..5083:+; mdl-coords:5085..5087:+; mdl:NC_029646;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:p48) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_029646;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:NTPase) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_029646;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:p22) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_029646;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:VPg) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_029646;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:Pro) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_029646;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:RdRp) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_029646;
