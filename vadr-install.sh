@@ -192,6 +192,9 @@ if [ "$DOWNLOADORBUILD" != "build" ]; then
     else 
         cp fasta/make/Makefile.os_x86_64 fasta/make/Makefile.vadr_install
     fi
+    # copy defs.h sideways and replace it with defs.h that includes vadr specific changes
+    cp fasta/src/defs.h fasta/src/orig-defs.h
+    cp vadr/vadr-fasta-defs.h fasta/src/defs.h
     echo "------------------------------------------------------------"
     
     # download blast binaries
