@@ -1,3 +1,8 @@
+/* MANUALLY CHANGED BY ERIC NAWROCKI FROM 
+ * FASTA VERSION 36.3.8h (git version v36.3.8h_04-May-2020)
+ * Search for 'EPN' for changes to original src/defs.h file from fasta
+ */
+
 /* Concurrent read version */
 
 /* $Id: defs.h 1261 2014-06-11 19:38:36Z wrp $ */
@@ -89,14 +94,25 @@
 #define MIN_LOCAL_LEN 33	/* minimum length for addn'l local alignments
 				   (should be in pstruct)*/
 #ifndef SMALLMEM
-#define MAXTST	40000		/* longest query */
-#define MAXLIB	150000		/* longest library sequence*/
-#define MAXLIB_P 45000
+// EPN changed block 1 of 2 
+// ORIGINAL block: 
+// #define MAXTST	40000		/* longest query */
+// #define MAXLIB	150000		/* longest library sequence*/
+// #define MAXLIB_P 45000
+#define MAXTST	 250000		/* longest query */
+#define MAXLIB	 250000		/* longest library sequence*/
+#define MAXLIB_P 250000
+// END of EPN changed block 1 of 2
+
 #define MIN_RES 2000		/* minimum amount allocated for alignment */
 #ifndef TFAST
 #define MAXTRN  45000		/* buffer for fastx translation */
 #else
-#define MAXTRN 165000		/* buffer for tfastx translation, must be > 3 * MAXTST */
+// EPN changed block 2 of 2 
+// ORIGINAL block: 
+// #define MAXTRN 165000		/* buffer for tfastx translation, must be > 3 * MAXTST */
+#define MAXTRN 750000		/* buffer for tfastx translation, must be > 3 * MAXTST */
+// END of EPN changed block 2 of 2
 #endif
 #define SEQDUP	150		/* future - overlap */
 #ifndef PCOMPLIB
