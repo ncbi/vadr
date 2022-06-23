@@ -52,10 +52,18 @@ include ../make/Makefile.sse_alt
 
 # Altivec acceleration
 #
-DROPGSW_O = $(DROPGSW_SSE_O)
-DROPLAL_O = $(DROPLAL_SSE_O)
-DROPGNW_O = $(DROPGNW_SSE_O)
-DROPLNW_O = $(DROPLNW_SSE_O)
+#DROPGSW_O = $(DROPGSW_SSE_O)
+#DROPLAL_O = $(DROPLAL_SSE_O)
+#DROPGNW_O = $(DROPGNW_SSE_O)
+#DROPLNW_O = $(DROPLNW_SSE_O)
+
+# Different DROP flags for non-vectorized implementation:
+# Bill Pearson suggested scores for 250K by 250K alignment might get
+# too high to behave with vectorized implementation
+DROPGSW_O = $(DROPGSW_NA_O)
+DROPLAL_O = $(DROPLAL_NA_O)
+DROPGNW_O = $(DROPGNW_NA_O)
+DROPLNW_O = $(DROPLNW_NA_O)
 
 # provide mysql function
 #include ../make/Makefile36m.common_mysql
