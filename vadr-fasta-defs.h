@@ -111,7 +111,7 @@
 // EPN changed block 2 of 2 
 // ORIGINAL block: 
 // #define MAXTRN 165000		/* buffer for tfastx translation, must be > 3 * MAXTST */
-#define MAXTRN 750000		/* buffer for tfastx translation, must be > 3 * MAXTST */
+#define MAXTRN 800000		/* buffer for tfastx translation, must be > 3 * MAXTST */
 // END of EPN changed block 2 of 2
 #endif
 #define SEQDUP	150		/* future - overlap */
