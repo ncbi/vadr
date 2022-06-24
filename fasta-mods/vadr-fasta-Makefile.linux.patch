@@ -1,0 +1,25 @@
+--- Makefile.linux	2022-06-24 16:00:30.463519000 -0400
++++ vadr-fasta-Makefile.linux	2022-06-23 14:12:23.074624000 -0400
+@@ -56,10 +56,18 @@
+ 
+ # SSE2 acceleration
+ #
+-DROPGSW_O = $(DROPGSW_SSE_O)
+-DROPLAL_O = $(DROPLAL_SSE_O)
+-DROPGNW_O = $(DROPGNW_SSE_O)
+-DROPLNW_O = $(DROPLNW_SSE_O)
++#DROPGSW_O = $(DROPGSW_SSE_O)
++#DROPLAL_O = $(DROPLAL_SSE_O)
++#DROPGNW_O = $(DROPGNW_SSE_O)
++#DROPLNW_O = $(DROPLNW_SSE_O)
++
++# Different DROP flags for non-vectorized implementation:
++# Bill Pearson suggested scores for 250K by 250K alignment might get
++# too high to behave with vectorized implementation
++DROPGSW_O = $(DROPGSW_NA_O)
++DROPLAL_O = $(DROPLAL_NA_O)
++DROPGNW_O = $(DROPGNW_NA_O)
++DROPLNW_O = $(DROPLNW_NA_O)
+ 
+ # renamed (fasta36)  programs
+ include ../make/Makefile36m.common
