@@ -187,15 +187,16 @@ if [ "$DOWNLOADORBUILD" != "build" ]; then
     # download fasta source distribution from github
     echo "Downloading FASTA version $FVERSIONGIT src distribution"
     curl -k -L -o $FVERSIONGIT.zip https://github.com/wrpearson/fasta36/archive/$FVERSIONGIT.zip; unzip $FVERSIONGIT.zip; mv fasta36-$FVERSIONGITNOV fasta; rm $FVERSIONGIT.zip
-    # copy modified Makefile that includes vadr specific changes
+    # patch Makefile with vadr specific changes and copy to expected name so 'build' step is linux/osx agnostic
     if [ "$INPUTSYSTEM" = "linux" ]; then
-        cp vadr/fasta-mods/vadr-fasta-Makefile.linux fasta/make/Makefile.vadr_install
+        patch fasta/make/Makefile.vadr_install vadr/fasta-mods/vadr-fasta-Makefile.linux.patch
+        cp fasta/make/Makefile.linux fasta/make/Makefile.vadr_install
     else 
-        cp vadr/fasta-mods/vadr-fasta-Makefile.os_x86_64 fasta/make/Makefile.vadr_install
+        patch fasta/make/Makefile.vadr_install vadr/fasta-mods/vadr-fasta-Makefile.os_x86_64.patch
+        cp fasta/make/Makefile.os_x86_64 fasta/make/Makefile.vadr_install
     fi
-    # copy defs.h sideways and replace it with defs.h that includes vadr specific changes
-    cp fasta/src/defs.h fasta/src/orig-defs.h
-    cp vadr/fasta-mods/vadr-fasta-defs.h fasta/src/defs.h
+    # patch defs.h with vadr specific changes
+    patch fasta/src/defs.h vadr/fasta-mods/vadr-fasta-defs.patch
     echo "------------------------------------------------------------"
     
     # download blast binaries
