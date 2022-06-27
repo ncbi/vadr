@@ -693,6 +693,9 @@ In the table below, `<n>` represents a positive interger argument and
 | `--lowsim5ftr  <n>` | [*lowsim5c*](#lowsim5c1), [*lowsim5n*](#lowsim5n1)   | LOW_FEATURE_SIMILARITY_START           | >= 5   | <a name="options-alerts-lowsim5ftr"></a> set length (nt) threshold for alert to `<n>` |
 | `--lowsim3ftr  <n>` | [*lowsim3c*](#lowsim3c1), [*lowsim3n*](#lowsim3n1)   | LOW_FEATURE_SIMILARITY_END             | >= 5   | <a name="options-alerts-lowsim3ftr"></a> set length (nt) threshold for alert to `<n>` |
 | `--lowsimiftr <n>`  | [*lowsimic*](#lowsimic1), [*lowsimin*](#lowsimin1)   | LOW_FEATURE_SIMILARITY                 | >= 1   | <a name="options-alerts-lowsimiftr"></a> set length (nt) threshold for alert to `<n>` |
+| `--lowsim5lftr  <n>`| [*lowsim5l*](#lowsim5l1)                             | LOW_FEATURE_SIMILARITY_START           | >= 30  | <a name="options-alerts-lowsim5lftr"></a> set length (nt) threshold for alert to `<n>` |
+| `--lowsim3lftr  <n>`| [*lowsim3l*](#lowsim3l1)                             | LOW_FEATURE_SIMILARITY_END             | >= 30  | <a name="options-alerts-lowsim3lftr"></a> set length (nt) threshold for alert to `<n>` |
+| `--lowsimilftr <n>` | [*lowsimil*](#lowsimil1)                             | LOW_FEATURE_SIMILARITY                 | >= 30  | <a name="options-alerts-lowsimilftr"></a> set length (nt) threshold for alert to `<n>` |
 | `--biasfrac <x>`    | [*biasdseq*](#biasdseq1)                             | BIASED_SEQUENCE                        | >= 0.25| <a name="options-alerts-biasfrac"></a>  set fractional bit score threshold for biased score/total score for alert to `<x>` |
 | `--nmiscftrthr <n>` | [*nmiscftr*](#nmiscftr1)                             | TOO_MANY_MISC_FEATURES                 | >= 4   | <a name="options-alerts-nmiscftr"></a>  set minimum number of misc_features per sequence for alert to `<n>` |
 | `--indefann <x>`    | [*indf5lcc*](#indf5lcc1), [*indf5lcn*](#indf5lcn1), [*indf3lcc*](#indf3lcc1), [*indf3lcn*](#indf3lcn1)   | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.8 | <a name="options-alerts-indefann"></a> set posterior probability threshold for non-mat_peptide features for alert to `<x>` |
@@ -1016,9 +1019,12 @@ features as described more [below](#mnf).
 | [*insertnp*](#insertnp2)  | feature  | no    | INSERTION_OF_NT                 | <a name="insertnp1"></a> too large of an insertion in protein-based alignment | 
 | [*deletinp*](#deletinp2)  | feature  | yes   | DELETION_OF_NT                  | <a name="deletinp1"></a> too large of a deletion in protein-based alignment | 
 | [*deletinf*](#deletinf2)  | feature  | no    | DELETION_OF_FEATURE_SECTION     | <a name="deletinf1"></a> internal deletion of a complete section in a multi-section feature with other section(s) annotated |
-| [*lowsim5n*](#lowsim5n2)  | feature  | no    | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5n1"></a> region within annotated feature that does not match a CDS at 5' end of sequence lacks significant similarity |
-| [*lowsim3n*](#lowsim3n2)  | feature  | no    | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3n1"></a> region within annotated feature that does not match a CDS at 3' end of sequence lacks significant similarity | 
-| [*lowsimin*](#lowsimin2)  | feature  | no    | LOW_FEATURE_SIMILARITY          | <a name="lowsimin1"></a> region within annotated feature that does not match a CDS lacks significant similarity  |
+| [*lowsim5n*](#lowsim5n2)  | feature  | yes   | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5n1"></a> region overlapping annotated feature that does not match a CDS at 5' end of sequence lacks significant similarity |
+| [*lowsim5l*](#lowsim5l2)  | feature  | no    | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5l1"></a> long region overlapping annotated feature that does not match a CDS at 5' end of sequence lacks significant similarity |
+| [*lowsim3n*](#lowsim3n2)  | feature  | yes   | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3n1"></a> region overlapping annotated feature that does not match a CDS at 3' end of sequence lacks significant similarity | 
+| [*lowsim3l*](#lowsim3l2)  | feature  | no    | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3l1"></a> long region overlapping annotated feature that does not match a CDS at 3' end of sequence lacks significant similarity | 
+| [*lowsimin*](#lowsimin2)  | feature  | yes   | LOW_FEATURE_SIMILARITY          | <a name="lowsimin1"></a> region overlapping annotated feature that does not match a CDS lacks significant similarity  |
+| [*lowsimil*](#lowsimil2)  | feature  | no    | LOW_FEATURE_SIMILARITY          | <a name="lowsimil1"></a> long region overlapping annotated feature that does not match a CDS lacks significant similarity  |
 
 #### Description of alerts that are *non-fatal* by default <a name="nonfatal1"></a>
 | alert code | type  | causes `misc_feature`, not failure (if in modelinfo file) |short description/error name | long description |
@@ -1039,9 +1045,9 @@ features as described more [below](#mnf).
 | [*indf3lcc*](#indf3lcc2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3lcc1"></a> alignment to homology model has low confidence at 3' boundary for feature that is or matches a CDS | 
 | [*insertnn*](#insertnn2)  | feature  | no    | INSERTION_OF_NT                 | <a name="insertnn1"></a> too large of an insertion in nucleotide-based alignment of CDS feature | 
 | [*deletinn*](#deletinn2)  | feature  | yes   | DELETION_OF_NT                  | <a name="deletinn1"></a> too large of a deletion in nucleotide-based alignment of CDS feature | 
-| [*lowsim5c*](#lowsim5c2)  | feature  | no    | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5c1"></a> region within annotated feature that is or matches a CDS at 5' end of sequence lacks significant similarity |
-| [*lowsim3c*](#lowsim3c2)  | feature  | no    | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3c1"></a> region within annotated feature that is or matches a CDS at 3' end of sequence lacks significant similarity | 
-| [*lowsimic*](#lowsimic2)  | feature  | no    | LOW_FEATURE_SIMILARITY          | <a name="lowsimic1"></a> region within annotated feature that is or matches a CDS lacks significant similarity  |
+| [*lowsim5c*](#lowsim5c2)  | feature  | no    | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5c1"></a> region overlapping annotated feature that is or matches a CDS at 5' end of sequence lacks significant similarity |
+| [*lowsim3c*](#lowsim3c2)  | feature  | no    | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3c1"></a> region overlapping annotated feature that is or matches a CDS at 3' end of sequence lacks significant similarity | 
+| [*lowsimic*](#lowsimic2)  | feature  | no    | LOW_FEATURE_SIMILARITY          | <a name="lowsimic1"></a> region overlapping annotated feature that is or matches a CDS lacks significant similarity  |
 | [*ambgnt5f*](#ambgnt5f2)  | feature  | no    | AMBIGUITY_AT_FEATURE_START      | <a name="ambgnt5f1"></a> first nucleotide of non-CDS feature is an ambiguous nucleotide |
 | [*ambgnt3f*](#ambgnt3f2)  | feature  | no    | AMBIGUITY_AT_FEATURE_END        | <a name="ambgnt3f1"></a> final nucleotide of non-CDS feature is an ambiguous nucleotide |
 | [*ambgnt5c*](#ambgnt5c2)  | feature  | no    | AMBIGUITY_AT_CDS_START          | <a name="ambgnt5c1"></a> first nucleotide of CDS is an ambiguous nucleotide | 
@@ -1117,6 +1123,9 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*lowsim5n*](#lowsim5n1)  | LOW_FEATURE_SIMILARITY_START    | [`--lowsim5ftr`](#options-alerts-lowsim5ftr) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim5n2"></a> | 
 | [*lowsim3n*](#lowsim3n1)  | LOW_FEATURE_SIMILARITY_END      | [`--lowsim3ftr`](#options-alerts-lowsim3ftr) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim3n2"></a> | 
 | [*lowsimin*](#lowsimin1)  | LOW_FEATURE_SIMILARITY          | [`--lowsimiftr`](#options-alerts-lowsimiftr)   | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsimin2"></a> | 
+| [*lowsim5l*](#lowsim5l1)  | LOW_FEATURE_SIMILARITY_START    | [`--lowsim5lftr`](#options-alerts-lowsim5lftr) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim5l2"></a> | 
+| [*lowsim3l*](#lowsim3l1)  | LOW_FEATURE_SIMILARITY_END      | [`--lowsim3lftr`](#options-alerts-lowsim3lftr) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim3l2"></a> | 
+| [*lowsimil*](#lowsimil1)  | LOW_FEATURE_SIMILARITY          | [`--lowsimilftr`](#options-alerts-lowsimilftr) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsimil2"></a> | 
 
 #### More information on alerts that are *non-fatal* by default <a name="nonfatal2"></a>
 | alert code | short description/error name | relevant_options | relevant feature types | omitted in `.tbl` and `.alt.list` by | 
