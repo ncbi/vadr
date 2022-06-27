@@ -74,11 +74,11 @@ corresponding `.alt` file output [below](#examples).
 | *ambgcd3c* | *AMBIGUITY_IN_STOP_CODON* | sequence position(s) of stop codon | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of ambiguous nucleotides in start/stop codons](#example-ambgcd) | 
 | *pepadjcy* | *PEPTIDE_ADJACENCY_PROBLEM* | sequence position(s) of nucleotides inserted between two mature peptide predictions that are expected to be adjacent | model (reference) position(s) corresponding to the end of the 5' mature peptide and the start of the 3' mature peptide (always length 2) | [mature peptide-specific alert examples](#example-pep) | 
 | *peptrans* | *PEPTIDE_TRANSLATION_PROBLEM* | will be blank  (`-`) | will be blank (`-`) | [mature peptide-specific alert examples](#example-pep) | 
-| *lowsim5c*, *lowsim5n* | *LOW_FEATURE_SIMILARITY_START* | sequence position(s) at 5' end of predicted feature that have low similarity to the reference model | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of low similarity at start](#example-lowsim5) | 
+| *lowsim5c*, *lowsim5n*, *lowsim5l* | *LOW_FEATURE_SIMILARITY_START* | sequence position(s) at 5' end of sequence that have low similarity to the reference model (low similarity region overlaps with a predicted feature) | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of low similarity at start](#example-lowsim5) | 
 | *lowsim5s* | *LOW_SIMILARITY_START* | sequence position(s) at 5' end of sequence (not overlapping with a feature) that have low similarity to the reference model | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to, or '`-`' if sequence is not aligned | [examples of low similarity at start](#example-lowsim5) | 
-| *lowsim3c*, *lowsim3n* | *LOW_FEATURE_SIMILARITY_END* | sequence position(s) at 3' end of predicted feature that have low similarity to the reference model | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of low similarity at end](#example-lowsim3) | 
+| *lowsim3c*, *lowsim3n*, *lowsim3l* | *LOW_FEATURE_SIMILARITY_END* | sequence position(s) at 3' end of sequence that have low similarity to the reference model (low similarity region overlaps with a predicted feature) | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of low similarity at end](#example-lowsim3) | 
 | *lowsim3s* | *LOW_SIMILARITY_END* | sequence position(s) at 3' end of sequence (not overlapping with a feature) that have low similarity to the reference model | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to, or '`-`' if sequence is not aligned | [examples of low similarity at end](#example-lowsim3) | 
-| *lowsimic*, *lowsimin* | *LOW_FEATURE_SIMILARITY* | sequence position(s) internal to a predicted feature (not including first or final position of the feature) that have low similarity to the reference model | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of internal low similarity](#example-lowsimi) | 
+| *lowsimic*, *lowsimin*, *lowsimil* | *LOW_FEATURE_SIMILARITY* | sequence position(s) internal to a predicted feature (not including first or final position of the feature) that have low similarity to the reference model | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of internal low similarity](#example-lowsimi) | 
 | *lowsimis* | *LOW_SIMILARITY* | sequence position(s) internal to a sequence (not including first or final position of the sequence) and not overlapping with a feature that have low similarity to the reference model | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to, or '`-`' if sequence is not aligned | [examples of internal low similarity](#example-lowsimi) | 
 | *deletins* | *DELETION_OF_FEATURE* | will be blank (`-`) | model (reference) positions that correspond to the feature that is deleted in the sequence | [deleted feature examples](#example-deletin) | 
 | *deletinf* | *DELETION_OF_FEATURE_SECTION* | will be blank (`-`) | model (reference) positions that correspond to the segment of the feature that is deleted in the sequence | [deleted features examples](#example-delftr) | 
@@ -1048,7 +1048,7 @@ TOY50-MP2         -AAATCACCGGTGGTGATCGCT...TTACCATAAATGAGCAT-----------
 
 | relevant alert codes  | corresponding alert descriptions  |
 |----------------------|------------------------------------|
-| *lowsim5c*, *lowsim5n* (not shown) | *LOW_FEATURE_SIMILARITY_START* |
+| *lowsim5c*, *lowsim5n* (not shown), *lowsim5l* (not shown) | *LOW_FEATURE_SIMILARITY_START* |
 | *lowsim5s*                         | *LOW_SIMILARITY_START* |
 
   **Instructions to reproduce this example and create the files discussed below:**
@@ -1064,7 +1064,7 @@ TOY50-MP2         -AAATCACCGGTGGTGATCGCT...TTACCATAAATGAGCAT-----------
 #      seq                ftr   ftr          ftr  alert           alert                             seq  seq       mdl  mdl  alert 
 #idx   name        model  type  name         idx  code      fail  description                    coords  len    coords  len  detail
 #----  ----------  -----  ----  -----------  ---  --------  ----  ----------------------------  -------  ---  --------  ---  ------
-1.2.3  TOY50-LSS1  toy50  CDS   protein_one    1  lowsim5c  no    LOW_FEATURE_SIMILARITY_START  7..13:+    7  11..13:+    3  region within annotated feature that is or matches a CDS at 5' end of sequence lacks significant similarity [7 nt overlap b/t low similarity region of length 13 (1..13) and annotated feature (7..31)]
+1.2.3  TOY50-LSS1  toy50  CDS   protein_one    1  lowsim5c  no    LOW_FEATURE_SIMILARITY_START  1..13:+   13   5..13:+    9  region overlapping annotated feature that is or matches a CDS at 5' end of sequence lacks significant similarity [7 nt overlap b/t low similarity region of length 13 (1..13) and annotated feature (7..31)]
 #
 2.1.2  TOY50-LSS2  toy50  -     -              -  lowsim5s  yes   LOW_SIMILARITY_START          1..10:+   10   3..10:+    8  significant similarity not detected at 5' end of the sequence [low similarity region of length 10]
 ```
@@ -1080,7 +1080,7 @@ TOY50-MP2         -AAATCACCGGTGGTGATCGCT...TTACCATAAATGAGCAT-----------
   `--keep` or `--out_stk` options are used with `v-annotate.pl`.
 
 ```
-                               vvvvvvv                 
+                       vvvvvv  vvvvvvv                 
 TOY50-LSS1         ----TTGTAG..GTTcgacGTGATCGCTTTACCATAAATGAGCAT-----------
 #=GR TOY50-LSS1 PP ....998766..542223389************************...........
 TOY50-LSS2         --GTTTAGTGgcATG....GTGATCGCTTTACCATAAATGAGCAT-----------
@@ -1091,19 +1091,18 @@ TOY50-LSS2         --GTTTAGTGgcATG....GTGATCGCTTTACCATAAATGAGCAT-----------
 #=GC RFCOL.X       1234567890..123....4567890123456789012345678901234567890
 ```
 
-  **Explanation of `lowsim5c` alert**: The 7 nucleotides from
-  positions 7 to 13 in the sequence `TOY50-LSS1` (`seq coords:7..13:+`) are at the 5' end
-  of the predicted CDS `protein one` but are not similar to the reference
-  model. These 7 nucleotides align to reference model positions 11 to 13 (`mdl coords:11..13:+`) and 
-  include an insertion of 4 nucleotides after reference position 13. The 7 nucleotides
+  **Explanation of `lowsim5c` alert**: The 13 nucleotides from
+  positions 1 to 13 in the sequence `TOY50-LSS1` (`seq coords:1..13:+`) are at the 5' end
+  of the sequence and overlap by 7 nucleotides with the predicted CDS `protein one` but are not similar to the reference
+  model. These 13 nucleotides align to reference model positions 5 to 13 (`mdl coords:5..13:+`) and 
+  include an insertion of 4 nucleotides after reference position 13. The 13 nucleotides
   are marked by `v` characters in the alignment above.          
-  The alignment below shows the region of low similarity actually extends from 
-  sequence position 1 to position 13, as reported in the `alert detail` field (`[7 nt overlap b/t low similarity region of length 13 (1..13) and annotated feature (7..31)].
 
-  A similar `lowsim5f` alert exists for non-coding (non-CDS and
-  non-mature peptide) features, but no example is shown here.  Having
+  Two similar alerts, `lowsim5f` and `lowsim5l` exists for non-coding (non-CDS and
+  non-mature peptide) features, but no examples are shown here. `lowsim5f` is for relatively short regions 
+  of low similarity, while `lowsim5l` is for longer regions (30nt or more). Having
   separate alerts for coding and non-coding features gives the user
-  control over whether these types of alerts in coding versus non-coding
+  control over whether these types of alerts in coding versus non-coding features.
 
   **Explanation of `lowsim5s` alert**: The first ten nucleotides 
   in the sequence `TOY50-LSS2` are not similar to the reference model (`seq coords:1..10:+`)
@@ -1123,7 +1122,7 @@ TOY50-LSS2         --GTTTAGTGgcATG....GTGATCGCTTTACCATAAATGAGCAT-----------
 
 | relevant alert codes  | corresponding alert descriptions  |
 |----------------------|------------------------------------|
-| *lowsim3c*, *lowsim3n* (not shown) | *LOW_FEATURE_SIMILARITY_END* |
+| *lowsim3c*, *lowsim3n* (not shown), *lowsim3l* (not shown) | *LOW_FEATURE_SIMILARITY_END* |
 | *lowsim3s*                         | *LOW_SIMILARITY_END* |
 
   **Instructions to reproduce this example and create the files discussed below:**
@@ -1139,7 +1138,7 @@ TOY50-LSS2         --GTTTAGTGgcATG....GTGATCGCTTTACCATAAATGAGCAT-----------
 #      seq                ftr          ftr              ftr  alert           alert                             seq  seq       mdl  mdl  alert 
 #idx   name        model  type         name             idx  code      fail  description                    coords  len    coords  len  detail
 #----  ----------  -----  -----------  ---------------  ---  --------  ----  ----------------------------  -------  ---  --------  ---  ------
-1.2.2  TOY50-LSE1  toy50  CDS          protein_one        1  lowsim3c  no    LOW_FEATURE_SIMILARITY_END    26..37:+   12  26..31:+    6  region within annotated feature that is or matches a CDS at 3' end of sequence lacks significant similarity [12 nt overlap b/t low similarity region of length 12 (26..37) and annotated feature (10..37)]
+1.2.2  TOY50-LSE1  toy50  CDS          protein_one        1  lowsim3c  no    LOW_FEATURE_SIMILARITY_END    26..37:+   12  26..31:+    6  region overlapping annotated feature that is or matches a CDS at 3' end of sequence lacks significant similarity [12 nt overlap b/t low similarity region of length 12 (26..37) and annotated feature (10..37)]
 #
 2.1.2  TOY50-LSE2  toy50  -            -                  -  lowsim3s  yes   LOW_SIMILARITY_END            40..53:+   14  35..46:+   12  significant similarity not detected at 3' end of the sequence [low similarity region of length 14]
 ```
@@ -1169,16 +1168,17 @@ TOY50-LSE2         -AAATCACCGATGGTGATCGCTTTAC.......CATAAATGAcgatacacGAACTGCACGA
 
   **Explanation of `lowsim3c` alert**: The 12 nucleotides from
   positions 26 to 37 (`seq coords:26..37:+`) in the sequence `TOY50-LSE1` are the 3' end
-  of the predicted CDS `protein one` but are not similar to the reference
+  of the sequence and overlap with the predicted CDS `protein one` but are not similar to the reference
   model. These 12 nucleotides align to reference model positions 26 to 31
   (`mdl coords:26..31:+`) including an insertion of length 7 after model position 26.
   The 12 nucleotides
   are marked by `v` characters in the alignment above.
   
-  A similar `lowsim3f` alert exists for non-coding (non-CDS and
-  non-mature peptide) features, but no example is shown here.  Having
+  Two similar alerts, `lowsim3f` and `lowsim3l` exists for non-coding (non-CDS and
+  non-mature peptide) features, but no examples are shown here. `lowsim3f` is for relatively short regions 
+  of low similarity, while `lowsim3l` is for longer regions (30nt or more). Having
   separate alerts for coding and non-coding features gives the user
-  control over whether these types of alerts in coding versus non-coding
+  control over whether these types of alerts in coding versus non-coding features.
 
   **Explanation of `lowsim3s` alert**: The final 14 nucleotides 
   from positions 40 to 53 (`seq coords:40..53:+`) in the sequence `TOY50-LSE2` are not similar to the reference model 
@@ -1196,7 +1196,7 @@ TOY50-LSE2         -AAATCACCGATGGTGATCGCTTTAC.......CATAAATGAcgatacacGAACTGCACGA
 
 | relevant alert codes  | corresponding alert descriptions  |
 |----------------------|------------------------------------|
-| *lowsimic*, *lowsimin* (not shown) | *LOW_FEATURE_SIMILARITY* |
+| *lowsimic*, *lowsimin* (not shown), *lowsimil* (not shown) | *LOW_FEATURE_SIMILARITY* |
 | *lowsimis*                         | *LOW_SIMILARITY* |
 
   **Instructions to reproduce this example and create the files discussed below:**
@@ -1212,7 +1212,7 @@ TOY50-LSE2         -AAATCACCGATGGTGATCGCTTTAC.......CATAAATGAcgatacacGAACTGCACGA
 #      seq                ftr   ftr          ftr  alert           alert                         seq  seq       mdl  mdl  alert 
 #idx   name        model  type  name         idx  code      fail  description                coords  len    coords  len  detail
 #----  ----------  -----  ----  -----------  ---  --------  ----  ----------------------  ---------  ---  --------  ---  ------
-1.2.3  TOY50-LSI1  toy50  CDS   protein_one  1    lowsimic  no    LOW_FEATURE_SIMILARITY  32..107:+   76  27..28:+    2  region within annotated feature that is or matches a CDS lacks significant similarity [76 nt overlap b/t low similarity region of length 76 (32..107) and annotated feature (10..114)]
+1.2.3  TOY50-LSI1  toy50  CDS   protein_one  1    lowsimic  no    LOW_FEATURE_SIMILARITY  32..107:+   76  27..28:+    2  region overlapping annotated feature that is or matches a CDS lacks significant similarity [76 nt overlap b/t low similarity region of length 76 (32..107) and annotated feature (10..114)]
 ```
 
   **Alignment of `TOY50-LSI1` sequence to the toy50 model:** The output
@@ -1248,9 +1248,11 @@ TOY50-LSI1         -AAATCACCGATGGTGATCGCTTTACCaaagcagtacaggcacatgacaaagcagtacagg
   separate alerts for coding and non-coding features gives the user
   control over whether these types of alerts in coding versus non-coding
 
-  A similar `lowsimic` alert exists when the region of low similarity is 
-  not within an annotated feature, and also does not include the first or 
-  final nucleotide in the sequence, but no example is shown here.
+  Two similar alerts, `lowsimif` and `lowsimil` exists for non-coding (non-CDS and
+  non-mature peptide) features, but no examples are shown here. `lowsimif` is for relatively short regions 
+  of low similarity, while `lowsimil` is for longer regions (30nt or more). Having
+  separate alerts for coding and non-coding features gives the user
+  control over whether these types of alerts in coding versus non-coding features.
 
   Regions of low similarity are detected in the *coverage determination* 
   stage, as regions that are not covered by local alignment *hits* between the 
