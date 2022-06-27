@@ -189,10 +189,10 @@ if [ "$DOWNLOADORBUILD" != "build" ]; then
     curl -k -L -o $FVERSIONGIT.zip https://github.com/wrpearson/fasta36/archive/$FVERSIONGIT.zip; unzip $FVERSIONGIT.zip; mv fasta36-$FVERSIONGITNOV fasta; rm $FVERSIONGIT.zip
     # patch Makefile with vadr specific changes and copy to expected name so 'build' step is linux/osx agnostic
     if [ "$INPUTSYSTEM" = "linux" ]; then
-        patch fasta/make/Makefile.vadr_install vadr/fasta-mods/vadr-fasta-Makefile.linux.patch
+        patch fasta/make/Makefile.linux vadr/fasta-mods/vadr-fasta-Makefile.linux.patch
         cp fasta/make/Makefile.linux fasta/make/Makefile.vadr_install
     else 
-        patch fasta/make/Makefile.vadr_install vadr/fasta-mods/vadr-fasta-Makefile.os_x86_64.patch
+        patch fasta/make/Makefile.os_x86_64 vadr/fasta-mods/vadr-fasta-Makefile.os_x86_64.patch
         cp fasta/make/Makefile.os_x86_64 fasta/make/Makefile.vadr_install
     fi
     # patch defs.h with vadr specific changes
