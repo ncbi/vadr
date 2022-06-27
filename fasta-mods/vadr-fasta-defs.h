@@ -63,7 +63,14 @@
 #define MAX_STR	512 /* standard label/message buffer */
 #define MAX_SSTR 32 /* short string */
 #define MAX_LSTR 4096 /* long label/message buffer */
-#define MAX_FN  120 /* maximum size of a file name */
+
+// EPN modification 1 of 3
+// ORIGINAL line
+//#define MAX_FN  120 /* maximum size of a file name */
+// MODIFIED line
+#define MAX_FN  4096 /* maximum size of a file name */
+// END of EPN modification 1 of 3
+
 #define MAX_CH	40 /* maximum number of library choices */
 #ifndef SMALLMEM
 #define MAX_LF  2000 /* maximum numer of library files */
@@ -94,25 +101,28 @@
 #define MIN_LOCAL_LEN 33	/* minimum length for addn'l local alignments
 				   (should be in pstruct)*/
 #ifndef SMALLMEM
-// EPN changed block 1 of 2 
+// EPN modification 2 of 3
 // ORIGINAL block: 
 // #define MAXTST	40000		/* longest query */
 // #define MAXLIB	150000		/* longest library sequence*/
 // #define MAXLIB_P 45000
+// MODIFIED block:
 #define MAXTST	 250000		/* longest query */
 #define MAXLIB	 250000		/* longest library sequence*/
 #define MAXLIB_P 250000
-// END of EPN changed block 1 of 2
+// END of EPN modification 2 of 3
 
 #define MIN_RES 2000		/* minimum amount allocated for alignment */
 #ifndef TFAST
 #define MAXTRN  45000		/* buffer for fastx translation */
 #else
-// EPN changed block 2 of 2 
-// ORIGINAL block: 
+// EPN modification 3 of 3
+// ORIGINAL line:
 // #define MAXTRN 165000		/* buffer for tfastx translation, must be > 3 * MAXTST */
+// MODIFIED line:
 #define MAXTRN 800000		/* buffer for tfastx translation, must be > 3 * MAXTST */
-// END of EPN changed block 2 of 2
+// END of EPN modification 3 of 3
+
 #endif
 #define SEQDUP	150		/* future - overlap */
 #ifndef PCOMPLIB
