@@ -1098,7 +1098,7 @@ TOY50-LSS2         --GTTTAGTGgcATG....GTGATCGCTTTACCATAAATGAGCAT-----------
   include an insertion of 4 nucleotides after reference position 13. The 13 nucleotides
   are marked by `v` characters in the alignment above.          
 
-  Two similar alerts, `lowsim5f` and `lowsim5l` exists for non-coding (non-CDS and
+  Two similar alerts, `lowsim5f` and `lowsim5l`, exist for non-coding (non-CDS and
   non-mature peptide) features, but no examples are shown here. `lowsim5f` is for relatively short regions 
   of low similarity, while `lowsim5l` is for longer regions (30nt or more). Having
   separate alerts for coding and non-coding features gives the user
@@ -1174,7 +1174,7 @@ TOY50-LSE2         -AAATCACCGATGGTGATCGCTTTAC.......CATAAATGAcgatacacGAACTGCACGA
   The 12 nucleotides
   are marked by `v` characters in the alignment above.
   
-  Two similar alerts, `lowsim3f` and `lowsim3l` exists for non-coding (non-CDS and
+  Two similar alerts, `lowsim3f` and `lowsim3l`, exist for non-coding (non-CDS and
   non-mature peptide) features, but no examples are shown here. `lowsim3f` is for relatively short regions 
   of low similarity, while `lowsim3l` is for longer regions (30nt or more). Having
   separate alerts for coding and non-coding features gives the user
@@ -1248,7 +1248,7 @@ TOY50-LSI1         -AAATCACCGATGGTGATCGCTTTACCaaagcagtacaggcacatgacaaagcagtacagg
   separate alerts for coding and non-coding features gives the user
   control over whether these types of alerts in coding versus non-coding
 
-  Two similar alerts, `lowsimif` and `lowsimil` exists for non-coding (non-CDS and
+  Two similar alerts, `lowsimif` and `lowsimil`, exist for non-coding (non-CDS and
   non-mature peptide) features, but no examples are shown here. `lowsimif` is for relatively short regions 
   of low similarity, while `lowsimil` is for longer regions (30nt or more). Having
   separate alerts for coding and non-coding features gives the user
