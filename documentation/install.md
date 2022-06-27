@@ -359,14 +359,14 @@ avoid possible numerical overflow issues with `glsearch` scores when
 aligning long sequences, the FASTA Makefile is modified so that the
 non-vectorized version of `glsearch` is used. These changes can be
 seen in the patch files
-`vadr/fasta-mods/vadr-fasta-Makefile.linux.patch` and
+[`vadr/fasta-mods/vadr-fasta-Makefile.linux.patch`](../fasta-mods/vadr-fasta-Makefile.linux.patch#top) and
 `vadr/fasta-mods/vadr-fasta-Makefile.os_x86_64.patch`.  See the
 `vadr/fasta-mods/README.txt` for more information on how these patch
 files were created.
 
-When aligning very long sequences (more than 30Kb), it is advisable *not* to
-try build a CM with `v-build.pl` (i.e. use the `--skipbuild` option),
-and it is advisable to use the `-s` and `--glsearch` options with `v-annotate.pl`.
+When aligning very long sequences (more than 30Kb), it is recommended to *not* 
+build a CM with `v-build.pl` (i.e. use the `--skipbuild` option),
+and it is recommended to use the `-s` and `--glsearch` options with `v-annotate.pl`.
 
 ---
 ## Further information
