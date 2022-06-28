@@ -1,0 +1,85 @@
+--- a/src/defs.h	2022-06-27 14:44:20.244363000 -0400
++++ b/src/defs.h	2022-06-27 14:42:58.682073000 -0400
+@@ -1,3 +1,8 @@
++/* MANUALLY CHANGED BY ERIC NAWROCKI FROM 
++ * FASTA VERSION 36.3.8h (git version v36.3.8h_04-May-2020)
++ * Search for 'EPN' for changes to original src/defs.h file from fasta
++ */
++
+ /* Concurrent read version */
+ 
+ /* $Id: defs.h 1261 2014-06-11 19:38:36Z wrp $ */
+@@ -58,7 +63,14 @@
+ #define MAX_STR	512 /* standard label/message buffer */
+ #define MAX_SSTR 32 /* short string */
+ #define MAX_LSTR 4096 /* long label/message buffer */
+-#define MAX_FN  120 /* maximum size of a file name */
++
++// EPN modification 1 of 3
++// ORIGINAL line
++//#define MAX_FN  120 /* maximum size of a file name */
++// MODIFIED line
++#define MAX_FN  4096 /* maximum size of a file name */
++// END of EPN modification 1 of 3
++
+ #define MAX_CH	40 /* maximum number of library choices */
+ #ifndef SMALLMEM
+ #define MAX_LF  2000 /* maximum numer of library files */
+@@ -89,14 +101,28 @@
+ #define MIN_LOCAL_LEN 33	/* minimum length for addn'l local alignments
+ 				   (should be in pstruct)*/
+ #ifndef SMALLMEM
+-#define MAXTST	40000		/* longest query */
+-#define MAXLIB	150000		/* longest library sequence*/
+-#define MAXLIB_P 45000
++// EPN modification 2 of 3
++// ORIGINAL block: 
++// #define MAXTST	40000		/* longest query */
++// #define MAXLIB	150000		/* longest library sequence*/
++// #define MAXLIB_P 45000
++// MODIFIED block:
++#define MAXTST	 250000		/* longest query */
++#define MAXLIB	 250000		/* longest library sequence*/
++#define MAXLIB_P 250000
++// END of EPN modification 2 of 3
++
+ #define MIN_RES 2000		/* minimum amount allocated for alignment */
+ #ifndef TFAST
+ #define MAXTRN  45000		/* buffer for fastx translation */
+ #else
+-#define MAXTRN 165000		/* buffer for tfastx translation, must be > 3 * MAXTST */
++// EPN modification 3 of 3
++// ORIGINAL line:
++// #define MAXTRN 165000		/* buffer for tfastx translation, must be > 3 * MAXTST */
++// MODIFIED line:
++#define MAXTRN 800000		/* buffer for tfastx translation, must be > 3 * MAXTST */
++// END of EPN modification 3 of 3
++
+ #endif
+ #define SEQDUP	150		/* future - overlap */
+ #ifndef PCOMPLIB
+--- a/make/Makefile.linux	2022-06-24 16:00:30.463519000 -0400
++++ b/make/Makefile.linux	2022-06-23 14:12:23.074624000 -0400
+@@ -56,10 +56,18 @@
+ 
+ # SSE2 acceleration
+ #
+-DROPGSW_O = $(DROPGSW_SSE_O)
+-DROPLAL_O = $(DROPLAL_SSE_O)
+-DROPGNW_O = $(DROPGNW_SSE_O)
+-DROPLNW_O = $(DROPLNW_SSE_O)
++#DROPGSW_O = $(DROPGSW_SSE_O)
++#DROPLAL_O = $(DROPLAL_SSE_O)
++#DROPGNW_O = $(DROPGNW_SSE_O)
++#DROPLNW_O = $(DROPLNW_SSE_O)
++
++# Different DROP flags for non-vectorized implementation:
++# Bill Pearson suggested scores for 250K by 250K alignment might get
++# too high to behave with vectorized implementation
++DROPGSW_O = $(DROPGSW_NA_O)
++DROPLAL_O = $(DROPLAL_NA_O)
++DROPGNW_O = $(DROPGNW_NA_O)
++DROPLNW_O = $(DROPLNW_NA_O)
+ 
+ # renamed (fasta36)  programs
+ include ../make/Makefile36m.common
