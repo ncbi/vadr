@@ -5,6 +5,7 @@
   * [Installing Inline and LWP if installation fails](#inline)
 * [Setting environment variables](#environment)
 * [Verifying successful installation](#tests)
+* [VADR-specific modifications to FASTA](#fastamods)
 * [Further information](#further)
 
 ---
@@ -48,7 +49,11 @@ module libraries [sequip](https://github.com/nawrockie/sequip),
 [Bio-Easel](https://github.com/nawrockie/Bio-Easel), as well as the
 binary executables of [Infernal](http://eddylab.org/infernal/), the
 src distribution of [HMMER](http://hmmer.org), the NCBI BLAST package
-and William Pearson's FASTA package (for either Linux or Mac/OSX).
+and William Pearson's FASTA package (for either Linux or
+Mac/OSX). (The VADR installation script modifies the FASTA package
+slightly prior to installing it to allow alignment
+of long sequences up to 250Kb using the `glsearch` executable. This is
+described more [here](#fastamods).)
 
 The installation requires that you have the perl Inline module
 installed on your system. If not, the installation script may
@@ -125,7 +130,7 @@ vadr-install.sh>`)
 ```
 ********************************************************
 The final step is to update your environment variables.
-(See https://github.com/ncbi/vadr/blob/1.4/documentation/install.md for more information.)
+(See https://github.com/ncbi/vadr/blob/1.4.2/documentation/install.md for more information.)
 
 If you are using the bash or zsh shell (zsh is default in MacOS/X as
 of v10.15 (Catalina)), add the following lines to the end of your
@@ -341,6 +346,28 @@ Success: all tests passed [do-install-tests-local.sh]
 This means that the test has passed. You should see similar 
 lines if you run the other tests. If you do not and need help
 figuring out why, email me at eric.nawrocki@nih.gov.
+
+---
+## <a name="fastamods"></a> VADR-specific modifications to the FASTA package
+
+To enable alignment of long sequences (up to 250Kb) with the
+`glsearch` program of FASTA, some changes are made to the `src/defs.h`
+file by the `vadr-install.sh` script prior to compilation of
+FASTA. These changes can be seen in the patch file
+[`vadr/fasta-mods/vadr-fasta-defs.patch`](../fasta-mods/vadr-fasta-defs.patch#top)
+patch file. Additionally, to
+avoid possible numerical overflow issues with `glsearch` scores when
+aligning long sequences, the FASTA Makefile is modified so that the
+non-vectorized version of `glsearch` is used. These changes can be
+seen in the patch files
+[`vadr/fasta-mods/vadr-fasta-Makefile.linux.patch`](../fasta-mods/vadr-fasta-Makefile.linux.patch#top) and
+[`vadr/fasta-mods/vadr-fasta-Makefile.os_x86_64.patch`](../fasta-mods/vadr-fasta-Makefile.os_x86_64.patch#top).  See the
+`vadr/fasta-mods/README.txt` for more information on how these patch
+files were created.
+
+When aligning very long sequences (more than 30Kb), it is recommended to *not* 
+build a CM with `v-build.pl` (i.e. use the `--skipbuild` option),
+and it is recommended to use the `-s` and `--glsearch` options with `v-annotate.pl`.
 
 ---
 ## Further information
