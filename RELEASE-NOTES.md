@@ -1,5 +1,22 @@
 # VADR 1.x release notes 
 
+### VADR 1.4.2 release (June 2022): Minor update
+  * adds new lowsim{5,3,i}l alerts
+    (LOW_FEATURE_SIMILARITY{_START,_END}) for long (>=30 nt by
+    default) regions of low similarity, and modifies lowsim{5,3,i}n
+    alerts to be non-fatal for misc_featurizable features
+    (misc_not_failure=1 in modelinfo file)
+  * modifies installation of FASTA to allow alignment of sequences up
+    to 250Kb with glsearch (previously 40Kb limit) and increases
+    maximum allowed filename length
+  * fixes a bug with -r in that causes a cdsstopp alert to be
+    erroneously reported in rare situations (github issue #58)
+  * fixes a bug with -s or -r that can cause parse_blast.pl to fail if
+    the blastn alignment is plus/minus for query/subject and the final
+    alignment line length is exactly 1 nt (github issue #61)
+
+---
+
 ### VADR 1.4.1 release (January 2022): Bug fix release
   * fixes bug that prevented reporting of some *dupregin* alerts (DUPLICATE_REGIONS) 
     previously reported in vadr 1.3 and earlier versions; only
