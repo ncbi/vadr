@@ -13,7 +13,7 @@
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
 # 
-command: perl $VADRSCRIPTSDIR/v-annotate.pl -s --keep --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r $VADRSCRIPTSDIR/testfiles/github-issues/iss61-blaststrand/iss61.fa va-iss61-blaststrand
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -s --keep --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r $VADRSCRIPTSDIR/testfiles/github-issues/iss61-blaststrand/iss61.fa va-iss61-blaststrand > va-iss61-blaststrand.out
 desc: iss61-blaststrand
 out: va-iss61-blaststrand/va-iss61-blaststrand.vadr.pass.tbl
 out: va-iss61-blaststrand/va-iss61-blaststrand.vadr.fail.tbl
