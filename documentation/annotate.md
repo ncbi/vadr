@@ -882,7 +882,7 @@ with format described [here](formats.md#rpn).
 | `--r_blastnsc <x>`  | for `-r`, set the blastn minimum HSP score to consider to `<x>`, the default value for `<x>` is `50.0` |
 | `--r_blastntk`      | for `-r`, set blastn option `-task blastn` | 
 | `--r_blastnxd <n>`  | for `-r`, set the blastn `-xdrop_gap_final` parameter to `<n>`, the default value for `<n>` is `110` |
-| `--r_lowsimok`      | for `-r`, do not report lowsim{5,3,i}s alerts for regions within N-rich regions that were identified during N-replacement (even for regions that were not replaced) |
+| `--r_lowsimok`      | for `-r`, do not report lowsim{5,3,i}s alerts for low similarity regions within N-rich regions that were identified during N-replacement (even for N-rich regions that were not replaced) |
 
 ### `v-annotate.pl` options related to splitting input sequence file into chunks and processing each chunk separately and potentially in parallel <a name="options-split"></a>
 
