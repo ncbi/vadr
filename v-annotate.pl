@@ -357,7 +357,7 @@ opt_Add("--r_blastngdf",  "boolean",      0,   $g,    "-r", undef,          "for
 opt_Add("--r_blastnsc",   "real",      50.0,   $g,    "-r", undef,          "for -r, set blastn minimum HSP score to consider to <x>",                "for -r, set blastn minimum HSP score to consider to <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--r_blastntk",   "boolean",      0,   $g,    "-r", undef,          "for -r, set blastn option -task blastn",                                 "for -r, set blastn option -task blastn", \%opt_HH, \@opt_order_A);
 opt_Add("--r_blastnxd",   "integer",    110,   $g,    "-r", undef,          "for -r, set blastn option -xdrop_gap_final <n> to <n>",                  "for -r, set blastn -xdrop_gap_final <n> to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--r_lowsimok",   "boolean",      0,   $g,    "-r", undef,          "with -r, ignore LOW_SIMILARITY{_START,_END} within N-rich regions",      "with -r, ignore LOW_SIMILARITY{_START,_END} within N-rich regions", \%opt_HH, \@opt_order_A);
+opt_Add("--r_lowsimok",   "boolean",      0,   $g,    "-r", undef,          "with -r, do not report lowsim{5,3,i}s within identified N-rich regions", "with -r, do not report lowsim{5,3,i}s within identified N-rich regions", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to splitting input file into chunks and processing each chunk separately";
 #     option            type       default  group   requires incompat    preamble-output                                                          help-output    
