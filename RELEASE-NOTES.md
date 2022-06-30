@@ -1,6 +1,6 @@
 # VADR 1.x release notes 
 
-### VADR 1.4.2 release (June 2022): Minor update
+### VADR 1.4.2 release (July 2022): Minor update
   * adds new lowsim{5,3,i}l alerts
     (LOW_FEATURE_SIMILARITY{_START,_END}) for long (>=30 nt by
     default) regions of low similarity, and modifies lowsim{5,3,i}n

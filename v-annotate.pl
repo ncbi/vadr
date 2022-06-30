@@ -583,7 +583,7 @@ my $usage         = "Usage: $executable [-options] <fasta file to annotate> <out
 my $synopsis      = "$executable :: classify and annotate sequences using a model library";
 my $date          = scalar localtime();
 my $version       = "1.4.2";
-my $releasedate   = "Jun 2022";
+my $releasedate   = "Jul 2022";
 my $pkgname       = "VADR";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
