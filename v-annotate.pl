@@ -357,6 +357,7 @@ opt_Add("--r_blastngdf",  "boolean",      0,   $g,    "-r", undef,          "for
 opt_Add("--r_blastnsc",   "real",      50.0,   $g,    "-r", undef,          "for -r, set blastn minimum HSP score to consider to <x>",                "for -r, set blastn minimum HSP score to consider to <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--r_blastntk",   "boolean",      0,   $g,    "-r", undef,          "for -r, set blastn option -task blastn",                                 "for -r, set blastn option -task blastn", \%opt_HH, \@opt_order_A);
 opt_Add("--r_blastnxd",   "integer",    110,   $g,    "-r", undef,          "for -r, set blastn option -xdrop_gap_final <n> to <n>",                  "for -r, set blastn -xdrop_gap_final <n> to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--r_lowsimok",   "boolean",      0,   $g,    "-r", undef,          "with -r, ignore LOW_SIMILARITY{_START,_END} within N-rich regions",      "with -r, ignore LOW_SIMILARITY{_START,_END} within N-rich regions", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to splitting input file into chunks and processing each chunk separately";
 #     option            type       default  group   requires incompat    preamble-output                                                          help-output    
@@ -540,6 +541,7 @@ my $options_okay =
                 'r_blastnsc=s'     => \$GetOptions_H{"--r_blastnsc"},
                 'r_blastntk'       => \$GetOptions_H{"--r_blastntk"},
                 'r_blastnxd=s'     => \$GetOptions_H{"--r_blastnxd"},
+                'r_lowsimok'       => \$GetOptions_H{"--r_lowsimok"},
 # options related to splitting
                 'split'         => \$GetOptions_H{"--split"},
                 'cpu=s'         => \$GetOptions_H{"--cpu"}, 
@@ -1817,6 +1819,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                                       $mdl_name, \@ftr_fileroot_A, \@ftr_outroot_A, 
                                                       $$sqfile_for_cds_mp_alerts_R, $$sqfile_for_output_fastas_R, $$sqfile_for_pv_R,
                                                       $do_separate_cds_fa_files_for_protein_validation, \@to_remove_A,
+                                                      ($do_replace_ns) ? \%rpn_output_HH : undef, 
                                                       $out_root, \%opt_HH, \%ofile_info_HH);
       }
       push(@to_remove_A, ($stk_file_HA{$mdl_name}[$a]));
@@ -1840,7 +1843,9 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       add_low_similarity_alerts_for_one_sequence($seq_name, \%seq_len_H, undef,
                                                  \@{$ftr_info_HAH{$mdl_name}}, \@{$sgm_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                                  \%stg_results_HHH, \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
-                                                 \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, \%opt_HH, \%ofile_info_HH);
+                                                 \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, 
+                                                 ($do_replace_ns) ? \%rpn_output_HH : undef, 
+                                                 \%opt_HH, \%ofile_info_HH);
     }
   }
 }
@@ -4025,6 +4030,7 @@ sub cmalign_or_glsearch_run {
 #  $do_separate_cds_fa_files:  '1' to output two sets of cds files, one with fetched features from $sqfile_for_output_fastas
 #                              and one for the protein validation stage fetched from $sqfile_for_cds_mp_alerts
 #  $to_remove_AR:              REF to array of files to remove before exiting, possibly added to here if $do_separate_cds_fa_files
+#  $rpn_output_HHR:            REF to rpn output data HH, PRE-FILLED, will be undef if -r not used
 #  $out_root:                  string for naming output files
 #  $opt_HHR:                   REF to 2D hash of option values
 #  $ofile_info_HHR:            REF to 2D hash of output file information
@@ -4036,7 +4042,7 @@ sub cmalign_or_glsearch_run {
 ################################################################# 
 sub parse_stk_and_add_alignment_cds_and_mp_alerts { 
   my $sub_name = "parse_stk_and_add_alignment_cds_and_mp_alerts()";
-  my $nargs_exp = 25;
+  my $nargs_exp = 26;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
   my ($stk_file, $in_sqfile_R, $mdl_tt, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, 
@@ -4044,7 +4050,8 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
       $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $dcr_output_HAHR, 
       $mdl_name, $ftr_fileroot_AR, $ftr_outroot_AR, 
       $sqfile_for_cds_mp_alerts, $sqfile_for_output_fastas, $sqfile_for_pv,
-      $do_separate_cds_fa_files, $to_remove_AR, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
+      $do_separate_cds_fa_files, $to_remove_AR, $rpn_output_HHR,
+      $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = \%{$ofile_info_HHR->{"FH"}};
   my $pp_thresh_non_mp = opt_Get("--indefann",    $opt_HHR); # threshold for non-mat_peptide features
@@ -4724,7 +4731,9 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
       add_low_similarity_alerts_for_one_sequence($seq_name, \%seq_len_H, \@ua2rf_A, 
                                                  $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, 
                                                  $stg_results_HHHR, $sgm_results_HAHR, $ftr_results_HAHR, 
-                                                 $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $opt_HHR, $ofile_info_HHR);
+                                                 $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, 
+                                                 $rpn_output_HHR, # may be undef
+                                                 $opt_HHR, $ofile_info_HHR);
       
       # update the model coords for ambgnt5s/ambgnt3s seqs, now that we have the alignment
       alert_sequence_instance_update_mdl_coords($alt_seq_instances_HHR, $alt_info_HHR, "ambgnt5s", $seq_name, \@ua2rf_A, $FH_HR);
@@ -6296,6 +6305,7 @@ sub sqstring_find_stops {
 #  $ftr_results_HAHR:       REF to feature results HAH, added to here
 #  $alt_seq_instances_HHR:  REF to array of hash with per-sequence alerts, PRE-FILLED
 #  $alt_ftr_instances_HHHR: REF to array of 2D hashes with per-feature alerts, PRE-FILLED
+#  $rpn_output_HHR:         REF to rpn output data HH, PRE-FILLED, will be undef if -r not used
 #  $opt_HHR:                REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:         REF to the 2D hash of output file information
 #             
@@ -6306,12 +6316,12 @@ sub sqstring_find_stops {
 #################################################################
 sub add_low_similarity_alerts_for_one_sequence { 
   my $sub_name = "add_low_similarity_alerts_for_one_sequence";
-  my $nargs_exp = 13;
+  my $nargs_exp = 14;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($seq_name, $seq_len_HR, $ua2rf_AR, $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, 
       $stg_results_HHHR, $sgm_results_HAHR, $ftr_results_HAHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, 
-      $opt_HHR, $ofile_info_HHR) = @_;
+      $rpn_output_HHR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR  = $ofile_info_HHR->{"FH"}; # for convenience
 
@@ -6332,6 +6342,12 @@ sub add_low_similarity_alerts_for_one_sequence {
   # if --lowsim3ftr <n1> or --lowsim3lftr <n2> used, <n1> must be <= <n2>
   # if --lowsimiftr <n1> or --lowsimilftr <n2> used, <n1> must be <= <n2>
   # so we don't have to consider the *lftr options when finding minimums above
+
+  # if $rpn_output_HHR is defined then -r was used, if --r_lowsimok also used, 
+  # we ignore lowsim*s alerts if the sequence regions are within N-rich regions
+  # identified during N-replacement
+  my $do_r_lowsimok  = opt_Get("--r_lowsimok", $opt_HHR) ? 1 : 0;
+  my $rpn_seq_coords = undef; # only possibly defined if $do_r_lowsimok
 
   my $alt_msg        = undef; # message for reporting an alert
   my $alt_scoords    = undef; # sequence coords string for alert message
@@ -6482,14 +6498,34 @@ sub add_low_similarity_alerts_for_one_sequence {
               }
               $alt_msg = sprintf("%s%slow similarity region of length %d", 
                                  $alt_scoords, $alt_mcoords, $length);
-              if(($is_start) && ($length >= $terminal_seq_5_min_length)) { 
-                alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim5s", $seq_name, $alt_msg, $FH_HR);
+
+              # if --r_lowsimok, check if we exclude this lowsim{5,3,i}s alert because its entire sequence region is contained within
+              # a region that was identified during the N replacement stage (-r option)
+              my $found_spanning_overlap = 0; # set to 1 if we find an overlap that completely spans 
+              if((defined $rpn_output_HHR) && ($do_r_lowsimok)) { 
+                if(! defined $rpn_seq_coords) { 
+                  $rpn_seq_coords = replace_pseudo_coords_to_coords($rpn_output_HHR->{$seq_name}{"pseudo_coords"}, 0, $FH_HR);
+                }
+                if($rpn_seq_coords ne "") { 
+                  my @rpn_seq_sgm_A = split(",", $rpn_seq_coords);
+                  foreach my $rpn_seq_sgm (@rpn_seq_sgm_A) { 
+                    my ($r_noverlap, undef) = vdr_CoordsSegmentOverlap($rpn_seq_sgm, vdr_CoordsSegmentCreate($start, $stop, "+", $FH_HR), $FH_HR);
+                    if($r_noverlap == (abs($stop-$start) + 1)) { 
+                      $found_spanning_overlap = 1;
+                    }
+                  }
+                }
               }
-              if(($is_end) && ($length >= $terminal_seq_3_min_length)) { 
-                alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim3s", $seq_name, $alt_msg, $FH_HR);
-              }
-              if((! $is_start) && (! $is_end) && ($length >= $internal_seq_min_length)) { 
-                alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsimis", $seq_name, $alt_msg, $FH_HR);
+              if(! $found_spanning_overlap) { 
+                if(($is_start) && ($length >= $terminal_seq_5_min_length)) { 
+                  alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim5s", $seq_name, $alt_msg, $FH_HR);
+                }
+                if(($is_end) && ($length >= $terminal_seq_3_min_length)) { 
+                  alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim3s", $seq_name, $alt_msg, $FH_HR);
+                }
+                if((! $is_start) && (! $is_end) && ($length >= $internal_seq_min_length)) { 
+                  alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsimis", $seq_name, $alt_msg, $FH_HR);
+                }
               }
             }
           }
