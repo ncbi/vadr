@@ -6999,7 +6999,13 @@ sub add_protein_validation_alerts {
                         my @rpn_seq_sgm_A = split(",", $rpn_seq_coords);
                         foreach my $rpn_seq_sgm (@rpn_seq_sgm_A) { 
                           for(my $z = 0; $z < scalar(@cdsstopp_sstart_A); $z++) { 
-                            my ($cdsstopp_noverlap, undef) = vdr_CoordsSegmentOverlap($rpn_seq_sgm, vdr_CoordsSegmentCreate($cdsstopp_sstart_A[$z], $cdsstopp_sstop_A[$z], "+", $FH_HR), $FH_HR);
+                            my $cdsstopp_noverlap = 0;
+                            if($cdsstopp_sstart_A[$z] <= $cdsstopp_sstop_A[$z]) { # stop codon is on positive strand
+                              ($cdsstopp_noverlap, undef) = vdr_CoordsSegmentOverlap($rpn_seq_sgm, vdr_CoordsSegmentCreate($cdsstopp_sstart_A[$z], $cdsstopp_sstop_A[$z], "+", $FH_HR), $FH_HR);
+                            }
+                            else { # stop codon is on negative strand, swap start/stop and set strand to positive
+                              ($cdsstopp_noverlap, undef) = vdr_CoordsSegmentOverlap($rpn_seq_sgm, vdr_CoordsSegmentCreate($cdsstopp_sstop_A[$z], $cdsstopp_sstart_A[$z], "+", $FH_HR), $FH_HR);
+                            }
                             if($cdsstopp_noverlap != 0) { 
                               $found_overlap = 1;
                             }
