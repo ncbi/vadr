@@ -1,6 +1,6 @@
 use strict;
 use warnings FATAL => 'all';
-use Test::More tests => 483;
+use Test::More tests => 518;
 
 BEGIN {
     use_ok( 'vadr' )      || print "Bail out!\n";
@@ -1031,8 +1031,8 @@ for($i = 0; $i < $ntests; $i++) {
 # vdr_ReplacePseudoCoordsStringCreate() tests
 # vdr_ReplacePseudoCoordsStringParse() tests
 ##########################################
-my @scoords_A   = ("1..15", "30..50", "70..1000", "11..32", "11..11");
-my @mcoords_A   = ("1..15", "30..53", "72..1000", "10..32", "10..10");
+my @scoords_A   = ("1..15:+", "30..50:+", "70..1000:+", "11..32:+", "11..11:+");
+my @mcoords_A   = ("1..15:+", "30..53:+", "72..1000:+", "10..32:+", "10..10:+");
 my @diff_A      = ("0",     "-3!",    "2!",      "-1!",     "0");
 my @ncount_A    = ("10/15", "21/21",  "431/931",  "0/22",   "1/1");
 my @ecount_A    = ("3/5",   "0/0",    "?/?",      "?/?",    "0/0");
@@ -1050,13 +1050,38 @@ push(@exp_pcoords_A, "[S:70..1000,M:72..1000,D:2!,N:431/931,E:?/?,F:-,R:Y];");
 push(@exp_pcoords_A, "[S:11..32,M:10..32,D:-1!,N:0/22,E:?/?,F:3',R:N];");
 push(@exp_pcoords_A, "[S:11..11,M:10..10,D:0,N:1/1,E:0/0,F:-,R:Y];");
 
+my @cur_scoords_A  = ();
+my @cur_mcoords_A  = ();
+my @cur_diff_A     = ();
+my @cur_ncount_A   = ();
+my @cur_ecount_A   = ();
+my @cur_flush_A    = ();
+my @cur_replaced_A = ();
+
 $ntests = scalar(@scoords_A);
 for($i = 0; $i < $ntests; $i++) { 
-  my ($sstart, $sstop) = split(/\.\./, $scoords_A[$i]);
-  my ($mstart, $mstop) = split(/\.\./, $mcoords_A[$i]);
+  my ($sstart, $sstop, $mstart, $mstop) = (undef, undef, undef, undef);
+  if($scoords_A[$i] =~ /^(\d+)\.\.(\d+)/) { 
+    ($sstart, $sstop) = ($1, $2);
+  }
+  if($mcoords_A[$i] =~ /^(\d+)\.\.(\d+)/) { 
+    ($mstart, $mstop) = ($1, $2);
+  }
   $cur_val = vdr_ReplacePseudoCoordsStringCreate($sstart, $sstop, $mstart, $mstop, 
                                                  $countn_A[$i], $nmatch_A[$i], $nmismatch_A[$i], $flush_A[$i], 
                                                  ($replaced_A[$i] eq "Y") ? 1 : 0);
        
   is($cur_val, $exp_pcoords_A[$i], "vdr_ReplacePseudoCoordsStringCreate(): " . ($i+1) . " of $ntests");
+
+  vdr_ReplacePseudoCoordsStringParse($cur_val, \@cur_scoords_A, \@cur_mcoords_A, \@cur_diff_A, \@cur_ncount_A,
+                                     \@cur_ecount_A, \@cur_flush_A, \@cur_replaced_A, undef);
+
+  is($cur_scoords_A[0],  $scoords_A[$i],  "vdr_ReplacePseudoCoordsStringParse(): " . ($i+1) . " of $ntests (scoords)");
+  is($cur_mcoords_A[0],  $mcoords_A[$i],  "vdr_ReplacePseudoCoordsStringParse(): " . ($i+1) . " of $ntests (mcoords)");
+  is($cur_diff_A[0],     $diff_A[$i],     "vdr_ReplacePseudoCoordsStringParse(): " . ($i+1) . " of $ntests (diff)");
+  is($cur_ncount_A[0],   $ncount_A[$i],   "vdr_ReplacePseudoCoordsStringParse(): " . ($i+1) . " of $ntests (ncount)");
+  is($cur_ecount_A[0],   $ecount_A[$i],   "vdr_ReplacePseudoCoordsStringParse(): " . ($i+1) . " of $ntests (ecount)");
+  is($cur_flush_A[0],    $flush_A[$i],    "vdr_ReplacePseudoCoordsStringParse(): " . ($i+1) . " of $ntests (flush)");
+  is($cur_replaced_A[0], $replaced_A[$i], "vdr_ReplacePseudoCoordsStringParse(): " . ($i+1) . " of $ntests (replaced)");
+
 }
