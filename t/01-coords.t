@@ -1,6 +1,6 @@
 use strict;
 use warnings FATAL => 'all';
-use Test::More tests => 518;
+use Test::More tests => 554;
 
 BEGIN {
     use_ok( 'vadr' )      || print "Bail out!\n";
@@ -1083,5 +1083,34 @@ for($i = 0; $i < $ntests; $i++) {
   is($cur_ecount_A[0],   $ecount_A[$i],   "vdr_ReplacePseudoCoordsStringParse(): " . ($i+1) . " of $ntests (ecount)");
   is($cur_flush_A[0],    $flush_A[$i],    "vdr_ReplacePseudoCoordsStringParse(): " . ($i+1) . " of $ntests (flush)");
   is($cur_replaced_A[0], $replaced_A[$i], "vdr_ReplacePseudoCoordsStringParse(): " . ($i+1) . " of $ntests (replaced)");
+}
 
+# same as above, but concatenate all 5, then parse them
+$cur_val = "";
+for($i = 0; $i < $ntests; $i++) { 
+  my ($sstart, $sstop, $mstart, $mstop) = (undef, undef, undef, undef);
+  if($scoords_A[$i] =~ /^(\d+)\.\.(\d+)/) { 
+    ($sstart, $sstop) = ($1, $2);
+  }
+  if($mcoords_A[$i] =~ /^(\d+)\.\.(\d+)/) { 
+    ($mstart, $mstop) = ($1, $2);
+  }
+  $cur_val .= vdr_ReplacePseudoCoordsStringCreate($sstart, $sstop, $mstart, $mstop, 
+                                                  $countn_A[$i], $nmatch_A[$i], $nmismatch_A[$i], $flush_A[$i], 
+                                                  ($replaced_A[$i] eq "Y") ? 1 : 0);
+       
+}
+
+my $ntok = vdr_ReplacePseudoCoordsStringParse($cur_val, \@cur_scoords_A, \@cur_mcoords_A, \@cur_diff_A, \@cur_ncount_A,
+                                              \@cur_ecount_A, \@cur_flush_A, \@cur_replaced_A, undef);
+
+is($ntok, $ntests, "vdr_ReplacePseudoCoordsStringParse() count is correct");
+for($i = 0; $i < $ntok; $i++) { 
+  is($cur_scoords_A[$i],  $scoords_A[$i],  "vdr_ReplacePseudoCoordsStringParse(): concat (scoords)");
+  is($cur_mcoords_A[$i],  $mcoords_A[$i],  "vdr_ReplacePseudoCoordsStringParse(): concat (mcoords)");
+  is($cur_diff_A[$i],     $diff_A[$i],     "vdr_ReplacePseudoCoordsStringParse(): concat (diff)");
+  is($cur_ncount_A[$i],   $ncount_A[$i],   "vdr_ReplacePseudoCoordsStringParse(): concat (ncount)");
+  is($cur_ecount_A[$i],   $ecount_A[$i],   "vdr_ReplacePseudoCoordsStringParse(): concat (ecount)");
+  is($cur_flush_A[$i],    $flush_A[$i],    "vdr_ReplacePseudoCoordsStringParse(): concat (flush)");
+  is($cur_replaced_A[$i], $replaced_A[$i], "vdr_ReplacePseudoCoordsStringParse(): concat (replaced)");
 }
