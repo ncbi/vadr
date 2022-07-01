@@ -6278,29 +6278,33 @@ sub vdr_ReplacePseudoCoordsStringParse {
 
 #  printf("in $sub_name, pseudo_coords: $pseudo_coords\n");
   
-  my @ret_scoords_sgm_AR = ();
-  my @ret_mcoords_sgm_AR = ();
-  my @ret_diff_AR        = ();
-  my @ret_ncount_AR      = ();
-  my @ret_ecount_AR      = ();
-  my @ret_flush_AR       = ();
-  my @ret_replaced_AR    = ();
+  my $ntok = 0;
+  if($pseudo_coords eq "-") { 
+    return 0;
+  }
+
+  my @ret_scoords_sgm_A = ();
+  my @ret_mcoords_sgm_A = ();
+  my @ret_diff_A        = ();
+  my @ret_ncount_A      = ();
+  my @ret_ecount_A      = ();
+  my @ret_flush_A       = ();
+  my @ret_replaced_A    = ();
 
   my @pseudo_tok_A = split(";", $pseudo_coords); 
-  my $ntok = 0;
   foreach my $pseudo_tok (@pseudo_tok_A) { 
     $ntok++;
     if($pseudo_tok =~ /^\[S\:(\d+\.\.\d+)\,M\:(\d+\.\.\d+),D\:(\-?\d+\!?),N\:(\d+\/\d+),E\:([^\,]+),F:([^\,]+),R:([YN])\]$/) { 
       my($scoords, $mcoords, $diff, $ncount, $ecount, $flush, $replaced) = ($1, $2, $3, $4, $5, $6, $7);
       $scoords .= ":+"; # always + strand
       $mcoords .= ":+"; # always + strand
-      push(@ret_scoords_sgm_AR, $scoords);
-      push(@ret_mcoords_sgm_AR, $mcoords);
-      push(@ret_diff_AR,        $diff);
-      push(@ret_ncount_AR,      $ncount);
-      push(@ret_ecount_AR,      $ecount);
-      push(@ret_flush_AR,       $flush);
-      push(@ret_replaced_AR,    $replaced);
+      push(@ret_scoords_sgm_A, $scoords);
+      push(@ret_mcoords_sgm_A, $mcoords);
+      push(@ret_diff_A,        $diff);
+      push(@ret_ncount_A,      $ncount);
+      push(@ret_ecount_A,      $ecount);
+      push(@ret_flush_A,       $flush);
+      push(@ret_replaced_A,    $replaced);
 #      printf("pushed scoords  $scoords\n");
 #      printf("pushed mcoords  $mcoords\n");
 #      printf("pushed diff     $diff\n");
@@ -6314,13 +6318,13 @@ sub vdr_ReplacePseudoCoordsStringParse {
     }
   }
 
-  if(defined $scoords_sgm_AR)  { @{$scoords_sgm_AR} = @ret_scoords_sgm_AR; }
-  if(defined $mcoords_sgm_AR)  { @{$mcoords_sgm_AR} = @ret_mcoords_sgm_AR; }
-  if(defined $diff_AR)         { @{$diff_AR}        = @ret_diff_AR; }
-  if(defined $ncount_AR)       { @{$ncount_AR}      = @ret_ncount_AR; }
-  if(defined $ecount_AR)       { @{$ecount_AR}      = @ret_ecount_AR; }
-  if(defined $flush_AR)        { @{$flush_AR}       = @ret_flush_AR; }
-  if(defined $replaced_AR)     { @{$replaced_AR}    = @ret_replaced_AR; }
+  if(defined $scoords_sgm_AR)  { @{$scoords_sgm_AR} = @ret_scoords_sgm_A; }
+  if(defined $mcoords_sgm_AR)  { @{$mcoords_sgm_AR} = @ret_mcoords_sgm_A; }
+  if(defined $diff_AR)         { @{$diff_AR}        = @ret_diff_A; }
+  if(defined $ncount_AR)       { @{$ncount_AR}      = @ret_ncount_A; }
+  if(defined $ecount_AR)       { @{$ecount_AR}      = @ret_ecount_A; }
+  if(defined $flush_AR)        { @{$flush_AR}       = @ret_flush_A; }
+  if(defined $replaced_AR)     { @{$replaced_AR}    = @ret_replaced_A; }
 
   return $ntok;
 }
