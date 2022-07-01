@@ -883,6 +883,9 @@ with format described [here](formats.md#rpn).
 | `--r_blastntk`      | for `-r`, set blastn option `-task blastn` | 
 | `--r_blastnxd <n>`  | for `-r`, set the blastn `-xdrop_gap_final` parameter to `<n>`, the default value for `<n>` is `110` |
 | `--r_lowsimok`      | for `-r`, do not report lowsim{5,3,i}s alerts for low similarity regions within N-rich regions that were identified during N-replacement (even for N-rich regions that were not replaced) |
+| `--r_lowsimmf`      | for `-r`, with `--r_lowsimok` lowsim{5,3,i}s must be within an N-rich region of at least `<x>` fraction Ns to not be reported, default value for `<x>` is `0.75` |
+| `--r_lowsimxl`      | for `-r`, with `--r_lowsimok` lowsim{5,3,i}s must be within an N-rich region with length of at most `<n>` nt to not be reported, default value for `<x>` is `5000` |
+| `--r_lowsimxd`      | for `-r`, with `--r_lowsimok` lowsim{5,3,i}s must be within an N-rich region that differs from expected length by at most `<n>` nt to not be reported, default value for `<x>` is `200` |
 
 ### `v-annotate.pl` options related to splitting input sequence file into chunks and processing each chunk separately and potentially in parallel <a name="options-split"></a>
 
