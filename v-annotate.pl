@@ -358,6 +358,9 @@ opt_Add("--r_blastnsc",   "real",      50.0,   $g,    "-r", undef,          "for
 opt_Add("--r_blastntk",   "boolean",      0,   $g,    "-r", undef,          "for -r, set blastn option -task blastn",                                 "for -r, set blastn option -task blastn", \%opt_HH, \@opt_order_A);
 opt_Add("--r_blastnxd",   "integer",    110,   $g,    "-r", undef,          "for -r, set blastn option -xdrop_gap_final <n> to <n>",                  "for -r, set blastn -xdrop_gap_final <n> to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--r_lowsimok",   "boolean",      0,   $g,    "-r", undef,          "with -r, do not report lowsim{5,3,i}s within identified N-rich regions", "with -r, do not report lowsim{5,3,i}s within identified N-rich regions", \%opt_HH, \@opt_order_A);
+opt_Add("--r_lowsimmf",   "real",      0.75,   $g,"-r,--r_lowsimok", undef, "w/--r_lowsimok, minimum fraction of Ns in N-rich region is <x>",         "w/--r_lowsimok, minimum fraction of Ns in N-rich region is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--r_lowsimxl",   "integer",   5000,   $g,"-r,--r_lowsimok", undef, "w/--r_lowsimok, maximum length of N-rich region is <n>",                 "w/--r_lowsimok, maximum length of N-rich region is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--r_lowsimxd",   "integer",    200,   $g,"-r,--r_lowsimok", undef, "w/--r_lowsimok, max diff from expected length for N-rich region is <n>", "w/--r_lowsimok, max diff from expected length for N-rich region is <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to splitting input file into chunks and processing each chunk separately";
 #     option            type       default  group   requires incompat    preamble-output                                                          help-output    
@@ -542,6 +545,9 @@ my $options_okay =
                 'r_blastntk'       => \$GetOptions_H{"--r_blastntk"},
                 'r_blastnxd=s'     => \$GetOptions_H{"--r_blastnxd"},
                 'r_lowsimok'       => \$GetOptions_H{"--r_lowsimok"},
+                'r_lowsimmf=s'     => \$GetOptions_H{"--r_lowsimmf"},
+                'r_lowsimxl=s'     => \$GetOptions_H{"--r_lowsimxl"},
+                'r_lowsimxd=s'     => \$GetOptions_H{"--r_lowsimxd"},
 # options related to splitting
                 'split'         => \$GetOptions_H{"--split"},
                 'cpu=s'         => \$GetOptions_H{"--cpu"}, 
@@ -4658,7 +4664,7 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
           my $new_ins_tok  = ($dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"before"}) ? 
               sprintf("%d:%d:1", $dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"rfpos"} - 1, $dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"new_seq_uapos"} - 1) : 
               sprintf("%d:%d:1", $dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"rfpos"},     $dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"new_seq_uapos"} + 1);
-          $seq_inserts_HHR->{$seq_name}{"ins"} = vdr_ReplaceInsertTokenInInsertString($seq_inserts_HHR->{$seq_name}{"ins"}, $orig_ins_tok, $new_ins_tok, $FH_HR)
+          $seq_inserts_HHR->{$seq_name}{"ins"} = vdr_UpdateInsertTokenInInsertString($seq_inserts_HHR->{$seq_name}{"ins"}, $orig_ins_tok, $new_ins_tok, $FH_HR)
         }
       }
       $i--; # makes it so we'll reevaluate this sequence in next iteration of the loop
@@ -6346,8 +6352,15 @@ sub add_low_similarity_alerts_for_one_sequence {
   # if $rpn_output_HHR is defined then -r was used, if --r_lowsimok also used, 
   # we ignore lowsim*s alerts if the sequence regions are within N-rich regions
   # identified during N-replacement
-  my $do_r_lowsimok  = opt_Get("--r_lowsimok", $opt_HHR) ? 1 : 0;
-  my $rpn_seq_coords = undef; # only possibly defined if $do_r_lowsimok
+  my $do_r_lowsimok     = opt_Get("--r_lowsimok", $opt_HHR) ? 1 : 0;
+  my $small_value     = 0.00000001;
+  my $lowsimok_minfract = opt_Get("--r_lowsimmf", $opt_HHR) - $small_value;
+  my $lowsimok_maxlen   = opt_Get("--r_lowsimxl", $opt_HHR);
+  my $lowsimok_maxdiff  = opt_Get("--r_lowsimxd", $opt_HHR);
+  my $rpn_ncoords       = undef; # only possibly defined if $do_r_lowsimok
+  my @rpn_seq_sgm_A     = ();    # only possibly filled if $do_r_lowsimok
+  my @rpn_diff_A        = ();    # only possibly filled if $do_r_lowsimok
+  my @rpn_ncount_A      = ();    # only possibly filled if $do_r_lowsimok
 
   my $alt_msg        = undef; # message for reporting an alert
   my $alt_scoords    = undef; # sequence coords string for alert message
@@ -6503,15 +6516,23 @@ sub add_low_similarity_alerts_for_one_sequence {
               # a region that was identified during the N replacement stage (-r option)
               my $found_spanning_overlap = 0; # set to 1 if we find an overlap that completely spans 
               if((defined $rpn_output_HHR) && ($do_r_lowsimok)) { 
-                if(! defined $rpn_seq_coords) { 
-                  $rpn_seq_coords = replace_pseudo_coords_to_coords($rpn_output_HHR->{$seq_name}{"pseudo_coords"}, 0, $FH_HR);
+                if(! defined $rpn_ncoords) { 
+                  $rpn_ncoords = vdr_ReplacePseudoCoordsStringParse($rpn_output_HHR->{$seq_name}{"pseudo_coords"}, \@rpn_seq_sgm_A, undef, \@rpn_diff_A, \@rpn_ncount_A, undef, undef, undef, $FH_HR);
                 }
-                if($rpn_seq_coords ne "") { 
-                  my @rpn_seq_sgm_A = split(",", $rpn_seq_coords);
-                  foreach my $rpn_seq_sgm (@rpn_seq_sgm_A) { 
-                    my ($r_noverlap, undef) = vdr_CoordsSegmentOverlap($rpn_seq_sgm, vdr_CoordsSegmentCreate($start, $stop, "+", $FH_HR), $FH_HR);
-                    if($r_noverlap == (abs($stop-$start) + 1)) { 
-                      $found_spanning_overlap = 1;
+                if($rpn_ncoords > 0) { 
+                  for(my $y = 0; $y < $rpn_ncoords; $y++) { 
+                    my ($r_n, $r_len) = split(/\//, $rpn_ncount_A[$y]);
+                    my $r_diff = $rpn_diff_A[$y];
+                    $r_diff =~ s/\!//; # remove ! if it exists
+
+                    if((($r_n / $r_len) >= ($lowsimok_minfract)) && # fraction of Ns is at least minimum
+                       ($r_len <= $lowsimok_maxlen) &&              # length does not exceed maximum
+                       (abs($r_diff) <= $lowsimok_maxdiff)) {       # length diff between observed and expected does not exceed maximum
+                      # this region meets all the criteria, check if it completely spans the lowsim region
+                      my ($r_noverlap, undef) = vdr_CoordsSegmentOverlap($rpn_seq_sgm_A[$y], vdr_CoordsSegmentCreate($start, $stop, "+", $FH_HR), $FH_HR);
+                      if($r_noverlap == (abs($stop-$start) + 1)) { 
+                        $found_spanning_overlap = 1;
+                      }
                     }
                   }
                 }
@@ -6713,7 +6734,9 @@ sub add_protein_validation_alerts {
   for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     # for each feature
     $seq_name = $seq_name_AR->[$seq_idx];
-    my $rpn_seq_coords = undef; # only defined if we need to report a cdsstopp for this sequence
+    my $rpn_ncoords = undef; # only defined if we need to report a cdsstopp for this sequence
+    my @rpn_seq_sgm_A  = ();  # only filled if we need to report a cdsstopp for this sequence
+    my @rpn_replaced_A = ();  # only filled if we need to report a cdsstopp for this sequence
     if($seq_len_HR->{$seq_name} >= $minpvlen) { 
       for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
         if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
@@ -7023,27 +7046,28 @@ sub add_protein_validation_alerts {
                     # replaced during the N replacement stage (-r option)
                     my $found_overlap = 0; # set to 1 if we find an overlap
                     if(defined $rpn_output_HHR) { 
-                      if(! defined $rpn_seq_coords) { 
-                        $rpn_seq_coords = replace_pseudo_coords_to_coords($rpn_output_HHR->{$seq_name}{"pseudo_coords"}, 0, $FH_HR);
+                      if(! defined $rpn_ncoords) { 
+                        $rpn_ncoords = vdr_ReplacePseudoCoordsStringParse($rpn_output_HHR->{$seq_name}{"pseudo_coords"}, \@rpn_seq_sgm_A, undef, undef, undef, undef, undef, \@rpn_replaced_A, $FH_HR);
                       }
-                      if($rpn_seq_coords ne "") { 
+                      if($rpn_ncoords > 0) { 
                         # rpn coords are *always* + strand, so convert stop codon coords to + too, 
                         # we could have this in multiple segments, rare but possible
                         my @cdsstopp_sstart_A = ();
                         my @cdsstopp_sstop_A  = ();
                         vdr_FeatureStartStopStrandArrays($cdsstopp_scoords, \@cdsstopp_sstart_A, \@cdsstopp_sstop_A, undef, $FH_HR);
-                        my @rpn_seq_sgm_A = split(",", $rpn_seq_coords);
-                        foreach my $rpn_seq_sgm (@rpn_seq_sgm_A) { 
-                          for(my $z = 0; $z < scalar(@cdsstopp_sstart_A); $z++) { 
-                            my $cdsstopp_noverlap = 0;
-                            if($cdsstopp_sstart_A[$z] <= $cdsstopp_sstop_A[$z]) { # stop codon is on positive strand
-                              ($cdsstopp_noverlap, undef) = vdr_CoordsSegmentOverlap($rpn_seq_sgm, vdr_CoordsSegmentCreate($cdsstopp_sstart_A[$z], $cdsstopp_sstop_A[$z], "+", $FH_HR), $FH_HR);
-                            }
-                            else { # stop codon is on negative strand, swap start/stop and set strand to positive
-                              ($cdsstopp_noverlap, undef) = vdr_CoordsSegmentOverlap($rpn_seq_sgm, vdr_CoordsSegmentCreate($cdsstopp_sstop_A[$z], $cdsstopp_sstart_A[$z], "+", $FH_HR), $FH_HR);
-                            }
-                            if($cdsstopp_noverlap != 0) { 
-                              $found_overlap = 1;
+                        for(my $y = 0; $y < $rpn_ncoords; $y++) { 
+                          if($rpn_replaced_A[$y] eq "Y") { # only consider those segments that were replaced
+                            for(my $z = 0; $z < scalar(@cdsstopp_sstart_A); $z++) { 
+                              my $cdsstopp_noverlap = 0;
+                              if($cdsstopp_sstart_A[$z] <= $cdsstopp_sstop_A[$z]) { # stop codon is on positive strand
+                                ($cdsstopp_noverlap, undef) = vdr_CoordsSegmentOverlap($rpn_seq_sgm_A[$y], vdr_CoordsSegmentCreate($cdsstopp_sstart_A[$z], $cdsstopp_sstop_A[$z], "+", $FH_HR), $FH_HR);
+                              }
+                              else { # stop codon is on negative strand, swap start/stop and set strand to positive
+                                ($cdsstopp_noverlap, undef) = vdr_CoordsSegmentOverlap($rpn_seq_sgm_A[$y], vdr_CoordsSegmentCreate($cdsstopp_sstop_A[$z], $cdsstopp_sstart_A[$z], "+", $FH_HR), $FH_HR);
+                              }
+                              if($cdsstopp_noverlap != 0) { 
+                                $found_overlap = 1;
+                              }
                             }
                           }
                         }
@@ -11986,7 +12010,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
           }
           # update coords field
           $rpn_output_HHR->{$seq_name}{"pseudo_coords"} .= 
-              helper_replace_pseudo_coords_string($missing_seq_start_A[$i], $missing_seq_stop_A[$i], 
+              vdr_ReplacePseudoCoordsStringCreate($missing_seq_start_A[$i], $missing_seq_stop_A[$i], 
                                                   $missing_mdl_start_A[$i], $missing_mdl_stop_A[$i], 
                                                   $count_n, $region_non_n_match, $region_non_n_mismatch, $flush_direction, $replaced_flag);
         } # end of 'if($missing_seq_len >= $r_minlen_opt)'
@@ -12114,116 +12138,6 @@ sub helper_replace_ns_in_region  {
   # printf("returning nmatch: $ret_nmatch n_mismatch: $ret_n_mismatch\n");
   return ($ret_replaced_sqstring, $ret_nreplaced_nts, $ret_nmatch, $ret_n_mismatch);
 }
-
-#################################################################
-# Subroutine: helper_replace_pseudo_coords_string()
-# Incept:     EPN, Sat Dec 18 08:31:23 2021
-#
-# Purpose:    Format the "coords" string for \%{$rpn_output_HHR}
-#             given the necessary information.
-#
-# Args:
-#  $missing_seq_start:         position in model where missing model region starts
-#  $missing_seq_stop:          position in model where missing model region stops
-#  $missing_mdl_start:         position in model where missing model region starts
-#  $missing_mdl_stop:          position in model where missing model region stops
-#  $count_n:                   number of Ns in missing seq region
-#  $nmatch:                    number of non-Ns in missing seq region that matched expected nt, can be undef
-#  $nmismatch:                 number of non-Ns in missing seq region that did not match expected nt, can be undef
-#  $flush_direction:           '5p', '3p' or '-'
-#  $replaced_flag              '1' if region was replaced, '0' if not
-#
-# Returns: substring to append to $rpn_output_HHR->{$seq_name}{"coords"}
-#
-#################################################################
-sub helper_replace_pseudo_coords_string { 
-  my $sub_name = "helper_replace_pseudo_coords_string()";
-  my $nargs_exp = 9;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-  
-  my ($missing_seq_start, $missing_seq_stop, $missing_mdl_start, $missing_mdl_stop, 
-      $count_n, $nmatch, $nmismatch, $flush_direction, $replaced_flag) = @_;
-  
-  my $missing_seq_len = abs($missing_seq_stop - $missing_seq_start) + 1;
-  my $missing_mdl_len = abs($missing_mdl_stop - $missing_mdl_start) + 1;
-  my $missing_diff    = $missing_seq_len - $missing_mdl_len;
-  
-  my $ret_str = "";
-  $ret_str .= "[S:" . $missing_seq_start . ".." . $missing_seq_stop . ","; # S: seq coords of missing region
-  $ret_str .= "M:" . $missing_mdl_start . ".." . $missing_mdl_stop . ","; # M: mdl coords of missing region
-  # add '!' if missing_diff != 0;
-  if($missing_diff != 0) { 
-    $ret_str .= "D:" . $missing_diff . "!,";      # D: missing mdl len - missing seq len
-  }
-  else { 
-    $ret_str .= "D:0,";
-  }
-  $ret_str .= "N:" . $count_n . "/" . $missing_seq_len . ",";             # N: num Ns in missing seq region / missing seq len
-  if((defined $nmatch) && (defined $nmismatch)) { 
-    my $missing_non_n   = $nmatch + $nmismatch;
-    $ret_str .= "E:" . $nmatch  . "/" . $missing_non_n . ",";             # E: num non-Ns that match expected / num non Ns
-  }
-  else { 
-    $ret_str .= "E:?/?,";
-  }
-
-  $ret_str .= "F:" . $flush_direction . ",";
-
-  if($replaced_flag) { 
-    $ret_str .= "R:Y];";                                                   # R: Y if replaced, N if not
-  }
-  else { 
-    $ret_str .= "R:N];";
-  }
-
-  return $ret_str;
-}
-
-#################################################################
-# Subroutine: replace_pseudo_coords_to_coords()
-# Incept:     EPN, Thu Jan 20 13:49:23 2022
-#
-# Purpose:    Given a .rpn "pseudo_coords" string from \%{$rpn_output_HHR}
-#             return a valid VADR coords string. 
-#
-# Args:
-#  $pseudo_coords:     the rpn_output_HHR->{}{"pseudo_coords"} string 
-#  $only_diff:         only keep segments for which diff is non-zero (not "D:0")
-#  $FH_HR:             REF to hash of file handles
-#
-# Returns: coords string derived from $pseudo_coords
-#
-#################################################################
-sub replace_pseudo_coords_to_coords { 
-  my $sub_name = "replace_pseudo_coords_to_coords()";
-  my $nargs_exp = 3;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-  
-  my ($pseudo_coords, $only_diff, $FH_HR) = @_;
-
-  my $ret_coords = "";
-  if($pseudo_coords eq "") { 
-    return $ret_coords;
-  }
-
-  my @pseudo_tok_A = split(";", $pseudo_coords); 
-  foreach my $pseudo_tok (@pseudo_tok_A) { 
-    if($pseudo_tok =~ /^\[S\:(\d+)\.\.(\d+)\,M\:\d+\.\.\d+,D\:(\-?\d+\!?),N\:\d+\/\d+.+\]$/) { 
-      my($sstart, $sstop, $diff) = ($1, $2, $3);
-      if((! $only_diff) || ($diff ne "0")) { 
-        if($ret_coords ne "") { $ret_coords .= ","; }
-        $ret_coords .= vdr_CoordsSegmentCreate($sstart, $sstop, "+", $FH_HR);
-      }
-    }
-    else { 
-      ofile_FAIL("ERROR in $sub_name, unable to parse pseudo_coords token $pseudo_tok", 1, $FH_HR);
-    }
-  }
-
-  # printf("in $sub_name, input pseudo_coords: $pseudo_coords, returning $ret_coords\n");
-  return $ret_coords;
-}
-
 
 #################################################################
 #
