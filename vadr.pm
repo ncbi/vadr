@@ -6276,7 +6276,7 @@ sub vdr_ReplacePseudoCoordsStringParse {
   my ($pseudo_coords, $scoords_sgm_AR, $mcoords_sgm_AR, $diff_AR, $ncount_AR, 
       $ecount_AR, $flush_AR, $replaced_AR, $FH_HR) = @_;
 
-#  printf("in $sub_name, pseudo_coords: $pseudo_coords\n");
+  # printf("in $sub_name, pseudo_coords: $pseudo_coords\n");
   
   my $ntok = 0;
   if($pseudo_coords eq "-") { 
@@ -6305,13 +6305,6 @@ sub vdr_ReplacePseudoCoordsStringParse {
       push(@ret_ecount_A,      $ecount);
       push(@ret_flush_A,       $flush);
       push(@ret_replaced_A,    $replaced);
-#      printf("pushed scoords  $scoords\n");
-#      printf("pushed mcoords  $mcoords\n");
-#      printf("pushed diff     $diff\n");
-#      printf("pushed ncount   $ncount\n");
-#      printf("pushed ecount   $ecount\n");
-#      printf("pushed flush    $flush\n");
-#      printf("pushed replaced $replaced\n");
     }
     else { 
       ofile_FAIL("ERROR in $sub_name, unable to parse pseudo_coords token $pseudo_tok", 1, $FH_HR);

@@ -358,6 +358,9 @@ opt_Add("--r_blastnsc",   "real",      50.0,   $g,    "-r", undef,          "for
 opt_Add("--r_blastntk",   "boolean",      0,   $g,    "-r", undef,          "for -r, set blastn option -task blastn",                                 "for -r, set blastn option -task blastn", \%opt_HH, \@opt_order_A);
 opt_Add("--r_blastnxd",   "integer",    110,   $g,    "-r", undef,          "for -r, set blastn option -xdrop_gap_final <n> to <n>",                  "for -r, set blastn -xdrop_gap_final <n> to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--r_lowsimok",   "boolean",      0,   $g,    "-r", undef,          "with -r, do not report lowsim{5,3,i}s within identified N-rich regions", "with -r, do not report lowsim{5,3,i}s within identified N-rich regions", \%opt_HH, \@opt_order_A);
+opt_Add("--r_lowsimmf",   "real",      0.75,   $g,"-r,--r_lowsimok", undef, "w/--r_lowsimok, minimum fraction of Ns in N-rich region is <x>",         "w/--r_lowsimok, minimum fraction of Ns in N-rich region is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--r_lowsimxl",   "integer",   5000,   $g,"-r,--r_lowsimok", undef, "w/--r_lowsimok, maximum length of N-rich region is <n>",                 "w/--r_lowsimok, maximum length of N-rich region is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--r_lowsimxd",   "integer",    200,   $g,"-r,--r_lowsimok", undef, "w/--r_lowsimok, max diff from expected length for N-rich region is <n>", "w/--r_lowsimok, max diff from expected length for N-rich region is <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to splitting input file into chunks and processing each chunk separately";
 #     option            type       default  group   requires incompat    preamble-output                                                          help-output    
@@ -542,6 +545,9 @@ my $options_okay =
                 'r_blastntk'       => \$GetOptions_H{"--r_blastntk"},
                 'r_blastnxd=s'     => \$GetOptions_H{"--r_blastnxd"},
                 'r_lowsimok'       => \$GetOptions_H{"--r_lowsimok"},
+                'r_lowsimmf=s'     => \$GetOptions_H{"--r_lowsimmf"},
+                'r_lowsimxl=s'     => \$GetOptions_H{"--r_lowsimxl"},
+                'r_lowsimxd=s'     => \$GetOptions_H{"--r_lowsimxd"},
 # options related to splitting
                 'split'         => \$GetOptions_H{"--split"},
                 'cpu=s'         => \$GetOptions_H{"--cpu"}, 
@@ -6346,8 +6352,15 @@ sub add_low_similarity_alerts_for_one_sequence {
   # if $rpn_output_HHR is defined then -r was used, if --r_lowsimok also used, 
   # we ignore lowsim*s alerts if the sequence regions are within N-rich regions
   # identified during N-replacement
-  my $do_r_lowsimok  = opt_Get("--r_lowsimok", $opt_HHR) ? 1 : 0;
-  my $rpn_seq_coords = undef; # only possibly defined if $do_r_lowsimok
+  my $do_r_lowsimok     = opt_Get("--r_lowsimok", $opt_HHR) ? 1 : 0;
+  my $small_value     = 0.00000001;
+  my $lowsimok_minfract = opt_Get("--r_lowsimmf", $opt_HHR) - $small_value;
+  my $lowsimok_maxlen   = opt_Get("--r_lowsimxl", $opt_HHR);
+  my $lowsimok_maxdiff  = opt_Get("--r_lowsimxd", $opt_HHR);
+  my $rpn_ncoords       = undef; # only possibly defined if $do_r_lowsimok
+  my @rpn_seq_sgm_A     = ();    # only possibly filled if $do_r_lowsimok
+  my @rpn_diff_A        = ();    # only possibly filled if $do_r_lowsimok
+  my @rpn_ncount_A      = ();    # only possibly filled if $do_r_lowsimok
 
   my $alt_msg        = undef; # message for reporting an alert
   my $alt_scoords    = undef; # sequence coords string for alert message
@@ -6503,15 +6516,23 @@ sub add_low_similarity_alerts_for_one_sequence {
               # a region that was identified during the N replacement stage (-r option)
               my $found_spanning_overlap = 0; # set to 1 if we find an overlap that completely spans 
               if((defined $rpn_output_HHR) && ($do_r_lowsimok)) { 
-                if(! defined $rpn_seq_coords) { 
-                  $rpn_seq_coords = replace_pseudo_coords_to_coords($rpn_output_HHR->{$seq_name}{"pseudo_coords"}, 0, $FH_HR);
+                if(! defined $rpn_ncoords) { 
+                  $rpn_ncoords = vdr_ReplacePseudoCoordsStringParse($rpn_output_HHR->{$seq_name}{"pseudo_coords"}, \@rpn_seq_sgm_A, undef, \@rpn_diff_A, \@rpn_ncount_A, undef, undef, undef, $FH_HR);
                 }
-                if($rpn_seq_coords ne "") { 
-                  my @rpn_seq_sgm_A = split(",", $rpn_seq_coords);
-                  foreach my $rpn_seq_sgm (@rpn_seq_sgm_A) { 
-                    my ($r_noverlap, undef) = vdr_CoordsSegmentOverlap($rpn_seq_sgm, vdr_CoordsSegmentCreate($start, $stop, "+", $FH_HR), $FH_HR);
-                    if($r_noverlap == (abs($stop-$start) + 1)) { 
-                      $found_spanning_overlap = 1;
+                if($rpn_ncoords > 0) { 
+                  for(my $y = 0; $y < $rpn_ncoords; $y++) { 
+                    my ($r_n, $r_len) = split(/\//, $rpn_ncount_A[$y]);
+                    my $r_diff = $rpn_diff_A[$y];
+                    $r_diff =~ s/\!//; # remove ! if it exists
+
+                    if((($r_n / $r_len) >= ($lowsimok_minfract)) && # fraction of Ns is at least minimum
+                       ($r_len <= $lowsimok_maxlen) &&              # length does not exceed maximum
+                       (abs($r_diff) <= $lowsimok_maxdiff)) {       # length diff between observed and expected does not exceed maximum
+                      # this region meets all the criteria, check if it completely spans the lowsim region
+                      my ($r_noverlap, undef) = vdr_CoordsSegmentOverlap($rpn_seq_sgm_A[$y], vdr_CoordsSegmentCreate($start, $stop, "+", $FH_HR), $FH_HR);
+                      if($r_noverlap == (abs($stop-$start) + 1)) { 
+                        $found_spanning_overlap = 1;
+                      }
                     }
                   }
                 }
