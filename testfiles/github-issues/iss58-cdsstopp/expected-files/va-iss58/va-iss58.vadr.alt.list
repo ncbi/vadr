@@ -9,3 +9,6 @@ JX439803.1-3shorter-Ns-cdsstopp2	NC_029646	CDS	nonstructural polyprotein	CDS_HAS
 JX439803.1-3shorter-Ns-cdsstopp2	NC_029646	mat_peptide	RdRp	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
 JX439803.1-3longer-Ns-cdsstopp4	NC_029646	CDS	nonstructural polyprotein	CDS_HAS_STOP_CODON	693..695:+	5054..5056:+	in-frame stop codon exists 5' of stop position predicted by homology to reference [TAA, shifted S:48,M:48]
 JX439803.1-3longer-Ns-cdsstopp4	NC_029646	mat_peptide	RdRp	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+JX439803.1-not-replaced-cdsstopp4	NC_029646	CDS	nonstructural polyprotein	CDS_HAS_STOP_CODON	693..695:+	5054..5056:+	in-frame stop codon exists 5' of stop position predicted by homology to reference [TAA, shifted S:48,M:48]
+JX439803.1-not-replaced-cdsstopp4	NC_029646	CDS	nonstructural polyprotein	CDS_HAS_STOP_CODON	693..695:+	5054..5056:+	stop codon in protein-based alignment [-]
+JX439803.1-not-replaced-cdsstopp4	NC_029646	mat_peptide	RdRp	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
