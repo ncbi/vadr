@@ -9,6 +9,9 @@
   * modifies installation of FASTA to allow alignment of sequences up
     to 250Kb with glsearch (previously 40Kb limit) and increases
     maximum allowed filename length
+  * adds --r_lowsim{ok,xf,xl,xd} to v-annotate.pl to allow not
+    reporting lowsim* alerts within identified N-rich regions and
+    controlling related thresholds
   * fixes a bug with -r in that causes a cdsstopp alert to be
     erroneously reported in rare situations (github issue #58)
   * fixes a bug with -s or -r that can cause parse_blast.pl to fail if
