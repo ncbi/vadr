@@ -27,7 +27,7 @@ set -e
 VADRINSTALLDIR=$PWD
 
 # versions
-VERSION="1.4.1"
+VERSION="1.4.2"
 # bio-easel (need this version info here only so we can check out correct easel branch in Bio-Easel/src)
 BEVERSION="Bio-Easel-0.15"
 # blast+
@@ -187,11 +187,16 @@ if [ "$DOWNLOADORBUILD" != "build" ]; then
     # download fasta source distribution from github
     echo "Downloading FASTA version $FVERSIONGIT src distribution"
     curl -k -L -o $FVERSIONGIT.zip https://github.com/wrpearson/fasta36/archive/$FVERSIONGIT.zip; unzip $FVERSIONGIT.zip; mv fasta36-$FVERSIONGITNOV fasta; rm $FVERSIONGIT.zip
+    # patch Makefile with vadr specific changes and copy to expected name so 'build' step is linux/osx agnostic
     if [ "$INPUTSYSTEM" = "linux" ]; then
-        cp fasta/make/Makefile.linux_sse2 fasta/make/Makefile.vadr_install
+        patch fasta/make/Makefile.linux vadr/fasta-mods/vadr-fasta-Makefile.linux.patch
+        cp fasta/make/Makefile.linux fasta/make/Makefile.vadr_install
     else 
+        patch fasta/make/Makefile.os_x86_64 vadr/fasta-mods/vadr-fasta-Makefile.os_x86_64.patch
         cp fasta/make/Makefile.os_x86_64 fasta/make/Makefile.vadr_install
     fi
+    # patch defs.h with vadr specific changes
+    patch fasta/src/defs.h vadr/fasta-mods/vadr-fasta-defs.patch
     echo "------------------------------------------------------------"
     
     # download blast binaries

@@ -1,0 +1,116 @@
+>Feature JX439803.1-with-Ns
+<1	810	gene
+			gene	ORF1
+<1	810	CDS
+			product	nonstructural polyprotein
+			codon_start	1
+			protein_id	JX439803.1-with-Ns_1
+<1	807	mat_peptide
+			product	RdRp
+			protein_id	JX439803.1-with-Ns_1
+791	>1336	gene
+			gene	ORF2
+791	>1336	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (CDS:VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [75>5, no valid stop codon in nucleotide-based prediction]; seq-coords:1262..1336:+; mdl-coords:6692..6692:+; mdl:NC_029646;
+>Feature JX439803.1-with-Ns-cdsstopp1
+<1	810	gene
+			gene	ORF1
+<1	810	CDS
+			product	nonstructural polyprotein
+			codon_start	1
+			protein_id	JX439803.1-with-Ns-cdsstopp1_1
+<1	807	mat_peptide
+			product	RdRp
+			protein_id	JX439803.1-with-Ns-cdsstopp1_1
+791	>1336	gene
+			gene	ORF2
+791	>1336	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (CDS:VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [75>5, no valid stop codon in nucleotide-based prediction]; seq-coords:1262..1336:+; mdl-coords:6692..6692:+; mdl:NC_029646;
+>Feature JX439803.1-with-Ns-cdsstopp2
+<1	810	gene
+			gene	ORF1
+<1	810	CDS
+			product	nonstructural polyprotein
+			codon_start	1
+			protein_id	JX439803.1-with-Ns-cdsstopp2_1
+<1	807	mat_peptide
+			product	RdRp
+			protein_id	JX439803.1-with-Ns-cdsstopp2_1
+791	>1336	gene
+			gene	ORF2
+791	>1336	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (CDS:VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [75>5, no valid stop codon in nucleotide-based prediction]; seq-coords:1262..1336:+; mdl-coords:6692..6692:+; mdl:NC_029646;
+>Feature JX439803.1-with-Ns-cdsstopp3
+<1	810	gene
+			gene	ORF1
+<1	810	misc_feature
+			note	similar to nonstructural polyprotein
+<1	807	misc_feature
+			note	similar to RdRp
+791	>1336	gene
+			gene	ORF2
+791	>1336	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: CDS_HAS_STOP_CODON: (CDS:nonstructural polyprotein) in-frame stop codon exists 5' of stop position predicted by homology to reference [TAA, shifted S:783,M:783]; seq-coords:25..27:+; mdl-coords:4319..4321:+; mdl:NC_029646;
+ERROR: INDEFINITE_ANNOTATION_END: (CDS:VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [75>5, no valid stop codon in nucleotide-based prediction]; seq-coords:1262..1336:+; mdl-coords:6692..6692:+; mdl:NC_029646;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:RdRp) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_029646;
+>Feature JX439803.1-3shorter-Ns-cdsstopp2
+<1	737	gene
+			gene	ORF1
+<1	737	misc_feature
+			note	similar to nonstructural polyprotein
+<1	734	misc_feature
+			note	similar to RdRp
+718	>977	gene
+			gene	ORF2
+718	>977	CDS
+			product	VP1
+			protein_id	JX439803.1-3shorter-Ns-cdsstopp2_1
+
+Additional note(s) to submitter:
+ERROR: CDS_HAS_STOP_CODON: (CDS:nonstructural polyprotein) in-frame stop codon exists 5' of stop position predicted by homology to reference [TAA, shifted S:48,M:48]; seq-coords:687..689:+; mdl-coords:5054..5056:+; mdl:NC_029646;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:RdRp) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_029646;
+>Feature JX439803.1-3longer-Ns-cdsstopp4
+<1	743	gene
+			gene	ORF1
+<1	743	misc_feature
+			note	similar to nonstructural polyprotein
+<1	740	misc_feature
+			note	similar to RdRp
+724	>983	gene
+			gene	ORF2
+724	>983	CDS
+			product	VP1
+			protein_id	JX439803.1-3longer-Ns-cdsstopp4_1
+
+Additional note(s) to submitter:
+ERROR: CDS_HAS_STOP_CODON: (CDS:nonstructural polyprotein) in-frame stop codon exists 5' of stop position predicted by homology to reference [TAA, shifted S:48,M:48]; seq-coords:693..695:+; mdl-coords:5054..5056:+; mdl:NC_029646;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:RdRp) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_029646;
+>Feature JX439803.1-not-replaced-cdsstopp4
+<1	743	gene
+			gene	ORF1
+<1	743	misc_feature
+			note	similar to nonstructural polyprotein
+<1	740	misc_feature
+			note	similar to RdRp
+724	>983	gene
+			gene	ORF2
+724	>983	CDS
+			product	VP1
+			protein_id	JX439803.1-not-replaced-cdsstopp4_1
+
+Additional note(s) to submitter:
+ERROR: CDS_HAS_STOP_CODON: (CDS:nonstructural polyprotein) in-frame stop codon exists 5' of stop position predicted by homology to reference [TAA, shifted S:48,M:48]; seq-coords:693..695:+; mdl-coords:5054..5056:+; mdl:NC_029646;
+ERROR: CDS_HAS_STOP_CODON: (CDS:nonstructural polyprotein) stop codon in protein-based alignment [-]; seq-coords:693..695:+; mdl-coords:5054..5056:+; mdl:NC_029646;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:RdRp) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_029646;

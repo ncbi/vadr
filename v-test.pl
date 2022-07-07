@@ -79,8 +79,8 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-test.pl";
 my $usage         = "Usage: $executable [-options] <input test file e.g. testfiles/testin.1> <output directory to create>\n";
 my $synopsis      = "$executable :: test VADR scripts [TEST SCRIPT]";
 my $date          = scalar localtime();
-my $version       = "1.4.1";
-my $releasedate   = "Jan 2022";
+my $version       = "1.4.2";
+my $releasedate   = "Jul 2022";
 my $pkgname       = "VADR";
 
 # print help and exit if necessary
@@ -113,7 +113,9 @@ my ($test_file, $dir) = (@ARGV);
 my $cmd;               # a command to run with utl_RunCommand()
 my @early_cmd_A = ();  # array of commands we run before our log file is opened
 
-if($dir !~ m/\/$/) { $dir =~ s/\/$//; } # remove final '/' if it exists
+if($dir =~ m/\/$/) { 
+  $dir =~ s/\/$//; # remove final '/' if it exists
+} 
 if(-d $dir) { 
   $cmd = "rm -rf $dir";
   if(opt_Get("-f", \%opt_HH)) { utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }

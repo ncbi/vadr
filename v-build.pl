@@ -204,8 +204,8 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-build.pl";
 my $usage         = "Usage: $executable [-options] <accession> <path to output directory to create>\n";
 my $synopsis      = "$executable :: build homology model of a single sequence for feature annotation";
 my $date          = scalar localtime();
-my $version       = "1.4.1";
-my $releasedate   = "Jan 2022";
+my $version       = "1.4.2";
+my $releasedate   = "Jul 2022";
 my $pkgname       = "VADR";
 
 # print help and exit if necessary
@@ -254,7 +254,9 @@ if(opt_Get("--onlyurl", \%opt_HH)) {
 my $cmd;              # a command to run with utl_RunCommand()
 my @early_cmd_A = (); # array of commands we run before our log file is opened
 
-if($dir !~ m/\/$/) { $dir =~ s/\/$//; } # remove final '/' if it exists
+if($dir =~ m/\/$/) { 
+  $dir =~ s/\/$//; # remove final '/' if it exists
+} 
 if(-d $dir) { 
   $cmd = "rm -rf $dir";
   if(opt_Get("-f", \%opt_HH)) { utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }

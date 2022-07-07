@@ -163,7 +163,7 @@ command.
 | file suffix | description | ....example_file....| reference |
 |--------|------------------|---------------------|-----------|
 | `.minfo`  | VADR model info file | [NC_039897.vadr.minfo](build-files/NC_039897.vadr.minfo) | [description of format in this document](#minfo) |
-| `.tbl`  | 5 column tab-delimited feature table | [NC_039897.vadr.tbl](build-files/NC_039897.vadr.tbl) | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
+| `.tbl`  | 5 column tab-delimited feature table | [NC_039897.vadr.tbl](build-files/NC_039897.vadr.tbl) | https://www.ncbi.nlm.nih.gov/genbank/feature_table/ |
 | `.stk` | Stockholm alignment format | [NC_039897.vadr.stk](build-files/NC_039897.vadr.stk) | https://en.wikipedia.org/wiki/Stockholm_format, http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
 | `.vadr.fa` | FASTA format sequence file for single sequence model was built from | [NC_039897.vadr.fa](build-files/NC_039897.vadr.fa) | https://en.wikipedia.org/wiki/FASTA_format |
 | `.cds.fa` | FASTA format sequence file for CDS features extracted from `.vadr.fa` file, translated to get `.protein.fa` files | [NC_039897.vadr.cds.fa](build-files/NC_039897.vadr.cds.fa) | https://en.wikipedia.org/wiki/FASTA_format |
@@ -278,9 +278,9 @@ references on the file type/format.
 | ..........suffix.......... | ...............description............... | ...................example_file................... | reference |
 |--------|-------------|----------------------|-----------|
 | `.pass.list` | list of sequences that pass, one line per sequence          | [va-noro.9.vadr.pass.list](annotate-files/va-noro.9.vadr.pass.list) | no further documentation | 
-| `.pass.tbl`  | 5 column tab-delimited feature table of sequences that pass | [va-noro.9.vadr.pass.tbl](annotate-files/va-noro.9.vadr.pass.tbl)   | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
+| `.pass.tbl`  | 5 column tab-delimited feature table of sequences that pass | [va-noro.9.vadr.pass.tbl](annotate-files/va-noro.9.vadr.pass.tbl)   | https://www.ncbi.nlm.nih.gov/genbank/feature_table/ |
 | `.fail.list` | list of sequences that fail, one line per sequence          | [va-noro.9.vadr.fail.list](annotate-files/va-noro.9.vadr.fail.list) | no further documentation | 
-| `.fail.tbl`  | 5 column tab-delimited feature table of sequences that fail, with information on fatal alerts | [va-noro.9.vadr.fail.tbl](annotate-files/va-noro.9.vadr.fail.tbl) | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
+| `.fail.tbl`  | 5 column tab-delimited feature table of sequences that fail, with information on fatal alerts | [va-noro.9.vadr.fail.tbl](annotate-files/va-noro.9.vadr.fail.tbl) | https://www.ncbi.nlm.nih.gov/genbank/feature_table/ |
 | `.alt.list`  | tab-delimited file of all fatal alerts listed in `.fail.tbl` | [va-noro.9.vadr.alt.list](annotate-files/va-noro.9.vadr.alt.list) | [description of format in this document](#altlist) |
 | `.<m>.<f>.<i>.fa` | FASTA format sequence file with predicted sequences for feature type `<f>` number `<i>` annotated using model `<m>` from the `.minfo` file | [va-noro.9.vadr.NC_039477.CDS.2.fa](annotate-files/va-noro.9.vadr.NC_039477.CDS.2.fa) | https://en.wikipedia.org/wiki/FASTA_format, sequence naming conventions described [here](#seqnames) |
 | `.seqstat`   | output of `esl-seqstat -a` run on input sequence file, with lengths of all sequences | [va-noro.9.vadr.seqstat](annotate-files/va-noro.9.vadr.seqstat) | no further documentation |
@@ -557,7 +557,7 @@ $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-noro-s.9`.
 |   5 | `p/f`                 | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alerts) |
 |   6 | `seed seq`            | sequence coordinates of seed region from blastn, in vadr coords [format](#coords) |
 |   7 | `seed mdl`            | model coordinates of seed region from blastn, in vadr coords [format](#coords) |
-|   8 | `seed fraction`       | fraction of `seq len` in seed region in `ungapped seq` | 
+|   8 | `seed fraction`       | fraction of `seq len` in seed region in `seed seq` | 
 |   9 | `5'unaln seq`         | sequence coordinates of 5' region not covered by `seed seq` plus some overlap (typically 100nt) subsequently aligned with cmalign or glsearch, in vadr coords [format](#coords) |
 |  10 | `5'unaln mdl`         | model start/stop coordinates for cmalign alignment of 5' region `5'unaln seq`, in vadr coords [format](#coords) |
 |  11 | `5'unaln fraction`    | fraction of `seq len` in 5' region in `5'unaln seq` |
@@ -742,8 +742,9 @@ for naming subsequences in some output fasta files.
 VADR coordinate strings are made up of one or more tokens with format
 `<d1>..<d2>:<s>`, where `<d1>` is the start position, `<d2>` is the
 end position, and `<s>` is the strand, either `+` or `-`, or rarely
-`?` if unknown/uncertain. Tokens are separated by a `,`. Each token is
-defines what VADR code and output refers to as a `segment`.
+`?` if unknown/uncertain. Tokens are separated by a `,`. Each token
+defines what is referred to as a single `segment` in VADR code and
+output.
 
 Here are some examples:
 

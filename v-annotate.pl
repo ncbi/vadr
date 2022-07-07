@@ -262,6 +262,9 @@ opt_Add("--lowsimiseq", "integer",   1,         $g,   undef,   undef,           
 opt_Add("--lowsim5ftr", "integer",   5,         $g,   undef,   undef,            "lowsim5{c,n}/LOW_FEATURE_SIMILARITY_START minimum length is <n>",                 "lowsim5{c,n}/LOW_FEATURE_SIMILARITY_START minimum length is <n>",                 \%opt_HH, \@opt_order_A);
 opt_Add("--lowsim3ftr", "integer",   5,         $g,   undef,   undef,            "lowsim3{c,n}/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                   "lowsim3{c,n}/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                   \%opt_HH, \@opt_order_A);
 opt_Add("--lowsimiftr", "integer",   1,         $g,   undef,   undef,            "lowsimi{c,n}/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",            "lowsimi{c,n}/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",            \%opt_HH, \@opt_order_A);
+opt_Add("--lowsim5lftr", "integer",  30,        $g,   undef,   undef,            "long lowsim5l/LOW_FEATURE_SIMILARITY_START minimum length is <n>",                "long lowsim5l/LOW_FEATURE_SIMILARITY_START minimum length is <n>",                 \%opt_HH, \@opt_order_A);
+opt_Add("--lowsim3lftr", "integer",  30,        $g,   undef,   undef,            "long lowsim3l/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                  "long lowsim3l/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                   \%opt_HH, \@opt_order_A);
+opt_Add("--lowsimilftr", "integer",  30,        $g,   undef,   undef,            "long lowsimil/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",           "long lowsimil/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",            \%opt_HH, \@opt_order_A);
 opt_Add("--biasfract",  "real",      0.25,      $g,   undef,   undef,            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            \%opt_HH, \@opt_order_A);
 opt_Add("--nmiscftrthr","integer",   4,         $g,   undef,   undef,            "nmiscftr/TOO_MANY_MISC_FEATURES reported if <n> or more misc_features",           "nmiscftr/TOO_MANY_MISC_FEATURES reported if <n> or more misc_features",           \%opt_HH, \@opt_order_A);
 opt_Add("--indefann",   "real",      0.8,       $g,   undef,   undef,            "indf{5,3}lc{c,n}/INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>",         "indf{5,3}lc{c,n}/'INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
@@ -296,11 +299,12 @@ opt_Add("--gls_gapopen",  "integer", -17,       $g,"--glsearch", undef,      "se
 opt_Add("--gls_gapextend","integer", -4,        $g,"--glsearch", undef,      "set glsearch gap extend score to <n> < 0 with glsearch -g option",             "set glsearch gap extend score to <n> < 0 with glsearch -g option", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling blastx protein validation stage";
-#        option               type   default  group  requires incompat            preamble-output                                                                                 help-output    
-opt_Add("--xmatrix",     "string",   undef,      $g,     undef,"--pv_skip,--pv_hmmer", "use the matrix <s> with blastx (e.g. BLOSUM45)",                                                "use the matrix <s> with blastx (e.g. BLOSUM45)", \%opt_HH, \@opt_order_A);
-opt_Add("--xdrop",       "integer",  25,         $g,     undef,"--pv_skip,--pv_hmmer", "set the xdrop value for blastx to <n>",                                                         "set the xdrop value for blastx to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xnumali",     "integer",  20,         $g,     undef,"--pv_skip,--pv_hmmer", "number of alignments to keep in blastx output and consider if --xlongest is <n>",               "number of alignments to keep in blastx output and consider if --xlongest is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xlongest",    "boolean",  0,          $g,     undef,"--pv_skip,--pv_hmmer", "keep the longest blastx hit, not the highest scoring one",                                      "keep the longest blastx hit, not the highest scoring one", \%opt_HH, \@opt_order_A);
+#        option               type   default  group  requires incompat            preamble-output                                                                          help-output    
+opt_Add("--xmatrix",     "string",   undef,      $g,     undef,"--pv_skip,--pv_hmmer", "use the matrix <s> with blastx (e.g. BLOSUM45)",                                   "use the matrix <s> with blastx (e.g. BLOSUM45)", \%opt_HH, \@opt_order_A);
+opt_Add("--xdrop",       "integer",  25,         $g,     undef,"--pv_skip,--pv_hmmer", "set the xdrop value for blastx to <n>",                                            "set the xdrop value for blastx to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xnumali",     "integer",  20,         $g,     undef,"--pv_skip,--pv_hmmer", "number of alignments to keep in blastx output and consider if --xlongest is <n>",  "number of alignments to keep in blastx output and consider if --xlongest is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xlongest",    "boolean",  0,          $g,     undef,"--pv_skip,--pv_hmmer", "keep the longest blastx hit, not the highest scoring one",                         "keep the longest blastx hit, not the highest scoring one", \%opt_HH, \@opt_order_A);
+opt_Add("--xnocomp",     "boolean",  0,          $g,     undef,"--pv_skip,--pv_hmmer", "turn off composition-based for blastx statistics with -comp_based_stats 0",        "turn off composition-based for blastx statistics with comp_based_stats 0", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for using hmmer instead of blastx for protein validation";
 #     option          type       default group   requires    incompat   preamble-output                                     help-output    
@@ -353,6 +357,10 @@ opt_Add("--r_blastngdf",  "boolean",      0,   $g,    "-r", undef,          "for
 opt_Add("--r_blastnsc",   "real",      50.0,   $g,    "-r", undef,          "for -r, set blastn minimum HSP score to consider to <x>",                "for -r, set blastn minimum HSP score to consider to <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--r_blastntk",   "boolean",      0,   $g,    "-r", undef,          "for -r, set blastn option -task blastn",                                 "for -r, set blastn option -task blastn", \%opt_HH, \@opt_order_A);
 opt_Add("--r_blastnxd",   "integer",    110,   $g,    "-r", undef,          "for -r, set blastn option -xdrop_gap_final <n> to <n>",                  "for -r, set blastn -xdrop_gap_final <n> to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--r_lowsimok",   "boolean",      0,   $g,    "-r", undef,          "with -r, do not report lowsim{5,3,i}s within identified N-rich regions", "with -r, do not report lowsim{5,3,i}s within identified N-rich regions", \%opt_HH, \@opt_order_A);
+opt_Add("--r_lowsimmf",   "real",      0.75,   $g,"-r,--r_lowsimok", undef, "w/--r_lowsimok, minimum fraction of Ns in N-rich region is <x>",         "w/--r_lowsimok, minimum fraction of Ns in N-rich region is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--r_lowsimxl",   "integer",   5000,   $g,"-r,--r_lowsimok", undef, "w/--r_lowsimok, maximum length of N-rich region is <n>",                 "w/--r_lowsimok, maximum length of N-rich region is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--r_lowsimxd",   "integer",    200,   $g,"-r,--r_lowsimok", undef, "w/--r_lowsimok, max diff from expected length for N-rich region is <n>", "w/--r_lowsimok, max diff from expected length for N-rich region is <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to splitting input file into chunks and processing each chunk separately";
 #     option            type       default  group   requires incompat    preamble-output                                                          help-output    
@@ -453,6 +461,9 @@ my $options_okay =
                 'lowsim5ftr=s'  => \$GetOptions_H{"--lowsim5ftr"},
                 'lowsim3ftr=s'  => \$GetOptions_H{"--lowsim3ftr"},
                 'lowsimiftr=s'  => \$GetOptions_H{"--lowsimiftr"},
+                'lowsim5lftr=s' => \$GetOptions_H{"--lowsim5lftr"},
+                'lowsim3lftr=s' => \$GetOptions_H{"--lowsim3lftr"},
+                'lowsimilftr=s' => \$GetOptions_H{"--lowsimilftr"},
                 'biasfract=s'   => \$GetOptions_H{"--biasfract"},  
                 'nmiscftrthr=s' => \$GetOptions_H{"--nmiscftrthr"},  
                 'indefann=s'    => \$GetOptions_H{"--indefann"},  
@@ -486,6 +497,7 @@ my $options_okay =
                 'xdrop=s'       => \$GetOptions_H{"--xdrop"},
                 'xnumali=s'     => \$GetOptions_H{"--xnumali"},
                 'xlongest'      => \$GetOptions_H{"--xlongest"},
+                'xnocomp'       => \$GetOptions_H{"--xnocomp"},
 # options for using hmmer instead of blastx for protein validation
                 'pv_hmmer'      => \$GetOptions_H{"--pv_hmmer"},
                 'h_max'         => \$GetOptions_H{"--h_max"},
@@ -532,6 +544,10 @@ my $options_okay =
                 'r_blastnsc=s'     => \$GetOptions_H{"--r_blastnsc"},
                 'r_blastntk'       => \$GetOptions_H{"--r_blastntk"},
                 'r_blastnxd=s'     => \$GetOptions_H{"--r_blastnxd"},
+                'r_lowsimok'       => \$GetOptions_H{"--r_lowsimok"},
+                'r_lowsimmf=s'     => \$GetOptions_H{"--r_lowsimmf"},
+                'r_lowsimxl=s'     => \$GetOptions_H{"--r_lowsimxl"},
+                'r_lowsimxd=s'     => \$GetOptions_H{"--r_lowsimxd"},
 # options related to splitting
                 'split'         => \$GetOptions_H{"--split"},
                 'cpu=s'         => \$GetOptions_H{"--cpu"}, 
@@ -574,8 +590,8 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-annotate.pl";
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a model library";
 my $date          = scalar localtime();
-my $version       = "1.4.1";
-my $releasedate   = "Jan 2022";
+my $version       = "1.4.2";
+my $releasedate   = "Jul 2022";
 my $pkgname       = "VADR";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
@@ -679,9 +695,28 @@ if(opt_IsUsed("--split", \%opt_HH)) {
   }
 }
 
-# if--nmiscftrthr <n> is used, <n> must be >= 2
+# if --nmiscftrthr <n> is used, <n> must be >= 2
 if((opt_IsUsed("--nmiscftrthr", \%opt_HH)) && (opt_Get("--nmiscftrthr", \%opt_HH) < 2)) { 
   die "ERROR, with --nmiscftrthr <n>, <n> must be >= 2";
+}
+
+# if --lowsim5ftr <n1> or --lowsim5lftr <n2> used, <n1> must be <= <n2>
+# if --lowsim3ftr <n1> or --lowsim3lftr <n2> used, <n1> must be <= <n2>
+# if --lowsimiftr <n1> or --lowsimilftr <n2> used, <n1> must be <= <n2>
+if((opt_IsUsed("--lowsim5ftr", \%opt_HH)) || (opt_IsUsed("--lowsim5lftr", \%opt_HH))) { 
+  if((opt_Get("--lowsim5ftr", \%opt_HH)) > (opt_Get("--lowsim5lftr", \%opt_HH))) { 
+    die "ERROR, with --lowsim5ftr <n1> and/or --lowsim5lftr <n2>, <n1> must be <= <n2>";
+  }
+}
+if((opt_IsUsed("--lowsim3ftr", \%opt_HH)) || (opt_IsUsed("--lowsim3lftr", \%opt_HH))) { 
+  if((opt_Get("--lowsim3ftr", \%opt_HH)) > (opt_Get("--lowsim3lftr", \%opt_HH))) { 
+    die "ERROR, with --lowsim3ftr <n1> and/or --lowsim3lftr <n2>, <n1> must be <= <n2>";
+  }
+}
+if((opt_IsUsed("--lowsimiftr", \%opt_HH)) || (opt_IsUsed("--lowsimilftr", \%opt_HH))) { 
+  if((opt_Get("--lowsimiftr", \%opt_HH)) > (opt_Get("--lowsimilftr", \%opt_HH))) { 
+    die "ERROR, with --lowsimiftr <n1> and/or --lowsimilftr <n2>, <n1> must be <= <n2>";
+  }
 }
 
 #######################################################
@@ -716,7 +751,9 @@ my $do_glsearch = opt_Get("--glsearch",  \%opt_HH) ? 1 : 0;
 my $cmd;               # a command to run with utl_RunCommand()
 my @early_cmd_A = ();  # array of commands we run before our log file is opened
 
-if($dir !~ m/\/$/) { $dir =~ s/\/$//; } # remove final '/' if it exists
+if($dir =~ m/\/$/) { 
+  $dir =~ s/\/$//; # remove final '/' if it exists
+} 
 if(-d $dir) { 
   $cmd = "rm -rf $dir";
   if(opt_Get("-f", \%opt_HH)) { utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
@@ -1788,6 +1825,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                                       $mdl_name, \@ftr_fileroot_A, \@ftr_outroot_A, 
                                                       $$sqfile_for_cds_mp_alerts_R, $$sqfile_for_output_fastas_R, $$sqfile_for_pv_R,
                                                       $do_separate_cds_fa_files_for_protein_validation, \@to_remove_A,
+                                                      ($do_replace_ns) ? \%rpn_output_HH : undef, 
                                                       $out_root, \%opt_HH, \%ofile_info_HH);
       }
       push(@to_remove_A, ($stk_file_HA{$mdl_name}[$a]));
@@ -1811,7 +1849,9 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       add_low_similarity_alerts_for_one_sequence($seq_name, \%seq_len_H, undef,
                                                  \@{$ftr_info_HAH{$mdl_name}}, \@{$sgm_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                                  \%stg_results_HHH, \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
-                                                 \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, \%opt_HH, \%ofile_info_HH);
+                                                 \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, 
+                                                 ($do_replace_ns) ? \%rpn_output_HH : undef, 
+                                                 \%opt_HH, \%ofile_info_HH);
     }
   }
 }
@@ -1864,7 +1904,10 @@ if($do_pv_blastx) {
                              $ftr_info_blastx_HR, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
         
         add_protein_validation_alerts($mdl_name, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
-                                      \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
+                                      \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, 
+                                      ($do_replace_ns) ? \%rpn_output_HH : undef, 
+                                      \%opt_HH, \%{$ofile_info_HH{"FH"}});
+
         ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
       }
     }
@@ -1891,7 +1934,9 @@ if($do_pv_hmmer) {
         parse_hmmer_domtblout($ofile_info_HH{"fullpath"}{($mdl_name . ".domtblout")}, 0, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
                                   \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
         add_protein_validation_alerts($mdl_name, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
-                                      \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
+                                      \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, 
+                                      ($do_replace_ns) ? \%rpn_output_HH : undef, 
+                                      \%opt_HH, \%{$ofile_info_HH{"FH"}});
         ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
         push(@to_remove_A, 
              ($ofile_info_HH{"fullpath"}{$mdl_name . ".pv.hmmer.esl_translate.aa.fa"}, 
@@ -3991,6 +4036,7 @@ sub cmalign_or_glsearch_run {
 #  $do_separate_cds_fa_files:  '1' to output two sets of cds files, one with fetched features from $sqfile_for_output_fastas
 #                              and one for the protein validation stage fetched from $sqfile_for_cds_mp_alerts
 #  $to_remove_AR:              REF to array of files to remove before exiting, possibly added to here if $do_separate_cds_fa_files
+#  $rpn_output_HHR:            REF to rpn output data HH, PRE-FILLED, will be undef if -r not used
 #  $out_root:                  string for naming output files
 #  $opt_HHR:                   REF to 2D hash of option values
 #  $ofile_info_HHR:            REF to 2D hash of output file information
@@ -4002,7 +4048,7 @@ sub cmalign_or_glsearch_run {
 ################################################################# 
 sub parse_stk_and_add_alignment_cds_and_mp_alerts { 
   my $sub_name = "parse_stk_and_add_alignment_cds_and_mp_alerts()";
-  my $nargs_exp = 25;
+  my $nargs_exp = 26;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
   my ($stk_file, $in_sqfile_R, $mdl_tt, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, 
@@ -4010,7 +4056,8 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
       $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $dcr_output_HAHR, 
       $mdl_name, $ftr_fileroot_AR, $ftr_outroot_AR, 
       $sqfile_for_cds_mp_alerts, $sqfile_for_output_fastas, $sqfile_for_pv,
-      $do_separate_cds_fa_files, $to_remove_AR, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
+      $do_separate_cds_fa_files, $to_remove_AR, $rpn_output_HHR,
+      $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = \%{$ofile_info_HHR->{"FH"}};
   my $pp_thresh_non_mp = opt_Get("--indefann",    $opt_HHR); # threshold for non-mat_peptide features
@@ -4617,7 +4664,7 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
           my $new_ins_tok  = ($dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"before"}) ? 
               sprintf("%d:%d:1", $dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"rfpos"} - 1, $dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"new_seq_uapos"} - 1) : 
               sprintf("%d:%d:1", $dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"rfpos"},     $dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"new_seq_uapos"} + 1);
-          $seq_inserts_HHR->{$seq_name}{"ins"} = vdr_ReplaceInsertTokenInInsertString($seq_inserts_HHR->{$seq_name}{"ins"}, $orig_ins_tok, $new_ins_tok, $FH_HR)
+          $seq_inserts_HHR->{$seq_name}{"ins"} = vdr_UpdateInsertTokenInInsertString($seq_inserts_HHR->{$seq_name}{"ins"}, $orig_ins_tok, $new_ins_tok, $FH_HR)
         }
       }
       $i--; # makes it so we'll reevaluate this sequence in next iteration of the loop
@@ -4685,12 +4732,14 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
                                                                 $to_remove_AR, $opt_HHR, $ofile_info_HHR);
       
       # add low similarity alerts for this sequence
-      # we have to do this here becuase we need @ua2rf_A map of unaligned positions 
+      # we have to do this here because we need @ua2rf_A map of unaligned positions 
       # to RF positions to report model positions for alerts
       add_low_similarity_alerts_for_one_sequence($seq_name, \%seq_len_H, \@ua2rf_A, 
                                                  $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, 
                                                  $stg_results_HHHR, $sgm_results_HAHR, $ftr_results_HAHR, 
-                                                 $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $opt_HHR, $ofile_info_HHR);
+                                                 $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, 
+                                                 $rpn_output_HHR, # may be undef
+                                                 $opt_HHR, $ofile_info_HHR);
       
       # update the model coords for ambgnt5s/ambgnt3s seqs, now that we have the alignment
       alert_sequence_instance_update_mdl_coords($alt_seq_instances_HHR, $alt_info_HHR, "ambgnt5s", $seq_name, \@ua2rf_A, $FH_HR);
@@ -6241,9 +6290,9 @@ sub sqstring_find_stops {
 #            EPN, Mon Apr 29 13:29:37 2019 [version for an array of seqs]
 #
 # Purpose:   For a given sequence, check for and report any of the following alerts:
-#            low similarity per-sequence alerts          (lowsim5s, lowsim3s, lowsimis) and
-#            low similarity per-coding-feature alerts    (lowsim5c, lowsim3c, lowsimic) and 
-#            low similarity per-noncoding-feature alerts (lowsim5n, lowsim3n, lowsimin).
+#            low similarity per-sequence alerts          (lowsim5s,     lowsim3s,     lowsimis) and
+#            low similarity per-coding-feature alerts    (lowsim5c,     lowsim3c,     lowsimic) and 
+#            low similarity per-noncoding-feature alerts (lowsim5{n,l}, lowsim3{n,l}, lowsimi{n,l}).
 #
 # Arguments:
 #  $seq_name:               name of the sequence
@@ -6262,6 +6311,7 @@ sub sqstring_find_stops {
 #  $ftr_results_HAHR:       REF to feature results HAH, added to here
 #  $alt_seq_instances_HHR:  REF to array of hash with per-sequence alerts, PRE-FILLED
 #  $alt_ftr_instances_HHHR: REF to array of 2D hashes with per-feature alerts, PRE-FILLED
+#  $rpn_output_HHR:         REF to rpn output data HH, PRE-FILLED, will be undef if -r not used
 #  $opt_HHR:                REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:         REF to the 2D hash of output file information
 #             
@@ -6272,23 +6322,45 @@ sub sqstring_find_stops {
 #################################################################
 sub add_low_similarity_alerts_for_one_sequence { 
   my $sub_name = "add_low_similarity_alerts_for_one_sequence";
-  my $nargs_exp = 13;
+  my $nargs_exp = 14;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($seq_name, $seq_len_HR, $ua2rf_AR, $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, 
       $stg_results_HHHR, $sgm_results_HAHR, $ftr_results_HAHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, 
-      $opt_HHR, $ofile_info_HHR) = @_;
+      $rpn_output_HHR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR  = $ofile_info_HHR->{"FH"}; # for convenience
 
   my $nftr = scalar(@{$ftr_info_AHR});
 
-  my $terminal_seq_5_min_length = opt_Get("--lowsim5seq", $opt_HHR); # minimum length of terminal missing region that triggers a lowsim5s alert
-  my $terminal_seq_3_min_length = opt_Get("--lowsim3seq", $opt_HHR); # minimum length of terminal missing region that triggers a lowsim3s alert
-  my $internal_seq_min_length   = opt_Get("--lowsimiseq", $opt_HHR); # minimum length of internal missing region that triggers a lowsimis alert
-  my $terminal_ftr_5_min_length = opt_Get("--lowsim5ftr", $opt_HHR); # minimum length of terminal missing region in a feature that triggers a lowsim5f alert
-  my $terminal_ftr_3_min_length = opt_Get("--lowsim3ftr", $opt_HHR); # minimum length of terminal missing region in a feature that triggers a lowsim3f alert
-  my $internal_ftr_min_length   = opt_Get("--lowsimiftr", $opt_HHR); # minimum length of internal missing region in a feature that triggers a lowsimif alert
+  my $terminal_seq_5_min_length      = opt_Get("--lowsim5seq", $opt_HHR);  # minimum length of terminal missing region that triggers a lowsim5s alert
+  my $terminal_seq_3_min_length      = opt_Get("--lowsim3seq", $opt_HHR);  # minimum length of terminal missing region that triggers a lowsim3s alert
+  my $internal_seq_min_length        = opt_Get("--lowsimiseq", $opt_HHR);  # minimum length of internal missing region that triggers a lowsimis alert
+  my $terminal_ftr_5_min_length      = opt_Get("--lowsim5ftr", $opt_HHR);  # minimum length of terminal missing region in a feature that triggers a lowsim5{n,c} alert
+  my $terminal_ftr_3_min_length      = opt_Get("--lowsim3ftr", $opt_HHR);  # minimum length of terminal missing region in a feature that triggers a lowsim3{n,c} alert
+  my $internal_ftr_min_length        = opt_Get("--lowsimiftr", $opt_HHR);  # minimum length of internal missing region in a feature that triggers a lowsimi{n,c} alert
+  my $long_terminal_ftr_5_min_length = opt_Get("--lowsim5lftr", $opt_HHR); # minimum length of terminal missing region in a feature that triggers a lowsim5l alert
+  my $long_terminal_ftr_3_min_length = opt_Get("--lowsim3lftr", $opt_HHR); # minimum length of terminal missing region in a feature that triggers a lowsim3l alert
+  my $long_internal_ftr_min_length   = opt_Get("--lowsimilftr", $opt_HHR); # minimum length of internal missing region in a feature that triggers a lowsimil alert
+
+  # When doing check of sophisticated checks of options, we already checked that 
+  # if --lowsim5ftr <n1> or --lowsim5lftr <n2> used, <n1> must be <= <n2>
+  # if --lowsim3ftr <n1> or --lowsim3lftr <n2> used, <n1> must be <= <n2>
+  # if --lowsimiftr <n1> or --lowsimilftr <n2> used, <n1> must be <= <n2>
+  # so we don't have to consider the *lftr options when finding minimums above
+
+  # if $rpn_output_HHR is defined then -r was used, if --r_lowsimok also used, 
+  # we ignore lowsim*s alerts if the sequence regions are within N-rich regions
+  # identified during N-replacement
+  my $do_r_lowsimok     = opt_Get("--r_lowsimok", $opt_HHR) ? 1 : 0;
+  my $small_value     = 0.00000001;
+  my $lowsimok_minfract = opt_Get("--r_lowsimmf", $opt_HHR) - $small_value;
+  my $lowsimok_maxlen   = opt_Get("--r_lowsimxl", $opt_HHR);
+  my $lowsimok_maxdiff  = opt_Get("--r_lowsimxd", $opt_HHR);
+  my $rpn_ncoords       = undef; # only possibly defined if $do_r_lowsimok
+  my @rpn_seq_sgm_A     = ();    # only possibly filled if $do_r_lowsimok
+  my @rpn_diff_A        = ();    # only possibly filled if $do_r_lowsimok
+  my @rpn_ncount_A      = ();    # only possibly filled if $do_r_lowsimok
 
   my $alt_msg        = undef; # message for reporting an alert
   my $alt_scoords    = undef; # sequence coords string for alert message
@@ -6374,26 +6446,56 @@ sub add_low_similarity_alerts_for_one_sequence {
                     else { 
                       ofile_FAIL("ERROR, in $sub_name, unable to parse overlap region: $overlap_reg", 1, $FH_HR);
                     }
-                    $alt_scoords = "seq:" . vdr_CoordsSegmentCreate($soverlap_start, $soverlap_stop, $f_strand, $FH_HR) . ";"; 
+                    $alt_scoords = "seq:" . vdr_CoordsSegmentCreate($start, $stop, $f_strand, $FH_HR) . ";"; 
                     if(defined $ua2rf_AR) { 
-                      $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$soverlap_start]), abs($ua2rf_AR->[$soverlap_stop]), $f_strand, $FH_HR) . ";"; 
+                      $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$start]), abs($ua2rf_AR->[$stop]), $f_strand, $FH_HR) . ";"; 
                     }
                     else { 
                       $alt_mcoords = "mdl:VADRNULL;";
                     }
                     $alt_msg = sprintf("%s%s%d nt overlap b/t low similarity region of length %d (%d..%d) and annotated feature (%d..%d)",
                                        $alt_scoords, $alt_mcoords, $noverlap, $length, $start, $stop, $f_start, $f_stop);
-                    if(($is_start) && ($noverlap >= $terminal_ftr_5_min_length)) { 
+                    if(($is_start) && ($length >= $terminal_ftr_5_min_length)) { 
                       $ftr_overlap_flag = 1;
-                      alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, ($ftr_matches_coding ? "lowsim5c" : "lowsim5n"), $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+                      if($ftr_matches_coding) { 
+                        alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsim5c", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+                      }
+                      else { # non-coding
+                        if($length >= $long_terminal_ftr_5_min_length) { 
+                          alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsim5l", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+                        }
+                        else { 
+                          alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsim5n", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+                        }
+                      }
                     }
-                    if(($is_end) && ($noverlap >= $terminal_ftr_3_min_length)) { 
+                    if(($is_end) && ($length >= $terminal_ftr_3_min_length)) { 
                       $ftr_overlap_flag = 1;
-                      alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, ($ftr_matches_coding ? "lowsim3c" : "lowsim3n"), $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+                      if($ftr_matches_coding) { 
+                        alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsim3c", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+                      }
+                      else { # non-coding
+                        if($length >= $long_terminal_ftr_3_min_length) { 
+                          alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsim3l", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+                        }
+                        else { 
+                          alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsim3n", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+                        }
+                      }
                     }
-                    if((! $is_start) && (! $is_end) && ($noverlap >= $internal_ftr_min_length)) { 
+                    if((! $is_start) && (! $is_end) && ($length >= $internal_ftr_min_length)) { 
                       $ftr_overlap_flag = 1;
-                      alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, ($ftr_matches_coding ? "lowsimic" : "lowsimin"), $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+                      if($ftr_matches_coding) { 
+                        alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsimic", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+                      }
+                      else { # non-coding
+                        if($length >= $long_internal_ftr_min_length) { 
+                          alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsimil", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+                        }
+                        else { 
+                          alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsimin", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+                        }
+                      }
                     }
                   }
                 }
@@ -6409,14 +6511,42 @@ sub add_low_similarity_alerts_for_one_sequence {
               }
               $alt_msg = sprintf("%s%slow similarity region of length %d", 
                                  $alt_scoords, $alt_mcoords, $length);
-              if(($is_start) && ($length >= $terminal_seq_5_min_length)) { 
-                alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim5s", $seq_name, $alt_msg, $FH_HR);
+
+              # if --r_lowsimok, check if we exclude this lowsim{5,3,i}s alert because its entire sequence region is contained within
+              # a region that was identified during the N replacement stage (-r option)
+              my $found_spanning_overlap = 0; # set to 1 if we find an overlap that completely spans 
+              if((defined $rpn_output_HHR) && ($do_r_lowsimok)) { 
+                if(! defined $rpn_ncoords) { 
+                  $rpn_ncoords = vdr_ReplacePseudoCoordsStringParse($rpn_output_HHR->{$seq_name}{"pseudo_coords"}, \@rpn_seq_sgm_A, undef, \@rpn_diff_A, \@rpn_ncount_A, undef, undef, undef, $FH_HR);
+                }
+                if($rpn_ncoords > 0) { 
+                  for(my $y = 0; $y < $rpn_ncoords; $y++) { 
+                    my ($r_n, $r_len) = split(/\//, $rpn_ncount_A[$y]);
+                    my $r_diff = $rpn_diff_A[$y];
+                    $r_diff =~ s/\!//; # remove ! if it exists
+
+                    if((($r_n / $r_len) >= ($lowsimok_minfract)) && # fraction of Ns is at least minimum
+                       ($r_len <= $lowsimok_maxlen) &&              # length does not exceed maximum
+                       (abs($r_diff) <= $lowsimok_maxdiff)) {       # length diff between observed and expected does not exceed maximum
+                      # this region meets all the criteria, check if it completely spans the lowsim region
+                      my ($r_noverlap, undef) = vdr_CoordsSegmentOverlap($rpn_seq_sgm_A[$y], vdr_CoordsSegmentCreate($start, $stop, "+", $FH_HR), $FH_HR);
+                      if($r_noverlap == (abs($stop-$start) + 1)) { 
+                        $found_spanning_overlap = 1;
+                      }
+                    }
+                  }
+                }
               }
-              if(($is_end) && ($length >= $terminal_seq_3_min_length)) { 
-                alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim3s", $seq_name, $alt_msg, $FH_HR);
-              }
-              if((! $is_start) && (! $is_end) && ($length >= $internal_seq_min_length)) { 
-                alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsimis", $seq_name, $alt_msg, $FH_HR);
+              if(! $found_spanning_overlap) { 
+                if(($is_start) && ($length >= $terminal_seq_5_min_length)) { 
+                  alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim5s", $seq_name, $alt_msg, $FH_HR);
+                }
+                if(($is_end) && ($length >= $terminal_seq_3_min_length)) { 
+                  alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim3s", $seq_name, $alt_msg, $FH_HR);
+                }
+                if((! $is_start) && (! $is_end) && ($length >= $internal_seq_min_length)) { 
+                  alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsimis", $seq_name, $alt_msg, $FH_HR);
+                }
               }
             }
           }
@@ -6536,7 +6666,7 @@ sub make_protein_validation_fasta_file {
 #                         too long of a delete (only possibly reported if BLASTX used)
 #             "cdsstopp": adds this alert if protein validation of a CDS prediction fails due to
 #                         an in-frame stop codon in the protein alignment (only possibly reported
-#                         if blastx used
+#                         if blastx used)
 #
 # Arguments: 
 #  $mdl_name:               name of model we are adding alerts for
@@ -6546,6 +6676,7 @@ sub make_protein_validation_fasta_file {
 #  $alt_info_HHR:           REF to array of hashes with information on the alerts, PRE-FILLED
 #  $ftr_results_HAHR:       REF to feature results HAH, PRE-FILLED
 #  $alt_ftr_instances_HHHR: REF to alert instances HAH, ADDED TO HERE
+#  $rpn_output_HHR:         REF to rpn output data HH, PRE-FILLED, will be undef if -r not used
 #  $opt_HHR:                REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $FH_HR:                  REF to hash of file handles
 #
@@ -6554,10 +6685,11 @@ sub make_protein_validation_fasta_file {
 ################################################################# 
 sub add_protein_validation_alerts { 
   my $sub_name = "add_protein_validation_alerts";
-  my $nargs_expected = 9;
+  my $nargs_expected = 10;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($mdl_name, $seq_name_AR, $seq_len_HR, $ftr_info_AHR, $alt_info_HHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, $opt_HHR, $FH_HR) = @_;
+  my ($mdl_name, $seq_name_AR, $seq_len_HR, $ftr_info_AHR, $alt_info_HHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, 
+      $rpn_output_HHR, $opt_HHR, $FH_HR) = @_;
   
   my $do_pv_hmmer = opt_Get("--pv_hmmer", $opt_HHR) ? 1 : 0;
 
@@ -6602,6 +6734,9 @@ sub add_protein_validation_alerts {
   for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     # for each feature
     $seq_name = $seq_name_AR->[$seq_idx];
+    my $rpn_ncoords = undef; # only defined if we need to report a cdsstopp for this sequence
+    my @rpn_seq_sgm_A  = ();  # only filled if we need to report a cdsstopp for this sequence
+    my @rpn_replaced_A = ();  # only filled if we need to report a cdsstopp for this sequence
     if($seq_len_HR->{$seq_name} >= $minpvlen) { 
       for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
         if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
@@ -6907,7 +7042,40 @@ sub add_protein_validation_alerts {
                     elsif($beginning_of_detail ne "VADRNULL") { 
                       $cdsstopp_detail = "mdl-coords_wrt:" . $cdsstopp_detail;
                     }
-                    $alt_str_H{"cdsstopp"} = "seq:" . $cdsstopp_scoords . ";mdl:" . $cdsstopp_mcoords . ";" . $cdsstopp_detail;
+                    # check if we exclude this alert because the early stop overlaps with a region
+                    # replaced during the N replacement stage (-r option)
+                    my $found_overlap = 0; # set to 1 if we find an overlap
+                    if(defined $rpn_output_HHR) { 
+                      if(! defined $rpn_ncoords) { 
+                        $rpn_ncoords = vdr_ReplacePseudoCoordsStringParse($rpn_output_HHR->{$seq_name}{"pseudo_coords"}, \@rpn_seq_sgm_A, undef, undef, undef, undef, undef, \@rpn_replaced_A, $FH_HR);
+                      }
+                      if($rpn_ncoords > 0) { 
+                        # rpn coords are *always* + strand, so convert stop codon coords to + too, 
+                        # we could have this in multiple segments, rare but possible
+                        my @cdsstopp_sstart_A = ();
+                        my @cdsstopp_sstop_A  = ();
+                        vdr_FeatureStartStopStrandArrays($cdsstopp_scoords, \@cdsstopp_sstart_A, \@cdsstopp_sstop_A, undef, $FH_HR);
+                        for(my $y = 0; $y < $rpn_ncoords; $y++) { 
+                          if($rpn_replaced_A[$y] eq "Y") { # only consider those segments that were replaced
+                            for(my $z = 0; $z < scalar(@cdsstopp_sstart_A); $z++) { 
+                              my $cdsstopp_noverlap = 0;
+                              if($cdsstopp_sstart_A[$z] <= $cdsstopp_sstop_A[$z]) { # stop codon is on positive strand
+                                ($cdsstopp_noverlap, undef) = vdr_CoordsSegmentOverlap($rpn_seq_sgm_A[$y], vdr_CoordsSegmentCreate($cdsstopp_sstart_A[$z], $cdsstopp_sstop_A[$z], "+", $FH_HR), $FH_HR);
+                              }
+                              else { # stop codon is on negative strand, swap start/stop and set strand to positive
+                                ($cdsstopp_noverlap, undef) = vdr_CoordsSegmentOverlap($rpn_seq_sgm_A[$y], vdr_CoordsSegmentCreate($cdsstopp_sstop_A[$z], $cdsstopp_sstart_A[$z], "+", $FH_HR), $FH_HR);
+                              }
+                              if($cdsstopp_noverlap != 0) { 
+                                $found_overlap = 1;
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                    if(! $found_overlap) { # if we found an overlap with a replaced region, don't report this alert
+                      $alt_str_H{"cdsstopp"} = "seq:" . $cdsstopp_scoords . ";mdl:" . $cdsstopp_mcoords . ";" . $cdsstopp_detail;
+                    }
                   }
                 }
               }
@@ -6983,6 +7151,9 @@ sub run_blastx_and_summarize_output {
   if(opt_IsUsed("--xdrop", $opt_HHR)) { 
     my $xdrop_opt = opt_Get("--xdrop", $opt_HHR);
     $blastx_options .= " -xdrop_ungap $xdrop_opt -xdrop_gap $xdrop_opt -xdrop_gap_final $xdrop_opt";
+  }
+  if(opt_IsUsed("--xnocomp", $opt_HHR)) { 
+    $blastx_options .= " -comp_based_stats 0"
   }
   my $xnumali = opt_Get("--xnumali", $opt_HHR);
 
@@ -9276,7 +9447,7 @@ sub output_tabular {
     my $rpn_ngaps_rp_part  = (($do_rpn) && (defined $rpn_output_HR->{"ngaps_rp_part"}))  ? $rpn_output_HR->{"ngaps_rp_part"}  : "-";
     my $rpn_nnt_rp_full    = (($do_rpn) && (defined $rpn_output_HR->{"nnt_rp_full"}))    ? $rpn_output_HR->{"nnt_rp_full"}    : "-";
     my $rpn_nnt_rp_part    = (($do_rpn) && (defined $rpn_output_HR->{"nnt_rp_part"}))    ? $rpn_output_HR->{"nnt_rp_part"}    : "-";
-    my $rpn_coords         = (($do_rpn) && (defined $rpn_output_HR->{"coords"}) && ($rpn_output_HR->{"coords"} ne "")) ? $rpn_output_HR->{"coords"} : "-";
+    my $rpn_coords         = (($do_rpn) && (defined $rpn_output_HR->{"pseudo_coords"}) && ($rpn_output_HR->{"pseudo_coords"} ne "")) ? $rpn_output_HR->{"pseudo_coords"} : "-";
 
     # deal with --msub and model subs, we need this ONLY for mdl_{pass,fail}_ct_H and for ftr_info_HAHR in check_if_sequence_passes
     my $tmp_mdl = $seq_mdl1;
@@ -11591,7 +11762,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
     $rpn_output_HHR->{$seq_name}{"ngaps_rp_part"}  = 0;  # number of regions in which not all Ns are replaced
     $rpn_output_HHR->{$seq_name}{"nnt_rp_full"}    = 0;  # number of N nts replaced in regions in which all Ns are replaced
     $rpn_output_HHR->{$seq_name}{"nnt_rp_part"}    = 0;  # number of N nts replaced in regions in which all Ns are replaced
-    $rpn_output_HHR->{$seq_name}{"coords"}         = ""; # pseudo-coordinate string describing number of Ns replaced per region
+    $rpn_output_HHR->{$seq_name}{"pseudo_coords"}  = ""; # pseudo-coordinate string describing number of Ns replaced per region
 
     # get start and stop arrays for all seq and mdl coords (remember all strands are +)
     my $ncoords = scalar(@cur_seq_tblout_coords_AH);
@@ -11838,10 +12009,10 @@ sub parse_cdt_tblout_file_and_replace_ns {
             }
           }
           # update coords field
-          $rpn_output_HHR->{$seq_name}{"coords"} .= 
-              helper_replace_coords_string($missing_seq_start_A[$i], $missing_seq_stop_A[$i], 
-                                           $missing_mdl_start_A[$i], $missing_mdl_stop_A[$i], 
-                                           $count_n, $region_non_n_match, $region_non_n_mismatch, $flush_direction, $replaced_flag);
+          $rpn_output_HHR->{$seq_name}{"pseudo_coords"} .= 
+              vdr_ReplacePseudoCoordsStringCreate($missing_seq_start_A[$i], $missing_seq_stop_A[$i], 
+                                                  $missing_mdl_start_A[$i], $missing_mdl_stop_A[$i], 
+                                                  $count_n, $region_non_n_match, $region_non_n_mismatch, $flush_direction, $replaced_flag);
         } # end of 'if($missing_seq_len >= $r_minlen_opt)'
       } # end of 'for($i = 0; $i < nmissing; $i++);'
     } # end of 'if($nmissing > 0)'
@@ -11967,71 +12138,6 @@ sub helper_replace_ns_in_region  {
   # printf("returning nmatch: $ret_nmatch n_mismatch: $ret_n_mismatch\n");
   return ($ret_replaced_sqstring, $ret_nreplaced_nts, $ret_nmatch, $ret_n_mismatch);
 }
-
-#################################################################
-# Subroutine: helper_replace_coords_string()
-# Incept:     EPN, Sat Dec 18 08:31:23 2021
-#
-# Purpose:    Format the "coords" string for \%{$rpn_output_HHR}
-#             given the necessary information.
-#
-# Args:
-#  $missing_seq_start:         position in model where missing model region starts
-#  $missing_seq_stop:          position in model where missing model region stops
-#  $missing_mdl_start:         position in model where missing model region starts
-#  $missing_mdl_stop:          position in model where missing model region stops
-#  $count_n:                   number of Ns in missing seq region
-#  $nmatch:                    number of non-Ns in missing seq region that matched expected nt, can be undef
-#  $nmismatch:                 number of non-Ns in missing seq region that did not match expected nt, can be undef
-#  $flush_direction:           '5p', '3p' or '-'
-#  $replaced_flag              '1' if region was replaced, '0' if not
-#
-# Returns: substring to append to $rpn_output_HHR->{$seq_name}{"coords"}
-#
-#################################################################
-sub helper_replace_coords_string { 
-  my $sub_name = "helper_replace_coord_string()";
-  my $nargs_exp = 9;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-  
-  my ($missing_seq_start, $missing_seq_stop, $missing_mdl_start, $missing_mdl_stop, 
-      $count_n, $nmatch, $nmismatch, $flush_direction, $replaced_flag) = @_;
-  
-  my $missing_seq_len = abs($missing_seq_stop - $missing_seq_start) + 1;
-  my $missing_mdl_len = abs($missing_mdl_stop - $missing_mdl_start) + 1;
-  my $missing_diff    = $missing_seq_len - $missing_mdl_len;
-  
-  my $ret_str = "";
-  $ret_str .= "[S:" . $missing_seq_start . ".." . $missing_seq_stop . ","; # S: seq coords of missing region
-  $ret_str .= "M:" . $missing_mdl_start . ".." . $missing_mdl_stop . ","; # M: mdl coords of missing region
-  # add '!' if missing_diff != 0;
-  if($missing_diff != 0) { 
-    $ret_str .= "D:" . $missing_diff . "!,";      # D: missing mdl len - missing seq len
-  }
-  else { 
-    $ret_str .= "D:0,";
-  }
-  $ret_str .= "N:" . $count_n . "/" . $missing_seq_len . ",";             # N: num Ns in missing seq region / missing seq len
-  if((defined $nmatch) && (defined $nmismatch)) { 
-    my $missing_non_n   = $nmatch + $nmismatch;
-    $ret_str .= "E:" . $nmatch  . "/" . $missing_non_n . ",";             # E: num non-Ns that match expected / num non Ns
-  }
-  else { 
-    $ret_str .= "E:?/?,";
-  }
-
-  $ret_str .= "F:" . $flush_direction . ",";
-
-  if($replaced_flag) { 
-    $ret_str .= "R:Y];";                                                   # R: Y if replaced, N if not
-  }
-  else { 
-    $ret_str .= "R:N];";
-  }
-
-  return $ret_str;
-}
-
 
 #################################################################
 #

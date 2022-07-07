@@ -1,0 +1,30 @@
+>Feature JX439803.1-3shorter-Ns-cdsstopp1
+<1	737	gene
+			gene	ORF1
+<1	737	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+			protein_id	JX439803.1-3shorter-Ns-cdsstopp1_1
+<1	734	mat_peptide
+			product	RdRp
+			protein_id	JX439803.1-3shorter-Ns-cdsstopp1_1
+718	>977	gene
+			gene	ORF2
+718	>977	CDS
+			product	VP1
+			protein_id	JX439803.1-3shorter-Ns-cdsstopp1_2
+>Feature JX439803.1-3longer-Ns-cdsstopp3
+<1	743	gene
+			gene	ORF1
+<1	743	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+			protein_id	JX439803.1-3longer-Ns-cdsstopp3_1
+<1	740	mat_peptide
+			product	RdRp
+			protein_id	JX439803.1-3longer-Ns-cdsstopp3_1
+724	>983	gene
+			gene	ORF2
+724	>983	CDS
+			product	VP1
+			protein_id	JX439803.1-3longer-Ns-cdsstopp3_2
