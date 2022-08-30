@@ -4980,7 +4980,8 @@ sub add_frameshift_alerts_for_one_sequence {
             # we want to deal with both + and - strands with same code block, 
             # so can't use a simple for loop 
             my $rfpos = $mstart;
-            my $uapos = undef;
+            my $uapos = ($strand eq "+") ? ($sstart - 1) : ($sstart + 1); # only relevant for insertnn and deletinn alerts before a nongap RF position seen
+            print("HEYA uapos for ftr $ftr_idx is $uapos rfpos is $rfpos\n");
             while(($strand eq "+" && $rfpos <= $mstop) || 
                   ($strand eq "-" && $rfpos >= $mstop)) { 
               $rf_diff++; # number of RF positions seen since first nt in this CDS
@@ -5055,7 +5056,7 @@ sub add_frameshift_alerts_for_one_sequence {
               if($rf2ilen_AR->[$rfpos] > $local_nmaxins) { 
                 $alert_scoords = sprintf("seq:%s;", ($strand eq "+") ? 
                                          vdr_CoordsSegmentCreate($uapos+1, $uapos+1 + $rf2ilen_AR->[$rfpos]-1, $strand, $FH_HR) : 
-                                         vdr_CoordsSegmentCreate($uapos-1, $uapos-1 - $rf2ilen_AR->[$rfpos]+1, $strand, $FH_HR));
+                                         vdr_CoordsSegmentCreate($uapos+1 + $rf2ilen_AR->[$rfpos]-1, $uapos+1, $strand, $FH_HR));
                 $alert_mcoords = sprintf("mdl:%s;", vdr_CoordsSegmentCreate($rfpos, $rfpos, $strand, $FH_HR));
                 alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "insertnn", $seq_name, $ftr_idx, 
                                            sprintf("%s%s%d>%d", 
