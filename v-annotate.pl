@@ -146,6 +146,7 @@ my $env_vadr_hmmer_dir    = utl_DirEnvVarValid("VADRHMMERDIR");
 my $env_vadr_easel_dir    = utl_DirEnvVarValid("VADREASELDIR");
 my $env_vadr_bioeasel_dir = utl_DirEnvVarValid("VADRBIOEASELDIR");
 my $env_vadr_fasta_dir    = utl_DirEnvVarValid("VADRFASTADIR");
+my $env_vadr_minimap2_dir = utl_DirEnvVarValid("VADRMINIMAP2DIR");
 
 my %execs_H = (); # hash with paths to all required executables
 $execs_H{"cmalign"}       = $env_vadr_infernal_dir . "/cmalign";
@@ -166,6 +167,7 @@ $execs_H{"blastn"}        = $env_vadr_blast_dir    . "/blastn";
 $execs_H{"makeblastdb"}   = $env_vadr_blast_dir    . "/makeblastdb";
 $execs_H{"parse_blast"}   = $env_vadr_scripts_dir  . "/parse_blast.pl";
 $execs_H{"glsearch"}      = $env_vadr_fasta_dir    . "/glsearch36";
+$execs_H{"minimap2"}      = $env_vadr_minimap2_dir . "/minimap2";
 utl_ExecHValidate(\%execs_H, undef);
 
 #########################################################
@@ -297,6 +299,11 @@ opt_Add("--gls_match",    "integer", 5,         $g,"--glsearch", undef,      "se
 opt_Add("--gls_mismatch", "integer", -3,        $g,"--glsearch", undef,      "set glsearch mismatch score to <n> < 0 with glsearch -r option",               "set glsearch mismatch score to <n> < 0 with glsearch -r option", \%opt_HH, \@opt_order_A);
 opt_Add("--gls_gapopen",  "integer", -17,       $g,"--glsearch", undef,      "set glsearch gap open score to <n> < 0 with glsearch -f option",               "set glsearch gap open score to <n> < 0 with glsearch -f option", \%opt_HH, \@opt_order_A);
 opt_Add("--gls_gapextend","integer", -4,        $g,"--glsearch", undef,      "set glsearch gap extend score to <n> < 0 with glsearch -g option",             "set glsearch gap extend score to <n> < 0 with glsearch -g option", \%opt_HH, \@opt_order_A);
+
+
+$opt_group_desc_H{++$g} = "options for controlling minimap2 alignment stage as alternative to cmalign";
+#        option               type   default group  requires     incompat    preamble-output                                                            help-output    
+opt_Add("--minimap2",     "boolean", 0,         $g,"-s,--glsearch", undef,      "align with minimap2, not to a cm with cmalign",                           "align with minimap2, not to a cm with cmalign", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling blastx protein validation stage";
 #        option               type   default  group  requires incompat            preamble-output                                                                          help-output    
@@ -492,6 +499,8 @@ my $options_okay =
                 'gls_mismatch=s' => \$GetOptions_H{"--gls_mismatch"},
                 'gls_gapopen=s'  => \$GetOptions_H{"--gls_gapopen"},
                 'gls_gapextend=s'=> \$GetOptions_H{"--gls_gapextend"},
+# options for controlling minimap2 alignment stage
+                'minimap2'      => \$GetOptions_H{"--minimap2"},
 # options for controlling protein blastx protein validation stage
                 'xmatrix=s'     => \$GetOptions_H{"--xmatrix"},
                 'xdrop=s'       => \$GetOptions_H{"--xdrop"},
@@ -744,6 +753,7 @@ my $do_blastn_any = ($do_blastn_rpn || $do_blastn_cls || $do_blastn_cdt || $do_b
 # only need some but not all
 
 my $do_glsearch = opt_Get("--glsearch",  \%opt_HH) ? 1 : 0;
+my $do_minimap2 = opt_Get("--minimap2",    \%opt_HH) ? 1 : 0;
 
 #############################
 # create the output directory
@@ -791,6 +801,9 @@ if($do_pv_blastx || $do_blastn_any) {
 }
 if($do_glsearch) { 
   $extra_H{"\$VADRFASTADIR"} = $env_vadr_fasta_dir;
+}
+if($do_minimap2) { 
+  $extra_H{"\$VADRMINIMAP2DIR"} = $env_vadr_minimap2_dir;
 }
 ofile_OutputBanner(*STDOUT, $pkgname, $version, $releasedate, $synopsis, $date, \%extra_H);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
@@ -915,7 +928,7 @@ if((! $do_glsearch) || (opt_Get("--r_prof", \%opt_HH)) || (opt_Get("--val_only",
 }
 
 # only check for blastn db file if we need it
-if(($do_blastn_any) || ($do_replace_ns) || ($do_glsearch)) { # we always need this file if $do_replace_ns (-r) because we fetch the consensus model sequence from it
+if(($do_blastn_any) || ($do_replace_ns) || ($do_glsearch) || ($do_minimap2)) { # we always need this file if $do_replace_ns (-r) because we fetch the consensus model sequence from it
   utl_FileValidateExistsAndNonEmpty($blastn_db_file, sprintf("blastn db file%s", ($blastn_extra_string eq "") ? "" : ", due to $blastn_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
   foreach my $sfx (".nhr", ".nin", ".nsq", ".ndb", ".not", ".nto", ".ntf") { 
     utl_FileValidateExistsAndNonEmpty($blastn_db_file . $sfx, "blastn $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
@@ -1364,7 +1377,7 @@ my $rpn_sqfile = undef;
 # open the blastn_db sequence file too, if we need it
 my $blastn_db_sqfile = undef;
 my $r_subset_blastn_db_file = undef;
-if(($do_blastn_any) || ($do_replace_ns) || ($do_glsearch)) { 
+if(($do_blastn_any) || ($do_replace_ns) || ($do_glsearch) || ($do_minimap2)) { 
   $blastn_db_sqfile = Bio::Easel::SqFile->new({ fileLocation => $blastn_db_file });
 
   # deal with the --r_list or --r_only option (they are incompatible so we can only have one or the other)
@@ -1501,7 +1514,7 @@ if($do_replace_ns) {
 # --
 my $fa_file_for_analysis = undef; 
 my $blastn_rpn_fa_file   = undef;
-if((! $do_blastn_cls) && (! $do_glsearch)) { 
+if((! $do_blastn_cls) && (! $do_glsearch) || (! $do_minimap2)) { 
   $fa_file_for_analysis = (defined $rpn_fa_file) ? $rpn_fa_file : $in_fa_file;
 }
 else { 
@@ -1522,6 +1535,10 @@ my $glsearch_sqfile = undef;
 if($do_glsearch) { 
   $glsearch_sqfile = Bio::Easel::SqFile->new({ fileLocation => $fa_file_for_analysis }); # the sequence file object
 }
+my $minimap2_sqfile = undef;
+if($do_minimap2) { 
+  $minimap2_sqfile = Bio::Easel::SqFile->new({ fileLocation => $fa_file_for_analysis }); # the sequence file object
+}
 
 # set up sqfile values for analysis, feature fetching and cds and mp alerts
 # this is independent of whether we are doing blastn or not because these 
@@ -1536,6 +1553,9 @@ my $sqfile_for_output_fastas_R = ((defined $rpn_sqfile) && (opt_Get("--r_fetchr"
 my $sqfile_for_analysis_R = undef;
 if(defined $glsearch_sqfile) { 
   $sqfile_for_analysis_R = \$glsearch_sqfile;
+}
+elsif(defined $minimap2_sqfile) { 
+  $sqfile_for_analysis_R = \$minimap2_sqfile;
 }
 elsif(defined $rpn_sqfile) { 
   $sqfile_for_analysis_R = \$rpn_sqfile;
@@ -1654,6 +1674,14 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".glsearch.library", $glsearch_db_file, 0, $do_keep, sprintf("glsearch library file for model $mdl_name"));
       push(@to_remove_A, $glsearch_db_file);
     }
+    my $minimap2_db_file = undef;
+    if($do_minimap2) { # create the minimap2 db file with a single sequence
+      $minimap2_db_file = $out_root . "." . $mdl_name . ".minimap2.fa";
+      my @minimap2_seqname_A = ($mdl_name);
+      $blastn_db_sqfile->fetch_seqs_given_names(\@minimap2_seqname_A, 60, $minimap2_db_file);
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".minimap2.library", $minimap2_db_file, 0, $do_keep, sprintf("minimap2 library file for model $mdl_name"));
+      push(@to_remove_A, $minimap2_db_file);
+    }
 
     # fetch seqs (we need to do this even if we are not going to send the full seqs to cmalign/glsearch (e.g if $do_blastn_ali))
     $$sqfile_for_analysis_R->fetch_seqs_given_names(\@{$mdl_seq_name_HA{$mdl_name}}, 60, $cur_mdl_fa_file);
@@ -1673,11 +1701,25 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       my @subseq_AA = ();
       $cur_mdl_align_fa_file = $out_root . "." . $mdl_name . ".a.subseq.fa";
       my ($start_codon_coords, $stop_codon_coords) = vdr_FeatureInfoCdsStartStopCodonCoords(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-      parse_blastn_indel_file_to_get_subseq_info($indel_file, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
-                                                 $mdl_name, $start_codon_coords, $stop_codon_coords, 
-                                                 \@subseq_AA, \%sda_mdl_H, \%sda_seq_H, 
-                                                 \%seq2subseq_HA, \%subseq2seq_H, \%subseq_len_H, 
-                                                 \%opt_HH, \%ofile_info_HH);
+      # 1) parse_blastn_indel_file to get seed seq info,
+      # 2) sub that goes from seed seq info to subseq info
+      # HERE HERE HERE,
+      # TEST that we get same seeds/results between 1.4.2 and this dev code
+      # 3) sub that calls minimap2, then parses cigars to get seed seq info
+      # 4) sub that compares blastn and minimap2 seeds and picks winner
+      parse_blastn_indel_file_to_get_seed_info($indel_file, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
+                                               $mdl_name, $start_codon_coords, $stop_codon_coords, 
+                                               \%sda_mdl_H, \%sda_seq_H, \%opt_HH, \%ofile_info_HH);
+
+      seed_info_to_subseqs(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@subseq_AA, \%sda_mdl_H,
+                           \%sda_seq_H, \%seq2subseq_HA, \%subseq2seq_H, \%subseq_len_H,
+                           \%opt_HH, \%ofile_info_HH);
+
+      #parse_blastn_indel_file_to_get_subseq_info($indel_file, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
+      #                                           $mdl_name, $start_codon_coords, $stop_codon_coords, 
+      #                                           \@subseq_AA, \%sda_mdl_H, \%sda_seq_H, 
+      #                                           \%seq2subseq_HA, \%subseq2seq_H, \%subseq_len_H, 
+      #                                           \%opt_HH, \%ofile_info_HH);
       $cur_mdl_nalign = scalar(@subseq_AA);
       if($cur_mdl_nalign > 0) { 
         $$sqfile_for_analysis_R->fetch_subseqs(\@subseq_AA, 60, $cur_mdl_align_fa_file);
