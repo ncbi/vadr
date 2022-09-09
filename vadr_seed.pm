@@ -2687,6 +2687,363 @@ sub check_seed_overlap_with_start_stop_codons {
   return 0;
 }
 
+#################################################################
+# Subroutine:  run_minimap2()
+# Incept:      EPN, Fri Sep  9 11:13:16 2022
+#
+# Purpose:     Run all input sequences as queries against a 
+#              minimap2 db of a single model sequence.
+#
+# Arguments: 
+#  $execs_HR:        ref to executables with "esl-ssplit" and "cmsearch"
+#                    defined as keys
+#  $db_file:         name of blast db file to use
+#  $seq_file:        name of sequence file with all sequences to run against
+#  $out_root:        string for naming output files
+#  $mdl_name:        name of model
+#  $nseq:            number of sequences in $seq_file
+#  $progress_w:      width for outputProgressPrior output
+#  $opt_HHR:         REF to 2D hash of option values, see top of sqp-opts.pm for description
+#  $ofile_info_HHR:  REF to 2D hash of output file information
+#
+# Returns:     void
+# 
+# Dies: If blastn executable doesn't exist or command fails
+################################################################# 
+sub run_minimap2 { 
+  my $sub_name = "run_minimap2";
+  my $nargs_expected = 9;
+
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($execs_HR, $db_file, $seq_file, $out_root, $mdl_name,
+      $nseq, $progress_w, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR  = $ofile_info_HHR->{"FH"};
+  my $log_FH = $FH_HR->{"log"}; # for convenience
+
+  my $stg_desc = sprintf("Mapping sequences with minimap2 ($mdl_name: $nseq seq%s)",
+                        ($nseq > 1) ? "s" : "");
+
+  my $start_secs = ofile_OutputProgressPrior($stg_desc, $progress_w, $log_FH, *STDOUT);
+  my $mm2_out_file = $out_root . ".mm2.$mdl_name.out";
+  my $mm2_err_file = $out_root . ".mm2.$mdl_name.err";
+  my $mm2_cmd = "cat $seq_file | " . $execs_HR->{"minimap2"} . " -a -x asm20 -rmq=no --junc-bonus=0 --for-only --sam-hit-only --secondary=no --score-N=0 -t 1 $db_file - -o $mm2_out_file 2> $mm2_err_file";
+
+  utl_RunCommand($mm2_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "mm2.$mdl_name.out", $mm2_out_file, 0, opt_Get("--keep", $opt_HHR), "minimap2 output for $mdl_name");
+
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+  return;
+}
+
+#################################################################
+# Subroutine:  parse_minimap2_to_get_seed_info()
+# Incept:      EPN, Fri Sep  9 12:39:25 2022
+#
+# Purpose:     Parse minimap2 SAM output to determine aligned regions
+#              (seeds) of each sequence that we will trust. Return
+#              information on the seeds in %{$sda_mdl_HR} (model
+#              coords) and %{$sda_seq_HR} (seq coords).
+#
+# Arguments: 
+#  $mm2_file:           minimap2 output file
+#  $seq_name_AR:        REF to array of sequences we want to parse indel info for
+#  $seq_len_HR:         REF to hash of sequence lengths
+#  $exp_mdl_name:       name of model we expect on all lines of $indel_file
+#  $sda_mdl_HR:         REF to hash, key is <seq_name>, value is mdl coords
+#                       segment of blast seed aln, FILLED HERE
+#  $sda_seq_HR:         REF to hash, key is <seq_name>, value is seq coords
+#                       segment of blast seed aln, FILLED HERE
+#  $opt_HHR:            REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:     REF to 2D hash of output file information, ADDED TO HERE
+#                         
+# Returns:    void
+#
+# Dies:       if unable to parse $indel_file
+#
+################################################################# 
+sub parse_minimap2_to_get_seed_info { 
+  my $sub_name = "parse_minimap2_to_get_seed_info";
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($mm2_file, $seq_name_AR, $seq_len_HR, $exp_mdl_name,
+      $sda_mdl_HR, $sda_seq_HR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = $ofile_info_HHR->{"FH"};
+
+  my %processed_H = (); # key: sequence name we want seed info for, 
+                        # value: 0 if we have not processed an alignment for this sequence
+                        #        1 if we have
+  foreach my $seq_name (@{$seq_name_AR}) { 
+    $processed_H{$seq_name} = 0; 
+  }
+  my $nprocessed = 0;
+
+  my $q_name;         # name of query sequence
+  my $flag;           # flag for this alignment line
+  my $mdl_name;       # name of query/sequence
+  my $t_pos;          # starting position in target (reference)
+  my $cigar;          # CIGAR string 
+  my $rnext;          # starting position in target (reference)
+  my $pnext;          # starting position in target (reference)
+  my $tlen;           # starting position in target (reference)
+  my @q_name_A = ();  # array of query names
+  # hash for storing insert info we will write to insert_file
+  my %q_inserts_HH = (); # key 1: sequence name
+                         # key 2: one of 'spos', 'epos', 'ins'
+                         # $q_inserts_HHR->{}{"spos"} is starting model position of alignment
+                         # $q_inserts_HHR->{}{"epos"} is ending model position of alignment
+                         # $q_inserts_HHR->{}{"ins"} is the insert string in the format:
+                         # <mdlpos_1>:<uapos_1>:<inslen_1>;...<mdlpos_n>:<uapos_n>:<inslen_n>;
+                         # for n inserts, where insert x is defined by:
+                         # <mdlpos_x> is model position after which insert occurs 0..mdl_len (0=before first pos)
+                         # <uapos_x> is unaligned sequence position of the first aligned nt
+                         # <inslen_x> is length of the insert
+
+  my $nq = 0;      # number of query sequences we've created stockholm alignments for
+
+  # First 2 lines should look something like this:
+  #@SQ	SN:NC_063383	LN:197209
+  #@PG	ID:minimap2	PN:minimap2	VN:2.24-r1122	CL:minimap2 -a -x asm20 -rmq=no --junc-bonus=0 --for-only --sam-hit-only --secondary=no --score-N=0 -t 1 --end-bonus 100 -o va-test/va-test.vadr.NC_063383.align.r1.s0.stdout va-test/va-test.vadr.NC_063383.minimap2.fa -
+
+  # validate line 1
+  #@SQ	SN:NC_063383	LN:197209
+  open(IN, $mm2_file) || ofile_FileOpenFailure($mm2_file,  $sub_name, $!, "reading", $FH_HR);
+  my $line_ctr = 0;
+  my $line = undef;
+  $line = <IN>; $line_ctr++;
+  chomp $line;
+  if($line !~ m/^\@SQ/) { 
+    ofile_FAIL("ERROR, in $sub_name, parsing $mm2_file, first line did not start with \"\@SQ\"\n$line\n", 1, $FH_HR);
+  }
+
+  # validate line 2
+  #@PG	ID:minimap2	PN:minimap2	VN:2.24-r1122	CL:minimap2 -a -x asm20 -rmq=no --junc-bonus=0 --for-only --sam-hit-only --secondary=no --score-N=0 -t 1 --end-bonus 100 -o va-test/va-test.vadr.NC_063383.align.r1.s0.stdout va-test/va-test.vadr.NC_063383.minimap2.fa -
+  $line = <IN>; $line_ctr++;
+  chomp $line;
+  if($line !~ m/^\@PG/) { 
+    ofile_FAIL("ERROR, in $sub_name, parsing $mm2_file, second line did not start with \"\@PG\"\n$line\n", 1, $FH_HR);
+  }
+
+  # Lines L=3 to L=N+2 (for N input sequences) pertain to sequence L-2
+  # (1 per sequence) and each have all the remaining info we need 
+  # these lines are tab-delimited 
+  # fields we care about:
+  # (see https://samtools.github.io/hts-specs/SAMv1.pdf)
+  # field 1: QNAME Query name 
+  # field 2: FLAG  combination of bitwise flags, we only allow "0" and "2048", if "2048" this is a supplementary line,
+  #          we ignore supplementary lines, if --mm2_prionly we will use only the primary alignment
+  #          if ! --mm2_prionly, we will realign these seq later with a different method (probably glsearch)
+  # field 3: RNAME Reference name (target)
+  # field 4: POS   first position of reference (target) that aligns to first query position
+  # field 6: CIGAR (see below)
+  # field 7: RNEXT should be "*", we just check that it is
+  # field 8: PNEXT should be "0", we just check that it is
+  # field 9: TLEN  should be "0", we just check that it is
+  # field 10: SEQ  the query sequence
+  
+  # cigar should only have 5 types of operations:
+  # M: e.g. "94M" alignment match, consumes query and reference
+  # I: e.g  "17I" insertion to the target/reference, consumes query but not reference
+  # D: e.g. "72D" deletion from the target/reference, consumes reference but not the query
+  # S: e.g. "116S" soft-clipping (clipped sequences present in SEQ) always at beginning or end, consumes query but not reference (like I)
+  # H: e.g. "8012H" hard-clipping (clipped sequences present in SEQ) always at beginning or end, consumes neither query nor reference
+  #         not sure that S must be at end, but we enforce it in code below and exit if it is found anywhere but 3' end
+  # note that glsearch swaps query/target meaning in I and D
+  while($line = <IN>) { 
+    $line_ctr++;
+    chomp $line;
+    my @el_A = split(/\t/, $line);
+    ($q_name, $flag, $mdl_name, $t_pos, $cigar, $rnext, $pnext, $tlen) =
+        ($el_A[0], $el_A[1], $el_A[2], $el_A[3], $el_A[5], $el_A[6], $el_A[7], $el_A[8]);
+
+    # sanity checks
+    if($rnext ne "*") { 
+      ofile_FAIL("ERROR, in $sub_name, parsing $mm2_file, RNEXT value not equal to \"*\"\n$line\n", 1, $FH_HR);
+    }
+    if($pnext ne "0") { 
+      ofile_FAIL("ERROR, in $sub_name, parsing $mm2_file, PNEXT value not equal to \"0\"\n$line\n", 1, $FH_HR);
+    }
+    if($tlen ne "0") { 
+      ofile_FAIL("ERROR, in $sub_name, parsing $mm2_file, TLEN value not equal to \"0\"\n$line\n", 1, $FH_HR);
+    }
+    if(($flag ne "0") && ($flag ne "2048")) { 
+      ofile_FAIL("ERROR, in $sub_name, parsing $mm2_file, FLAG value not \"0\" or \"2048\"\n$line\n", 1, $FH_HR);
+    }
+
+    if($flag == 0) { # primary alignment for this seq
+      # parse cigar to get aligned query and target/reference for the aligned region, this should 
+      my ($sda_mdl_coords, $sda_seq_coords) = parse_minimap2_cigar_to_seed_coords($cigar, $t_pos, $FH_HR);
+
+      $sda_mdl_HR->{$q_name} = $sda_mdl_coords;
+      $sda_seq_HR->{$q_name} = $sda_seq_coords;
+
+      $nq++;
+    }
+  }
+  close(IN);
+
+  return;
+}
+
+#################################################################
+# Subroutine:  parse_minimap2_cigar_to_seed_coords()
+# Incept:      EPN, Fri Sep  9 12:57:14 2022
+#
+# Purpose:    Given a Minimap2 CIGAR string where one sequence in
+#             the alignment is a model/reference/target sequence,
+#             determine seed coordinates for the unmasked (soft or hard) regions
+#             of the sequence and model and return them.
+#
+#             CIGAR is in Minimap2 formation (\d+[MIDS])+
+#             where \d+ indicates length
+#             M indicates matches (no inserts or deletes)
+#             I indicates insertion in query/sequence, so deletion  in target/model (and so stored in %{$inserts_HR}{"ins"}) 
+#             D indicates deletion  in query/sequence, so insertion in target/model
+#             S indicates insertion in query/sequence before first or after final target/model position (softmask)
+#             H indicates insertion in query/sequence before first or after final target/model position (hardmask)
+#             Note I/D definitions in the Minimap2 CIGAR are swapped relative to
+#             glsearch CIGAR
+# Reference:  https://en.wikipedia.org/wiki/Sequence_alignment#Representations
+#             https://jef.works/blog/2017/03/28/CIGAR-strings-for-dummies/
+# 
+# Arguments: 
+#   $cigar:       CIGAR string
+#   $t_uapos:     start position of alignment in the target/model
+#   $FH_HR:       ref to hash of file handles, including "cmd"
+#
+# Returns:     Two values:
+# $sda_mdl_coords: model seed coords
+# $sda_seq_coords: sequence seed coords
+# 
+# Dies:        - If unable to parse $cigar string
+#              - If we see an S or H that is not the first or final
+#                token of the CIGAR
+#
+################################################################# 
+sub parse_minimap2_cigar_to_seed_coords {
+  my $nargs_exp = 3;
+  my $sub_name = "parse_minimap2_cigar_to_seed_coords";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($cigar, $t_pos, $FH_HR) = @_;
+  
+  #printf("in $sub_name, cigar: $cigar, t_pos: $t_pos\n");
+
+  my $cur_seq_start = 1;
+  my $cur_mdl_start = $t_pos;
+  my $orig_cigar = $cigar;
+  my $seen_noninit_S_or_H = 0; # set to 1 if we've seen an S that wasn't the first token
+  my $ntok = 0;
+  my $seen_H = 0; # set to '1' if we see a H in the CIGAR for hard-mask, which means full seq was not mapped
+  my $ret_sda_mdl_coords = "";
+  my $ret_sda_seq_coords = "";
+
+  while($cigar ne "") { 
+    # example: 94M7I26409M17I5786M72D13255M32D4165M3D606M116S
+    if($cigar =~ /^(\d+)([MIDSH])/) {
+      my ($len, $type) = ($1, $2);
+      $ntok++;
+      if($type eq "M") { 
+        if($seen_noninit_S_or_H) { 
+          ofile_FAIL("ERROR, in $sub_name, unexpectedly saw S or H token not at beginning or end of cigar string: $orig_cigar", 1, $FH_HR);
+        }          
+        $ret_sda_mdl_coords = vdr_CoordsAppendSegment($ret_sda_mdl_coords, vdr_CoordsSegmentCreate($cur_mdl_start, $cur_mdl_start + $len - 1, "+", $FH_HR));
+        $ret_sda_seq_coords = vdr_CoordsAppendSegment($ret_sda_seq_coords, vdr_CoordsSegmentCreate($cur_seq_start, $cur_seq_start + $len - 1, "+", $FH_HR));
+        $cur_mdl_start += $len;
+        $cur_seq_start += $len;
+      }
+      if(($type eq "I") || ($type eq "S") || ($type eq "H")) { 
+        if($seen_noninit_S_or_H) { 
+          ofile_FAIL("ERROR, in $sub_name, unexpectedly saw S or H token not at beginning or end of cigar string: $orig_cigar", 1, $FH_HR);
+        }          
+        $cur_seq_start += $len;
+        if(($type eq "S") && ($ntok > 1)) { 
+          $seen_noninit_S_or_H = 1;
+        }
+      }
+      if($type eq "D") { 
+        if($seen_noninit_S_or_H) { 
+          ofile_FAIL("ERROR, in $sub_name, unexpectedly saw S or H token not at beginning or end of cigar string: $orig_cigar", 1, $FH_HR);
+        }          
+        $cur_mdl_start += $len;
+      }
+      $cigar =~ s/^\d+[MIDS]//;
+    }
+    else { 
+      ofile_FAIL("ERROR, in $sub_name, unable to parse cigar string $orig_cigar", 1, $FH_HR);
+    }
+  }
+
+  printf("cigar: $orig_cigar ret_sda_mdl_coords: $ret_sda_mdl_coords ret_sda_seq_coords: $ret_sda_seq_coords\n");
+
+  return ($ret_sda_mdl_coords, $ret_sda_seq_coords);
+}
+
+#################################################################
+# Subroutine:  pick_best_seed_info()
+# Incept:      EPN, Fri Sep  9 13:46:52 2022
+#
+# Purpose:    Given two sets of hashes with seed coord info in 
+#             seq and model, for each sequence, potentially update 
+#             the info in the first pair of hashes by replacing with info 
+#             from the second pair.
+# 
+# Arguments: 
+#   $seq_name_AR:    ref to array of sequence names
+#   $seq_len_HR:     ref to hash of sequence lengths
+#   $sda1_mdl_HR:    ref to hash 1 of seed coords for model
+#   $sda1_seq_HR:    ref to hash 1 of seed coords for sequence
+#   $sda2_mdl_HR:    ref to hash 2 of seed coords for model
+#   $sda2_seq_HR:    ref to hash 2 of seed coords for sequence
+#   $opt_HHR:        ref to 2D hash of option values, see top of sqp_opts.pm for description
+#   $ofile_info_HHR: ref to 2D hash of output file information
+#
+# Returns:     void
+# 
+################################################################# 
+sub pick_best_seed_info() {
+  my $nargs_exp = 8;
+  my $sub_name = "pick_best_seed_info";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($seq_name_AR, $seq_len_HR, $sda1_mdl_HR, $sda1_seq_HR, $sda2_mdl_HR, $sda2_seq_HR, $opt_HHR, $ofile_info_HHR) = @_;
+  my $FH_HR  = $ofile_info_HHR->{"FH"};
+  
+  foreach my $seq_name (@{$seq_name_AR}) { 
+    my $seq_len = $seq_len_HR->{$seq_name};
+    my $sda1_len = undef;
+    my $sda2_len = undef;
+    my $do_update = 0;
+    if((defined $sda1_mdl_HR->{$seq_name}) && 
+       (defined $sda1_seq_HR->{$seq_name})) { 
+      $sda1_len = vdr_CoordsLength($sda1_mdl_HR->{$seq_name}, $FH_HR);
+      printf("$seq_name blast mdl: $sda1_mdl_HR->{$seq_name} seq: $sda1_seq_HR->{$seq_name} len: $sda1_len\n");
+    }
+    if((defined $sda2_mdl_HR->{$seq_name}) && 
+       (defined $sda2_seq_HR->{$seq_name})) { 
+      $sda2_len = vdr_CoordsLength($sda2_mdl_HR->{$seq_name}, $FH_HR);
+      printf("$seq_name mm2   mdl: $sda2_mdl_HR->{$seq_name} seq: $sda2_seq_HR->{$seq_name} len: $sda2_len\n");
+    }
+    if((defined $sda1_len) && (defined $sda2_len) && ($sda2_len > $sda1_len)) { 
+      $do_update = 1;
+    }
+    elsif((defined $sda2_len) && (! defined $sda1_len)) { 
+      $do_update = 1;
+    }
+    if($do_update) { 
+      printf("\tupdating\n");
+      $sda1_mdl_HR->{$seq_name} = $sda2_mdl_HR->{$seq_name};
+      $sda1_seq_HR->{$seq_name} = $sda2_seq_HR->{$seq_name};
+    }
+  }
+  return;
+
+}
+
 ###########################################################################
 # the next line is critical, a perl module must return a true value
 return 1;

@@ -1712,6 +1712,17 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                                \%sda_mdl_H, \%sda_seq_H, \%opt_HH, \%ofile_info_HH);
 
       if($do_minimap2) {
+        printf("cur_mdl_align_fa_file: $cur_mdl_align_fa_file\n");
+        run_minimap2(\%execs_H, $minimap2_db_file, $cur_mdl_fa_file, $out_root, $mdl_name, $cur_mdl_nseq,
+                     $progress_w, \%opt_HH, \%ofile_info_HH);
+        my $mm2_out_file = $out_root . ".mm2.$mdl_name.out";
+        my %mm2_sda_mdl_H = ();
+        my %mm2_sda_seq_H = ();
+        parse_minimap2_to_get_seed_info($mm2_out_file, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
+                                        $mdl_name, \%mm2_sda_mdl_H, \%mm2_sda_seq_H, \%opt_HH, \%ofile_info_HH);
+
+        pick_best_seed_info(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \%sda_mdl_H, \%sda_seq_H, 
+                            \%mm2_sda_mdl_H, \%mm2_sda_seq_H, \%opt_HH, \%ofile_info_HH);
       }
 
       printf("HEYA!\n");
