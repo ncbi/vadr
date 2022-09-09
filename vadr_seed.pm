@@ -1556,9 +1556,12 @@ sub parse_blastn_indel_file_to_get_subseq_info {
 #  $mdl_info_AHR:          REF to model info array of hashes, possibly added to here 
 #  $mdl_idx:               index of model in @{mdl_info_AHR} these sequences were assigned to
 #  $sda_mdl_HR:            REF to hash, key is <seq_name>, value is mdl coords
-#                          segments of blast seed aln, already filled
+#                          segments of blast/minimap2 seed aln, already filled
 #  $sda_seq_HR:            REF to hash, key is <seq_name>, value is mdl coords
-#                          segment of blast seed aln, already filled
+#                          segment of blast/minimap2 seed aln, already filled
+#  $ovw_sda_seq_HR:        REF to hash of alternative seq coords for blastn seed 
+#                          that was shorter than minimap2 seed, will be undef unless --minimap2 
+#                          and minimap2 gave better seed, already filled
 #  $seq2subseq_HAR:        REF to hash of arrays, key is <seq_name>,
 #                          value is array of names of subsequences pertaining to
 #                          <seq_name>, already filled
@@ -1580,12 +1583,12 @@ sub parse_blastn_indel_file_to_get_subseq_info {
 ################################################################# 
 sub join_alignments_and_add_unjoinbl_alerts { 
   my $sub_name = "join_alignments_and_add_unjoinbl_alerts";
-  my $nargs_exp = 22;
+  my $nargs_exp = 23;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
   my ($sqfile_R, $blastn_db_sqfile_R, $execs_HR, $do_glsearch, $cm_file, 
       $seq_name_AR, $seq_len_HR, 
-      $mdl_info_AHR, $mdl_idx, $sda_mdl_HR, $sda_seq_HR, 
+      $mdl_info_AHR, $mdl_idx, $sda_mdl_HR, $sda_seq_HR, $ovw_sda_seq_HR, 
       $seq2subseq_HAR, $subseq_len_HR, $in_stk_file_AR, 
       $out_stk_file_AR, $sda_output_HHR, 
       $alt_seq_instances_HHR, $alt_info_HHR, $unjoinbl_seq_name_AR,
@@ -1942,6 +1945,7 @@ sub join_alignments_and_add_unjoinbl_alerts {
     $sda_output_HHR->{$seq_name}{"5p_seq"}  = (defined $ali_5p_seq_coords) ? $ali_5p_seq_coords : undef;
     $sda_output_HHR->{$seq_name}{"3p_seq"}  = (defined $ali_3p_seq_coords) ? $ali_3p_seq_coords : undef;
     $sda_output_HHR->{$seq_name}{"3p_mdl"}  = (defined $ali_3p_mdl_coords) ? $ali_3p_mdl_coords : undef;
+    $sda_output_HHR->{$seq_name}{"ovw_sda_seq"} = (defined $ovw_sda_seq_HR->{$seq_name}) ? $ovw_sda_seq_HR->{$seq_name} : undef;
 
     # mdl coords are not just $ali_{5p,3p}_mdl_coords, because that contains coordinates of mdl line
     # from subseq alignment but what we want is spos..epos
@@ -2999,6 +3003,8 @@ sub parse_minimap2_cigar_to_seed_coords {
 #   $sda1_seq_HR:    ref to hash 1 of seed coords for sequence
 #   $sda2_mdl_HR:    ref to hash 2 of seed coords for model
 #   $sda2_seq_HR:    ref to hash 2 of seed coords for sequence
+#   $ovw_sda_seq_HR: ref to hash of seed coords for sequence copied from 
+#                    sda1_seq_HR->{$seq_name} if it is overwritten by $sda2_seq_HR->{$seq_name}
 #   $opt_HHR:        ref to 2D hash of option values, see top of sqp_opts.pm for description
 #   $ofile_info_HHR: ref to 2D hash of output file information
 #
@@ -3006,11 +3012,11 @@ sub parse_minimap2_cigar_to_seed_coords {
 # 
 ################################################################# 
 sub pick_best_seed_info() {
-  my $nargs_exp = 8;
+  my $nargs_exp = 9;
   my $sub_name = "pick_best_seed_info";
   if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
 
-  my ($seq_name_AR, $seq_len_HR, $sda1_mdl_HR, $sda1_seq_HR, $sda2_mdl_HR, $sda2_seq_HR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($seq_name_AR, $seq_len_HR, $sda1_mdl_HR, $sda1_seq_HR, $sda2_mdl_HR, $sda2_seq_HR, $ovw_sda_seq_HR, $opt_HHR, $ofile_info_HHR) = @_;
   my $FH_HR  = $ofile_info_HHR->{"FH"};
   
   foreach my $seq_name (@{$seq_name_AR}) { 
@@ -3028,7 +3034,7 @@ sub pick_best_seed_info() {
       $sda2_len = vdr_CoordsLength($sda2_mdl_HR->{$seq_name}, $FH_HR);
       printf("$seq_name mm2   mdl: $sda2_mdl_HR->{$seq_name} seq: $sda2_seq_HR->{$seq_name} len: $sda2_len\n");
     }
-    if((defined $sda1_len) && (defined $sda2_len) && ($sda2_len > $sda1_len)) { 
+    if((defined $sda1_len) && (defined $sda2_len) && ($sda2_len >= $sda1_len)) { # tie goes to minimap2
       $do_update = 1;
     }
     elsif((defined $sda2_len) && (! defined $sda1_len)) { 
@@ -3036,6 +3042,7 @@ sub pick_best_seed_info() {
     }
     if($do_update) { 
       printf("\tupdating\n");
+      $ovw_sda_seq_HR->{$seq_name} = $sda1_mdl_HR->{$seq_name};
       $sda1_mdl_HR->{$seq_name} = $sda2_mdl_HR->{$seq_name};
       $sda1_seq_HR->{$seq_name} = $sda2_seq_HR->{$seq_name};
     }

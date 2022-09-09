@@ -1644,8 +1644,10 @@ my %dcr_output_HAH = ();     # hash of array of hashes with info to output relat
 # -s related output for .sda file
 my %sda_output_HH = (); # 2D key with info to output related to the -s option
 # per-model variables only used if -s used
-my %sda_mdl_H     = ();  # key is sequence name, value is mdl coords of seed from blastn alignment
-my %sda_seq_H     = ();  # key is sequence name, value is seq coords of seed from blastn alignment
+my %sda_mdl_H     = ();  # key is sequence name, value is mdl coords of seed from blastn/minimap2 alignment
+my %sda_seq_H     = ();  # key is sequence name, value is seq coords of seed from blastn/minimap2 alignment
+my %ovw_sda_seq_H = ();  # key is sequence name, value is seq coords of seed from blastn alignment if --minimap2 
+                         # and blastn seed is shorter than minimap2 seed, else undef for that sequence
 my %seq2subseq_HA = ();  # hash of arrays, key 1: sequence name, array is list of subsequences fetched for this sequence
 my %subseq2seq_H  = ();  # hash, key: subsequence name, value is sequence it derives from
 my %subseq_len_H  = ();  # key is name of subsequence, value is length of that subsequence
@@ -1656,10 +1658,11 @@ my $mdl_name;
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
 
-  if(defined $mdl_seq_name_HA{$mdl_name}) { 
-    %sda_mdl_H     = ();
-    %sda_seq_H     = ();
-    %seq2subseq_HA = ();
+  if(defined $mdl_seq_name_HA{$mdl_name}) {  
+    %sda_mdl_H     = (); 
+    %sda_seq_H     = (); 
+    %ovw_sda_seq_H = (); 
+    %seq2subseq_HA = (); 
     %subseq2seq_H  = ();
     %subseq_len_H  = ();
     
@@ -1701,12 +1704,6 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       my @subseq_AA = ();
       $cur_mdl_align_fa_file = $out_root . "." . $mdl_name . ".a.subseq.fa";
       my ($start_codon_coords, $stop_codon_coords) = vdr_FeatureInfoCdsStartStopCodonCoords(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-      # 1) parse_blastn_indel_file to get seed seq info,
-      # 2) sub that goes from seed seq info to subseq info
-      # HERE HERE HERE,
-      # TEST that we get same seeds/results between 1.4.2 and this dev code
-      # 3) sub that calls minimap2, then parses cigars to get seed seq info
-      # 4) sub that compares blastn and minimap2 seeds and picks winner
       parse_blastn_indel_file_to_get_seed_info($indel_file, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
                                                $mdl_name, $start_codon_coords, $stop_codon_coords, 
                                                \%sda_mdl_H, \%sda_seq_H, \%opt_HH, \%ofile_info_HH);
@@ -1722,7 +1719,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                         $mdl_name, \%mm2_sda_mdl_H, \%mm2_sda_seq_H, \%opt_HH, \%ofile_info_HH);
 
         pick_best_seed_info(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \%sda_mdl_H, \%sda_seq_H, 
-                            \%mm2_sda_mdl_H, \%mm2_sda_seq_H, \%opt_HH, \%ofile_info_HH);
+                            \%mm2_sda_mdl_H, \%mm2_sda_seq_H, \%ovw_sda_seq_H, \%opt_HH, \%ofile_info_HH);
       }
 
       printf("HEYA!\n");
@@ -1793,9 +1790,9 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
         join_alignments_and_add_unjoinbl_alerts($sqfile_for_analysis_R, \$blastn_db_sqfile, \%execs_H, 
                                                 $do_glsearch, $cm_file,
                                                 \@join_seq_name_A, \%seq_len_H, 
-                                                \@mdl_info_AH, $mdl_idx, \%sda_mdl_H, \%sda_seq_H, 
+                                                \@mdl_info_AH, $mdl_idx, \%sda_mdl_H, \%sda_seq_H, \%ovw_sda_seq_H, 
                                                 \%seq2subseq_HA, \%subseq_len_H, \@{$stk_file_HA{$mdl_name}}, 
-                                                \@joined_stk_file_A, \%sda_output_HH,
+                                                \@joined_stk_file_A, \%sda_output_HH, 
                                                 \%alt_seq_instances_HH, \%alt_info_HH,
                                                 \@unjoinbl_seq_name_A, $out_root, \%opt_HH, \%ofile_info_HH);
       }
@@ -9492,6 +9489,17 @@ sub output_tabular {
     my $sda_3p_seq    = (($do_sda) && (defined $sda_output_HR->{"3p_seq"}))  ? $sda_output_HR->{"3p_seq"} : "-";
     my $sda_3p_mdl    = (($do_sda) && (defined $sda_output_HR->{"3p_mdl"}))  ? $sda_output_HR->{"3p_mdl"} : "-";
     my $sda_3p_fract  = (($do_sda) && (defined $sda_output_HR->{"3p_seq"}))  ? vdr_CoordsLength($sda_output_HR->{"3p_seq"}, $FH_HR) / $seq_len : "-";
+    my $sda_alg       = "-";
+    my $sda_ovw_fract = "-";
+    if($do_sda) { 
+      if(defined $sda_output_HR->{"ovw_sda_seq"}) { 
+        $sda_alg = "minimap2"; 
+        $sda_ovw_fract = vdr_CoordsLength($sda_output_HR->{"ovw_sda_seq"}, $FH_HR) / $seq_len;
+      }
+      else { 
+        $sda_alg = "blastn";
+      }
+    }
      
     my $rpn_output_HR      = (($do_rpn) && (defined $rpn_output_HHR->{$seq_name}))       ? \%{$rpn_output_HHR->{$seq_name}} : undef;
     my $rpn_nnt_n_tot      = (($do_rpn) && (defined $rpn_output_HR->{"nnt_n_tot"}))      ? $rpn_output_HR->{"nnt_n_tot"}      : "-";
@@ -9769,13 +9777,15 @@ sub output_tabular {
     }
 
     if($do_sda) {
-      my $sda_fract2print = ($sda_fract ne "-") ? sprintf("%.3f", $sda_fract) : "-";
+      my $sda_fract2print     = ($sda_fract     ne "-") ? sprintf("%.3f", $sda_fract) : "-";
       my $sda_5p_fract2print  = ($sda_5p_fract  ne "-") ? sprintf("%.3f", $sda_5p_fract)  : "-";
       my $sda_3p_fract2print  = ($sda_3p_fract  ne "-") ? sprintf("%.3f", $sda_3p_fract)  : "-";
+      my $sda_ovw_fract2print = ($sda_ovw_fract ne "-") ? sprintf("%.3f", $sda_ovw_fract)  : "-";
       push(@data_sda_AA, [$seq_idx2print, $seq_name, $seq_len, $seq_mdl1, $seq_pass_fail,
                           $sda_seq, $sda_mdl, $sda_fract2print, 
                           $sda_5p_seq, $sda_5p_mdl, $sda_5p_fract2print, 
-                          $sda_3p_seq, $sda_3p_mdl, $sda_3p_fract2print]);
+                          $sda_3p_seq, $sda_3p_mdl, $sda_3p_fract2print, 
+                          $sda_alg, $sda_ovw_fract2print]);
     }
     if($do_rpn) {
       my $rpn_nnt_n_rp_fract2print = (($rpn_nnt_n_rp_fract ne "-") && ($rpn_nnt_n_tot ne "-") && ($rpn_nnt_n_tot > 0)) ? 
@@ -13566,9 +13576,9 @@ sub helper_tabular_fill_header_and_justification_arrays {
     @{$clj_AR}        = (1,     1,      1,      1,      1,       0,     1,       0,       0,       0,           0,           1,       0,        0,       0,        0,      1);
   }
   elsif($ofile_key eq "sda") {
-    @{$head_AAR->[0]} = ("seq", "seq",    "seq", "",      "",      "seed",      "seed",     "seed",     "5'unaln", "5'unaln", "5'unaln",  "3'unaln", "3'unaln", "3'unaln");
-    @{$head_AAR->[1]} = ("idx", "name",   "len", "model", "p/f",   "seq",       "mdl",      "fraction", "seq",     "mdl",     "fraction", "seq",     "mdl",     "fraction");
-    @{$clj_AR}        = (1,     1,        0,     1,       1,       0,           0,          0,          0,         0,         0,          0,         0,         0);
+    @{$head_AAR->[0]} = ("seq", "seq",    "seq", "",      "",      "seed",      "seed",     "seed",     "5'unaln", "5'unaln", "5'unaln",  "3'unaln", "3'unaln", "3'unaln",  "",          "alt-seed");
+    @{$head_AAR->[1]} = ("idx", "name",   "len", "model", "p/f",   "seq",       "mdl",      "fraction", "seq",     "mdl",     "fraction", "seq",     "mdl",     "fraction", "algorithm", "fraction");
+    @{$clj_AR}        = (1,     1,        0,     1,       1,       0,           0,          0,          0,         0,         0,          0,         0,         0,          1,           0);
   }  
   elsif($ofile_key eq "rpn") {
     @{$head_AAR->[0]} = ("seq", "seq",    "seq", "",      "",      "num_Ns",  "num_Ns", "fract_Ns", "nregs", "nregs",  "nregs",   "nregs",   "nregs",   "nnt",     "nnt",     "detail_on_regions[S:seq,M:mdl,D:lendiff,N:#Ns,");
