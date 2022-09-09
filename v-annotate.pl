@@ -13577,7 +13577,7 @@ sub helper_tabular_fill_header_and_justification_arrays {
   }
   elsif($ofile_key eq "sda") {
     @{$head_AAR->[0]} = ("seq", "seq",    "seq", "",      "",      "seed",      "seed",     "seed",     "5'unaln", "5'unaln", "5'unaln",  "3'unaln", "3'unaln", "3'unaln",  "",          "alt-seed");
-    @{$head_AAR->[1]} = ("idx", "name",   "len", "model", "p/f",   "seq",       "mdl",      "fraction", "seq",     "mdl",     "fraction", "seq",     "mdl",     "fraction", "algorithm", "fraction");
+    @{$head_AAR->[1]} = ("idx", "name",   "len", "model", "p/f",   "seq",       "mdl",      "fraction", "seq",     "mdl",     "fraction", "seq",     "mdl",     "fraction", "program",   "fraction");
     @{$clj_AR}        = (1,     1,        0,     1,       1,       0,           0,          0,          0,         0,         0,          0,         0,         0,          1,           0);
   }  
   elsif($ofile_key eq "rpn") {
