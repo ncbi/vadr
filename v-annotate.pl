@@ -1711,6 +1711,10 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                                $mdl_name, $start_codon_coords, $stop_codon_coords, 
                                                \%sda_mdl_H, \%sda_seq_H, \%opt_HH, \%ofile_info_HH);
 
+      if($do_minimap2) {
+      }
+
+      printf("HEYA!\n");
       seed_info_to_subseqs(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@subseq_AA, \%sda_mdl_H,
                            \%sda_seq_H, \%seq2subseq_HA, \%subseq2seq_H, \%subseq_len_H,
                            \%opt_HH, \%ofile_info_HH);

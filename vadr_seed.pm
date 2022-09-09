@@ -1184,8 +1184,8 @@ sub parse_blastn_indel_file_to_get_seed_info {
 # Dies:       if unable to parse $indel_file
 #
 ################################################################# 
-sub seed_info_to_subseq_info { 
-  my $sub_name = "seed_info_to_subseq_info";
+sub seed_info_to_subseqs { 
+  my $sub_name = "seed_info_to_subseqs";
   my $nargs_exp = 10;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
