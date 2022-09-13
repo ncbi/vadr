@@ -1165,6 +1165,7 @@ sub parse_blastn_indel_file_to_get_seed_info {
 # Arguments: 
 #  $seq_name_AR:        REF to array of sequences we want to parse indel info for
 #  $seq_len_HR:         REF to hash of sequence lengths
+#  $mdl_len:            length of current model
 #  $subseq_AAR:         REF to 2D array with subseq info, FILLED HERE
 #  $sda_mdl_HR:         REF to hash, key is <seq_name>, value is mdl coords
 #                       segment of blast seed aln
@@ -1186,10 +1187,10 @@ sub parse_blastn_indel_file_to_get_seed_info {
 ################################################################# 
 sub seed_info_to_subseqs { 
   my $sub_name = "seed_info_to_subseqs";
-  my $nargs_exp = 10;
+  my $nargs_exp = 11;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($seq_name_AR, $seq_len_HR, $subseq_AAR, $sda_mdl_HR, $sda_seq_HR,
+  my ($seq_name_AR, $seq_len_HR, $mdl_len, $subseq_AAR, $sda_mdl_HR, $sda_seq_HR,
       $seq2subseq_HAR, $subseq2seq_HR, $subseq_len_HR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = $ofile_info_HHR->{"FH"};
@@ -1200,6 +1201,8 @@ sub seed_info_to_subseqs {
       ofile_FAIL("ERROR in $sub_name, no seed information for $seq_name in $sub_name", 1, $FH_HR);
     }
     my $seq_len = $seq_len_HR->{$seq_name};
+    my $sda_mdl_start = vdr_Feature5pMostPosition($sda_mdl_HR->{$seq_name}, $FH_HR);
+    my $sda_mdl_stop  = vdr_Feature3pMostPosition($sda_mdl_HR->{$seq_name}, $FH_HR);
     my $sda_seq_start = vdr_Feature5pMostPosition($sda_seq_HR->{$seq_name}, $FH_HR);
     my $sda_seq_stop  = vdr_Feature3pMostPosition($sda_seq_HR->{$seq_name}, $FH_HR);
     if(($sda_seq_start == 1) && ($sda_seq_stop == $seq_len)) {
@@ -1208,9 +1211,20 @@ sub seed_info_to_subseqs {
     }
     else {
       # full seq not covered, fetch 5' end and/or 3' end
+      my $cur_nt_overhang_5p = $nt_overhang;
+      my $cur_nt_overhang_3p = $nt_overhang;
+      if($sda_mdl_start == 1) { # missing sequence at 5' end inserts before 1st model position so need to fetch all those inserts + nt_overhang
+        $cur_nt_overhang_5p += $sda_seq_start - 1;
+        printf("HEYA 5p overhang now $cur_nt_overhang_5p\n");
+      }
+      if($sda_mdl_stop == $mdl_len) { # missing sequence at 3' end inserts after final model position so need to fetch all those inserts + nt_overhang
+        $cur_nt_overhang_3p += $seq_len - $sda_seq_stop;
+        printf("HEYA 3p overhang now $cur_nt_overhang_3p\n");
+      }
+
       my $start_5p = 1;
-      my $stop_5p  = $sda_seq_start + $nt_overhang - 1;
-      my $start_3p = $sda_seq_stop  - $nt_overhang + 1;
+      my $stop_5p  = $sda_seq_start + $cur_nt_overhang_5p - 1;
+      my $start_3p = $sda_seq_stop  - $cur_nt_overhang_3p + 1;
       my $stop_3p  = $seq_len;
       my $subseq_name = undef;
       if($stop_5p >= $start_3p) { # the two regions overlap, just fetch the full sequence
@@ -1758,6 +1772,7 @@ sub join_alignments_and_add_unjoinbl_alerts {
               ofile_FAIL("ERROR in $sub_name, read two aligned subseqs for 5' end of $orig_seq_name", 1, $FH_HR);
             }
             $ali_5p_idx = $s;
+            printf("HEYAAA: spos: " . $subseq_inserts_HH{$subseq_name}{"spos"} . "\n");
             $ali_5p_mdl_coords = vdr_CoordsSegmentCreate(1, $subseq_inserts_HH{$subseq_name}{"epos"}, "+", $FH_HR);
             $ali_5p_seq_coords = vdr_CoordsSegmentCreate($subseq_start, $subseq_stop, "+", $FH_HR);
           }
@@ -2093,11 +2108,17 @@ sub join_alignments_helper {
   # if($have_5p) { print("ali_5p_seq: $ali_5p_seq_start .. $ali_5p_seq_stop\nali_5p_seq: $ali_5p_seq\n"); }
   # if($have_3p) { print("ali_3p_seq: $ali_3p_seq_start .. $ali_3p_seq_stop\nali_3p_seq: $ali_3p_seq\n"); }
 
+  if($have_5p) { print("ali_5p_mdl: $ali_5p_mdl_start .. $ali_5p_mdl_stop\n"); }
+  if($have_3p) { print("ali_3p_mdl: $ali_3p_mdl_start .. $ali_3p_mdl_stop\n"); }
+
+  if($have_5p) { print("ali_5p_seq: $ali_5p_seq_start .. $ali_5p_seq_stop\n"); }
+  if($have_3p) { print("ali_3p_seq: $ali_3p_seq_start .. $ali_3p_seq_stop\n"); }
+
   # if($have_5p) { print("ali_5p_mdl: $ali_5p_mdl_start .. $ali_5p_mdl_stop\n"); }
   # if($have_3p) { print("ali_3p_mdl: $ali_3p_mdl_start .. $ali_3p_mdl_stop\n"); }
 
-  # print("sda_seq: $sda_seq_start .. $sda_seq_stop\n");
-  # print("sda_mdl: $sda_mdl_start .. $sda_mdl_stop\n");
+  print("sda_seq: $sda_seq_start .. $sda_seq_stop\n");
+  print("sda_mdl: $sda_mdl_start .. $sda_mdl_stop\n");
 
   ################################################
   # Check to make sure aligned overlapping (overhang) regions
@@ -2119,8 +2140,8 @@ sub join_alignments_helper {
   # either ali_5p_{seq,mdl}, ali_3p_{seq,mdl} or sda_seq
   my $sda_seq_mdl_diff_5p = $sda_mdl_start - $sda_seq_start; # offset between model start and sequence start
   my $sda_seq_mdl_diff_3p = $sda_mdl_stop  - $sda_seq_stop;  # offset between model stop  and sequence stop
-  # printf("sda_seq_mdl_diff_5p: $sda_seq_mdl_diff_3p\n");
-  # printf("sda_seq_mdl_diff_3p: $sda_seq_mdl_diff_5p\n");
+  printf("sda_seq_mdl_diff_5p: $sda_seq_mdl_diff_5p\n");
+  printf("sda_seq_mdl_diff_3p: $sda_seq_mdl_diff_3p\n");
   my $fetch_ali_5p_seq_start = 1;                    
   my $fetch_ali_5p_seq_stop  = length($ali_5p_seq);
   my $fetch_ali_3p_seq_start = 1;                   
@@ -2136,12 +2157,15 @@ sub join_alignments_helper {
   if($have_5p) { 
     # usual case, final position of aligned 5' region is just 1 sequence position
     # *and* 1 model position prior to seed region
+
+    printf("checking if ali_5p_seq_stop: $ali_5p_seq_stop == %d == (ali_5p_mdl_stop ($ali_5p_mdl_stop) - sda_seq_mdl_diff_5p: $sda_seq_mdl_diff_5p)\n", ($ali_5p_mdl_stop - $sda_seq_mdl_diff_5p));
     if($ali_5p_seq_stop == ($ali_5p_mdl_stop - $sda_seq_mdl_diff_5p)) {
       $fetch_sda_seq_start = ($ali_5p_seq_stop - $sda_seq_start + 1) + 1; # one position past 5' overhang
       $fetch_sda_mdl_start = $ali_5p_mdl_stop + 1; # one position past 5' overhang
     }
     else {
       $alt_msg .= "5' aligned region (mdl:$ali_5p_mdl_coords, seq:$ali_5p_seq_coords) unjoinable with seed (mdl:" . $sda_mdl_start . ".." . $sda_mdl_stop . ", seq:" . $sda_seq_start . ".." . $sda_seq_stop . ")";
+      printf("5' alt_msg:\n$alt_msg\n");
     }
   }
   else { # $have_5p == 0
@@ -2151,12 +2175,14 @@ sub join_alignments_helper {
   if($have_3p) {
     # usual case, first position of aligned 3' region is just 1 sequence position
     # *and* 1 model position after seed region
+    printf("checking if ali_3p_seq_start: $ali_3p_seq_start == %d == (ali_3p_mdl_start ($ali_3p_mdl_start) - sda_seq_mdl_diff_3p: $sda_seq_mdl_diff_3p)\n", ($ali_3p_mdl_start - $sda_seq_mdl_diff_3p));
     if($ali_3p_seq_start == ($ali_3p_mdl_start - $sda_seq_mdl_diff_3p)) {
       $fetch_sda_seq_stop = $sda_seq_len - ($sda_seq_stop - $ali_3p_seq_start + 1); # one position prior to 3' overhang
       $fetch_sda_mdl_stop = $ali_3p_mdl_start - 1; # one position prior to 3' overhang
     }
     else {
       $alt_msg .= "3' aligned region (mdl:$ali_3p_mdl_coords, seq:$ali_3p_seq_coords) unjoinable with seed (mdl:" . $sda_mdl_start . ".." . $sda_mdl_stop . ", seq:" . $sda_seq_start . ".." . $sda_seq_stop . ")";
+      printf("3' alt_msg:\n$alt_msg\n");
     }
   }
   else { # $have_3p == 0

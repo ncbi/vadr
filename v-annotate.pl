@@ -1654,9 +1654,11 @@ my %subseq_len_H  = ();  # key is name of subsequence, value is length of that s
 
 # for each model with seqs to align to, create the sequence file and run cmalign/glsearch
 my $mdl_name;
+my $mdl_len;
 
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  $mdl_len  = $mdl_info_AH[$mdl_idx]{"length"};
 
   if(defined $mdl_seq_name_HA{$mdl_name}) {  
     %sda_mdl_H     = (); 
@@ -1723,7 +1725,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       }
 
       printf("HEYA!\n");
-      seed_info_to_subseqs(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@subseq_AA, \%sda_mdl_H,
+      seed_info_to_subseqs(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, $mdl_len, \@subseq_AA, \%sda_mdl_H,
                            \%sda_seq_H, \%seq2subseq_HA, \%subseq2seq_H, \%subseq_len_H,
                            \%opt_HH, \%ofile_info_HH);
 
