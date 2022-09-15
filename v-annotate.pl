@@ -5252,10 +5252,6 @@ sub add_frameshift_alerts_for_one_sequence {
                 }
                 $shifted_span_slen = abs($shifted_span_sstop - $shifted_span_sstart) + 1;
                 $shifted_span_mlen = abs($shifted_span_mstop - $shifted_span_mstart) + 1;
-                if((! defined $prv_exp_span_sstop) || (! defined $prv_exp_span_sstart)) { 
-                  printf("UNDEFINED prv_exp_span seq_name : $seq_name\n");
-                }
-                $exp_span_slen     = abs($prv_exp_span_sstop - $prv_exp_span_sstart) + 1;
                 
                 # check if this is an exempted region
                 my $exempted_region = 0;
@@ -5321,8 +5317,8 @@ sub add_frameshift_alerts_for_one_sequence {
                           substr($full_ppstr, $shifted_span_sstart - 1, ($shifted_span_slen)) : 
                           substr($full_ppstr, $shifted_span_sstop  - 1, ($shifted_span_slen));
                       my $exp_span_ppstr = ($ftr_strand eq "+") ? 
-                          substr($full_ppstr, $prv_exp_span_sstart - 1, ($exp_span_slen)) : 
-                          substr($full_ppstr, $prv_exp_span_sstop  - 1, ($exp_span_slen));
+                          substr($full_ppstr, $prv_exp_span_sstart - 1, (abs($prv_exp_span_sstop - $prv_exp_span_sstart) + 1)) : 
+                          substr($full_ppstr, $prv_exp_span_sstop  - 1, (abs($prv_exp_span_sstop - $prv_exp_span_sstart) + 1));
                       my $shifted_span_avgpp;
                       my $exp_span_avgpp;
                       ($shifted_span_avgpp, undef) = Bio::Easel::MSA->get_ppstr_avg($shifted_span_ppstr);
