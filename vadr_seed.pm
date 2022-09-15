@@ -991,139 +991,153 @@ sub parse_blastn_indel_file_to_get_seed_info {
         ofile_FAIL("ERROR in $sub_name, unexpected model $mdl_name (expected $exp_mdl_name) on line:\n$line\n", 1, $FH_HR);
       }          
       if((defined $processed_H{$seq_name}) && ($processed_H{$seq_name} == 0)) {
-        # top hit for this sequence
-        my $seq_len = $seq_len_HR->{$seq_name};
-        my ($sda_mdl_coords, $sda_seq_coords) = parse_blastn_indel_strings($mdl_coords, $seq_coords,
-                                                                           $ins_str, $del_str, $FH_HR);
+        # Make sure we are on positive strand for both model and query,
+        # its rare but some top hits are opposite strand (this should
+        # actually only be possible if there are two hits with the same
+        # score, one positive and one negative because if non-tied
+        # top-scoring hit is negative strand we should have had a
+        # revcompl alert and which makes it so there is no
+        # alignment...)
+        my $mdl_strand = undef;
+        my $seq_strand = undef;
+        (undef, undef, $mdl_strand) = vdr_CoordsSegmentParse($mdl_coords, $FH_HR);
+        (undef, undef, $seq_strand) = vdr_CoordsSegmentParse($seq_coords, $FH_HR);
 
-        # determine start/stop position of seed region
-        my @sda_seq_start_A  = ();
-        my @sda_seq_stop_A   = ();
-        my @sda_seq_strand_A = ();
-        my @sda_mdl_start_A  = ();
-        my @sda_mdl_stop_A   = ();
-        my @sda_mdl_strand_A = ();
-        vdr_FeatureStartStopStrandArrays($sda_seq_coords, \@sda_seq_start_A, \@sda_seq_stop_A, \@sda_seq_strand_A, $FH_HR);
-        vdr_FeatureStartStopStrandArrays($sda_mdl_coords, \@sda_mdl_start_A, \@sda_mdl_stop_A, \@sda_mdl_strand_A, $FH_HR);
-        my $orig_sda_nsgm = scalar(@sda_seq_start_A);
-        my $sda_seq_start  = $sda_seq_start_A[0];
-        my $sda_seq_stop   = $sda_seq_stop_A[($orig_sda_nsgm-1)];
-        my $sda_seq_strand = $sda_seq_strand_A[0];
+        if(($mdl_strand eq "+") && ($seq_strand eq "+")) {  
+          # top hit for this sequence, and it's positive strand both in mdl and seq
+          my $seq_len = $seq_len_HR->{$seq_name};
+          my ($sda_mdl_coords, $sda_seq_coords) = parse_blastn_indel_strings($mdl_coords, $seq_coords,
+                                                                             $ins_str, $del_str, $FH_HR);
 
-        # Now potentially manipulate the seed region so that we don't
-        # rely on the blastn alignment in regions where we know it
-        # is not optimal for our purposes.
-        # 
-        # First, check to see if any of the gaps in the model positions
-        # occur within a CDS start or stop codon. If so we just take
-        # the maximum length ungapped segment and remove all the rest.
-        # This is because blastn tends to place gaps within TAA 
-        # stop codons in some situations that lead to downstream alerts
-        # in ways we can't fix with the current alignment doctoring 
-        # strategies. 
-        #
-        # For example: 
-        #
-        # blastn align this way (leads to stop codon problem):
-        #
-        #             stp
-        # seq AGACTTATT-AACCAG
-        # mdl AGACTTATTAAACCAG
-        #
-        # desired alignment (glsearch does this, no stop codon problem):
-        #
-        #             stp
-        # seq AGACTTATTAA-CCAG
-        # mdl AGACTTATTAAACCAG
-        # 
-        # We could try to save as much as the seed as possible
-        # losing only those segments 5' of the affected start or
-        # 3' of the affected stop but I think the code required to 
-        # deal with this (especially in the case of multiple affected
-        # start and/or stop codons) is too complex to warrant the 
-        # speed-up. I expect this case to be rare and suffering
-        # the minor speed hit when it occurs is better than adding
-        # that extra, complicated code.
-        # 
-        # If the seed does not have any gaps in any start or stop
-        # codes, then we remove any terminal segments such that the
-        # final set of segments satisfies the following 2 criteria:
-        # 1. terminal segments either include the sequence terminus
-        #    (position 1 on 5' end, position $seq_len
-        #    on 3' end) OR have length of at least $nt_overhang
-        #    (from --s_overhang).
-        # 2. *all* segments have length at least $min_sgm_len
-        #    (from --s_minsgmlen), *UNLESS* $do_allsgm (--s_allsgm enabled)
-        # 
-        # We enforce criteria 1 because any terminal segment with
-        # length < $nt_overhang means there will almost certainly
-        # be a gap in the overhang region leading to an 'unjoinable'
-        # alignment which results in the full sequence being aligned
-        # by either cmalign or glsearch.
-        #
-        # We enforce criteria 2 because blastn tends to introduce
-        # a lot separate gaps, like this:
-        #
-        #       CGAGG--AC----AGT--GAAC-A----A---TG-----T--TAGGGAGAGC
-        #       CGAGGCCACGCGGAGTACGATCGAGTGTACAGTGAACAATGCTAGGGAGAGC
-        #
-        # instead of:
-        # 
-        #       CGAGG-----------------------ACAGTGAACAATGTTAGGGAGAGC
-        #       CGAGGCCACGCGGAGTACGATCGAGTGTACAGTGAACAATGCTAGGGAGAGC
-        # 
-        # if used with its default scoring parameters (gap open 0, gap extend -2.5)
-        #
-        my $only_keep_max_ungap_sgm = $do_ungapsgm; # if --s_ungapsgm: only keep max length (ungapped) segment
+          # determine start/stop position of seed region
+          my @sda_seq_start_A  = ();
+          my @sda_seq_stop_A   = ();
+          my @sda_seq_strand_A = ();
+          my @sda_mdl_start_A  = ();
+          my @sda_mdl_stop_A   = ();
+          my @sda_mdl_strand_A = ();
+          vdr_FeatureStartStopStrandArrays($sda_seq_coords, \@sda_seq_start_A, \@sda_seq_stop_A, \@sda_seq_strand_A, $FH_HR);
+          vdr_FeatureStartStopStrandArrays($sda_mdl_coords, \@sda_mdl_start_A, \@sda_mdl_stop_A, \@sda_mdl_strand_A, $FH_HR);
+          my $orig_sda_nsgm = scalar(@sda_seq_start_A);
+          my $sda_seq_start  = $sda_seq_start_A[0];
+          my $sda_seq_stop   = $sda_seq_stop_A[($orig_sda_nsgm-1)];
+          my $sda_seq_strand = $sda_seq_strand_A[0];
 
-        # if any gaps in the model overlap with start or stop codons, only keep max length (ungapped) segment
-        if((! $only_keep_max_ungap_sgm) && ($do_realign_startstop)) { 
-          $only_keep_max_ungap_sgm = check_seed_overlap_with_start_stop_codons(\@sda_mdl_start_A, \@sda_mdl_stop_A, 
-                                                                               \@codon_start_A, \@codon_stop_A, $FH_HR);
-        }
+          # Now potentially manipulate the seed region so that we don't
+          # rely on the blastn alignment in regions where we know it
+          # is not optimal for our purposes.
+          # 
+          # First, check to see if any of the gaps in the model positions
+          # occur within a CDS start or stop codon. If so we just take
+          # the maximum length ungapped segment and remove all the rest.
+          # This is because blastn tends to place gaps within TAA 
+          # stop codons in some situations that lead to downstream alerts
+          # in ways we can't fix with the current alignment doctoring 
+          # strategies. 
+          #
+          # For example: 
+          #
+          # blastn align this way (leads to stop codon problem):
+          #
+          #             stp
+          # seq AGACTTATT-AACCAG
+          # mdl AGACTTATTAAACCAG
+          #
+          # desired alignment (glsearch does this, no stop codon problem):
+          #
+          #             stp
+          # seq AGACTTATTAA-CCAG
+          # mdl AGACTTATTAAACCAG
+          # 
+          # We could try to save as much as the seed as possible
+          # losing only those segments 5' of the affected start or
+          # 3' of the affected stop but I think the code required to 
+          # deal with this (especially in the case of multiple affected
+          # start and/or stop codons) is too complex to warrant the 
+          # speed-up. I expect this case to be rare and suffering
+          # the minor speed hit when it occurs is better than adding
+          # that extra, complicated code.
+          # 
+          # If the seed does not have any gaps in any start or stop
+          # codes, then we remove any terminal segments such that the
+          # final set of segments satisfies the following 2 criteria:
+          # 1. terminal segments either include the sequence terminus
+          #    (position 1 on 5' end, position $seq_len
+          #    on 3' end) OR have length of at least $nt_overhang
+          #    (from --s_overhang).
+          # 2. *all* segments have length at least $min_sgm_len
+          #    (from --s_minsgmlen), *UNLESS* $do_allsgm (--s_allsgm enabled)
+          # 
+          # We enforce criteria 1 because any terminal segment with
+          # length < $nt_overhang means there will almost certainly
+          # be a gap in the overhang region leading to an 'unjoinable'
+          # alignment which results in the full sequence being aligned
+          # by either cmalign or glsearch.
+          #
+          # We enforce criteria 2 because blastn tends to introduce
+          # a lot separate gaps, like this:
+          #
+          #       CGAGG--AC----AGT--GAAC-A----A---TG-----T--TAGGGAGAGC
+          #       CGAGGCCACGCGGAGTACGATCGAGTGTACAGTGAACAATGCTAGGGAGAGC
+          #
+          # instead of:
+          # 
+          #       CGAGG-----------------------ACAGTGAACAATGTTAGGGAGAGC
+          #       CGAGGCCACGCGGAGTACGATCGAGTGTACAGTGAACAATGCTAGGGAGAGC
+          # 
+          # if used with its default scoring parameters (gap open 0, gap extend -2.5)
+          #
+          my $only_keep_max_ungap_sgm = $do_ungapsgm; # if --s_ungapsgm: only keep max length (ungapped) segment
 
-        # if we are not just keeping the max ungap sgm
-        if(! $only_keep_max_ungap_sgm) { 
-          if(! $do_allsgm) { 
-            prune_seed_given_minimum_length_segment(\@sda_seq_start_A, \@sda_seq_stop_A, \@sda_seq_strand_A,
-                                                    \@sda_mdl_start_A, \@sda_mdl_stop_A, \@sda_mdl_strand_A,
-                                                    $min_sgm_len);
+          # if any gaps in the model overlap with start or stop codons, only keep max length (ungapped) segment
+          if((! $only_keep_max_ungap_sgm) && ($do_realign_startstop)) { 
+            $only_keep_max_ungap_sgm = check_seed_overlap_with_start_stop_codons(\@sda_mdl_start_A, \@sda_mdl_stop_A, 
+                                                                                 \@codon_start_A, \@codon_stop_A, $FH_HR);
           }
-          prune_seed_of_terminal_short_segments(\@sda_seq_start_A, \@sda_seq_stop_A, \@sda_seq_strand_A,
-                                                \@sda_mdl_start_A, \@sda_mdl_stop_A, \@sda_mdl_strand_A,
-                                                $nt_overhang, $seq_len);
-        }
-        my $sda_nsgm = scalar(@sda_seq_start_A);
-        
-        if(($orig_sda_nsgm != $sda_nsgm) || ($only_keep_max_ungap_sgm)) { 
-          # printf("in $sub_name, rewriting coords\n");
-          # printf("\torig coords: seq: $sda_seq_coords mdl: $sda_mdl_coords\n");
-          if(($sda_nsgm == 0) || ($only_keep_max_ungap_sgm)) { # take maximum length segment from original
-            my ($argmax_sda_seq_sgm, $max_sda_seq_sgm_len) = vdr_CoordsMaxLengthSegment($sda_seq_coords, $FH_HR);
-            my ($argmax_sda_mdl_sgm, $max_sda_mdl_sgm_len) = vdr_CoordsMaxLengthSegment($sda_mdl_coords, $FH_HR);
-            $sda_seq_coords = $argmax_sda_seq_sgm;
-            $sda_mdl_coords = $argmax_sda_mdl_sgm;
-            ($sda_seq_start, $sda_seq_stop, $sda_seq_strand) = vdr_CoordsSegmentParse($argmax_sda_seq_sgm, $FH_HR);
-            $sda_nsgm = 1;
-          }
-          else { # at least one segment left, and ! $only_keep_max_ungap_sgm, recreate $sda_seq_coords and $sda_mdl_coords:
-            $sda_seq_coords = vdr_CoordsFromStartStopStrandArrays(\@sda_seq_start_A, \@sda_seq_stop_A, \@sda_seq_strand_A, $FH_HR);
-            $sda_mdl_coords = vdr_CoordsFromStartStopStrandArrays(\@sda_mdl_start_A, \@sda_mdl_stop_A, \@sda_mdl_strand_A, $FH_HR);
-            $sda_seq_start = $sda_seq_start_A[0];
-            $sda_seq_stop  = $sda_seq_stop_A[($sda_nsgm-1)];
-          }
-        }
-        $sda_seq_HR->{$seq_name} = $sda_seq_coords;
-        $sda_mdl_HR->{$seq_name} = $sda_mdl_coords;
-        # printf("\n\tsda_seq_coords: $sda_seq_coords\n\tsda_mdl_coords: $sda_mdl_coords\n");
-        # finished setting sda_seq_coords and sda_mdl_coords
-        ##########
 
-        $processed_H{$seq_name} = 1;
-        $nprocessed++;
-      }
+          # if we are not just keeping the max ungap sgm
+          if(! $only_keep_max_ungap_sgm) { 
+            if(! $do_allsgm) { 
+              prune_seed_given_minimum_length_segment(\@sda_seq_start_A, \@sda_seq_stop_A, \@sda_seq_strand_A,
+                                                      \@sda_mdl_start_A, \@sda_mdl_stop_A, \@sda_mdl_strand_A,
+                                                      $min_sgm_len);
+            }
+            prune_seed_of_terminal_short_segments(\@sda_seq_start_A, \@sda_seq_stop_A, \@sda_seq_strand_A,
+                                                  \@sda_mdl_start_A, \@sda_mdl_stop_A, \@sda_mdl_strand_A,
+                                                  (1.2 * $nt_overhang), $seq_len, $mdl_len);
+          }
+          my $sda_nsgm = scalar(@sda_seq_start_A);
+          
+          if(($orig_sda_nsgm != $sda_nsgm) || ($only_keep_max_ungap_sgm)) { 
+            # printf("in $sub_name, rewriting coords\n");
+            # printf("\torig coords: seq: $sda_seq_coords mdl: $sda_mdl_coords\n");
+            if(($sda_nsgm == 0) || ($only_keep_max_ungap_sgm)) { # take maximum length segment from original
+              my ($argmax_sda_seq_sgm, $max_sda_seq_sgm_len) = vdr_CoordsMaxLengthSegment($sda_seq_coords, $FH_HR);
+              my ($argmax_sda_mdl_sgm, $max_sda_mdl_sgm_len) = vdr_CoordsMaxLengthSegment($sda_mdl_coords, $FH_HR);
+              $sda_seq_coords = $argmax_sda_seq_sgm;
+              $sda_mdl_coords = $argmax_sda_mdl_sgm;
+              ($sda_seq_start, $sda_seq_stop, $sda_seq_strand) = vdr_CoordsSegmentParse($argmax_sda_seq_sgm, $FH_HR);
+              $sda_nsgm = 1;
+            }
+            else { # at least one segment left, and ! $only_keep_max_ungap_sgm, recreate $sda_seq_coords and $sda_mdl_coords:
+              $sda_seq_coords = vdr_CoordsFromStartStopStrandArrays(\@sda_seq_start_A, \@sda_seq_stop_A, \@sda_seq_strand_A, $FH_HR);
+              $sda_mdl_coords = vdr_CoordsFromStartStopStrandArrays(\@sda_mdl_start_A, \@sda_mdl_stop_A, \@sda_mdl_strand_A, $FH_HR);
+              $sda_seq_start = $sda_seq_start_A[0];
+              $sda_seq_stop  = $sda_seq_stop_A[($sda_nsgm-1)];
+            }
+          }
+          $sda_seq_HR->{$seq_name} = $sda_seq_coords;
+          $sda_mdl_HR->{$seq_name} = $sda_mdl_coords;
+          # printf("\n\tsda_seq_coords: $sda_seq_coords\n\tsda_mdl_coords: $sda_mdl_coords\n");
+          # finished setting sda_seq_coords and sda_mdl_coords
+          ##########
+
+          $processed_H{$seq_name} = 1;
+          $nprocessed++;
+        } # end of 'if(($mdl_strand eq "+") && ($seq_strand eq "+")) {  
+      } # end of 'if((defined $processed_H{$seq_name}) && ($processed_H{$seq_name} == 0))'
     }
-  }
+  } # end of 'while(my $line = <IN>)'
   close(IN);
 
   # sanity check: we should have processed each sequence
@@ -1214,11 +1228,11 @@ sub seed_info_to_subseqs {
       my $cur_nt_overhang_5p = $nt_overhang;
       my $cur_nt_overhang_3p = $nt_overhang;
       if($sda_mdl_start == 1) { # missing sequence at 5' end inserts before 1st model position so need to fetch all those inserts + nt_overhang
-        $cur_nt_overhang_5p += $sda_seq_start - 1;
+        $cur_nt_overhang_5p += (2 * ($sda_seq_start - 1));
         printf("HEYA 5p overhang now $cur_nt_overhang_5p\n");
       }
       if($sda_mdl_stop == $mdl_len) { # missing sequence at 3' end inserts after final model position so need to fetch all those inserts + nt_overhang
-        $cur_nt_overhang_3p += $seq_len - $sda_seq_stop;
+        $cur_nt_overhang_3p += (2 * ($seq_len - $sda_seq_stop));
         printf("HEYA 3p overhang now $cur_nt_overhang_3p\n");
       }
 
@@ -1453,7 +1467,7 @@ sub parse_blastn_indel_file_to_get_subseq_info {
           }
           prune_seed_of_terminal_short_segments(\@sda_seq_start_A, \@sda_seq_stop_A, \@sda_seq_strand_A,
                                                 \@sda_mdl_start_A, \@sda_mdl_stop_A, \@sda_mdl_strand_A,
-                                                $nt_overhang, $seq_len);
+                                                (1.2 * $nt_overhang), $seq_len, $mdl_len);
         }
         my $sda_nsgm = scalar(@sda_seq_start_A);
         
@@ -2583,6 +2597,7 @@ sub prune_seed_given_minimum_length_segment {
 #  $seq_strand_AR:    ref to array of mdl strands, potentially modified here
 #  $min_term_sgm_len: minimum allowed terminal segment length
 #  $seq_len:          length of complete sequence
+#  $mdl_len:          length of model, used to determine if final segment extends to end of model
 # 
 # Returns:  void
 #
@@ -2591,18 +2606,20 @@ sub prune_seed_given_minimum_length_segment {
 #################################################################
 sub prune_seed_of_terminal_short_segments { 
   my $sub_name = "prune_seed_of_terminal_short_segments";
-  my $nargs_exp = 8;
+  my $nargs_exp = 9;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
   my ($seq_start_AR, $seq_stop_AR, $seq_strand_AR, 
       $mdl_start_AR, $mdl_stop_AR, $mdl_strand_AR, 
-      $min_term_sgm_len, $seq_len) = @_;
+      $min_term_sgm_len, $seq_len, $mdl_len) = @_;
 
   # printf("in $sub_name, min_term_sgm_len: $min_term_sgm_len\n");
 
   my $nsgm = scalar(@{$seq_start_AR});
   my $seq_start = $seq_start_AR->[0];
   my $seq_stop  = $seq_stop_AR->[($nsgm-1)];
+  my $mdl_start = $mdl_start_AR->[0];
+  my $mdl_stop  = $mdl_stop_AR->[($nsgm-1)];
 
   my $s;
   my $sgm_len;
@@ -2611,7 +2628,12 @@ sub prune_seed_of_terminal_short_segments {
     my $nremove = 0; # number of elements to remove at 5' end
     for($s = 0; $s < $nsgm; $s++) { 
       $sgm_len = abs($seq_stop_AR->[$s] - $seq_start_AR->[$s]) + 1;
-      if($sgm_len < $min_term_sgm_len) { 
+      my $cur_min_term_sgm_len = $min_term_sgm_len;
+      if(($s == 0) && ($mdl_start == 1)) { 
+        # missing sequence at 5' end inserts before model position 1, so we increase minimum length of 1st segment by twice length of insert
+        $cur_min_term_sgm_len += (2 * ($seq_start - 1));
+      }
+      if($sgm_len < $cur_min_term_sgm_len) { 
         $nremove++;
       }
       else { 
@@ -2635,7 +2657,14 @@ sub prune_seed_of_terminal_short_segments {
     my $nremove = 0; # number of elements to remove at 3' end
     for($s = ($nsgm-1); $s >= 0; $s--) { 
       $sgm_len = abs($seq_stop_AR->[$s] - $seq_start_AR->[$s]) + 1;
-      if($sgm_len < $min_term_sgm_len) { 
+      my $cur_min_term_sgm_len = $min_term_sgm_len;
+      printf("ORIG 3' end, cur_min_term_sgm_len: $cur_min_term_sgm_len\n");
+      if(($s == ($nsgm-1)) && ($mdl_stop == $mdl_len)) { 
+        # missing sequence at 3' end inserts after final model position, so we increase minimum length of final segment by twice length of insert
+        $cur_min_term_sgm_len += (2 * ($seq_len - $seq_stop));
+        printf("HEYA 3' end, cur_min_term_sgm_len: $cur_min_term_sgm_len\n");
+      }
+      if($sgm_len < $cur_min_term_sgm_len) { 
         $nremove++;
       }
       else { 
@@ -2782,6 +2811,7 @@ sub run_minimap2 {
 #  $seq_name_AR:        REF to array of sequences we want to parse indel info for
 #  $seq_len_HR:         REF to hash of sequence lengths
 #  $exp_mdl_name:       name of model we expect on all lines of $indel_file
+#  $mdl_len:            length of model
 #  $sda_mdl_HR:         REF to hash, key is <seq_name>, value is mdl coords
 #                       segment of blast seed aln, FILLED HERE
 #  $sda_seq_HR:         REF to hash, key is <seq_name>, value is seq coords
@@ -2796,13 +2826,15 @@ sub run_minimap2 {
 ################################################################# 
 sub parse_minimap2_to_get_seed_info { 
   my $sub_name = "parse_minimap2_to_get_seed_info";
-  my $nargs_exp = 8;
+  my $nargs_exp = 9;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($mm2_file, $seq_name_AR, $seq_len_HR, $exp_mdl_name,
+  my ($mm2_file, $seq_name_AR, $seq_len_HR, $exp_mdl_name, $mdl_len, 
       $sda_mdl_HR, $sda_seq_HR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = $ofile_info_HHR->{"FH"};
+  my $nt_overhang = opt_Get("--s_overhang", $opt_HHR);
+  my $do_ungapsgm = opt_Get("--s_ungapsgm", $opt_HHR);
 
   my %processed_H = (); # key: sequence name we want seed info for, 
                         # value: 0 if we have not processed an alignment for this sequence
@@ -2907,6 +2939,31 @@ sub parse_minimap2_to_get_seed_info {
     if($flag == 0) { # primary alignment for this seq
       # parse cigar to get aligned query and target/reference for the aligned region, this should 
       my ($sda_mdl_coords, $sda_seq_coords) = parse_minimap2_cigar_to_seed_coords($cigar, $t_pos, $FH_HR);
+
+      my @sda_seq_start_A  = ();
+      my @sda_seq_stop_A   = ();
+      my @sda_seq_strand_A = ();
+      my @sda_mdl_start_A  = ();
+      my @sda_mdl_stop_A   = ();
+      my @sda_mdl_strand_A = ();
+      vdr_FeatureStartStopStrandArrays($sda_seq_coords, \@sda_seq_start_A, \@sda_seq_stop_A, \@sda_seq_strand_A, $FH_HR);
+      vdr_FeatureStartStopStrandArrays($sda_mdl_coords, \@sda_mdl_start_A, \@sda_mdl_stop_A, \@sda_mdl_strand_A, $FH_HR);
+
+      prune_seed_of_terminal_short_segments(\@sda_seq_start_A, \@sda_seq_stop_A, \@sda_seq_strand_A,
+                                            \@sda_mdl_start_A, \@sda_mdl_stop_A, \@sda_mdl_strand_A,
+                                            (1.2 * $nt_overhang), $seq_len_HR->{$q_name}, $mdl_len);
+
+      my $sda_nsgm = scalar(@sda_seq_start_A);
+      if(($sda_nsgm == 0) || ($do_ungapsgm)) { # take maximum length segment from original
+        my ($argmax_sda_seq_sgm, $max_sda_seq_sgm_len) = vdr_CoordsMaxLengthSegment($sda_seq_coords, $FH_HR);
+        my ($argmax_sda_mdl_sgm, $max_sda_mdl_sgm_len) = vdr_CoordsMaxLengthSegment($sda_mdl_coords, $FH_HR);
+        $sda_seq_coords = $argmax_sda_seq_sgm;
+        $sda_mdl_coords = $argmax_sda_mdl_sgm;
+      }
+      else { # at least one segment left, and ! $only_keep_max_ungap_sgm, recreate $sda_seq_coords and $sda_mdl_coords:
+        $sda_seq_coords = vdr_CoordsFromStartStopStrandArrays(\@sda_seq_start_A, \@sda_seq_stop_A, \@sda_seq_strand_A, $FH_HR);
+        $sda_mdl_coords = vdr_CoordsFromStartStopStrandArrays(\@sda_mdl_start_A, \@sda_mdl_stop_A, \@sda_mdl_strand_A, $FH_HR);
+      }
 
       $sda_mdl_HR->{$q_name} = $sda_mdl_coords;
       $sda_seq_HR->{$q_name} = $sda_seq_coords;

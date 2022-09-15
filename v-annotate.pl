@@ -1717,8 +1717,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
         my $mm2_out_file = $out_root . ".mm2.$mdl_name.out";
         my %mm2_sda_mdl_H = ();
         my %mm2_sda_seq_H = ();
-        parse_minimap2_to_get_seed_info($mm2_out_file, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
-                                        $mdl_name, \%mm2_sda_mdl_H, \%mm2_sda_seq_H, \%opt_HH, \%ofile_info_HH);
+        parse_minimap2_to_get_seed_info($mm2_out_file, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, $mdl_name, $mdl_len,
+                                        \%mm2_sda_mdl_H, \%mm2_sda_seq_H, \%opt_HH, \%ofile_info_HH);
 
         pick_best_seed_info(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \%sda_mdl_H, \%sda_seq_H, 
                             \%mm2_sda_mdl_H, \%mm2_sda_seq_H, \%ovw_sda_seq_H, \%opt_HH, \%ofile_info_HH);
@@ -5251,6 +5251,9 @@ sub add_frameshift_alerts_for_one_sequence {
                 }
                 $shifted_span_slen = abs($shifted_span_sstop - $shifted_span_sstart) + 1;
                 $shifted_span_mlen = abs($shifted_span_mstop - $shifted_span_mstart) + 1;
+                if((! defined $prv_exp_span_sstop) || (! defined $prv_exp_span_sstart)) { 
+                  printf("UNDEFINED prv_exp_span seq_name : $seq_name\n");
+                }
                 $exp_span_slen     = abs($prv_exp_span_sstop - $prv_exp_span_sstart) + 1;
                 
                 # check if this is an exempted region
