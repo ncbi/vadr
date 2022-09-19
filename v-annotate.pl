@@ -1711,7 +1711,6 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                                \%sda_mdl_H, \%sda_seq_H, \%opt_HH, \%ofile_info_HH);
 
       if($do_minimap2) {
-        printf("cur_mdl_align_fa_file: $cur_mdl_align_fa_file\n");
         run_minimap2(\%execs_H, $minimap2_db_file, $cur_mdl_fa_file, $out_root, $mdl_name, $cur_mdl_nseq,
                      $progress_w, \%opt_HH, \%ofile_info_HH);
         my $mm2_out_file = $out_root . ".mm2.$mdl_name.out";
@@ -1724,7 +1723,6 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                             \%mm2_sda_mdl_H, \%mm2_sda_seq_H, \%ovw_sda_seq_H, \%opt_HH, \%ofile_info_HH);
       }
 
-      printf("HEYA!\n");
       seed_info_to_subseqs(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, $mdl_len, \@subseq_AA, \%sda_mdl_H,
                            \%sda_seq_H, \%seq2subseq_HA, \%subseq2seq_H, \%subseq_len_H,
                            \%opt_HH, \%ofile_info_HH);
@@ -4981,7 +4979,6 @@ sub add_frameshift_alerts_for_one_sequence {
             # so can't use a simple for loop 
             my $rfpos = $mstart;
             my $uapos = ($strand eq "+") ? ($sstart - 1) : ($sstart + 1); # only relevant for insertnn and deletinn alerts before a nongap RF position seen
-            print("HEYA uapos for ftr $ftr_idx is $uapos rfpos is $rfpos\n");
             while(($strand eq "+" && $rfpos <= $mstop) || 
                   ($strand eq "-" && $rfpos >= $mstop)) { 
               $rf_diff++; # number of RF positions seen since first nt in this CDS
