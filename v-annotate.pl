@@ -1514,7 +1514,7 @@ if($do_replace_ns) {
 # --
 my $fa_file_for_analysis = undef; 
 my $blastn_rpn_fa_file   = undef;
-if((! $do_blastn_cls) && (! $do_glsearch) || (! $do_minimap2)) { 
+if((! $do_blastn_cls) && (! $do_glsearch) && (! $do_minimap2)) { 
   $fa_file_for_analysis = (defined $rpn_fa_file) ? $rpn_fa_file : $in_fa_file;
 }
 else { 
