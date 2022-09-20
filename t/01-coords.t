@@ -864,7 +864,8 @@ for($i = 0; $i < $ntests; $i++) {
   vdr_FeatureStartStopStrandArrays($orig_seq_coords_A[$i], \@mdl_start_A, \@mdl_stop_A, \@mdl_strand_A, undef);
   prune_seed_of_terminal_short_segments(\@seq_start_A, \@seq_stop_A, \@seq_strand_A,
                                         \@mdl_start_A, \@mdl_stop_A, \@mdl_strand_A,
-                                        $min_term_sgm_len_A[$i], $seq_len_A[$i]);
+                                        $min_term_sgm_len_A[$i],
+                                        $seq_len_A[$i], $seq_len_A[$i]);
   $cur_val = vdr_CoordsFromStartStopStrandArrays(\@seq_start_A, \@seq_stop_A, \@seq_strand_A, undef);
   is($cur_val, $exp_val_A[$i], "prune_seed_of_terminal_short_segments(): $desc_A[$i]");
 }
