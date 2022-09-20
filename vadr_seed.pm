@@ -2564,11 +2564,23 @@ sub run_minimap2 {
   my $mm2_err_file = $out_root . ".mm2.$mdl_name.err";
 
   my $mm2_opts = " -rmq=no --junc-bonus=0 --for-only --sam-hit-only --secondary=no --score-N=0 -t 1";
-  if(opt_IsUsed("--mm2_asm5",  $opt_HHR)) { $mm2_opts .= " -x asm5"; }
-  if(opt_IsUsed("--mm2_asm10", $opt_HHR)) { $mm2_opts .= " -x asm10"; }
-  if(opt_IsUsed("--mm2_asm20", $opt_HHR)) { $mm2_opts .= " -x asm20"; }
-  if(opt_IsUsed("--mm2_k",     $opt_HHR)) { $mm2_opts .= " -k " . opt_Get("--mm2_k", $opt_HHR); } 
-  if(opt_IsUsed("--mm2_w",     $opt_HHR)) { $mm2_opts .= " -w " . opt_Get("--mm2_w", $opt_HHR); } 
+  if((opt_IsUsed("--mm2_k", $opt_HHR)) || (opt_IsUsed("--mm2_w", $opt_HHR))) { 
+    if(opt_IsUsed("--mm2_k", $opt_HHR)) { 
+      $mm2_opts .= " -k " . opt_Get("--mm2_k", $opt_HHR); 
+    } 
+    if(opt_IsUsed("--mm2_w", $opt_HHR)) { 
+      $mm2_opts .= " -w " . opt_Get("--mm2_w", $opt_HHR); 
+    } 
+  }
+  elsif(opt_IsUsed("--mm2_asm5",  $opt_HHR)) { 
+    $mm2_opts .= " -x asm5"; 
+  }
+  elsif(opt_IsUsed("--mm2_asm10", $opt_HHR)) { 
+    $mm2_opts .= " -x asm10"; 
+  }
+  else { # none of --mm2_k, --mm2_w, --mm2_asm5, --mm2_asm10 used
+    $mm2_opts .= " -x asm20";  # default
+  }
   my $mm2_cmd = "cat $seq_file | " . $execs_HR->{"minimap2"} . " -a $mm2_opts $db_file - -o $mm2_out_file 2> $mm2_err_file";
 
   utl_RunCommand($mm2_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);

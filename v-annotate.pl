@@ -343,11 +343,10 @@ opt_Add("--s_overhang",   "integer",    100,   $g,       "-s", undef,          "
 $opt_group_desc_H{++$g} = "options for deriving seeds from minimap2 as alternative to blastn";
 #        option               type   default group  requires     incompat    preamble-output                                                       help-output    
 opt_Add("--minimap2",     "boolean", 0,         $g,"-s,--glsearch", undef,   "use minimap2 to derive seed and use it if >= length of blastn seed", "use minimap2 to derive seed and use it if >= length of blastn seed", \%opt_HH, \@opt_order_A);
-opt_Add("--mm2_k",        "integer", 0,         $g,"--minimap2", undef,      "use -k <n> option with minimap2 (minimizer kmer length)",            "use -k <n> option with minimap2 (minimizer kmer length)", \%opt_HH, \@opt_order_A);
-opt_Add("--mm2_w",        "integer", 0,         $g,"--minimap2", undef,      "use -w <n> option with minimap2 (minimizer window size)",            "use -w <n> option with minimap2 (minimizer window size)", \%opt_HH, \@opt_order_A);
-opt_Add("--mm2_asm5",     "boolean", 0,         $g,"--minimap2", undef,      "use -x asm5 with minimap2",                                          "use -x asm5 with minimap2", \%opt_HH, \@opt_order_A);
-opt_Add("--mm2_asm10",    "boolean", 0,         $g,"--minimap2","--mm2_asm5","use -x asm10 with minimap2",                                         "use -x asm10 with minimap2", \%opt_HH, \@opt_order_A);
-opt_Add("--mm2_asm20",    "boolean", 0,         $g,"--minimap2","--mm2_asm5,--mm2_asm10","use -x asm20 with minimap2",                             "use -x asm20 with minimap2", \%opt_HH, \@opt_order_A);
+opt_Add("--mm2_asm5",     "boolean", 0,         $g,"--minimap2", undef,      "use -x asm5 with minimap2, instead of -x asm20",                     "use -x asm5 with minimap2, instead of -x asm20", \%opt_HH, \@opt_order_A);
+opt_Add("--mm2_asm10",    "boolean", 0,         $g,"--minimap2", "--mm2_asm5",  "use -x asm10 with minimap2, instead of -x asm20",                 "use -x asm10 with minimap2, instead of -x asm20", \%opt_HH, \@opt_order_A);
+opt_Add("--mm2_k",        "integer", 0,         $g,"--minimap2", "--mm2_asm5,--mm2_asm10", "use -k <n> option with minimap2, instead of -x asm20", "use -k <n> option with minimap2, instead of -x asm20", \%opt_HH, \@opt_order_A);
+opt_Add("--mm2_w",        "integer", 0,         $g,"--minimap2", "--mm2_asm5,--mm2_asm10", "use -w <n> option with minimap2, instead of -x asm20", "use -w <n> option with minimap2, instead of -x asm20", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to replacing Ns with expected nucleotides";
 #        option               type   default group requires incompat  preamble-output                                                                 help-output    
@@ -539,11 +538,10 @@ my $options_okay =
                 's_overhang=s'  => \$GetOptions_H{"--s_overhang"},
 # options for using minimap2 to derive alternative seeds
                 'minimap2'      => \$GetOptions_H{"--minimap2"},
-                'mm2_k=s'       => \$GetOptions_H{"--mm2_k"},
-                'mm2_w=s'       => \$GetOptions_H{"--mm2_w"},
                 'mm2_asm5'      => \$GetOptions_H{"--mm2_asm5"},
                 'mm2_asm10'     => \$GetOptions_H{"--mm2_asm10"},
-                'mm2_asm20'     => \$GetOptions_H{"--mm2_asm20"},
+                'mm2_k=s'       => \$GetOptions_H{"--mm2_k"},
+                'mm2_w=s'       => \$GetOptions_H{"--mm2_w"},
 # options related to replacing Ns with expected nucleotides
                 'r'                => \$GetOptions_H{"-r"},
                 'r_minlen=s'       => \$GetOptions_H{"--r_minlen"},
