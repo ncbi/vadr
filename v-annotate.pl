@@ -308,11 +308,6 @@ opt_Add("--gls_mismatch", "integer", -3,        $g,"--glsearch", undef,      "se
 opt_Add("--gls_gapopen",  "integer", -17,       $g,"--glsearch", undef,      "set glsearch gap open score to <n> < 0 with glsearch -f option",               "set glsearch gap open score to <n> < 0 with glsearch -f option", \%opt_HH, \@opt_order_A);
 opt_Add("--gls_gapextend","integer", -4,        $g,"--glsearch", undef,      "set glsearch gap extend score to <n> < 0 with glsearch -g option",             "set glsearch gap extend score to <n> < 0 with glsearch -g option", \%opt_HH, \@opt_order_A);
 
-
-$opt_group_desc_H{++$g} = "options for controlling minimap2 alignment stage as alternative to cmalign";
-#        option               type   default group  requires     incompat    preamble-output                                                            help-output    
-opt_Add("--minimap2",     "boolean", 0,         $g,"-s,--glsearch", undef,      "align with minimap2, not to a cm with cmalign",                           "align with minimap2, not to a cm with cmalign", \%opt_HH, \@opt_order_A);
-
 $opt_group_desc_H{++$g} = "options for controlling blastx protein validation stage";
 #        option               type   default  group  requires incompat            preamble-output                                                                          help-output    
 opt_Add("--xmatrix",     "string",   undef,      $g,     undef,"--pv_skip,--pv_hmmer", "use the matrix <s> with blastx (e.g. BLOSUM45)",                                   "use the matrix <s> with blastx (e.g. BLOSUM45)", \%opt_HH, \@opt_order_A);
@@ -344,6 +339,15 @@ opt_Add("--s_allsgm",     "boolean",      0,   $g,       "-s", "--s_minsgmlen", 
 opt_Add("--s_ungapsgm",   "boolean",      0,   $g,       "-s", "--s_minsgmlen,--s_allsgm", "for -s, only keep max length ungapped segment of HSP",    "for -s, only keep max length ungapped segment of HSP", \%opt_HH, \@opt_order_A);
 opt_Add("--s_startstop",  "boolean",      0,   $g,       "-s", "--s_ungapsgm", "for -s, allow seed to include gaps in start/stop codons",             "for -s, allow seed to include gaps in start/stop codons", \%opt_HH, \@opt_order_A);
 opt_Add("--s_overhang",   "integer",    100,   $g,       "-s", undef,          "for -s, set length of nt overhang for subseqs to align to <n>",       "for -s, set length of nt overhang for subseqs to align to <n>", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{++$g} = "options for deriving seeds from minimap2 as alternative to blastn";
+#        option               type   default group  requires     incompat    preamble-output                                                       help-output    
+opt_Add("--minimap2",     "boolean", 0,         $g,"-s,--glsearch", undef,   "use minimap2 to derive seed and use it if >= length of blastn seed", "use minimap2 to derive seed and use it if >= length of blastn seed", \%opt_HH, \@opt_order_A);
+opt_Add("--mm2_k",        "integer", 0,         $g,"--minimap2", undef,      "use -k <n> option with minimap2 (minimizer kmer length)",            "use -k <n> option with minimap2 (minimizer kmer length)", \%opt_HH, \@opt_order_A);
+opt_Add("--mm2_w",        "integer", 0,         $g,"--minimap2", undef,      "use -w <n> option with minimap2 (minimizer window size)",            "use -w <n> option with minimap2 (minimizer window size)", \%opt_HH, \@opt_order_A);
+opt_Add("--mm2_asm5",     "boolean", 0,         $g,"--minimap2", undef,      "use -x asm5 with minimap2",                                          "use -x asm5 with minimap2", \%opt_HH, \@opt_order_A);
+opt_Add("--mm2_asm10",    "boolean", 0,         $g,"--minimap2","--mm2_asm5","use -x asm10 with minimap2",                                         "use -x asm10 with minimap2", \%opt_HH, \@opt_order_A);
+opt_Add("--mm2_asm20",    "boolean", 0,         $g,"--minimap2","--mm2_asm5,--mm2_asm10","use -x asm20 with minimap2",                             "use -x asm20 with minimap2", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to replacing Ns with expected nucleotides";
 #        option               type   default group requires incompat  preamble-output                                                                 help-output    
@@ -507,8 +511,6 @@ my $options_okay =
                 'gls_mismatch=s' => \$GetOptions_H{"--gls_mismatch"},
                 'gls_gapopen=s'  => \$GetOptions_H{"--gls_gapopen"},
                 'gls_gapextend=s'=> \$GetOptions_H{"--gls_gapextend"},
-# options for controlling minimap2 alignment stage
-                'minimap2'      => \$GetOptions_H{"--minimap2"},
 # options for controlling protein blastx protein validation stage
                 'xmatrix=s'     => \$GetOptions_H{"--xmatrix"},
                 'xdrop=s'       => \$GetOptions_H{"--xdrop"},
@@ -535,6 +537,13 @@ my $options_okay =
                 's_ungapsgm'    => \$GetOptions_H{"--s_ungapsgm"},
                 's_startstop'   => \$GetOptions_H{"--s_startstop"},
                 's_overhang=s'  => \$GetOptions_H{"--s_overhang"},
+# options for using minimap2 to derive alternative seeds
+                'minimap2'      => \$GetOptions_H{"--minimap2"},
+                'mm2_k=s'       => \$GetOptions_H{"--mm2_k"},
+                'mm2_w=s'       => \$GetOptions_H{"--mm2_w"},
+                'mm2_asm5'      => \$GetOptions_H{"--mm2_asm5"},
+                'mm2_asm10'     => \$GetOptions_H{"--mm2_asm10"},
+                'mm2_asm20'     => \$GetOptions_H{"--mm2_asm20"},
 # options related to replacing Ns with expected nucleotides
                 'r'                => \$GetOptions_H{"-r"},
                 'r_minlen=s'       => \$GetOptions_H{"--r_minlen"},

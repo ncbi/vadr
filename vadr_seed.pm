@@ -2562,7 +2562,14 @@ sub run_minimap2 {
   my $start_secs = ofile_OutputProgressPrior($stg_desc, $progress_w, $log_FH, *STDOUT);
   my $mm2_out_file = $out_root . ".mm2.$mdl_name.out";
   my $mm2_err_file = $out_root . ".mm2.$mdl_name.err";
-  my $mm2_cmd = "cat $seq_file | " . $execs_HR->{"minimap2"} . " -a -x asm20 -rmq=no --junc-bonus=0 --for-only --sam-hit-only --secondary=no --score-N=0 -t 1 $db_file - -o $mm2_out_file 2> $mm2_err_file";
+
+  my $mm2_opts = " -rmq=no --junc-bonus=0 --for-only --sam-hit-only --secondary=no --score-N=0 -t 1";
+  if(opt_IsUsed("--mm2_asm5",  $opt_HHR)) { $mm2_opts .= " -x asm5"; }
+  if(opt_IsUsed("--mm2_asm10", $opt_HHR)) { $mm2_opts .= " -x asm10"; }
+  if(opt_IsUsed("--mm2_asm20", $opt_HHR)) { $mm2_opts .= " -x asm20"; }
+  if(opt_IsUsed("--mm2_k",     $opt_HHR)) { $mm2_opts .= " -k " . opt_Get("--mm2_k", $opt_HHR); } 
+  if(opt_IsUsed("--mm2_w",     $opt_HHR)) { $mm2_opts .= " -w " . opt_Get("--mm2_w", $opt_HHR); } 
+  my $mm2_cmd = "cat $seq_file | " . $execs_HR->{"minimap2"} . " -a $mm2_opts $db_file - -o $mm2_out_file 2> $mm2_err_file";
 
   utl_RunCommand($mm2_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "mm2.$mdl_name.out", $mm2_out_file, 0, opt_Get("--keep", $opt_HHR), "minimap2 output for $mdl_name");
