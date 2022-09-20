@@ -69,8 +69,16 @@ require "sqp_utils.pm";
 # fixed and only the sequence before and after it (plus 100nt of
 # overlap on each side, controllable with --s_overhang) is aligned
 # separately by cmalign. The up to three alignments are then joined to
-# get the final alignment.
+# get the final alignment. 
 #
+# With --minimap2 (which also requires --glsearch), a seed is also
+# computed using the minimap2 read mapping/alignment program and if it
+# is the larger (or the same size as the blastn seed it will be used
+# instead of the blastn seed for subsequent steps. The --minimap2 option
+# was motivated by its faster processing of monkeypox virus sequences
+# because it often gives longer seeds, leading to fewer unjoinable 
+# alignments, and is much faster than the downstream glsearch
+# alignment. 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 
 # Replacement of stretches of Ns with the -r option:
@@ -1727,11 +1735,6 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                            \%sda_seq_H, \%seq2subseq_HA, \%subseq2seq_H, \%subseq_len_H,
                            \%opt_HH, \%ofile_info_HH);
 
-      #parse_blastn_indel_file_to_get_subseq_info($indel_file, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
-      #                                           $mdl_name, $start_codon_coords, $stop_codon_coords, 
-      #                                           \@subseq_AA, \%sda_mdl_H, \%sda_seq_H, 
-      #                                           \%seq2subseq_HA, \%subseq2seq_H, \%subseq_len_H, 
-      #                                           \%opt_HH, \%ofile_info_HH);
       $cur_mdl_nalign = scalar(@subseq_AA);
       if($cur_mdl_nalign > 0) { 
         $$sqfile_for_analysis_R->fetch_subseqs(\@subseq_AA, 60, $cur_mdl_align_fa_file);
