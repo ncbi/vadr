@@ -69,8 +69,16 @@ require "sqp_utils.pm";
 # fixed and only the sequence before and after it (plus 100nt of
 # overlap on each side, controllable with --s_overhang) is aligned
 # separately by cmalign. The up to three alignments are then joined to
-# get the final alignment.
+# get the final alignment. 
 #
+# With --minimap2 (which also requires --glsearch), a seed is also
+# computed using the minimap2 read mapping/alignment program and if it
+# is the larger (or the same size as the blastn seed it will be used
+# instead of the blastn seed for subsequent steps. The --minimap2 option
+# was motivated by its faster processing of monkeypox virus sequences
+# because it often gives longer seeds, leading to fewer unjoinable 
+# alignments, and is much faster than the downstream glsearch
+# alignment. 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 
 # Replacement of stretches of Ns with the -r option:
@@ -146,6 +154,7 @@ my $env_vadr_hmmer_dir    = utl_DirEnvVarValid("VADRHMMERDIR");
 my $env_vadr_easel_dir    = utl_DirEnvVarValid("VADREASELDIR");
 my $env_vadr_bioeasel_dir = utl_DirEnvVarValid("VADRBIOEASELDIR");
 my $env_vadr_fasta_dir    = utl_DirEnvVarValid("VADRFASTADIR");
+my $env_vadr_minimap2_dir = utl_DirEnvVarValid("VADRMINIMAP2DIR");
 
 my %execs_H = (); # hash with paths to all required executables
 $execs_H{"cmalign"}       = $env_vadr_infernal_dir . "/cmalign";
@@ -166,6 +175,7 @@ $execs_H{"blastn"}        = $env_vadr_blast_dir    . "/blastn";
 $execs_H{"makeblastdb"}   = $env_vadr_blast_dir    . "/makeblastdb";
 $execs_H{"parse_blast"}   = $env_vadr_scripts_dir  . "/parse_blast.pl";
 $execs_H{"glsearch"}      = $env_vadr_fasta_dir    . "/glsearch36";
+$execs_H{"minimap2"}      = $env_vadr_minimap2_dir . "/minimap2";
 utl_ExecHValidate(\%execs_H, undef);
 
 #########################################################
@@ -329,6 +339,14 @@ opt_Add("--s_allsgm",     "boolean",      0,   $g,       "-s", "--s_minsgmlen", 
 opt_Add("--s_ungapsgm",   "boolean",      0,   $g,       "-s", "--s_minsgmlen,--s_allsgm", "for -s, only keep max length ungapped segment of HSP",    "for -s, only keep max length ungapped segment of HSP", \%opt_HH, \@opt_order_A);
 opt_Add("--s_startstop",  "boolean",      0,   $g,       "-s", "--s_ungapsgm", "for -s, allow seed to include gaps in start/stop codons",             "for -s, allow seed to include gaps in start/stop codons", \%opt_HH, \@opt_order_A);
 opt_Add("--s_overhang",   "integer",    100,   $g,       "-s", undef,          "for -s, set length of nt overhang for subseqs to align to <n>",       "for -s, set length of nt overhang for subseqs to align to <n>", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{++$g} = "options for deriving seeds from minimap2 as alternative to blastn";
+#        option               type   default group  requires     incompat    preamble-output                                                       help-output    
+opt_Add("--minimap2",     "boolean", 0,         $g,"-s,--glsearch", undef,   "use minimap2 to derive seed and use it if >= length of blastn seed", "use minimap2 to derive seed and use it if >= length of blastn seed", \%opt_HH, \@opt_order_A);
+opt_Add("--mm2_asm5",     "boolean", 0,         $g,"--minimap2", undef,      "use -x asm5 with minimap2, instead of -x asm20",                     "use -x asm5 with minimap2, instead of -x asm20", \%opt_HH, \@opt_order_A);
+opt_Add("--mm2_asm10",    "boolean", 0,         $g,"--minimap2", "--mm2_asm5",  "use -x asm10 with minimap2, instead of -x asm20",                 "use -x asm10 with minimap2, instead of -x asm20", \%opt_HH, \@opt_order_A);
+opt_Add("--mm2_k",        "integer", 0,         $g,"--minimap2", "--mm2_asm5,--mm2_asm10", "use -k <n> option with minimap2, instead of -x asm20", "use -k <n> option with minimap2, instead of -x asm20", \%opt_HH, \@opt_order_A);
+opt_Add("--mm2_w",        "integer", 0,         $g,"--minimap2", "--mm2_asm5,--mm2_asm10", "use -w <n> option with minimap2, instead of -x asm20", "use -w <n> option with minimap2, instead of -x asm20", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to replacing Ns with expected nucleotides";
 #        option               type   default group requires incompat  preamble-output                                                                 help-output    
@@ -518,6 +536,12 @@ my $options_okay =
                 's_ungapsgm'    => \$GetOptions_H{"--s_ungapsgm"},
                 's_startstop'   => \$GetOptions_H{"--s_startstop"},
                 's_overhang=s'  => \$GetOptions_H{"--s_overhang"},
+# options for using minimap2 to derive alternative seeds
+                'minimap2'      => \$GetOptions_H{"--minimap2"},
+                'mm2_asm5'      => \$GetOptions_H{"--mm2_asm5"},
+                'mm2_asm10'     => \$GetOptions_H{"--mm2_asm10"},
+                'mm2_k=s'       => \$GetOptions_H{"--mm2_k"},
+                'mm2_w=s'       => \$GetOptions_H{"--mm2_w"},
 # options related to replacing Ns with expected nucleotides
                 'r'                => \$GetOptions_H{"-r"},
                 'r_minlen=s'       => \$GetOptions_H{"--r_minlen"},
@@ -744,6 +768,7 @@ my $do_blastn_any = ($do_blastn_rpn || $do_blastn_cls || $do_blastn_cdt || $do_b
 # only need some but not all
 
 my $do_glsearch = opt_Get("--glsearch",  \%opt_HH) ? 1 : 0;
+my $do_minimap2 = opt_Get("--minimap2",    \%opt_HH) ? 1 : 0;
 
 #############################
 # create the output directory
@@ -791,6 +816,9 @@ if($do_pv_blastx || $do_blastn_any) {
 }
 if($do_glsearch) { 
   $extra_H{"\$VADRFASTADIR"} = $env_vadr_fasta_dir;
+}
+if($do_minimap2) { 
+  $extra_H{"\$VADRMINIMAP2DIR"} = $env_vadr_minimap2_dir;
 }
 ofile_OutputBanner(*STDOUT, $pkgname, $version, $releasedate, $synopsis, $date, \%extra_H);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
@@ -915,7 +943,7 @@ if((! $do_glsearch) || (opt_Get("--r_prof", \%opt_HH)) || (opt_Get("--val_only",
 }
 
 # only check for blastn db file if we need it
-if(($do_blastn_any) || ($do_replace_ns) || ($do_glsearch)) { # we always need this file if $do_replace_ns (-r) because we fetch the consensus model sequence from it
+if(($do_blastn_any) || ($do_replace_ns) || ($do_glsearch) || ($do_minimap2)) { # we always need this file if $do_replace_ns (-r) because we fetch the consensus model sequence from it
   utl_FileValidateExistsAndNonEmpty($blastn_db_file, sprintf("blastn db file%s", ($blastn_extra_string eq "") ? "" : ", due to $blastn_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
   foreach my $sfx (".nhr", ".nin", ".nsq", ".ndb", ".not", ".nto", ".ntf") { 
     utl_FileValidateExistsAndNonEmpty($blastn_db_file . $sfx, "blastn $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
@@ -1364,7 +1392,7 @@ my $rpn_sqfile = undef;
 # open the blastn_db sequence file too, if we need it
 my $blastn_db_sqfile = undef;
 my $r_subset_blastn_db_file = undef;
-if(($do_blastn_any) || ($do_replace_ns) || ($do_glsearch)) { 
+if(($do_blastn_any) || ($do_replace_ns) || ($do_glsearch) || ($do_minimap2)) { 
   $blastn_db_sqfile = Bio::Easel::SqFile->new({ fileLocation => $blastn_db_file });
 
   # deal with the --r_list or --r_only option (they are incompatible so we can only have one or the other)
@@ -1501,7 +1529,7 @@ if($do_replace_ns) {
 # --
 my $fa_file_for_analysis = undef; 
 my $blastn_rpn_fa_file   = undef;
-if((! $do_blastn_cls) && (! $do_glsearch)) { 
+if((! $do_blastn_cls) && (! $do_glsearch) && (! $do_minimap2)) { 
   $fa_file_for_analysis = (defined $rpn_fa_file) ? $rpn_fa_file : $in_fa_file;
 }
 else { 
@@ -1522,6 +1550,10 @@ my $glsearch_sqfile = undef;
 if($do_glsearch) { 
   $glsearch_sqfile = Bio::Easel::SqFile->new({ fileLocation => $fa_file_for_analysis }); # the sequence file object
 }
+my $minimap2_sqfile = undef;
+if($do_minimap2) { 
+  $minimap2_sqfile = Bio::Easel::SqFile->new({ fileLocation => $fa_file_for_analysis }); # the sequence file object
+}
 
 # set up sqfile values for analysis, feature fetching and cds and mp alerts
 # this is independent of whether we are doing blastn or not because these 
@@ -1536,6 +1568,9 @@ my $sqfile_for_output_fastas_R = ((defined $rpn_sqfile) && (opt_Get("--r_fetchr"
 my $sqfile_for_analysis_R = undef;
 if(defined $glsearch_sqfile) { 
   $sqfile_for_analysis_R = \$glsearch_sqfile;
+}
+elsif(defined $minimap2_sqfile) { 
+  $sqfile_for_analysis_R = \$minimap2_sqfile;
 }
 elsif(defined $rpn_sqfile) { 
   $sqfile_for_analysis_R = \$rpn_sqfile;
@@ -1624,22 +1659,27 @@ my %dcr_output_HAH = ();     # hash of array of hashes with info to output relat
 # -s related output for .sda file
 my %sda_output_HH = (); # 2D key with info to output related to the -s option
 # per-model variables only used if -s used
-my %sda_mdl_H     = ();  # key is sequence name, value is mdl coords of seed from blastn alignment
-my %sda_seq_H     = ();  # key is sequence name, value is seq coords of seed from blastn alignment
+my %sda_mdl_H     = ();  # key is sequence name, value is mdl coords of seed from blastn/minimap2 alignment
+my %sda_seq_H     = ();  # key is sequence name, value is seq coords of seed from blastn/minimap2 alignment
+my %ovw_sda_seq_H = ();  # key is sequence name, value is seq coords of seed from blastn alignment if --minimap2 
+                         # and blastn seed is shorter than minimap2 seed, else undef for that sequence
 my %seq2subseq_HA = ();  # hash of arrays, key 1: sequence name, array is list of subsequences fetched for this sequence
 my %subseq2seq_H  = ();  # hash, key: subsequence name, value is sequence it derives from
 my %subseq_len_H  = ();  # key is name of subsequence, value is length of that subsequence
 
 # for each model with seqs to align to, create the sequence file and run cmalign/glsearch
 my $mdl_name;
+my $mdl_len;
 
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  $mdl_len  = $mdl_info_AH[$mdl_idx]{"length"};
 
-  if(defined $mdl_seq_name_HA{$mdl_name}) { 
-    %sda_mdl_H     = ();
-    %sda_seq_H     = ();
-    %seq2subseq_HA = ();
+  if(defined $mdl_seq_name_HA{$mdl_name}) {  
+    %sda_mdl_H     = (); 
+    %sda_seq_H     = (); 
+    %ovw_sda_seq_H = (); 
+    %seq2subseq_HA = (); 
     %subseq2seq_H  = ();
     %subseq_len_H  = ();
     
@@ -1653,6 +1693,14 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       $blastn_db_sqfile->fetch_seqs_given_names(\@glsearch_seqname_A, 60, $glsearch_db_file);
       ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".glsearch.library", $glsearch_db_file, 0, $do_keep, sprintf("glsearch library file for model $mdl_name"));
       push(@to_remove_A, $glsearch_db_file);
+    }
+    my $minimap2_db_file = undef;
+    if($do_minimap2) { # create the minimap2 db file with a single sequence
+      $minimap2_db_file = $out_root . "." . $mdl_name . ".minimap2.fa";
+      my @minimap2_seqname_A = ($mdl_name);
+      $blastn_db_sqfile->fetch_seqs_given_names(\@minimap2_seqname_A, 60, $minimap2_db_file);
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".minimap2.library", $minimap2_db_file, 0, $do_keep, sprintf("minimap2 library file for model $mdl_name"));
+      push(@to_remove_A, $minimap2_db_file);
     }
 
     # fetch seqs (we need to do this even if we are not going to send the full seqs to cmalign/glsearch (e.g if $do_blastn_ali))
@@ -1673,11 +1721,27 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       my @subseq_AA = ();
       $cur_mdl_align_fa_file = $out_root . "." . $mdl_name . ".a.subseq.fa";
       my ($start_codon_coords, $stop_codon_coords) = vdr_FeatureInfoCdsStartStopCodonCoords(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-      parse_blastn_indel_file_to_get_subseq_info($indel_file, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
-                                                 $mdl_name, $start_codon_coords, $stop_codon_coords, 
-                                                 \@subseq_AA, \%sda_mdl_H, \%sda_seq_H, 
-                                                 \%seq2subseq_HA, \%subseq2seq_H, \%subseq_len_H, 
-                                                 \%opt_HH, \%ofile_info_HH);
+      parse_blastn_indel_file_to_get_seed_info($indel_file, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
+                                               $mdl_name, $start_codon_coords, $stop_codon_coords, 
+                                               \%sda_mdl_H, \%sda_seq_H, \%opt_HH, \%ofile_info_HH);
+
+      if($do_minimap2) {
+        run_minimap2(\%execs_H, $minimap2_db_file, $cur_mdl_fa_file, $out_root, $mdl_name, $cur_mdl_nseq,
+                     $progress_w, \%opt_HH, \%ofile_info_HH);
+        my $mm2_out_file = $out_root . ".mm2.$mdl_name.out";
+        my %mm2_sda_mdl_H = ();
+        my %mm2_sda_seq_H = ();
+        parse_minimap2_to_get_seed_info($mm2_out_file, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, $mdl_name, $mdl_len,
+                                        \%mm2_sda_mdl_H, \%mm2_sda_seq_H, \%opt_HH, \%ofile_info_HH);
+
+        pick_best_seed_info(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \%sda_mdl_H, \%sda_seq_H, 
+                            \%mm2_sda_mdl_H, \%mm2_sda_seq_H, \%ovw_sda_seq_H, \%opt_HH, \%ofile_info_HH);
+      }
+
+      seed_info_to_subseqs(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, $mdl_len, \@subseq_AA, \%sda_mdl_H,
+                           \%sda_seq_H, \%seq2subseq_HA, \%subseq2seq_H, \%subseq_len_H,
+                           \%opt_HH, \%ofile_info_HH);
+
       $cur_mdl_nalign = scalar(@subseq_AA);
       if($cur_mdl_nalign > 0) { 
         $$sqfile_for_analysis_R->fetch_subseqs(\@subseq_AA, 60, $cur_mdl_align_fa_file);
@@ -1736,9 +1800,9 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
         join_alignments_and_add_unjoinbl_alerts($sqfile_for_analysis_R, \$blastn_db_sqfile, \%execs_H, 
                                                 $do_glsearch, $cm_file,
                                                 \@join_seq_name_A, \%seq_len_H, 
-                                                \@mdl_info_AH, $mdl_idx, \%sda_mdl_H, \%sda_seq_H, 
+                                                \@mdl_info_AH, $mdl_idx, \%sda_mdl_H, \%sda_seq_H, \%ovw_sda_seq_H, 
                                                 \%seq2subseq_HA, \%subseq_len_H, \@{$stk_file_HA{$mdl_name}}, 
-                                                \@joined_stk_file_A, \%sda_output_HH,
+                                                \@joined_stk_file_A, \%sda_output_HH, 
                                                 \%alt_seq_instances_HH, \%alt_info_HH,
                                                 \@unjoinbl_seq_name_A, $out_root, \%opt_HH, \%ofile_info_HH);
       }
@@ -4924,7 +4988,7 @@ sub add_frameshift_alerts_for_one_sequence {
             # we want to deal with both + and - strands with same code block, 
             # so can't use a simple for loop 
             my $rfpos = $mstart;
-            my $uapos = undef;
+            my $uapos = ($strand eq "+") ? ($sstart - 1) : ($sstart + 1); # only relevant for insertnn and deletinn alerts before a nongap RF position seen
             while(($strand eq "+" && $rfpos <= $mstop) || 
                   ($strand eq "-" && $rfpos >= $mstop)) { 
               $rf_diff++; # number of RF positions seen since first nt in this CDS
@@ -4999,7 +5063,7 @@ sub add_frameshift_alerts_for_one_sequence {
               if($rf2ilen_AR->[$rfpos] > $local_nmaxins) { 
                 $alert_scoords = sprintf("seq:%s;", ($strand eq "+") ? 
                                          vdr_CoordsSegmentCreate($uapos+1, $uapos+1 + $rf2ilen_AR->[$rfpos]-1, $strand, $FH_HR) : 
-                                         vdr_CoordsSegmentCreate($uapos-1, $uapos-1 - $rf2ilen_AR->[$rfpos]+1, $strand, $FH_HR));
+                                         vdr_CoordsSegmentCreate($uapos+1 + $rf2ilen_AR->[$rfpos]-1, $uapos+1, $strand, $FH_HR));
                 $alert_mcoords = sprintf("mdl:%s;", vdr_CoordsSegmentCreate($rfpos, $rfpos, $strand, $FH_HR));
                 alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "insertnn", $seq_name, $ftr_idx, 
                                            sprintf("%s%s%d>%d", 
@@ -5195,7 +5259,6 @@ sub add_frameshift_alerts_for_one_sequence {
                 }
                 $shifted_span_slen = abs($shifted_span_sstop - $shifted_span_sstart) + 1;
                 $shifted_span_mlen = abs($shifted_span_mstop - $shifted_span_mstart) + 1;
-                $exp_span_slen     = abs($prv_exp_span_sstop - $prv_exp_span_sstart) + 1;
                 
                 # check if this is an exempted region
                 my $exempted_region = 0;
@@ -5261,8 +5324,8 @@ sub add_frameshift_alerts_for_one_sequence {
                           substr($full_ppstr, $shifted_span_sstart - 1, ($shifted_span_slen)) : 
                           substr($full_ppstr, $shifted_span_sstop  - 1, ($shifted_span_slen));
                       my $exp_span_ppstr = ($ftr_strand eq "+") ? 
-                          substr($full_ppstr, $prv_exp_span_sstart - 1, ($exp_span_slen)) : 
-                          substr($full_ppstr, $prv_exp_span_sstop  - 1, ($exp_span_slen));
+                          substr($full_ppstr, $prv_exp_span_sstart - 1, (abs($prv_exp_span_sstop - $prv_exp_span_sstart) + 1)) : 
+                          substr($full_ppstr, $prv_exp_span_sstop  - 1, (abs($prv_exp_span_sstop - $prv_exp_span_sstart) + 1));
                       my $shifted_span_avgpp;
                       my $exp_span_avgpp;
                       ($shifted_span_avgpp, undef) = Bio::Easel::MSA->get_ppstr_avg($shifted_span_ppstr);
@@ -9435,6 +9498,17 @@ sub output_tabular {
     my $sda_3p_seq    = (($do_sda) && (defined $sda_output_HR->{"3p_seq"}))  ? $sda_output_HR->{"3p_seq"} : "-";
     my $sda_3p_mdl    = (($do_sda) && (defined $sda_output_HR->{"3p_mdl"}))  ? $sda_output_HR->{"3p_mdl"} : "-";
     my $sda_3p_fract  = (($do_sda) && (defined $sda_output_HR->{"3p_seq"}))  ? vdr_CoordsLength($sda_output_HR->{"3p_seq"}, $FH_HR) / $seq_len : "-";
+    my $sda_alg       = "-";
+    my $sda_ovw_fract = "-";
+    if($do_sda) { 
+      if(defined $sda_output_HR->{"ovw_sda_seq"}) { 
+        $sda_alg = "minimap2"; 
+        $sda_ovw_fract = vdr_CoordsLength($sda_output_HR->{"ovw_sda_seq"}, $FH_HR) / $seq_len;
+      }
+      else { 
+        $sda_alg = "blastn";
+      }
+    }
      
     my $rpn_output_HR      = (($do_rpn) && (defined $rpn_output_HHR->{$seq_name}))       ? \%{$rpn_output_HHR->{$seq_name}} : undef;
     my $rpn_nnt_n_tot      = (($do_rpn) && (defined $rpn_output_HR->{"nnt_n_tot"}))      ? $rpn_output_HR->{"nnt_n_tot"}      : "-";
@@ -9712,13 +9786,15 @@ sub output_tabular {
     }
 
     if($do_sda) {
-      my $sda_fract2print = ($sda_fract ne "-") ? sprintf("%.3f", $sda_fract) : "-";
+      my $sda_fract2print     = ($sda_fract     ne "-") ? sprintf("%.3f", $sda_fract) : "-";
       my $sda_5p_fract2print  = ($sda_5p_fract  ne "-") ? sprintf("%.3f", $sda_5p_fract)  : "-";
       my $sda_3p_fract2print  = ($sda_3p_fract  ne "-") ? sprintf("%.3f", $sda_3p_fract)  : "-";
+      my $sda_ovw_fract2print = ($sda_ovw_fract ne "-") ? sprintf("%.3f", $sda_ovw_fract)  : "-";
       push(@data_sda_AA, [$seq_idx2print, $seq_name, $seq_len, $seq_mdl1, $seq_pass_fail,
                           $sda_seq, $sda_mdl, $sda_fract2print, 
                           $sda_5p_seq, $sda_5p_mdl, $sda_5p_fract2print, 
-                          $sda_3p_seq, $sda_3p_mdl, $sda_3p_fract2print]);
+                          $sda_3p_seq, $sda_3p_mdl, $sda_3p_fract2print, 
+                          $sda_alg, $sda_ovw_fract2print]);
     }
     if($do_rpn) {
       my $rpn_nnt_n_rp_fract2print = (($rpn_nnt_n_rp_fract ne "-") && ($rpn_nnt_n_tot ne "-") && ($rpn_nnt_n_tot > 0)) ? 
@@ -13509,9 +13585,9 @@ sub helper_tabular_fill_header_and_justification_arrays {
     @{$clj_AR}        = (1,     1,      1,      1,      1,       0,     1,       0,       0,       0,           0,           1,       0,        0,       0,        0,      1);
   }
   elsif($ofile_key eq "sda") {
-    @{$head_AAR->[0]} = ("seq", "seq",    "seq", "",      "",      "seed",      "seed",     "seed",     "5'unaln", "5'unaln", "5'unaln",  "3'unaln", "3'unaln", "3'unaln");
-    @{$head_AAR->[1]} = ("idx", "name",   "len", "model", "p/f",   "seq",       "mdl",      "fraction", "seq",     "mdl",     "fraction", "seq",     "mdl",     "fraction");
-    @{$clj_AR}        = (1,     1,        0,     1,       1,       0,           0,          0,          0,         0,         0,          0,         0,         0);
+    @{$head_AAR->[0]} = ("seq", "seq",    "seq", "",      "",      "seed",      "seed",     "seed",     "5'unaln", "5'unaln", "5'unaln",  "3'unaln", "3'unaln", "3'unaln",  "",          "alt-seed");
+    @{$head_AAR->[1]} = ("idx", "name",   "len", "model", "p/f",   "seq",       "mdl",      "fraction", "seq",     "mdl",     "fraction", "seq",     "mdl",     "fraction", "program",   "fraction");
+    @{$clj_AR}        = (1,     1,        0,     1,       1,       0,           0,          0,          0,         0,         0,          0,         0,         0,          1,           0);
   }  
   elsif($ofile_key eq "rpn") {
     @{$head_AAR->[0]} = ("seq", "seq",    "seq", "",      "",      "num_Ns",  "num_Ns", "fract_Ns", "nregs", "nregs",  "nregs",   "nregs",   "nregs",   "nnt",     "nnt",     "detail_on_regions[S:seq,M:mdl,D:lendiff,N:#Ns,");

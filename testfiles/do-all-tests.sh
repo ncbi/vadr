@@ -49,6 +49,7 @@ for t in \
     do-af-tests.sh \
     do-indfstrn-tests.sh \
     do-dupregin-tests.sh \
+    do-minimap2-tests.sh \
     github-issues/do-issue-tests.sh \
     ; do
     sh $VADRSCRIPTSDIR/testfiles/$t

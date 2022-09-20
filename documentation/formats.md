@@ -531,7 +531,7 @@ each sequence. For more information on bit scores and `bias` see the Infernal Us
 ### Explanation of `.sda`-suffixed output files<a name="sda"></a>
 
 `.sda` files are only output if the `v-annotate.pl -s` option is used.
-`.sda` data lines have 14 fields, the names of which appear in the
+`.sda` data lines have 16 fields, the names of which appear in the
 first two comment lines in each file. There is one data line for each
 **sequence** in the input sequence file file that `v-annotate.pl`
 processed. With `-s`, the alignment from the best-scoring blastn HSP
@@ -564,6 +564,8 @@ $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-noro-s.9`.
 |  12 | `3'unaln seq`         | sequence coordinates of 3' region not covered by `seed seq` plus some overlap (typically 100nt) subsequently aligned with cmalign or glsearch, in vadr coords [format](#coords) |
 |  13 | `3'unaln mdl`         | model start/stop coordinates for cmalign or glsearch alignment of 3' region `3'unaln seq`, in vadr coords [format](#coords) |
 |  14 | `3'unaln fraction`    | fraction of `seq len` in 3' region in `3'unaln seq` |
+|  15 | `program`             | program seed was derived from, either `blastn` or `minimap2`, only `minimap2` if `--minimap2` option used  and `minimap2` seed length greater than *or equal to* `blastn` seed |
+|  16 | `alt-seed fraction`   | fraction of `seq len` in seed region of *alternative* seed not used (so `blastn` derived seed if `program` is `minimap2`), else `-` if `program` is `blastn` |
 
 
 ---
