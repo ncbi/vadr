@@ -1,5 +1,11 @@
 # VADR 1.x release notes 
 
+### VADR 1.5 release (September 2022): Major update
+  * adds support for minimap2-based determination of seeds as an
+    alternative to blastn-based seeds with the --minimap2 option
+  * installation now installs minimap2 v2.24
+
+---
 ### VADR 1.4.2 release (July 2022): Minor update
   * adds new lowsim{5,3,i}l alerts
     (LOW_FEATURE_SIMILARITY{_START,_END}) for long (>=30 nt by
