@@ -14,6 +14,7 @@
   * [options for controlling the blastx protein validation stage](#options-blastx)
   * [options for using hmmer instead of blastx for protein validation](#options-hmmer)
   * [options related to blastn-based seeded alignment acceleration strategy](#options-seed)
+  * [options for deriving seeds from minimap2 instead of blastn](#options-mm2)
   * [options related to pre-processing to replace Ns with expected nucleotides](#options-replace)
   * [options related to splitting input fasta file and multithreading](#options-split)
   * [options related to parallelization on a compute farm/cluster](#options-parallel)
@@ -55,9 +56,9 @@ v-annotate.pl -h
 You'll see something like the following output:
 ```
 # v-annotate.pl :: classify and annotate sequences using a CM library
-# VADR 1.4 (Dec 2021)
+# VADR 1.5 (Sep 2022)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Thu Dec 16 09:38:22 2021
+# date:    Mon Sep 26 18:20:14 2022
 #
 Usage: v-annotate.pl [-options] <fasta file to annotate> <output directory to create>
 ```
@@ -90,7 +91,7 @@ variables, the command line arguments used and any command line
 options used:
 
 ```
-# date:              Thu Dec 16 09:38:53 2021
+# date:              Mon Sep 26 18:18:24 2022
 # $VADRBIOEASELDIR:  /home/nawrocki/vadr-install-dir/Bio-Easel
 # $VADRBLASTDIR:     /home/nawrocki/vadr-install-dir/ncbi-blast/bin
 # $VADREASELDIR:     /home/nawrocki/vadr-install-dir/infernal/binaries
@@ -267,7 +268,7 @@ printed, along with elapsed time:
 #
 # All output files created in directory ./va-noro.9/
 #
-# Elapsed time:  00:01:14.88
+# Elapsed time:  00:01:25.62
 #                hh:mm:ss
 # 
 [ok]
@@ -777,17 +778,22 @@ the HMMER user's guide (http://eddylab.org/software/hmmer/Userguide.pdf).
 ### <a name="options-seed"></a>`v-annotate.pl` options related to blastn-derived seeded alignment acceleration
 
 The `-s` option turns on an acceleration heuristic based on a
-first-pass blastn alignment of each input sequence.  With `-s`,
-blastn is used instead of cmscan for sequence classification,
-and the largest ungapped alignment region, called the 'seed', is
-extracted from the top hit blastn hit, and fixed for the alignment
-stage, such that only the sequence before and after the fixed seed is
-aligned with cmalign. This option was originally developed for
-SARS-CoV-2, for which it offers significant acceleration for many
-sequences which are highly similar to the SARS-CoV-2 RefSeq model.
+first-pass blastn alignment of each input sequence.  With `-s`, blastn
+is used instead of cmscan for sequence classification, and the largest
+ungapped alignment region, called the 'seed', is extracted from the
+top hit blastn hit, and fixed for the alignment stage, such that only
+the sequence before and after the fixed seed is aligned with
+cmalign. This option was originally developed for SARS-CoV-2, for
+which it offers significant acceleration for many sequences which are
+highly similar to the SARS-CoV-2 RefSeq model.  Seeds can also be
+derived by the very fast minimap2 program instead of blast using the
+`--minimap2` option (see more related options [here](#options-mm2) The
+minimap2-derived seeds tend to be longer than blastn-seeds, at least
+for monkeypox virus (mpxv) sequences for which `--minimap2` often
+results in significant acceleration.
 
-When `-s` option is used, an additional output file with suffix `.sda` is created,
-with format described [here](formats.md#sda).
+When `-s` option is used, an additional output file with suffix `.sda`
+is created, with format described [here](formats.md#sda).
 
 | .........option.........  | explanation |
 |---------------------|--------------------|
@@ -806,6 +812,13 @@ with format described [here](formats.md#sda).
 | `--s_ungapsgm`      | for `-s`, only keep max length ungapped segment of HSP, this was default behavior for vadr v1.1 to v1.3 |
 | `--s_startstop`     | for `-s`, allow seed to include gaps in start/stop codons |
 | `--s_overhang <n>`  | for `-s`, set the length, in nt, of overlap between the 5' and 3' regions that are aligned with cmalign and the seed region to `<n>`, the default value for `<n>` is `100` |
+
+### <a name="options-mm2"></a> `v-annotate.pl` options for deriving seeds from minimap2 as an alternative to blastn
+| `--minimap2`  | use minimap2 insead of blastn to derive seeds, also requires `-s` and `--glsearch` |
+| `--mm2_asm5`  | use the option `-x asm5` with minimap2, instead of `-x asm20` which is used by default  |  
+| `--mm2_asm10` | use the option `-x asm10` with minimap2, instead of `-x asm20` which is used by default | 
+| `--mm2_k <n>` | use the option `-k <n>` with minimap2 to set the minimizer k-mer length to `<n>`, instead of using `-x asm20`, which is used by default and sets the k-mer length to 19 | 
+| `--mm2_w <n>` | use the option `-w <n>` with minimap2 to set the minimizer window size to `<n>`, instead of using `-x asm20`, which is used by default and sets the window size to 10 | 
 
 ### <a name="options-replace"></a> `v-annotate.pl` options related to replacing Ns with expected nucleotides
 
