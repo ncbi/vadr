@@ -4,6 +4,9 @@
   * adds support for minimap2-based determination of seeds as an
     alternative to blastn-based seeds with the --minimap2 option
   * installation now installs minimap2 v2.24
+  * fixes a bug related to processing of blastn output when top
+    scoring hit is on the reverse strand
+
 
 ---
 ### VADR 1.4.2 release (July 2022): Minor update
