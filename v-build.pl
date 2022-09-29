@@ -204,8 +204,8 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-build.pl";
 my $usage         = "Usage: $executable [-options] <accession> <path to output directory to create>\n";
 my $synopsis      = "$executable :: build homology model of a single sequence for feature annotation";
 my $date          = scalar localtime();
-my $version       = "1.4.2";
-my $releasedate   = "Jul 2022";
+my $version       = "1.5";
+my $releasedate   = "Sep 2022";
 my $pkgname       = "VADR";
 
 # print help and exit if necessary

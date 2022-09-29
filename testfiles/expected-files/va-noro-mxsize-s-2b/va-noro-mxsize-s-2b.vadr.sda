@@ -1,5 +1,5 @@
-#seq  seq                           seq                        seed          seed      seed  5'unaln  5'unaln   5'unaln  3'unaln  3'unaln   3'unaln
-#idx  name                          len  model      p/f         seq           mdl  fraction      seq      mdl  fraction      seq      mdl  fraction
-#---  ---------------------------  ----  ---------  ----  ---------  ------------  --------  -------  -------  --------  -------  -------  --------
-1     gi|924919779|gb|KR052021.1|  4140  NC_001959  FAIL          -             -         -        -        -         -        -        -         -
-2     NC_001959.2/3000-4000        1001  NC_001959  PASS  1..1001:+  3000..4000:+     1.000        -        -         -        -        -         -
+#seq  seq                           seq                        seed          seed      seed  5'unaln  5'unaln   5'unaln  3'unaln  3'unaln   3'unaln           alt-seed
+#idx  name                          len  model      p/f         seq           mdl  fraction      seq      mdl  fraction      seq      mdl  fraction  program  fraction
+#---  ---------------------------  ----  ---------  ----  ---------  ------------  --------  -------  -------  --------  -------  -------  --------  -------  --------
+1     gi|924919779|gb|KR052021.1|  4140  NC_001959  FAIL          -             -         -        -        -         -        -        -         -  blastn          -
+2     NC_001959.2/3000-4000        1001  NC_001959  PASS  1..1001:+  3000..4000:+     1.000        -        -         -        -        -         -  blastn          -

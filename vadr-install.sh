@@ -27,7 +27,7 @@ set -e
 VADRINSTALLDIR=$PWD
 
 # versions
-VERSION="1.4.2"
+VERSION="1.5"
 # bio-easel (need this version info here only so we can check out correct easel branch in Bio-Easel/src)
 BEVERSION="Bio-Easel-0.15"
 # blast+
@@ -40,6 +40,10 @@ HVERSION="3.3.2"
 FVERSION="36.3.8h"
 FVERSIONGIT="v36.3.8h_04-May-2020"
 FVERSIONGITNOV="36.3.8h_04-May-2020"
+# minimap2
+MM2VERSION="2.24-r1222"
+MM2VERSIONGIT="v2.24"
+MM2VERSIONGITNOV="2.24"
 # dependency git tag
 VVERSION="vadr-$VERSION"
 # vadr models
@@ -198,6 +202,11 @@ if [ "$DOWNLOADORBUILD" != "build" ]; then
     # patch defs.h with vadr specific changes
     patch fasta/src/defs.h vadr/fasta-mods/vadr-fasta-defs.patch
     echo "------------------------------------------------------------"
+
+    # download minimap2 source distribution from github
+    echo "Downloading minimap2 version $MM2VERSIONGIT src distribution"
+    curl -k -L -o $MM2VERSIONGIT.zip https://github.com/lh3/minimap2/archive/$MM2VERSIONGIT.zip; unzip $MM2VERSIONGIT.zip; mv minimap2-$MM2VERSIONGITNOV minimap2; rm $MM2VERSIONGIT.zip
+    echo "------------------------------------------------------------"
     
     # download blast binaries
     if [ "$INPUTSYSTEM" = "linux" ]; then
@@ -338,6 +347,28 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
     cd ../../
     echo "Finished building FASTA."
     echo "------------------------------------------------------------"
+
+    # Build minimap2:
+    if [ ! -d minimap2 ]; then
+        echo ""
+        echo "ERROR: minimap2 dir does not exist"
+        if [ "$DOWNLOADORBUILD" = "build" ]; then
+            echo ""
+            echo "This may be because you did not yet run this script in download mode from this directory,"
+            echo "which is required prior to running in build mode. To do that, execute:"
+            echo "  $0 <\"linux\" or \"macosx\"> download"
+            echo ""
+            exit 1
+        fi
+        exit 1
+    fi
+    echo "------------------------------------------------------------"
+    echo "Building minimap2 ... "
+    cd minimap2
+    make
+    cd ../../
+    echo "Finished building minimap2."
+    echo "------------------------------------------------------------"
     
     ###############################################
     # Message about setting environment variables
@@ -362,6 +393,7 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
     echo "export VADRSEQUIPDIR=\"\$VADRINSTALLDIR/sequip\""
     echo "export VADRBLASTDIR=\"\$VADRINSTALLDIR/ncbi-blast/bin\""
     echo "export VADRFASTADIR=\"\$VADRINSTALLDIR/fasta/bin\""
+    echo "export VADRMINIMAP2DIR=\"\$VADRINSTALLDIR/minimap2\""
     echo "export PERL5LIB=\"\$VADRSCRIPTSDIR\":\"\$VADRSEQUIPDIR\":\"\$VADRBIOEASELDIR/blib/lib\":\"\$VADRBIOEASELDIR/blib/arch\":\"\$PERL5LIB\""
     echo "export PATH=\"\$VADRSCRIPTSDIR\":\"\$PATH\""
     echo ""
@@ -389,6 +421,7 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
     echo "setenv VADRSEQUIPDIR \"\$VADRINSTALLDIR/sequip\""
     echo "setenv VADRBLASTDIR \"\$VADRINSTALLDIR/ncbi-blast/bin\""
     echo "setenv VADRFASTADIR \"\$VADRINSTALLDIR/fasta/bin\""
+    echo "setenv VADRMINIMAP2DIR=\"\$VADRINSTALLDIR/minimap2\""
     echo "setenv PERL5LIB \"\$VADRSCRIPTSDIR\":\"\$VADRSEQUIPDIR\":\"\$VADRBIOEASELDIR/blib/lib\":\"\$VADRBIOEASELDIR/blib/arch\":\"\$PERL5LIB\""
     echo "setenv PATH \"\$VADRSCRIPTSDIR\":\"\$PATH\""
     echo ""
