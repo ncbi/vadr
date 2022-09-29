@@ -4,11 +4,15 @@
   * adds support for minimap2-based determination of seeds as an
     alternative to blastn-based seeds with the --minimap2 option
   * installation now installs minimap2 v2.24
+  * adds two columns to .sda suffixed output files with information
+    relevant if --minimap2 used
   * fixes a bug related to processing of blastn output when top
     scoring hit is on the reverse strand
-
+  * fixes a bug that caused incorrect sequence coordinates to be 
+    reported for insertnn alerts on the reverse strand
 
 ---
+
 ### VADR 1.4.2 release (July 2022): Minor update
   * adds new lowsim{5,3,i}l alerts
     (LOW_FEATURE_SIMILARITY{_START,_END}) for long (>=30 nt by
@@ -30,9 +34,9 @@
 ---
 
 ### VADR 1.4.1 release (January 2022): Bug fix release
-  * fixes bug that prevented reporting of some *dupregin* alerts (DUPLICATE_REGIONS) 
-    previously reported in vadr 1.3 and earlier versions; only
-    relevant when -s is used.
+  * fixes bug that prevented reporting of some *dupregin* alerts
+    (DUPLICATE_REGIONS) previously reported in vadr 1.3 and earlier
+    versions; only relevant when -s is used.
   * *nmiscftr* alert (TOO_MANY_MISC_FEATURES) now only reported if 
     a sequence has >= 4 misc_features due to 'misc_not_failure' 
     attributes in model info file. Previously a sequence with >=
