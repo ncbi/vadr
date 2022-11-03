@@ -10385,6 +10385,9 @@ sub output_feature_table {
                 $ftr_out_str .= helper_ftable_add_qualifier_specified($ftr_idx, "codon_start", $cds_codon_start, $FH_HR);
               }
 
+              # add rpt_type qualifiers, if any
+              $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "rpt_type", $qval_sep, $ftr_info_AHR, $FH_HR);
+
               if((! $do_noprotid) && ($is_cds_or_parent_is_cds)) { 
                 # add protein_id if we are a cds or parent is a cds
                 # determine index for th protein_id qualifier
