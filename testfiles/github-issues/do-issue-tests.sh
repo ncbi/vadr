@@ -15,6 +15,7 @@ for i in \
     iss47-productparantheses \
     iss58-cdsstopp \
     iss61-blaststrand \
+    iss68-blastmaxde \
     ; do
     $VADRSCRIPTSDIR/v-test.pl -f --rmout $VADRSCRIPTSDIR/testfiles/github-issues/$i/$i.testin vt-$i
     if [ $? != 0 ]; then
