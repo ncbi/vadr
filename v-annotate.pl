@@ -5129,6 +5129,12 @@ sub add_frameshift_alerts_for_one_sequence {
         if($frame_stok_A[0] =~ /^[123],I\d+,(\d+)\.\.(\d+),D\d+\,[01]$/) { 
           my ($first_sstart, $first_sstop) = ($1, $2); 
           $first_span_slen = abs($first_sstop - $first_sstart) + 1;
+          if($nframe_stok > 1) { 
+            # add in length of insert before next token, if any
+            if($frame_stok_A[1] =~ /^[123],I(\d+),\d+\.\.\d+,D\d+\,[01]$/) { 
+              $first_span_slen += $1;
+            }
+          }
         }
         else { 
           ofile_FAIL("ERROR, in $sub_name, unable to parse frame_stok, internal coding error: $frame_stok_A[0]", 1, $FH_HR);
