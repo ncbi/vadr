@@ -5293,7 +5293,6 @@ sub add_frameshift_alerts_for_one_sequence {
                     }
 
                     # determine frame summary string 
-#                    my ($frame_sum_str, $length_sum_str) = 
                     my ($frame_sum_str, $length_sum_str, $tmp_length_sum) = 
                         determine_frame_and_length_summary_strings(\@frame_stok_A, 
                                                                    (($cur_frame != $expected_frame) && ($f == ($nframe_stok-1))) ? $f : ($f-1),
@@ -5319,6 +5318,10 @@ sub add_frameshift_alerts_for_one_sequence {
                       if(! defined $full_ppstr) { 
                         $full_ppstr = $msa->get_ppstring_aligned($seq_idx); 
                         $full_ppstr =~ s/[^0123456789\*]//g; # remove gaps, so we have 1 character in $full_ppstr per nt in the sequence
+                      }
+                      if((! defined $prv_exp_span_sstart) || 
+                         (! defined $prv_exp_span_sstop)) { 
+                        ofile_FAIL("ERROR, in $sub_name, trying to calculate PP for shifted/expected regions and previous expected span undefined, shifted region: $shifted_span_sstart..$shifted_span_sstop", 1, $FH_HR);
                       }
                       my $shifted_span_ppstr = ($ftr_strand eq "+") ? 
                           substr($full_ppstr, $shifted_span_sstart - 1, ($shifted_span_slen)) : 
