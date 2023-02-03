@@ -1,0 +1,10 @@
+>Feature NC_029646/1000-1003,T,1004-2000
+<1	>1002	gene
+			gene	ORF1
+<1	>1002	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+			protein_id	NC_029646/1000-1003,T,1004-2000_1
+<1	>1002	mat_peptide
+			product	NTPase
+			protein_id	NC_029646/1000-1003,T,1004-2000_1

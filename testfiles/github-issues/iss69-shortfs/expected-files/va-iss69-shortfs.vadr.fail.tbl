@@ -1,0 +1,12 @@
+>Feature NC_029646/1000-1004,C,1005-2000
+<1	>1002	gene
+			gene	ORF1
+<1	>1002	misc_feature
+			note	similar to nonstructural polyprotein
+<1	>1002	misc_feature
+			note	similar to NTPase
+
+Additional note(s) to submitter:
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:nonstructural polyprotein) high confidence possible frameshift in CDS (frame not restored before end) [cause:insert,S:6(1),M:1004; frame:<2(3)>; length:<5:(997)>; shifted_avgpp:0.974; exp_avgpp:0.925;]; seq-coords:6..1002:+; mdl-coords:1005..2000:+; mdl:NC_029646;
+ERROR: INDEFINITE_ANNOTATION_START: (CDS:nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [8>5]; seq-coords:1..8:+; mdl-coords:5..5:+; mdl:NC_029646;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:NTPase) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_029646;
