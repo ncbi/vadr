@@ -16,6 +16,7 @@ for i in \
     iss58-cdsstopp \
     iss61-blaststrand \
     iss68-blastmaxde \
+    iss69-shortfs \
     ; do
     $VADRSCRIPTSDIR/v-test.pl -f --rmout $VADRSCRIPTSDIR/testfiles/github-issues/$i/$i.testin vt-$i
     if [ $? != 0 ]; then
