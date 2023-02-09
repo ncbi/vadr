@@ -1,5 +1,13 @@
 # VADR 1.x release notes 
 
+### VADR 1.5.1 release (February 2023): Bug fix release
+  * fixes bug that caused a failure during blastx parsing in rare
+    cases, found during RSV testing. Logged as github issue #68.
+  * fixes bug that caused incorrect frameshift alert details in rare
+    cases. Logged as github issue #69.
+
+---
+
 ### VADR 1.5 release (September 2022): Major update
   * adds support for minimap2-based determination of seeds as an
     alternative to blastn-based seeds with the --minimap2 option
