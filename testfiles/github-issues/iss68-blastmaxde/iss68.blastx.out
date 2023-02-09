@@ -1,0 +1,59 @@
+BLASTX 2.12.0+
+
+
+Reference: Stephen F. Altschul, Thomas L. Madden, Alejandro A.
+Schaffer, Jinghui Zhang, Zheng Zhang, Webb Miller, and David J.
+Lipman (1997), "Gapped BLAST and PSI-BLAST: a new generation of
+protein database search programs", Nucleic Acids Res. 25:3389-3402.
+
+
+
+Database: MZ516105.vadr.protein.fa
+           33 sequences; 13,067 total letters
+
+
+
+Query= OK078774.1
+
+Length=200
+                                                                      Score     E
+Sequences producing significant alignments:                          (Bits)  Value
+
+KU950619.1:4663..5604:+/4688..5629:+                                  125     5e-40
+
+>KU950619.1:4663..5604:+/4688..5629:+
+Length=313
+
+ Score = 26.2 bits (56),  Expect = 0.002
+ Identities = 25/81 (31%), Positives = 26/81 (32%), Gaps = 47/81 (58%)
+ Frame = +1
+
+Query  4    TTKPTNKPPTKTTNK-------------------RDPKTLAKTPKKETTINPTKKPTPKT  126
+            TT PT KP  KTT +                                             
+Sbjct  226  TTDPTKKPTPKTTERDTSTPQSTVLDTTTSKHTE--------------------------  259
+
+Query  127  TERDTSTPQSTVLDITTSKHT  189
+              RDTST QS VLD TTSKHT
+Sbjct  260  --RDTSTSQSIVLDTTTSKHT  278
+
+Lambda      K        H        a         alpha
+   0.297    0.115    0.319    0.792     4.96 
+
+Gapped
+Lambda      K        H        a         alpha    sigma
+   0.267   0.0410    0.140     1.90     42.6     43.6 
+
+Effective search space used: 343534
+
+
+  Database: MZ516105.vadr.protein.fa
+    Posted date:  Jan 25, 2023  9:09 AM
+  Number of letters in database: 13,067
+  Number of sequences in database:  33
+
+
+
+Matrix: BLOSUM62
+Gap Penalties: Existence: 11, Extension: 1
+Neighboring words threshold: 12
+Window for multiple hits: 40

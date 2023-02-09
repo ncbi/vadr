@@ -1,0 +1,4 @@
+#sequence	model	feature-type	feature-name	error	seq-coords	mdl-coords	error-description
+NC_029646/1000-1004,C,1005-2000	NC_029646	CDS	nonstructural polyprotein	POSSIBLE_FRAMESHIFT_HIGH_CONF	6..1002:+	1005..2000:+	high confidence possible frameshift in CDS (frame not restored before end) [cause:insert,S:6(1),M:1004; frame:<2(3)>; length:<5:(997)>; shifted_avgpp:0.974; exp_avgpp:0.925;]
+NC_029646/1000-1004,C,1005-2000	NC_029646	CDS	nonstructural polyprotein	INDEFINITE_ANNOTATION_START	1..8:+	5..5:+	protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [8>5]
+NC_029646/1000-1004,C,1005-2000	NC_029646	mat_peptide	NTPase	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]

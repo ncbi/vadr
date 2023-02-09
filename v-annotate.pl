@@ -614,8 +614,8 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-annotate.pl";
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a model library";
 my $date          = scalar localtime();
-my $version       = "1.5";
-my $releasedate   = "Sep 2022";
+my $version       = "1.5.1";
+my $releasedate   = "Feb 2023";
 my $pkgname       = "VADR";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
@@ -5129,6 +5129,12 @@ sub add_frameshift_alerts_for_one_sequence {
         if($frame_stok_A[0] =~ /^[123],I\d+,(\d+)\.\.(\d+),D\d+\,[01]$/) { 
           my ($first_sstart, $first_sstop) = ($1, $2); 
           $first_span_slen = abs($first_sstop - $first_sstart) + 1;
+          if($nframe_stok > 1) { 
+            # add in length of insert before next token, if any
+            if($frame_stok_A[1] =~ /^[123],I(\d+),\d+\.\.\d+,D\d+\,[01]$/) { 
+              $first_span_slen += $1;
+            }
+          }
         }
         else { 
           ofile_FAIL("ERROR, in $sub_name, unable to parse frame_stok, internal coding error: $frame_stok_A[0]", 1, $FH_HR);
@@ -5293,7 +5299,6 @@ sub add_frameshift_alerts_for_one_sequence {
                     }
 
                     # determine frame summary string 
-#                    my ($frame_sum_str, $length_sum_str) = 
                     my ($frame_sum_str, $length_sum_str, $tmp_length_sum) = 
                         determine_frame_and_length_summary_strings(\@frame_stok_A, 
                                                                    (($cur_frame != $expected_frame) && ($f == ($nframe_stok-1))) ? $f : ($f-1),
@@ -5319,6 +5324,10 @@ sub add_frameshift_alerts_for_one_sequence {
                       if(! defined $full_ppstr) { 
                         $full_ppstr = $msa->get_ppstring_aligned($seq_idx); 
                         $full_ppstr =~ s/[^0123456789\*]//g; # remove gaps, so we have 1 character in $full_ppstr per nt in the sequence
+                      }
+                      if((! defined $prv_exp_span_sstart) || 
+                         (! defined $prv_exp_span_sstop)) { 
+                        ofile_FAIL("ERROR, in $sub_name, trying to calculate PP for shifted/expected regions and previous expected span undefined, shifted region: $shifted_span_sstart..$shifted_span_sstop", 1, $FH_HR);
                       }
                       my $shifted_span_ppstr = ($ftr_strand eq "+") ? 
                           substr($full_ppstr, $shifted_span_sstart - 1, ($shifted_span_slen)) : 
@@ -10384,6 +10393,9 @@ sub output_feature_table {
               if($is_cds && $is_5trunc_term_or_n) { 
                 $ftr_out_str .= helper_ftable_add_qualifier_specified($ftr_idx, "codon_start", $cds_codon_start, $FH_HR);
               }
+
+              # add rpt_type qualifiers, if any
+              $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "rpt_type", $qval_sep, $ftr_info_AHR, $FH_HR);
 
               if((! $do_noprotid) && ($is_cds_or_parent_is_cds)) { 
                 # add protein_id if we are a cds or parent is a cds
