@@ -6047,12 +6047,14 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
               ($ftr_results_HR->{"n_codon_start_expected"} == $ftr_results_HR->{"n_codon_start_dominant"}))) { 
             my @ftr_nxt_stp_A = ();
             sqstring_find_stops($ftr_sqstring_alt_stops, $mdl_tt, \@ftr_nxt_stp_A, $FH_HR);
-            if($ftr_nxt_stp_A[1] != $ftr_len_stops) { 
-              # first in-frame stop codon 3' of $ftr_start is not $ftr_stop
+            if(($ftr_nxt_stp_A[1] != $ftr_len_stops) || 
+               ($ftr_is_3trunc && ($ftr_nxt_stp_A[1] == $ftr_len_stops))) { 
+              # first in-frame stop codon 3' of $ftr_start is not $ftr_stop OR it is AND ftr is 3' truncated (so the stop is early)
               # We will need to add an alert, (exactly) one of:
               # 'mutendex': no stop exists in $ftr_sqstring_alt_stops, but one does 3' of end of $ftr_sqstring_alt_stops
               # 'mutendns': no stop exists in $ftr_sqstring_alt_stops, and none exist 3' of end of $ftr_sqstring_alt_stops either
               # 'cdsstopn': an early stop exists in $ftr_sqstring_alt_stops
+              ######################################################
               if((! $ftr_is_3trunc) && ($ftr_nxt_stp_A[1] == 0)) { 
                 # there are no valid in-frame stops in $ftr_sqstring_alt_stops
                 # if we are not 3' truncated then we have a 'mutendns' or 'mutendex' alert, to find out which 
@@ -6109,6 +6111,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
                   }
                 }
               } # end of 'if((! $ftr_is_3trunc) && ($ftr_nxt_stp_A[1] == 0) {' 
+              ######################################################
               elsif($ftr_nxt_stp_A[1] != 0) { 
                 # there is an early stop (cdsstopn) in $ftr_sqstring_alt_stops
                 if($ftr_nxt_stp_A[1] > $ftr_len_stops) { 
