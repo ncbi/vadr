@@ -6047,12 +6047,19 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
               ($ftr_results_HR->{"n_codon_start_expected"} == $ftr_results_HR->{"n_codon_start_dominant"}))) { 
             my @ftr_nxt_stp_A = ();
             sqstring_find_stops($ftr_sqstring_alt_stops, $mdl_tt, \@ftr_nxt_stp_A, $FH_HR);
-            if($ftr_nxt_stp_A[1] != $ftr_len_stops) { 
-              # first in-frame stop codon 3' of $ftr_start is not $ftr_stop
-              # We will need to add an alert, (exactly) one of:
+            if(((! $ftr_is_3trunc) && ($ftr_nxt_stp_A[1] != $ftr_len_stops)) || 
+               ((  $ftr_is_3trunc) && ($ftr_nxt_stp_A[1] == $ftr_len_stops))) { 
+              # Either we are not 3' truncated and first in-frame stop codon 3' of $ftr_start is not $ftr_stop:
+              # In this case we will need to add an alert, (exactly) one of:
               # 'mutendex': no stop exists in $ftr_sqstring_alt_stops, but one does 3' of end of $ftr_sqstring_alt_stops
               # 'mutendns': no stop exists in $ftr_sqstring_alt_stops, and none exist 3' of end of $ftr_sqstring_alt_stops either
               # 'cdsstopn': an early stop exists in $ftr_sqstring_alt_stops
+              #
+              # OR we are 3' truncated and first in-frame stop codon 3' of $ftr_start IS $ftr_stop (so it's an early stop)
+              # In this case we need to add:
+              # 'cdsstopn': an early stop exists in $ftr_sqstring_alt_stops
+              #
+              # First deal with case when we are not 3' truncated:
               if((! $ftr_is_3trunc) && ($ftr_nxt_stp_A[1] == 0)) { 
                 # there are no valid in-frame stops in $ftr_sqstring_alt_stops
                 # if we are not 3' truncated then we have a 'mutendns' or 'mutendex' alert, to find out which 
@@ -6111,6 +6118,10 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
               } # end of 'if((! $ftr_is_3trunc) && ($ftr_nxt_stp_A[1] == 0) {' 
               elsif($ftr_nxt_stp_A[1] != 0) { 
                 # there is an early stop (cdsstopn) in $ftr_sqstring_alt_stops
+                #
+                # this will capture the case when we are either NOT 3' truncated and we have an early stop ((! $ftr_is_3trunc) && ($ftr_nxt_stp_A[1] < $ftr_len_stops))
+                # or we are 3' truncated and the first stop is the end of the feature, and thus early since we are 3' truncated ($ftr_is_3trunc) && ($ftr_nxt_stp_A[1] == $ftr_len_stops))) { 
+                # both cases are handled the same
                 if($ftr_nxt_stp_A[1] > $ftr_len_stops) { 
                   # this shouldn't happen, it means there's a bug in sqstring_find_stops()
                   ofile_FAIL("ERROR, in $sub_name, problem identifying stops in feature sqstring for ftr_idx $ftr_idx, found a stop at position that exceeds feature length", 1, undef);
