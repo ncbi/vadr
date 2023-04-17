@@ -7310,6 +7310,7 @@ sub parse_blastx_results {
   my $q_coords   = undef; # coordinates of of query sequence, parsed from QACC line
   my $q_ftr_idx  = undef; # feature index query pertains to [0..$nftr-1] OR -1: a special case meaning query is full sequence (not a fetched CDS feature)
   my $t_ftr_idx  = undef; # feature index target (subject) pertains to [0..$nftr-1]
+  my $t_ftr_nsgm = undef; # number of segmens in the target feature 
   my $t_strand   = undef; # summary strand of feature $t_ftr_idx
   my %cur_H = (); # values for current hit (HSP)
   
@@ -7380,6 +7381,7 @@ sub parse_blastx_results {
         else {
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse HACC line $line", 1, $FH_HR);
         }
+        $t_ftr_nsgm = vdr_FeatureNumSegments($ftr_info_AHR, $t_ftr_idx);
       }
       elsif($key eq "SLEN") { 
         if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"})) { 
@@ -7506,11 +7508,25 @@ sub parse_blastx_results {
             my $b_true = undef;
             if(! $do_xlongest) { 
               $b_true = ((! defined $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}) ||  # first hit, so must be highest score
-                         ($cur_H{"RAWSCORE"} > $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"})) ? 1 : 0; # highest scoring hit
+                         ($cur_H{"RAWSCORE"} > $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}) || # highest scoring hit
+                         (($cur_H{"RAWSCORE"} == $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}) && ($ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"q_ftr_idx"} == -1) && ($t_ftr_nsgm > 1))) 
+                  ? 1 : 0; 
+                  # the final possibility in the 3 way if is: 
+                  #  - tied for highest scoring, and 
+                  #  - current highest scoring is to full seq, and 
+                  #  - CDS has multiple segments
+                  # this allows a feature that has a stop codon in multiple segments to match better to the feature seq instead of the full seq (e.g. fluC GM968015 "1..728:+,957..957:+" (which is like NC_006312)
             }
             else { 
               $b_true = ((! defined $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}) ||  # first hit, so must be longest
-                         ($blast_hit_qlen > $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_len"})) ? 1 : 0; # longest hit
+                         ($blast_hit_qlen > $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_len"}) || # longest hit
+                         (($blast_hit_qlen == $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_len"}) && ($ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"q_ftr_idx"} == -1) && ($t_ftr_nsgm > 1))) 
+                  ? 1 : 0; # longest hit
+                  # the final possibility in the 3 way if is: 
+                  #  - tied for longest 
+                  #  - current longest is to full seq, and 
+                  #  - CDS has multiple segments
+                  # this allows a feature that has a stop codon in multiple segments to match better to the feature seq instead of the full seq (e.g. fluC GM968015 "1..728:+,957..957:+" (which is like NC_006312)
             }
 
             my $c_true = ($q_len >= $minpvlen) ? 1 : 0; # length >= --minpvlen
@@ -7538,13 +7554,14 @@ sub parse_blastx_results {
               }
               if($x_true || $y_true || $z_true) { 
                 # store the hit
-                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_qstart"} = $blast_qstart;
-                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_qstop"}  = $blast_qstop;
-                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_strand"} = $blast_strand;
-                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_len"}    = $blast_hit_qlen;
-                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_query"}  = $cur_H{"QACC"};
-                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}  = $cur_H{"RAWSCORE"};
-                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_frame"}  = $cur_H{"FRAME"};
+                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_qstart"}  = $blast_qstart;
+                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_qstop"}   = $blast_qstop;
+                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_strand"}  = $blast_strand;
+                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_len"}     = $blast_hit_qlen;
+                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_query"}   = $cur_H{"QACC"};
+                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}   = $cur_H{"RAWSCORE"};
+                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_frame"}   = $cur_H{"FRAME"};
+                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"q_ftr_idx"} = $q_ftr_idx;
                 # p_strand is actually complicated to set:
                 # if q_ftr_idx == -1, query is the full sequence in which case we use blast_strand from output
                 # if q_ftr_idx != -1, query is a single CDS so blast_strand will be + if same strand as target, - if opposite 
