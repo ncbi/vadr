@@ -6129,13 +6129,22 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
                 }
                 $alt_codon = substr($ftr_sqstring_alt_stops, $ftr_nxt_stp_A[1]-3, 3);
                 $alt_codon =~ tr/a-z/A-Z/;
-                $alt_str_H{"cdsstopn"} = sprintf("%s%s%s, shifted S:%d,M:%d", $alt_scoords, $alt_mcoords, $alt_codon, abs($ftr_stop-$ftr_stop_c), abs(abs($ua2rf_AR->[$ftr_stop]) - abs($ua2rf_AR->[$ftr_stop_c])));
+                if(! $ftr_is_3trunc) { 
+                  $alt_str_H{"cdsstopn"} = sprintf("%s%s%s, shifted S:%d,M:%d", $alt_scoords, $alt_mcoords, $alt_codon, abs($ftr_stop-$ftr_stop_c), abs(abs($ua2rf_AR->[$ftr_stop]) - abs($ua2rf_AR->[$ftr_stop_c])));
+                }
+                else { 
+                  # report only model shift, reporting on the sequence
+                  # shift is somewhat irrelevant since it would have
+                  # to be relative to the seq end position but the
+                  # feature is 3' truncated
+                  $alt_str_H{"cdsstopn"} = sprintf("%s%s%s, shifted M:%d", $alt_scoords, $alt_mcoords, $alt_codon, abs(abs(vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, undef)) - abs($ua2rf_AR->[$ftr_stop_c])));
+                }
               } # end of 'elsif($ftr_nxt_stp_A[1] != 0)'
             } # end of 'if($ftr_nxt_stp_A[1] != $ftr_len_stops) {' 
           } # end of big if entered if CDS is not truncated or dominant frame and expected frame are identical
         } # end of 'if($ftr_len_stops >= 3)'
       } # end of 'if($ftr_is_cds) {' 
-    
+
       # actually add the alerts
       foreach my $alt_code (sort keys %alt_str_H) { 
         alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str_H{$alt_code}, $FH_HR);
