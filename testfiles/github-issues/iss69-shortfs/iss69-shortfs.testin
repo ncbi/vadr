@@ -23,4 +23,4 @@ exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss69-shortfs/expected-files/va-is
 exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss69-shortfs/expected-files/va-iss69-shortfs.vadr.fail.tbl
 exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss69-shortfs/expected-files/va-iss69-shortfs.vadr.alt.list
 exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss69-shortfs/expected-files/va-iss69-shortfs.vadr.NC_029646.CDS.1.1.frameshift.stk
-rmdir: va-iss69-shortf
+rmdir: va-iss69-shortfs
