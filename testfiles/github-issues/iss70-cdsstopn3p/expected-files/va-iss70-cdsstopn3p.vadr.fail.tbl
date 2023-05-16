@@ -1,0 +1,11 @@
+>Feature NC_029646.1/5-304/stop-at-end
+1	>300	gene
+			gene	ORF1
+1	>300	misc_feature
+			note	similar to nonstructural polyprotein
+1	>300	misc_feature
+			note	similar to p48
+
+Additional note(s) to submitter:
+ERROR: CDS_HAS_STOP_CODON: (CDS:nonstructural polyprotein) in-frame stop codon exists 5' of stop position predicted by homology to reference [TAG, shifted M:4800]; seq-coords:298..300:+; mdl-coords:302..304:+; mdl:NC_029646;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:p48) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_029646;
