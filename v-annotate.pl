@@ -5155,7 +5155,16 @@ sub add_frameshift_alerts_for_one_sequence {
         }
         my $is_5p_trunc = $sgm_results_HAHR->{$seq_name}[$first_sgm_idx]{"5trunc"};
         my $is_3p_trunc = $sgm_results_HAHR->{$seq_name}[$final_sgm_idx]{"3trunc"};
-        my $expected_frame = (($is_5p_trunc) && ($initial_nondominant_span_slen < $fst_min_nti)) ? $dominant_frame : $F_0;
+
+        # determine expected_frame
+        my $initial_frame = undef;
+        if($frame_stok_A[0] =~ /^([123]),I\d+,\d+\.\.\d+,D\d+\,[01]$/) { 
+          $initial_frame = $1; # initial frame will equal $F_0 unless first match position for the alignment (mstart of first sgm) was a deletion
+        }
+        else { 
+          ofile_FAIL("ERROR, in $sub_name, (seq:$seq_name) unable to parse frame_stok, internal coding error: $frame_stok_A[0]", 1, $FH_HR);
+        }
+        my $expected_frame = (($is_5p_trunc) && ($initial_nondominant_span_slen < $fst_min_nti)) ? $dominant_frame : $initial_frame;
         $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_expected"} = $expected_frame;
         $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_dominant"} = $dominant_frame;
 
