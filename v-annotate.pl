@@ -4972,17 +4972,17 @@ sub add_frameshift_alerts_for_one_sequence {
 
             # sanity checks about strand
             if((defined $ftr_strand) && ($ftr_strand ne $strand)) { 
-              ofile_FAIL("ERROR, in $sub_name, different segments of same CDS feature have different strands ... can't deal", 1, $FH_HR);
+              ofile_FAIL("ERROR, in $sub_name, (seq:$seq_name) different segments of same CDS feature have different strands ... can't deal", 1, $FH_HR);
             }
             $ftr_strand = $strand;
             if($strand ne $sgm_strand) { 
-              ofile_FAIL("ERROR, in $sub_name, predicted strand for segment inconsistent with strand from segment info", 1, $FH_HR);
+              ofile_FAIL("ERROR, in $sub_name, (seq:$seq_name) predicted strand for segment inconsistent with strand from segment info", 1, $FH_HR);
             }
             my $F_prv = undef;     # frame of previous RF position 
             my $uapos_prv = undef; # unaligned sequence position that aligns to previous RF position
             my $rfpos_prv = undef; # previous RF position
             if(($strand ne "+") && ($strand ne "-")) { 
-              ofile_FAIL("ERROR, in $sub_name, strand is neither + or -", 1, $FH_HR);
+              ofile_FAIL("ERROR, in $sub_name, (seq:$seq_name) strand is neither + or -", 1, $FH_HR);
             }
             # for each RF position covered by the predicted segment
             # we want to deal with both + and - strands with same code block, 
@@ -5114,10 +5114,11 @@ sub add_frameshift_alerts_for_one_sequence {
       my $nframe_stok = scalar(@frame_stok_A); # number of sequence frame tokens
       my $nframe_mtok = scalar(@frame_mtok_A); # number of model frame tokens
       if($nframe_stok != $nframe_mtok) { 
-        ofile_FAIL("ERROR, in $sub_name, different numbers of sequence and model frame tokens, internal coding error: frame_stok_str: $frame_stok_str, frame_mtok_str: $frame_mtok_str", 1, $FH_HR);
+        ofile_FAIL("ERROR, in $sub_name, (seq:$seq_name) different numbers of sequence and model frame tokens, internal coding error: frame_stok_str: $frame_stok_str, frame_mtok_str: $frame_mtok_str", 1, $FH_HR);
       }
 
       if($nframe_stok >= 1) { 
+        my $dominant_frame = utl_AArgMax(\@frame_ct_A);
         # determine and store dominant frame, the frame with maximum count in @frame_ct_A, frame_ct_A[0] will be 0
         # determine and store expected frame, the expected frame of the CDS
         # expected_frame is the predicted frame of the first position unless
@@ -5125,24 +5126,36 @@ sub add_frameshift_alerts_for_one_sequence {
         # in which case we set expected_frame to dominant frame. This avoids frameshift calls
         # when first region is very short and we're 5' truncated (when we are 5' truncated we are not 
         # as confident about what the expected frame is b/c we don't have a start codon)
-        my $first_span_slen = undef;
-        if($frame_stok_A[0] =~ /^[123],I\d+,(\d+)\.\.(\d+),D\d+\,[01]$/) { 
-          my ($first_sstart, $first_sstop) = ($1, $2); 
-          $first_span_slen = abs($first_sstop - $first_sstart) + 1;
-          if($nframe_stok > 1) { 
-            # add in length of insert before next token, if any
-            if($frame_stok_A[1] =~ /^[123],I(\d+),\d+\.\.\d+,D\d+\,[01]$/) { 
-              $first_span_slen += $1;
+        my $initial_nondominant_span_slen = 0;
+        my $frame_is_nondominant = 1;
+        my $f = 0;
+        while(($frame_is_nondominant) && ($f < $nframe_stok)) { 
+          if($frame_stok_A[$f] =~ /^([123]),I\d+,(\d+)\.\.(\d+),D\d+\,[01]$/) { 
+            my ($frame, $frame_sstart, $frame_sstop) = ($1, $2, $3); 
+            if($frame == $dominant_frame) { # we are done
+              $frame_is_nondominant = 0; # breaks loop 
+            }
+            else { 
+              $initial_nondominant_span_slen += abs($frame_sstop - $frame_sstart) + 1;
+              $f++;
+              if($f < $nframe_stok) { 
+                # add in length of insert before next token, if any
+                if($frame_stok_A[$f] =~ /^[123],I(\d+),\d+\.\.\d+,D\d+\,[01]$/) { 
+                  $initial_nondominant_span_slen += $1;
+                }
+              }
             }
           }
+          else { 
+            ofile_FAIL("ERROR, in $sub_name, (seq:$seq_name) unable to parse frame_stok, internal coding error: $frame_stok_A[0]", 1, $FH_HR);
+          }
         }
-        else { 
-          ofile_FAIL("ERROR, in $sub_name, unable to parse frame_stok, internal coding error: $frame_stok_A[0]", 1, $FH_HR);
+        if($frame_is_nondominant) { 
+          ofile_FAIL("ERROR, in $sub_name, (seq:$seq_name) unable to determine length of first non-dominant frames, failed to find a dominant frame", 1, $FH_HR);
         }
         my $is_5p_trunc = $sgm_results_HAHR->{$seq_name}[$first_sgm_idx]{"5trunc"};
         my $is_3p_trunc = $sgm_results_HAHR->{$seq_name}[$final_sgm_idx]{"3trunc"};
-        my $dominant_frame = utl_AArgMax(\@frame_ct_A);
-        my $expected_frame = (($is_5p_trunc) && ($first_span_slen < $fst_min_nti)) ? $dominant_frame : $F_0;
+        my $expected_frame = (($is_5p_trunc) && ($initial_nondominant_span_slen < $fst_min_nti)) ? $dominant_frame : $F_0;
         $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_expected"} = $expected_frame;
         $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_dominant"} = $dominant_frame;
 
@@ -5183,11 +5196,11 @@ sub add_frameshift_alerts_for_one_sequence {
               if($frame_mtok_A[$f] =~ /^([123])\,(\d+)\.\.(\d+)\,([01])$/) { 
                 ($cur_mframe, $cur_mstart, $cur_mstop, $cur_msgmend) = ($1, $2, $3, $4);
                 if($cur_frame != $cur_mframe) { 
-                  ofile_FAIL("ERROR, in $sub_name, different frame in sequence and model frame tokens, internal coding error:\nstok:$frame_stok_A[$f]\nmtok:$frame_mtok_A[$f]", 1, $FH_HR);
+                  ofile_FAIL("ERROR, in $sub_name, (seq:$seq_name) different frame in sequence and model frame tokens, internal coding error:\nstok:$frame_stok_A[$f]\nmtok:$frame_mtok_A[$f]", 1, $FH_HR);
                 }
               }              
               else { 
-                ofile_FAIL("ERROR, in $sub_name, unable to parse frame_mtok, internal coding error: $frame_mtok_A[$f]", 1, $FH_HR);
+                ofile_FAIL("ERROR, in $sub_name, (seq:$seq_name) unable to parse frame_mtok, internal coding error: $frame_mtok_A[$f]", 1, $FH_HR);
               }
 
               # deal with inserted positions between previous frame token and this one
@@ -5327,7 +5340,7 @@ sub add_frameshift_alerts_for_one_sequence {
                       }
                       if((! defined $prv_exp_span_sstart) || 
                          (! defined $prv_exp_span_sstop)) { 
-                        ofile_FAIL("ERROR, in $sub_name, trying to calculate PP for shifted/expected regions and previous expected span undefined, shifted region: $shifted_span_sstart..$shifted_span_sstop", 1, $FH_HR);
+                        ofile_FAIL("ERROR, in $sub_name, (seq:$seq_name) trying to calculate PP for shifted/expected regions and previous expected span undefined, shifted region: $shifted_span_sstart..$shifted_span_sstop", 1, $FH_HR);
                       }
                       my $shifted_span_ppstr = ($ftr_strand eq "+") ? 
                           substr($full_ppstr, $shifted_span_sstart - 1, ($shifted_span_slen)) : 
@@ -5409,7 +5422,7 @@ sub add_frameshift_alerts_for_one_sequence {
               $prv_tok_sgm_end_flag = $cur_sgmend;
             } # end if statement that parses $frame_stok_A[$f]
             else { 
-              ofile_FAIL("ERROR, in $sub_name, unable to parse frame_stok, internal coding error: $frame_stok_A[$f]", 1, $FH_HR);
+              ofile_FAIL("ERROR, in $sub_name, (seq:$seq_name) unable to parse frame_stok, internal coding error: $frame_stok_A[$f]", 1, $FH_HR);
             }
           } # end of 'for(my $f = 0; $f < $nframe_stok; $f++) {'
         } # end of 'if($nframe_stok > 1)'
