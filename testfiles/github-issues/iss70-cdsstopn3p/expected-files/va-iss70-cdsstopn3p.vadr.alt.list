@@ -1,0 +1,3 @@
+#sequence	model	feature-type	feature-name	error	seq-coords	mdl-coords	error-description
+NC_029646.1/5-304/stop-at-end	NC_029646	CDS	nonstructural polyprotein	CDS_HAS_STOP_CODON	298..300:+	302..304:+	in-frame stop codon exists 5' of stop position predicted by homology to reference [TAG, shifted M:4800]
+NC_029646.1/5-304/stop-at-end	NC_029646	mat_peptide	p48	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
