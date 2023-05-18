@@ -5126,7 +5126,7 @@ sub add_frameshift_alerts_for_one_sequence {
         # in which case we set expected_frame to dominant frame. This avoids frameshift calls
         # when first region is very short and we're 5' truncated (when we are 5' truncated we are not 
         # as confident about what the expected frame is b/c we don't have a start codon)
-        my $initial_nondominant_span_slen = 0;
+        my $initial_nondominant_span_slen = undef; # stays undefined unless first frame tok is non-dominant
         my $frame_is_nondominant = 1;
         my $f = 0;
         while(($frame_is_nondominant) && ($f < $nframe_stok)) { 
@@ -5136,6 +5136,9 @@ sub add_frameshift_alerts_for_one_sequence {
               $frame_is_nondominant = 0; # breaks loop 
             }
             else { 
+              if(! defined $initial_nondominant_span_slen) { 
+                $initial_nondominant_span_slen = 0;
+              }
               $initial_nondominant_span_slen += abs($frame_sstop - $frame_sstart) + 1;
               $f++;
               if($f < $nframe_stok) { 
@@ -5164,7 +5167,7 @@ sub add_frameshift_alerts_for_one_sequence {
         else { 
           ofile_FAIL("ERROR, in $sub_name, (seq:$seq_name) unable to parse frame_stok, internal coding error: $frame_stok_A[0]", 1, $FH_HR);
         }
-        my $expected_frame = (($is_5p_trunc) && ($initial_nondominant_span_slen < $fst_min_nti)) ? $dominant_frame : $initial_frame;
+        my $expected_frame = (($is_5p_trunc) && (defined $initial_nondominant_span_slen) && ($initial_nondominant_span_slen < $fst_min_nti)) ? $dominant_frame : $initial_frame;
         $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_expected"} = $expected_frame;
         $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_dominant"} = $dominant_frame;
 
