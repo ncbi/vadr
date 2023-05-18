@@ -4937,8 +4937,17 @@ sub add_frameshift_alerts_for_one_sequence {
       my $first_sgm_idx = get_5p_most_sgm_idx_with_results($ftr_info_AHR, $sgm_results_HAHR, $ftr_idx, $seq_name);
       my $final_sgm_idx = get_3p_most_sgm_idx_with_results($ftr_info_AHR, $sgm_results_HAHR, $ftr_idx, $seq_name);
       my $tmp_ftr_len = 0;
+      my $missing_sgms_len = 0; # summed length of all segments missing before the first segment we have valid results for
       if($first_sgm_idx != -1) { 
-        for(my $sgm_idx = $first_sgm_idx; $sgm_idx <= $final_sgm_idx; $sgm_idx++) { 
+        # sum lengths of all segments in this feature that we do *not* have results for prior to this one
+        # and store in $missing_sgms_len
+        my $sgm_idx;
+        for($sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx < $first_sgm_idx; $sgm_idx++) { 
+          $missing_sgms_len += abs($sgm_info_AHR->[$sgm_idx]{"stop"} - $sgm_info_AHR->[$sgm_idx]{"start"}) + 1;
+        }
+
+        # now go through all segments for which we do have valid results
+        for($sgm_idx = $first_sgm_idx; $sgm_idx <= $final_sgm_idx; $sgm_idx++) { 
           #check if sgm is valid, it's possible this segment was completely deleted and thus has no results
           # *even if other segments in this feature* do have results (this is related to the github issue #21 bug)
           if((defined $sgm_results_HAHR->{$seq_name}) && 
@@ -4966,7 +4975,7 @@ sub add_frameshift_alerts_for_one_sequence {
             $ftr_sstop = $sstop;
             $ftr_mstop = $mstop;
             if(! defined $F_0) { 
-              $F_0 = vdr_FrameAdjust(1, abs($mstart - $sgm_start_rfpos), $FH_HR);
+              $F_0 = vdr_FrameAdjust(1, abs($mstart - $sgm_start_rfpos) + $missing_sgms_len, $FH_HR);
               # $F_0 is frame of initial nongap RF position for this CDS 
             } 
 
