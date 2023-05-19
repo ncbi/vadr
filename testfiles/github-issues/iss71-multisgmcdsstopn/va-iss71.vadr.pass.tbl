@@ -1,0 +1,20 @@
+>Feature ENTOY100A/48..100,stop-at-56..58
+<1	17	CDS
+19	26
+			product	protein two
+			codon_start	2
+			protein_id	ENTOY100A/48..100,stop-at-56..58_1
+20	32	CDS
+38	48
+			product	protein three
+			protein_id	ENTOY100A/48..100,stop-at-56..58_2
+20	28	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A/48..100,stop-at-56..58_2
+29	32	mat_peptide
+38	45
+			product	protein three mp2
+			protein_id	ENTOY100A/48..100,stop-at-56..58_2
+51	37	CDS
+			product	protein four
+			protein_id	ENTOY100A/48..100,stop-at-56..58_3
