@@ -1,0 +1,20 @@
+>Feature ENTOY100A/66..100,stop-at-67..69/35-1
+3	17	CDS
+			product	protein four
+			protein_id	ENTOY100A/66..100,stop-at-67..69/35-1_2
+34	22	misc_feature
+16	6
+			note	similar to protein three
+25	22	misc_feature
+16	9
+			note	similar to protein three mp2
+34	26	misc_feature
+			note	similar to protein three mp1
+35	28	CDS
+			product	protein two
+			protein_id	ENTOY100A/66..100,stop-at-67..69/35-1_1
+
+Additional note(s) to submitter:
+ERROR: MUTATION_AT_START: (CDS:protein three) expected start codon could not be identified [AGG]; seq-coords:34..32:-; mdl-coords:34..32:-; mdl:ENTOY100A-REV;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein three mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A-REV;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein three mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A-REV;

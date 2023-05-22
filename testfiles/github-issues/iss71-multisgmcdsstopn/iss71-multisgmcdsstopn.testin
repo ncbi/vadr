@@ -21,3 +21,13 @@ exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss71-multisgmcdsstopn/va-iss71.va
 exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss71-multisgmcdsstopn/va-iss71.vadr.fail.tbl
 exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss71-multisgmcdsstopn/va-iss71.vadr.alt
 rmdir: va-iss71
+#
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --minpvlen 3 --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy100a-rev.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a-rev.minfo -f $VADRSCRIPTSDIR/testfiles/github-issues/iss71-multisgmcdsstopn/iss71-multisgmcdsstopn-rev.fa va-iss71-rev > va-iss71-rev.out
+desc: iss71-multisgmcdsstopn-rev
+out: va-iss71-rev/va-iss71-rev.vadr.pass.tbl
+out: va-iss71-rev/va-iss71-rev.vadr.fail.tbl
+out: va-iss71-rev/va-iss71-rev.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss71-multisgmcdsstopn/va-iss71-rev.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss71-multisgmcdsstopn/va-iss71-rev.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss71-multisgmcdsstopn/va-iss71-rev.vadr.alt
+rmdir: va-iss71-rev

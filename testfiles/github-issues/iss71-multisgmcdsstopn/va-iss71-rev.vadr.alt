@@ -1,0 +1,6 @@
+#      seq                                                   ftr          ftr                ftr  alert           alert                             seq  seq       mdl  mdl  alert 
+#idx   name                                   model          type         name               idx  code      fail  description                    coords  len    coords  len  detail
+#----  -------------------------------------  -------------  -----------  -----------------  ---  --------  ----  ---------------------------  --------  ---  --------  ---  ------
+2.1.1  ENTOY100A/66..100,stop-at-67..69/35-1  ENTOY100A-REV  CDS          protein_three        6  mutstart  yes   MUTATION_AT_START            34..32:-    3  34..32:-    3  expected start codon could not be identified [AGG]
+2.2.1  ENTOY100A/66..100,stop-at-67..69/35-1  ENTOY100A-REV  mat_peptide  protein_three_mp1    7  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM         -    -         -    -  mat_peptide may not be translated because its parent CDS has a problem [-]
+2.3.1  ENTOY100A/66..100,stop-at-67..69/35-1  ENTOY100A-REV  mat_peptide  protein_three_mp2    8  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM         -    -         -    -  mat_peptide may not be translated because its parent CDS has a problem [-]
