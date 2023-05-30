@@ -87,7 +87,7 @@ my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we c
 my $execname_opt  = $GetOptions_H{"--execname"};
 my $executable    = "build-add-to-blast-db.pl";
 my $usage         = "Usage: $executable [-options]\n\t<path to .minfo file>\n\t<path to blast db dir>\n\t<model name>\n\t<nt-accn-to-add>\n\t\<nt-coords-to-add>\n\t<model-CDS-feature-coords>\n\t<name for output directory>\n";
-my $synopsis      = "$executable :: add a single protein to a VADR blastx protein database\n";
+my $synopsis      = "$executable :: add a single protein to a VADR blastx protein database";
 my $date          = scalar localtime();
 my $version       = "1.5.1";
 my $releasedate   = "Feb 2023";
@@ -216,7 +216,6 @@ if(! defined $ftr_info_HAH{$in_mdl_name}) {
 my $nftr = scalar(@{$ftr_info_HAH{$in_mdl_name}});
 my $ftr_idx = undef;
 my $found_ftr_idx = undef;
-printf("nftr: $nftr\n");
 for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
   if(vdr_FeatureTypeIsCds(\@{$ftr_info_HAH{$in_mdl_name}}, $ftr_idx)) { 
     #printf("comparing %s and %s\n", $ftr_info_HAH{$in_mdl_name}[$ftr_idx]{"coords"}, $in_nt_cds_coords);
@@ -236,10 +235,8 @@ ofile_OutputProgressComplete($start_secs, undef, undef, *STDOUT);
 ###############################################
 $start_secs = ofile_OutputProgressPrior("Fetching the CDS source sequence ", $progress_w, undef, *STDOUT);
 my $source_fa_file = $out_root . ".source.fa";
-$start_secs = ofile_OutputProgressPrior("Fetching FASTA file for $in_nt_accn", $progress_w, $log_FH, *STDOUT);
 vdr_EutilsFetchToFile($source_fa_file, $in_nt_accn, "nuccore", "fasta", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
 ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "sourcefasta", $source_fa_file, 1, 1, "fasta file with source sequence ($in_nt_accn)");
-ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 my $sqfile  = Bio::Easel::SqFile->new({ fileLocation => $source_fa_file }); # the sequence file object
 my @start_A  = ();
@@ -317,7 +314,6 @@ ofile_OutputProgressComplete($start_secs, undef, undef, *STDOUT);
 # Concontenate the protein to the BLAST DB 
 ##########################################
 $start_secs = ofile_OutputProgressPrior("Adding to BLAST DB", $progress_w, undef, *STDOUT);
-ofile_OutputProgressComplete($start_secs, undef, undef, *STDOUT);
 my $concat_cmd = "cat $translate_fa_file >> $mdl_blastdb_file";
 utl_RunCommand($concat_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
 
