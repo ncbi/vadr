@@ -313,8 +313,7 @@ $opt_group_desc_H{++$g} = "options for controlling blastx protein validation sta
 opt_Add("--xmatrix",     "string",   undef,      $g,     undef,"--pv_skip,--pv_hmmer", "use the matrix <s> with blastx (e.g. BLOSUM45)",                                   "use the matrix <s> with blastx (e.g. BLOSUM45)", \%opt_HH, \@opt_order_A);
 opt_Add("--xdrop",       "integer",  25,         $g,     undef,"--pv_skip,--pv_hmmer", "set the xdrop value for blastx to <n>",                                            "set the xdrop value for blastx to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--xnumali",     "integer",  20,         $g,     undef,"--pv_skip,--pv_hmmer", "number of alignments to keep in blastx output and consider if --xlongest is <n>",  "number of alignments to keep in blastx output and consider if --xlongest is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xlongest",    "boolean",  0,          $g,     undef,"--pv_skip,--pv_hmmer", "keep the longest blastx hit, not the highest scoring one",                         "keep the longest blastx hit, not the highest scoring one", \%opt_HH, \@opt_order_A);
-opt_Add("--xdual",       "boolean",  0,          $g,     undef,"--xlongest,--pv_skip,--pv_hmmer", "use the max score or longest blastx hit, whichever has fewer alerts",   "use the max score or longest blastx hit, whichever has fewer alerts", \%opt_HH, \@opt_order_A);
+opt_Add("--xlongest",    "boolean",  0,          $g,     undef,"--pv_skip,--pv_hmmer", "use the max score or longest blastx hit, whichever has fewer alerts",   "use the max score or longest blastx hit, whichever has fewer alerts", \%opt_HH, \@opt_order_A);
 opt_Add("--xnocomp",     "boolean",  0,          $g,     undef,"--pv_skip,--pv_hmmer", "turn off composition-based for blastx statistics with -comp_based_stats 0",        "turn off composition-based for blastx statistics with comp_based_stats 0", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for using hmmer instead of blastx for protein validation";
@@ -516,7 +515,6 @@ my $options_okay =
                 'xdrop=s'       => \$GetOptions_H{"--xdrop"},
                 'xnumali=s'     => \$GetOptions_H{"--xnumali"},
                 'xlongest'      => \$GetOptions_H{"--xlongest"},
-                'xdual'         => \$GetOptions_H{"--xdual"},
                 'xnocomp'       => \$GetOptions_H{"--xnocomp"},
 # options for using hmmer instead of blastx for protein validation
                 'pv_hmmer'      => \$GetOptions_H{"--pv_hmmer"},
@@ -1969,8 +1967,8 @@ if($do_pv_blastx) {
         # '0': keep max scoring hit, not longest
         parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, 0, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
                              $ftr_info_blastx_HR, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
-        # if --xlongest or --xdual, also store the longest blastx hit, and use it if it results in fewer fatal alerts
-        if((opt_Get("--xlongest", \%opt_HH)) || (opt_Get("--xdual", \%opt_HH))) { 
+        # if --xlongest, also store the longest blastx hit, and use it if it results in fewer fatal alerts
+        if(opt_Get("--xlongest", \%opt_HH)) { 
           # '1': keep longest hit, not max scoring
           parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, 1, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
                              $ftr_info_blastx_HR, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
@@ -6928,7 +6926,6 @@ sub add_protein_validation_alerts {
           # we have no nucleotide prediction
           if(((defined $n_start) && ($n_len >= $minpvlen)) || (! defined $n_start)) { 
             foreach my $ftr_results_prefix ("p_", "pl_") { 
-              printf("HEYA in $sub_name, ftr_results_prefix is $ftr_results_prefix\n");
               if((defined $ftr_results_HR->{($ftr_results_prefix . "qstart")}) && 
                  (defined $ftr_results_HR->{($ftr_results_prefix . "qstop")})) { 
                 $p_qstart  = $ftr_results_HR->{($ftr_results_prefix . "qstart")};
@@ -6941,7 +6938,7 @@ sub add_protein_validation_alerts {
                 if(defined $ftr_results_HR->{($ftr_results_prefix . "trcstop")}) { $p_trcstop = $ftr_results_HR->{($ftr_results_prefix . "trcstop")}; }
                 if(defined $ftr_results_HR->{($ftr_results_prefix . "score")})   { $p_score   = $ftr_results_HR->{($ftr_results_prefix . "score")};   }
                 if(defined $ftr_results_HR->{($ftr_results_prefix . "hstart")})  { $p_hstart  = $ftr_results_HR->{($ftr_results_prefix . "hstart")}; }
-                if(defined $ftr_results_HR->{($ftr_results_prefix . "hstop")})   { $p_hstop   = $ftr_results_HR->{($ftr_results_prefix . "p_hstop")};   }
+                if(defined $ftr_results_HR->{($ftr_results_prefix . "hstop")})   { $p_hstop   = $ftr_results_HR->{($ftr_results_prefix . "hstop")};   }
 
                 # determine if the query is a full length sequence, or a fetched sequence feature:
                 ($p_qseq_name, $p_qftr_idx, $p_qlen, $p_ftr_scoords) = helper_protein_validation_breakdown_source($p_query, $seq_len_HR, $FH_HR); 
@@ -7214,17 +7211,49 @@ sub add_protein_validation_alerts {
                 } # end of 'else' entered if $p_qstart is defined
               } # end of 'if(defined $n_start)'
             } # end of 'foreach my $ftr_results_prefix ("p_", "pl_")'
-            # actually add the alerts
-            foreach my $ftr_results_prefix ("p_", "pl_") { 
-              foreach my $alt_code (sort keys %{$alt_str_HH{$ftr_results_prefix}}) { 
-                my @alt_str_A = split(":VADRSEP:", $alt_str_HH{$ftr_results_prefix}{$alt_code});
-                foreach my $alt_str (@alt_str_A) { 
-                  printf("ADDING $alt_str\n");
-                  alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str, $FH_HR);
+
+            # we may have two alternative sets of alerts,
+            # figure out which one to use actually add the alerts
+            # (if we only have one set of alerts (prefix = "p_", use that one)
+            my $winning_prefix = "p_";
+            my $alt_code;
+            if(defined $alt_str_HH{"pl_"}) { 
+              # we have two alternatives, pick winner
+              my %nalt_H       = ();
+              my %nalt_fatal_H = ();
+              foreach my $ftr_results_prefix ("p_", "pl_") { 
+                $nalt_H{$ftr_results_prefix} = 0;
+                $nalt_fatal_H{$ftr_results_prefix} = 0;
+                foreach $alt_code (sort keys %{$alt_str_HH{$ftr_results_prefix}}) { 
+                  my @alt_str_A = split(":VADRSEP:", $alt_str_HH{$ftr_results_prefix}{$alt_code});
+                  my $nalt = scalar(@alt_str_A);
+                  $nalt_H{$ftr_results_prefix} += $nalt;
+                  if(vdr_FeatureAlertCausesFailure($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code)) { 
+                    $nalt_fatal_H{$ftr_results_prefix} += $nalt;
+                  }
                 }
               }
+              if($nalt_fatal_H{"pl_"} < $nalt_fatal_H{"p_"}) { 
+                $winning_prefix = "pl_";
+              }
+              elsif(($nalt_fatal_H{"pl_"} == $nalt_fatal_H{"p_"}) && 
+                    ($nalt_H{"pl_"}       <  $nalt_H{"p_"})) { 
+                $winning_prefix = "pl_";
+              }
             }
-            exit 0;
+            # if pl_ was the winner, overwrite p_ values in ftr_results_HR with pl_ values, so future subroutines use correct values
+            if($winning_prefix eq "pl_") { 
+              foreach my $alt_key ("qstart", "qstop", "strand", "query", "len", "ins", "del", "trcstop", "score", "hstart", "hstop", "score", "q_ftr_idx", "frame") { 
+                $ftr_results_HR->{"p_" . $alt_key} = $ftr_results_HR->{"pl_" . $alt_key};
+              }
+            }
+            foreach my $alt_code (sort keys %{$alt_str_HH{$winning_prefix}}) { 
+              my @alt_str_A = split(":VADRSEP:", $alt_str_HH{$winning_prefix}{$alt_code});
+              foreach my $alt_str (@alt_str_A) { 
+                alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str, $FH_HR);
+              }
+            }
+            
           } # end of 'if(((defined $n_start) && ($n_len >= $minpvlen)) || (! defined $n_start))'
         } # end of 'if(featureTypeIsCds($ftr_info_AHR, $ftr_idx))'
       } # end of 'for($ftr_idx' loop
