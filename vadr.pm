@@ -2089,7 +2089,8 @@ sub vdr_FeatureSummaryStrand {
 #             and fill %HR with key/value pairs.
 # 
 #             String must be in format of one or more tokens
-#             of: "<d>:<s>" separated by ";" if more than one.
+#             of: "<d>:<s>" or "<d>..<d>:<s>" (for a range)
+#             separated by ";" if more than one.
 #
 #             If $ftr_info_AHR->[$ftr_idx]{$key} does not exist just
 #             return.
@@ -2119,6 +2120,15 @@ sub vdr_FeaturePositionSpecificValueBreakdown {
     foreach my $tok (@tok_A) { 
       if($tok =~ /^(\d+)\:(\S+)$/) { 
         $HR->{$1} = $2;
+      }
+      elsif($tok =~ /^(\d+)\.\.(\d+)\:(\S+)$/) { 
+        my ($start, $stop, $value) = ($1, $2, $3);
+        if($start > $stop) { 
+          ofile_FAIL("ERROR, in $sub_name, unable to parse token $tok (stop > start) parsed out of " . $ftr_info_AHR->[$ftr_idx]{$key}, 1, $FH_HR);
+        }
+        for(my $i = $start; $i <= $stop; $i++) { 
+          $HR->{$i} = $value;
+        }
       }
       else { 
         ofile_FAIL("ERROR, in $sub_name, unable to parse token $tok parsed out of " . $ftr_info_AHR->[$ftr_idx]{$key}, 1, $FH_HR);
