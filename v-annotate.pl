@@ -1929,6 +1929,7 @@ ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 if($do_pv_blastx) { 
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+    my $blastx_db_mdl_name = $mdl_name;
     if(defined $mdl_seq_name_HA{$mdl_name}) { 
       my $ncds = vdr_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS"); 
       if($ncds > 0) { # only run blast for models with >= 1 CDS
@@ -1938,8 +1939,9 @@ if($do_pv_blastx) {
         # we may substitute another blastx db for this model
         my $blastx_db_mdl_idx = $mdl_idx;
         if((opt_IsUsed("--xsub", \%opt_HH)) && (defined $blastx_sub_H{$mdl_name})) { 
-          # now find the index of $blastx_db_mdl_name in @mdl_info_AH
+          # now find the index of $blastx_sub_H{$mdl_name} in @mdl_info_AH
           $blastx_db_mdl_idx = 0; 
+          $blastx_db_mdl_name = $blastx_sub_H{$mdl_name};
           while(($blastx_db_mdl_idx < $nmdl) && ($mdl_info_AH[$blastx_db_mdl_idx]{"name"} ne $blastx_sub_H{$mdl_name})) { 
             $blastx_db_mdl_idx++;
           }
@@ -1951,6 +1953,10 @@ if($do_pv_blastx) {
         if(! defined $blastx_db_file) { 
           ofile_FAIL("ERROR, path to BLAST DB is unknown for model $mdl_name", 1, $FH_HR);
         }
+        # determine if the model has any CDS with > 1 segment, if not we have no need to 
+        # do a second parsing of the results ignoring the full sequence (the ftr_results_prefix="pc_" call
+        # to parse_blastx_results() call below
+        my $max_nsgm_cds = vdr_FeatureInfoMaxNumCdsSegments(\@{$ftr_info_HAH{$blastx_db_mdl_name}}, $FH_HR);
 
         $start_secs = ofile_OutputProgressPrior(sprintf("Validating proteins with blastx ($mdl_name: $nseq seq%s)", ($nseq > 1) ? "s" : ""), $progress_w, $log_FH, *STDOUT);
         run_blastx_and_summarize_output(\%execs_H, $out_root, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, $blastx_db_file, 
@@ -1969,9 +1975,11 @@ if($do_pv_blastx) {
         # 'p_': keep max scoring hit, not longest
         parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, "p_", \@{$mdl_seq_name_HA{$mdl_name}}, 
                              \%seq_len_H, $ftr_info_blastx_HR, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
-        # 'pc_': ignore hits to the full sequence 
-        parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, "pc_", \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
-                             $ftr_info_blastx_HR, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
+        # 'pc_': ignore hits to the full sequence, only nec if we have at least 1 multi-segment CDS
+        if($max_nsgm_cds > 1) { 
+          parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, "pc_", \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
+                               $ftr_info_blastx_HR, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
+        }
         # if --xlongest, also store the longest blastx hit, and use it if it results in fewer fatal alerts
         if(opt_Get("--xlongest", \%opt_HH)) { 
           # 'pl_': keep longest hit, not max scoring
