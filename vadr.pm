@@ -80,6 +80,7 @@ require "sqp_utils.pm";
 # vdr_FeatureInfoMapFtrTypeIndicesToFtrIndices()
 # vdr_FeatureInfoMerge()
 # vdr_FeatureInfoCdsStartStopCodonCoords()
+# vdr_FeatureInfoMaxNumCdsSegments()
 #
 # vdr_SegmentInfoPopulate()
 # 
@@ -1333,6 +1334,41 @@ sub vdr_FeatureInfoCdsStartStopCodonCoords {
 }
 
 #################################################################
+# Subroutine: vdr_FeatureInfoMaxNumCdsSegments()
+# Incept:     EPN, Wed Jun  7 12:18:03 2023
+#
+# Synopsis: Return the maximum number of segments in any
+#           CDS feature. 
+# 
+# Arguments:
+#  $ftr_info_AHR: REF to array of hashes with information on the features, PRE-FILLED
+#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    Maximum number of segments in any CDS.
+#################################################################
+sub vdr_FeatureInfoMaxNumCdsSegments { 
+  my $sub_name = "vdr_FeatureInfoMaxNumCdsSegments";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($ftr_info_AHR, $FH_HR) = @_;
+
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $ret_val = 0;
+  my $nsgm = 0;
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") { 
+      $nsgm = vdr_FeatureNumSegments($ftr_info_AHR, $ftr_idx);
+      if($nsgm > $ret_val) { 
+        $ret_val = $nsgm;
+      }
+    }
+  }
+
+  return $ret_val;
+}
+
+#################################################################
 # Subroutine: vdr_SegmentInfoPopulate()
 # Incept:     EPN, Wed Mar 13 13:55:56 2019
 #
@@ -1809,7 +1845,6 @@ sub vdr_FeatureNumSegments {
 
   return ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + 1);
 }
-
 
 #################################################################
 # Subroutine: vdr_FeatureRelativeSegmentIndex()

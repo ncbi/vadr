@@ -1929,6 +1929,7 @@ ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 if($do_pv_blastx) { 
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+    my $blastx_db_mdl_name = $mdl_name;
     if(defined $mdl_seq_name_HA{$mdl_name}) { 
       my $ncds = vdr_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS"); 
       if($ncds > 0) { # only run blast for models with >= 1 CDS
@@ -1938,8 +1939,9 @@ if($do_pv_blastx) {
         # we may substitute another blastx db for this model
         my $blastx_db_mdl_idx = $mdl_idx;
         if((opt_IsUsed("--xsub", \%opt_HH)) && (defined $blastx_sub_H{$mdl_name})) { 
-          # now find the index of $blastx_db_mdl_name in @mdl_info_AH
+          # now find the index of $blastx_sub_H{$mdl_name} in @mdl_info_AH
           $blastx_db_mdl_idx = 0; 
+          $blastx_db_mdl_name = $blastx_sub_H{$mdl_name};
           while(($blastx_db_mdl_idx < $nmdl) && ($mdl_info_AH[$blastx_db_mdl_idx]{"name"} ne $blastx_sub_H{$mdl_name})) { 
             $blastx_db_mdl_idx++;
           }
@@ -1951,6 +1953,10 @@ if($do_pv_blastx) {
         if(! defined $blastx_db_file) { 
           ofile_FAIL("ERROR, path to BLAST DB is unknown for model $mdl_name", 1, $FH_HR);
         }
+        # determine if the model has any CDS with > 1 segment, if not we have no need to 
+        # do a second parsing of the results ignoring the full sequence (the ftr_results_prefix="pc_" call
+        # to parse_blastx_results() call below
+        my $max_nsgm_cds = vdr_FeatureInfoMaxNumCdsSegments(\@{$ftr_info_HAH{$blastx_db_mdl_name}}, $FH_HR);
 
         $start_secs = ofile_OutputProgressPrior(sprintf("Validating proteins with blastx ($mdl_name: $nseq seq%s)", ($nseq > 1) ? "s" : ""), $progress_w, $log_FH, *STDOUT);
         run_blastx_and_summarize_output(\%execs_H, $out_root, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, $blastx_db_file, 
@@ -1964,13 +1970,20 @@ if($do_pv_blastx) {
         # if --xsub used and we have a substitute db for blastx, use that
         my $ftr_info_blastx_HR = ((opt_IsUsed("--xsub", \%opt_HH)) && (defined $blastx_sub_H{$mdl_name})) ? 
             \@{$ftr_info_HAH{$blastx_sub_H{$mdl_name}}} : \@{$ftr_info_HAH{$mdl_name}};
-        # '0': keep max scoring hit, not longest
-        parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, 0, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
-                             $ftr_info_blastx_HR, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
+        # we call parse_blastx_results up to 3 times, so we can store up to 3 'best' blastx hits per predicted CDS
+        # later we will choose the blastx hit that results in the fewest fatal alerts
+        # 'p_': keep max scoring hit, not longest
+        parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, "p_", \@{$mdl_seq_name_HA{$mdl_name}}, 
+                             \%seq_len_H, $ftr_info_blastx_HR, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
+        # 'pc_': ignore hits to the full sequence, only nec if we have at least 1 multi-segment CDS
+        if($max_nsgm_cds > 1) { 
+          parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, "pc_", \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
+                               $ftr_info_blastx_HR, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
+        }
         # if --xlongest, also store the longest blastx hit, and use it if it results in fewer fatal alerts
         if(opt_Get("--xlongest", \%opt_HH)) { 
-          # '1': keep longest hit, not max scoring
-          parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, 1, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
+          # 'pl_': keep longest hit, not max scoring
+          parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, "pl_", \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
                              $ftr_info_blastx_HR, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
 
         }
@@ -6869,9 +6882,11 @@ sub add_protein_validation_alerts {
           my $ftr_results_HR = \%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}; # for convenience
           # printf("in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx] ");
           my %alt_str_HH = (); # added to as we find alerts below, 
-          # possible 1d keys are: "p_" or "pl_", "p_" is for 'max scoring' blastx or hmmer hit, 
-          #                       "pl_" is for longest blastx hit, we try both and use the one
-          #                       that gives the minimum number of fatal alerts
+          # possible 1d keys are: "p_", "pl_", and "pc_"
+          #                       "p_" is for 'max scoring' blastx or hmmer hit, 
+          #                       "pl_" is for longest blastx hit, 
+          #                       "pc_" is for max scoring blastx hit to a CDS only
+          #                       we try both and use the one that gives the minimum number of fatal alerts
           # possible 2D keys are: "indfantp", "indfantn", "indfstrp", "indf5plg", "indf5pst", 
           #                       "indf3plg", "indf3pst", "insertnp", "deletinp", "cdsstopp"
           
@@ -6925,7 +6940,7 @@ sub add_protein_validation_alerts {
           # only proceed if we have a nucleotide prediction >= min length OR
           # we have no nucleotide prediction
           if(((defined $n_start) && ($n_len >= $minpvlen)) || (! defined $n_start)) { 
-            foreach my $ftr_results_prefix ("p_", "pl_") { 
+            foreach my $ftr_results_prefix ("p_", "pl_", "pc_") { 
               if((defined $ftr_results_HR->{($ftr_results_prefix . "qstart")}) && 
                  (defined $ftr_results_HR->{($ftr_results_prefix . "qstop")})) { 
                 $p_qstart  = $ftr_results_HR->{($ftr_results_prefix . "qstart")};
@@ -7210,41 +7225,57 @@ sub add_protein_validation_alerts {
                   } # end of 'else' entered if $n_strand eq $p_strand
                 } # end of 'else' entered if $p_qstart is defined
               } # end of 'if(defined $n_start)'
-            } # end of 'foreach my $ftr_results_prefix ("p_", "pl_")'
+            } # end of 'foreach my $ftr_results_prefix ("p_", "pl_", "pc_")'
 
             # we may have two alternative sets of alerts,
             # figure out which one to use actually add the alerts
             # (if we only have one set of alerts (prefix = "p_", use that one)
-            my $winning_prefix = "p_";
             my $alt_code;
-            if(defined $alt_str_HH{"pl_"}) { 
-              # we have two alternatives, pick winner
+            my $winning_prefix = "p_";
+            if((defined $alt_str_HH{"pl_"}) || (defined $alt_str_HH{"pc_"})) { 
+              # we have at least two alternatives, pick winner
               my %nalt_H       = ();
               my %nalt_fatal_H = ();
-              foreach my $ftr_results_prefix ("p_", "pl_") { 
-                $nalt_H{$ftr_results_prefix} = 0;
-                $nalt_fatal_H{$ftr_results_prefix} = 0;
-                foreach $alt_code (sort keys %{$alt_str_HH{$ftr_results_prefix}}) { 
-                  my @alt_str_A = split(":VADRSEP:", $alt_str_HH{$ftr_results_prefix}{$alt_code});
-                  my $nalt = scalar(@alt_str_A);
-                  $nalt_H{$ftr_results_prefix} += $nalt;
-                  if(vdr_FeatureAlertCausesFailure($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code)) { 
-                    $nalt_fatal_H{$ftr_results_prefix} += $nalt;
+              foreach my $ftr_results_prefix ("p_", "pl_", "pc_") { 
+                if(defined $alt_str_HH{$ftr_results_prefix}) { 
+                  $nalt_H{$ftr_results_prefix} = 0;
+                  $nalt_fatal_H{$ftr_results_prefix} = 0;
+                  foreach $alt_code (sort keys %{$alt_str_HH{$ftr_results_prefix}}) { 
+                    my @alt_str_A = split(":VADRSEP:", $alt_str_HH{$ftr_results_prefix}{$alt_code});
+                    my $nalt = scalar(@alt_str_A);
+                    $nalt_H{$ftr_results_prefix} += $nalt;
+                    if(vdr_FeatureAlertCausesFailure($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code)) { 
+                      $nalt_fatal_H{$ftr_results_prefix} += $nalt;
+                    }
                   }
                 }
               }
-              if($nalt_fatal_H{"pl_"} < $nalt_fatal_H{"p_"}) { 
-                $winning_prefix = "pl_";
+              # preference is p_ > pc_ > pl_ 
+              # pick prefix with fewest fatal alerts, if there's a tie, pick prefix with fewest total alerts
+              $winning_prefix     = "p_";
+              my $winning_nalt       = $nalt_H{$winning_prefix};
+              my $winning_nalt_fatal = $nalt_fatal_H{$winning_prefix};
+              if(defined $nalt_fatal_H{"pc_"}) { 
+                if(($nalt_fatal_H{"pc_"}  <  $winning_nalt_fatal) || 
+                   (($nalt_fatal_H{"pc_"} == $winning_nalt_fatal) && ($nalt_H{"pc_"} < $winning_nalt))) { 
+                  $winning_prefix     = "pc_";
+                  $winning_nalt       = $nalt_H{$winning_prefix};
+                  $winning_nalt_fatal = $nalt_fatal_H{$winning_prefix};
+                }
               }
-              elsif(($nalt_fatal_H{"pl_"} == $nalt_fatal_H{"p_"}) && 
-                    ($nalt_H{"pl_"}       <  $nalt_H{"p_"})) { 
-                $winning_prefix = "pl_";
+              if(defined $nalt_fatal_H{"pl_"}) { 
+                if(($nalt_fatal_H{"pl_"}  <  $winning_nalt_fatal) || 
+                   (($nalt_fatal_H{"pl_"} == $winning_nalt_fatal) && ($nalt_H{"pl_"} < $winning_nalt))) { 
+                  $winning_prefix     = "pl_";
+                  $winning_nalt       = $nalt_H{$winning_prefix};
+                  $winning_nalt_fatal = $nalt_fatal_H{$winning_prefix};
+                }
               }
             }
-            # if pl_ was the winner, overwrite p_ values in ftr_results_HR with pl_ values, so future subroutines use correct values
-            if($winning_prefix eq "pl_") { 
+            # if pc_ or pl_ was the winner, overwrite p_ values in ftr_results_HR with pl_ values, so future subroutines use correct values
+            if($winning_prefix ne "p_") { 
               foreach my $alt_key ("qstart", "qstop", "strand", "query", "len", "ins", "del", "trcstop", "score", "hstart", "hstop", "score", "q_ftr_idx", "frame") { 
-                $ftr_results_HR->{"p_" . $alt_key} = $ftr_results_HR->{"pl_" . $alt_key};
+                $ftr_results_HR->{"p_" . $alt_key} = $ftr_results_HR->{($winning_prefix . $alt_key)};
               }
             }
             foreach my $alt_code (sort keys %{$alt_str_HH{$winning_prefix}}) { 
@@ -7347,7 +7378,9 @@ sub run_blastx_and_summarize_output {
 #
 # Arguments: 
 #  $blastx_summary_file: path to blastx summary file to parse
-#  $do_longest:          TRUE to store info on longest blastx hit, instead of max scoring one
+#  $ftr_results_prefix:  prefix to use to store results, either "p_", "pc_", or "pl_";
+#                        if "pl_" we will store longest hit, not max scoring
+#                        if "pc_" we will ignore hits to the full sequence, focusing only on hits to predicted CDS
 #  $seq_name_AR:         REF to array of sequence names
 #  $seq_len_HR:          REF to hash of sequence lengths
 #  $ftr_info_AHR:        REF to array of hashes with feature info 
@@ -7365,15 +7398,23 @@ sub parse_blastx_results {
   my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($blastx_summary_file, $do_longest, $seq_name_AR, $seq_len_HR, $ftr_info_AHR, $ftr_results_HAHR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($blastx_summary_file, $ftr_results_prefix, $seq_name_AR, $seq_len_HR, $ftr_info_AHR, $ftr_results_HAHR, $opt_HHR, $ofile_info_HHR) = @_;
 
   # printf("in $sub_name, blastx_summary_file: $blastx_summary_file\n");
-  
+
+  # deal with input ftr_results_prefix
+  if(($ftr_results_prefix ne "p_") && 
+     ($ftr_results_prefix ne "pc_") && 
+     ($ftr_results_prefix ne "pl_")) { 
+    ofile_FAIL("ERROR in $sub_name, unexpected ftr_results_prefix $ftr_results_prefix", 1, $FH_HR);
+  }
+  my $do_longest = ($ftr_results_prefix eq "pl_") ? 1 : 0;
+  my $do_ignore_fullseq = ($ftr_results_prefix eq "pc_") ? 1 : 0;
+
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
   utl_FileValidateExistsAndNonEmpty($blastx_summary_file, "blastx summary file", $sub_name, 1, $FH_HR);
   my $nftr = scalar(@{$ftr_info_AHR});
-  my $ftr_results_prefix = $do_longest ? "pl_" : "p_";
 
   # create a hash mapping ftr_type_idx strings to ftr_idx:
   my %ftr_type_idx2ftr_idx_H = ();
@@ -7582,6 +7623,7 @@ sub parse_blastx_results {
             # should we store this query/target/hit trio?
             # we do if A, B, C, D are all TRUE and at least one of X or Y or Z is TRUE
             #  A. this query/target pair is compatible (query is full sequence or correct CDS feature) 
+            #     if $do_ignore_fullseq, then we do not allow query to be the full sequence
             #  B. if --xlongest not used: this is the highest scoring hit for this feature for this sequence (query/target pair)? 
             #     if --xlongest is  used: this is the longest hit (query coords) for this feature for this sequence (query/target pair)? 
             #  C. query length (full length seq or predicted CDS) is at least <x> nt from --minpvlen
@@ -7596,7 +7638,7 @@ sub parse_blastx_results {
             #     with a nucleotide prediction for the current target CDS
 
             my $blast_hit_qlen = abs($blast_qstart - $blast_qstop) + 1;
-            my $a_true = (($q_ftr_idx == -1) || ($q_ftr_idx == $t_ftr_idx)) ? 1 : 0; # query is full sequence OR query is fetched CDS that pertains to target
+            my $a_true = ((($q_ftr_idx == -1) && (! $do_ignore_fullseq)) || ($q_ftr_idx == $t_ftr_idx)) ? 1 : 0; # query is full sequence (and !do_ignore_fullseq) OR query is fetched CDS that pertains to target
             my $b_true = undef;
             if(! $do_longest) { 
               $b_true = ((! defined $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{($ftr_results_prefix . "score")}) ||  # first hit, so must be highest score
