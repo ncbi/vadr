@@ -313,7 +313,7 @@ $opt_group_desc_H{++$g} = "options for controlling blastx protein validation sta
 opt_Add("--xmatrix",     "string",   undef,      $g,     undef,"--pv_skip,--pv_hmmer", "use the matrix <s> with blastx (e.g. BLOSUM45)",                                   "use the matrix <s> with blastx (e.g. BLOSUM45)", \%opt_HH, \@opt_order_A);
 opt_Add("--xdrop",       "integer",  25,         $g,     undef,"--pv_skip,--pv_hmmer", "set the xdrop value for blastx to <n>",                                            "set the xdrop value for blastx to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--xnumali",     "integer",  20,         $g,     undef,"--pv_skip,--pv_hmmer", "number of alignments to keep in blastx output and consider if --xlongest is <n>",  "number of alignments to keep in blastx output and consider if --xlongest is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xlongest",    "boolean",  0,          $g,     undef,"--pv_skip,--pv_hmmer", "use the max score or longest blastx hit, whichever has fewer alerts",   "use the max score or longest blastx hit, whichever has fewer alerts", \%opt_HH, \@opt_order_A);
+opt_Add("--xnolongest",  "boolean",  0,          $g,     undef,"--pv_skip,--pv_hmmer", "do not consider longest blastx hit, only max scoring",                             "do not consider longest blastx hit, only max scoring", \%opt_HH, \@opt_order_A);
 opt_Add("--xnocomp",     "boolean",  0,          $g,     undef,"--pv_skip,--pv_hmmer", "turn off composition-based for blastx statistics with -comp_based_stats 0",        "turn off composition-based for blastx statistics with comp_based_stats 0", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for using hmmer instead of blastx for protein validation";
@@ -514,7 +514,7 @@ my $options_okay =
                 'xmatrix=s'     => \$GetOptions_H{"--xmatrix"},
                 'xdrop=s'       => \$GetOptions_H{"--xdrop"},
                 'xnumali=s'     => \$GetOptions_H{"--xnumali"},
-                'xlongest'      => \$GetOptions_H{"--xlongest"},
+                'xnolongest'    => \$GetOptions_H{"--xnolongest"},
                 'xnocomp'       => \$GetOptions_H{"--xnocomp"},
 # options for using hmmer instead of blastx for protein validation
                 'pv_hmmer'      => \$GetOptions_H{"--pv_hmmer"},
@@ -1980,8 +1980,8 @@ if($do_pv_blastx) {
           parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, "pc_", \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
                                $ftr_info_blastx_HR, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
         }
-        # if --xlongest, also store the longest blastx hit, and use it if it results in fewer fatal alerts
-        if(opt_Get("--xlongest", \%opt_HH)) { 
+        # unless --xnolongest, also store the longest blastx hit, and use it if it results in fewer fatal alerts
+        if(! opt_Get("--xnolongest", \%opt_HH)) { 
           # 'pl_': keep longest hit, not max scoring
           parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, "pl_", \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
                              $ftr_info_blastx_HR, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
