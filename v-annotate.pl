@@ -6702,6 +6702,11 @@ sub add_low_similarity_alerts_for_one_sequence {
           my $s_len  = abs($stop - $start) + 1;
           my $m_len  = abs(abs($ua2rf_AR->[$stop]) - abs($ua2rf_AR->[$start])) + 1;
           my $nextra = $s_len - $m_len - (abs($ua2rf_AR->[$start]) - 1);
+          if($ua2rf_AR->[$start] < 0) { 
+            # first position of missing region aligns as an insert *after* (3' of) mdl_start, 
+            # so we actually have one more extra nt than we would if it aligned to mdl_start consensus position
+            $nextra++;
+          }
           if($nextra >= $extra_5_min_length) { 
             $alt_msg = sprintf("%s%sabout %d extra nucleotide%s", 
                                sprintf("seq:" . vdr_CoordsSegmentCreate($start, ($start+$nextra-1), "+", $FH_HR) . ";"), 
@@ -6715,10 +6720,15 @@ sub add_low_similarity_alerts_for_one_sequence {
           my $s_len  = abs($stop - $start) + 1;
           my $m_len  = abs(abs($ua2rf_AR->[$stop]) - abs($ua2rf_AR->[$start])) + 1;
           my $nextra = $s_len - $m_len - ($mdl_len - abs($ua2rf_AR->[$stop]));
+          if($ua2rf_AR->[$start] < 0) { 
+            # first position of missing region aligns as an insert *after* (3' of) mdl_start, 
+            # so we actually have one more extra nt than we would if it aligned to mdl_start consensus position
+            $nextra++;
+          }
           if($nextra >= $extra_3_min_length) { 
             $alt_msg = sprintf("%s%sabout %d extra nucleotide%s", 
                                sprintf("seq:" . vdr_CoordsSegmentCreate(($stop-$nextra+1), $stop, "+", $FH_HR) . ";"), 
-                               sprintf("mdl:" . vdr_CoordsSegmentCreate($mdl_len+1, $mdl_len+1, "+", $FH_HR) . ";"), 
+                               sprintf("mdl:" . vdr_CoordsSegmentCreate($mdl_len, $mdl_len, "+", $FH_HR) . ";"), 
                                $nextra, 
                                ($nextra == 1 ? "" : "s")); 
             alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "extrant3", $seq_name, $alt_msg, $FH_HR);
