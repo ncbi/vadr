@@ -133,7 +133,7 @@ require "sqp_utils.pm";
 #     peptrans (1)
 # 
 #  8. add_low_similarity_alerts_for_one_sequence()
-#     lowsim5c, lowsim3c, lowsimic, lowsim5n, lowsim3n, lowsimin, lowsim5s, lowsim3s, lowsimis (9)
+#     lowsim5c, lowsim3c, lowsimic, lowsim5n, lowsim3n, lowsimin, lowsim5l, lowsim3l, lowsimil, lowsim5s, lowsim3s, lowsimis, extrant5, extrant3 (14)
 # 
 #  9. add_frameshift_alerts_for_one_sequence()
 #     fsthicft, fsthicfi, fstloft, fstlocfi, fstukcft, fstukcfi (6)
@@ -272,9 +272,11 @@ opt_Add("--lowsimiseq", "integer",   1,         $g,   undef,   undef,           
 opt_Add("--lowsim5ftr", "integer",   5,         $g,   undef,   undef,            "lowsim5{c,n}/LOW_FEATURE_SIMILARITY_START minimum length is <n>",                 "lowsim5{c,n}/LOW_FEATURE_SIMILARITY_START minimum length is <n>",                 \%opt_HH, \@opt_order_A);
 opt_Add("--lowsim3ftr", "integer",   5,         $g,   undef,   undef,            "lowsim3{c,n}/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                   "lowsim3{c,n}/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                   \%opt_HH, \@opt_order_A);
 opt_Add("--lowsimiftr", "integer",   1,         $g,   undef,   undef,            "lowsimi{c,n}/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",            "lowsimi{c,n}/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",            \%opt_HH, \@opt_order_A);
-opt_Add("--lowsim5lftr", "integer",  30,        $g,   undef,   undef,            "long lowsim5l/LOW_FEATURE_SIMILARITY_START minimum length is <n>",                "long lowsim5l/LOW_FEATURE_SIMILARITY_START minimum length is <n>",                 \%opt_HH, \@opt_order_A);
-opt_Add("--lowsim3lftr", "integer",  30,        $g,   undef,   undef,            "long lowsim3l/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                  "long lowsim3l/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                   \%opt_HH, \@opt_order_A);
-opt_Add("--lowsimilftr", "integer",  30,        $g,   undef,   undef,            "long lowsimil/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",           "long lowsimil/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",            \%opt_HH, \@opt_order_A);
+opt_Add("--lowsim5lftr", "integer",  30,        $g,   undef,   undef,            "long lowsim5l/LOW_FEATURE_SIMILARITY_START minimum length is <n>",                "long lowsim5l/LOW_FEATURE_SIMILARITY_START minimum length is <n>",                \%opt_HH, \@opt_order_A);
+opt_Add("--lowsim3lftr", "integer",  30,        $g,   undef,   undef,            "long lowsim3l/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                  "long lowsim3l/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                  \%opt_HH, \@opt_order_A);
+opt_Add("--lowsimilftr", "integer",  30,        $g,   undef,   undef,            "long lowsimil/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",           "long lowsimil/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",           \%opt_HH, \@opt_order_A);
+opt_Add("--extrant5",    "integer",  5,         $g,   undef,   undef,            "extrant5/EXTRA_SEQUENCE_START minimum length is <n>",                             "extrant5/EXTRA_SEQUENCE_START minimum length is <n>",                             \%opt_HH, \@opt_order_A);
+opt_Add("--extrant3",    "integer",  5,         $g,   undef,   undef,            "extrant3/EXTRA_SEQUENCE_END minimum length is <n>",                               "extrant3/EXTRA_SEQUENCE_END minimum length is <n>",                               \%opt_HH, \@opt_order_A);
 opt_Add("--biasfract",  "real",      0.25,      $g,   undef,   undef,            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            \%opt_HH, \@opt_order_A);
 opt_Add("--nmiscftrthr","integer",   4,         $g,   undef,   undef,            "nmiscftr/TOO_MANY_MISC_FEATURES reported if <n> or more misc_features",           "nmiscftr/TOO_MANY_MISC_FEATURES reported if <n> or more misc_features",           \%opt_HH, \@opt_order_A);
 opt_Add("--indefann",   "real",      0.8,       $g,   undef,   undef,            "indf{5,3}lc{c,n}/INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>",         "indf{5,3}lc{c,n}/'INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
@@ -482,6 +484,8 @@ my $options_okay =
                 'lowsim5lftr=s' => \$GetOptions_H{"--lowsim5lftr"},
                 'lowsim3lftr=s' => \$GetOptions_H{"--lowsim3lftr"},
                 'lowsimilftr=s' => \$GetOptions_H{"--lowsimilftr"},
+                'extrant5=s'    => \$GetOptions_H{"--extrant5"},
+                'extrant3=s'    => \$GetOptions_H{"--extrant3"},
                 'biasfract=s'   => \$GetOptions_H{"--biasfract"},  
                 'nmiscftrthr=s' => \$GetOptions_H{"--nmiscftrthr"},  
                 'indefann=s'    => \$GetOptions_H{"--indefann"},  
@@ -1262,7 +1266,7 @@ if($do_split) {
   my $nscript = scalar(@cpu_out_file_AH);
   
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
+  
   my $ncpu2print = $ncpu;
   if($ncpu2print > $nscript) { $ncpu2print = $nscript; }
   $start_secs = ofile_OutputProgressPrior(sprintf("Executing $nscript script%s to process $nchunk partition(s) of all %d sequence(s)",
@@ -1850,6 +1854,7 @@ $start_secs = ofile_OutputProgressPrior("Determining annotation", $progress_w, $
 
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  $mdl_len  = $mdl_info_AH[$mdl_idx]{"length"};
   my $mdl_tt   = (defined $mdl_info_AH[$mdl_idx]{"transl_table"}) ? $mdl_info_AH[$mdl_idx]{"transl_table"} : 1; # default to standard genetic code
   if(defined $mdl_seq_name_HA{$mdl_name}) { 
     my $mdl_nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
@@ -1886,7 +1891,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                                       \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, \%stg_results_HHH,
                                                       \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
                                                       \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, \%dcr_output_HAH,
-                                                      $mdl_name, \@ftr_fileroot_A, \@ftr_outroot_A, 
+                                                      $mdl_name, $mdl_len, \@ftr_fileroot_A, \@ftr_outroot_A, 
                                                       $$sqfile_for_cds_mp_alerts_R, $$sqfile_for_output_fastas_R, $$sqfile_for_pv_R,
                                                       $do_separate_cds_fa_files_for_protein_validation, \@to_remove_A,
                                                       ($do_replace_ns) ? \%rpn_output_HH : undef, 
@@ -1908,9 +1913,10 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 # were not aligned so we don't have alignment information (@ua2rf_A)
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  $mdl_len  = $mdl_info_AH[$mdl_idx]{"length"};
   if(defined $mdl_unexdivg_HA{$mdl_name}) { 
     foreach my $seq_name (@{$mdl_unexdivg_HA{$mdl_name}}) { 
-      add_low_similarity_alerts_for_one_sequence($seq_name, \%seq_len_H, undef,
+      add_low_similarity_alerts_for_one_sequence($seq_name, \%seq_len_H, $mdl_len, undef,
                                                  \@{$ftr_info_HAH{$mdl_name}}, \@{$sgm_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                                  \%stg_results_HHH, \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
                                                  \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, 
@@ -4109,6 +4115,7 @@ sub cmalign_or_glsearch_run {
 #  $alt_ftr_instances_HHHR:    REF to error instances HHH, ADDED TO HERE
 #  $dcr_output_HAHR:           REF to hash of array of hashes with info on doctored seqs to output, ADDED TO HERE
 #  $mdl_name:                  model name this alignment pertains to
+#  $mdl_len:                   length of model this alignment pertains to
 #  $ftr_fileroot_AR:           REF to array of per-feature file root values, pre-calc'ed and passed in so we don't need to do it per-seq
 #  $ftr_outroot_AR:            REF to array of per-feature output root values, pre-calc'ed and passed in so we don't need to do it per-seq
 #  $sqfile_for_cds_mp_alerts:  REF to Bio::Easel::SqFile object, open sequence file with sequences
@@ -4132,13 +4139,13 @@ sub cmalign_or_glsearch_run {
 ################################################################# 
 sub parse_stk_and_add_alignment_cds_and_mp_alerts { 
   my $sub_name = "parse_stk_and_add_alignment_cds_and_mp_alerts()";
-  my $nargs_exp = 26;
+  my $nargs_exp = 27;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
   my ($stk_file, $in_sqfile_R, $mdl_tt, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, 
       $ftr_info_AHR, $alt_info_HHR, $stg_results_HHHR, $sgm_results_HAHR, $ftr_results_HAHR, 
       $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $dcr_output_HAHR, 
-      $mdl_name, $ftr_fileroot_AR, $ftr_outroot_AR, 
+      $mdl_name, $mdl_len, $ftr_fileroot_AR, $ftr_outroot_AR, 
       $sqfile_for_cds_mp_alerts, $sqfile_for_output_fastas, $sqfile_for_pv,
       $do_separate_cds_fa_files, $to_remove_AR, $rpn_output_HHR,
       $out_root, $opt_HHR, $ofile_info_HHR) = @_;
@@ -4818,7 +4825,7 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
       # add low similarity alerts for this sequence
       # we have to do this here because we need @ua2rf_A map of unaligned positions 
       # to RF positions to report model positions for alerts
-      add_low_similarity_alerts_for_one_sequence($seq_name, \%seq_len_H, \@ua2rf_A, 
+      add_low_similarity_alerts_for_one_sequence($seq_name, \%seq_len_H, $mdl_len, \@ua2rf_A, 
                                                  $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, 
                                                  $stg_results_HHHR, $sgm_results_HAHR, $ftr_results_HAHR, 
                                                  $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, 
@@ -6460,10 +6467,10 @@ sub sqstring_find_stops {
 #################################################################
 sub add_low_similarity_alerts_for_one_sequence { 
   my $sub_name = "add_low_similarity_alerts_for_one_sequence";
-  my $nargs_exp = 14;
+  my $nargs_exp = 15;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($seq_name, $seq_len_HR, $ua2rf_AR, $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, 
+  my ($seq_name, $seq_len_HR, $mdl_len, $ua2rf_AR, $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, 
       $stg_results_HHHR, $sgm_results_HAHR, $ftr_results_HAHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, 
       $rpn_output_HHR, $opt_HHR, $ofile_info_HHR) = @_;
 
@@ -6480,6 +6487,8 @@ sub add_low_similarity_alerts_for_one_sequence {
   my $long_terminal_ftr_5_min_length = opt_Get("--lowsim5lftr", $opt_HHR); # minimum length of terminal missing region in a feature that triggers a lowsim5l alert
   my $long_terminal_ftr_3_min_length = opt_Get("--lowsim3lftr", $opt_HHR); # minimum length of terminal missing region in a feature that triggers a lowsim3l alert
   my $long_internal_ftr_min_length   = opt_Get("--lowsimilftr", $opt_HHR); # minimum length of internal missing region in a feature that triggers a lowsimil alert
+  my $extra_5_min_length             = opt_Get("--extrant5",    $opt_HHR); # minimum length of extra sequence at 5' end that triggers an extrant5 alert
+  my $extra_3_min_length             = opt_Get("--extrant5",    $opt_HHR); # minimum length of extra sequence at 3' end that triggers an extrant3 alert
 
   # When doing check of sophisticated checks of options, we already checked that 
   # if --lowsim5ftr <n1> or --lowsim5lftr <n2> used, <n1> must be <= <n2>
@@ -6546,18 +6555,17 @@ sub add_low_similarity_alerts_for_one_sequence {
       my @missing_coords_A = split(",", $missing_coords);
       foreach my $missing_coords_tok (@missing_coords_A) { 
         my ($start, $stop, undef) = vdr_CoordsSegmentParse($missing_coords_tok, $FH_HR);
-        my $length = abs($start - $stop) + 1;
+        my $length   = abs($start - $stop) + 1;
+        my $is_start = ($start == 1)        ? 1 : 0;
+        my $is_end   = ($stop  == $seq_len) ? 1 : 0;
         if($length >= $min_length) { 
           # length is greater than the minimum of all alert length reporting thresholds
           if($bstrand eq "+") { 
-            my $is_start   = ($start == 1)        ? 1 : 0;
-            my $is_end     = ($stop  == $seq_len) ? 1 : 0;
             # does this overlap with a feature by at least minimum overlap length threshold? 
             my $ftr_overlap_flag = 0;
             for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
               # determine if this feature qualifies as a 'coding' feature for purposes of the alert
               # it does if it is a CDS, mat_peptide or has identical coords to a CDS or mat_peptide
-              # - feature is a CDS or mat_peptide OR has identical coordinates to a CDS or mat_peptide
               my $ftr_matches_coding = vdr_FeatureTypeIsCdsOrMatPeptideOrIdStartAndStop($ftr_info_AHR, $ftr_idx);
               my $ftr_results_HR = $ftr_results_HAHR->{$seq_name}[$ftr_idx]; # for convenience
               if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_qstart"})) { 
@@ -6686,9 +6694,36 @@ sub add_low_similarity_alerts_for_one_sequence {
                   alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsimis", $seq_name, $alt_msg, $FH_HR);
                 }
               }
-            }
-          }
+            } # end of 'if(! $ftr_overlap_flag
+          } # end of 'if($bstrand eq "+")
         } # end of 'if($length >= $min_length)'
+        # do additional check for extrant5, extrant3 
+        if(($is_start) && (defined $ua2rf_AR)) { 
+          my $s_len  = abs($stop - $start) + 1;
+          my $m_len  = abs(abs($ua2rf_AR->[$stop]) - abs($ua2rf_AR->[$start])) + 1;
+          my $nextra = $s_len - $m_len - (abs($ua2rf_AR->[$start]) - 1);
+          if($nextra >= $extra_5_min_length) { 
+            $alt_msg = sprintf("%s%sabout %d extra nucleotide%s", 
+                               sprintf("seq:" . vdr_CoordsSegmentCreate($start, ($start+$nextra-1), "+", $FH_HR) . ";"), 
+                               sprintf("mdl:" . vdr_CoordsSegmentCreate(0, 0, "+", $FH_HR) . ";"), 
+                               $nextra, 
+                               ($nextra == 1 ? "" : "s")); 
+            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "extrant5", $seq_name, $alt_msg, $FH_HR);
+          }
+        }
+        if($is_end) { 
+          my $s_len  = abs($stop - $start) + 1;
+          my $m_len  = abs(abs($ua2rf_AR->[$stop]) - abs($ua2rf_AR->[$start])) + 1;
+          my $nextra = $s_len - $m_len - ($mdl_len - abs($ua2rf_AR->[$stop]));
+          if($nextra >= $extra_3_min_length) { 
+            $alt_msg = sprintf("%s%sabout %d extra nucleotide%s", 
+                               sprintf("seq:" . vdr_CoordsSegmentCreate(($stop-$nextra+1), $stop, "+", $FH_HR) . ";"), 
+                               sprintf("mdl:" . vdr_CoordsSegmentCreate($mdl_len+1, $mdl_len+1, "+", $FH_HR) . ";"), 
+                               $nextra, 
+                               ($nextra == 1 ? "" : "s")); 
+            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "extrant3", $seq_name, $alt_msg, $FH_HR);
+          }
+        }
       } # end of 'foreach my $missing_coords_tok (@missing_coords_A)'
     }
   }

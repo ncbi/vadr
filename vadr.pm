@@ -2457,6 +2457,18 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
+  vdr_AlertInfoAdd($alt_info_HHR, "extrant5", "sequence",
+                   "EXTRA_SEQUENCE_START", # short description
+                   "extra sequence upstream of expected sequence start detected at 5' end of the sequence", # long description
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "extrant3", "sequence",
+                   "EXTRA_SEQUENCE_END", # short description
+                   "extra sequence downstream of expected sequence end detected at 3' end of the sequence", # long description
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+ 
   vdr_AlertInfoAdd($alt_info_HHR, "unexdivg", "sequence",
                    "UNEXPECTED_DIVERGENCE", # short description
                    "sequence is too divergent to confidently assign nucleotide-based annotation", # long description
