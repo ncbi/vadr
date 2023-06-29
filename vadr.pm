@@ -96,6 +96,7 @@ require "sqp_utils.pm";
 # vdr_FeatureTypeIsCdsOrMatPeptideOrIdStartAndStop()
 # vdr_FeatureTypeIsCdsOrMatPeptideOrGene()
 # vdr_FeatureTypeCanBecomeMiscFeature()
+# vdr_FeatureOutType()
 # vdr_FeatureNumSegments()
 # vdr_FeatureRelativeSegmentIndex()
 # vdr_Feature5pMostPosition()
@@ -1819,6 +1820,36 @@ sub vdr_FeatureTypeCanBecomeMiscFeature {
           ($ftr_info_AHR->[$ftr_idx]{"type"} ne "5'UTR") && 
           ($ftr_info_AHR->[$ftr_idx]{"type"} ne "3'UTR") && 
           ($ftr_info_AHR->[$ftr_idx]{"type"} ne "operon")) ? 1 : 0;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureOutType()
+# Incept:     EPN, Thu Jun 29 09:38:05 2023
+#
+# Purpose:    Return the 'output type' for a feature. This is
+#             the value for the 'out_type' key if it is defined
+#             in %ftr_info_AHR, else it is the value for the 
+#             'type' key.
+#
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $ftr_idx:        feature index
+#
+# Returns:    $ftr_info_AHR->[$ftr_idx]{"out_type"} if defined
+#             else $ftr_info_AHR->[$ftr_idx]{"type"}
+#
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub vdr_FeatureOutType { 
+  my $sub_name = "vdr_FeatureOutType";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+
+  return (defined $ftr_info_AHR->[$ftr_idx]{"out_type"}) ? 
+      $ftr_info_AHR->[$ftr_idx]{"out_type"} : $ftr_info_AHR->[$ftr_idx]{"type"};
 }
 
 #################################################################

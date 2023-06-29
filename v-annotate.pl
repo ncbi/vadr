@@ -10514,7 +10514,8 @@ sub output_feature_table {
             } # end of 'if($is_cds)' entered to determine codon_start
             
             # convert coordinate string to output string
-            $ftr_out_str = helper_ftable_coords_to_out_str($ftr_ftbl_coords_str, $feature_type, $FH_HR);
+            my $out_feature_type = vdr_FeatureOutType($ftr_info_AHR, $ftr_idx);
+            $ftr_out_str = helper_ftable_coords_to_out_str($ftr_ftbl_coords_str, $out_feature_type, $FH_HR);
             
             # add qualifiers: product, gene, exception and codon_start
             if(! $is_misc_feature) { 
