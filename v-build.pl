@@ -104,7 +104,7 @@ opt_Add("--addminfo",   "string",  undef,      $g,    undef, undef,       "add f
 opt_Add("--forcelong",  "boolean", 0,          $g,    undef, undef,       "allow long models > 25Kb in length",                          "allow long models > 25Kb in length", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,          $g,    undef, undef,       "leave intermediate files on disk",                            "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options for controlling what feature types are stored in model info file\n[default set is: CDS,gene,mat_peptide]";
+$opt_group_desc_H{++$g} = "options for controlling what feature types are stored in model info file\n[default set is: CDS,gene,mat_peptide,sig_peptide]";
 #     option            type       default  group   requires incompat     preamble-output                                                      help-output    
 opt_Add("--fall",       "boolean", 0,          $g,    undef,  undef,      "store info for all feature types (except those in --fskip)",        "store info for all feature types (except those in --fskip)", \%opt_HH, \@opt_order_A);
 opt_Add("--fadd",       "string",  undef,      $g,    undef,"--fall",     "also store features types in comma separated string <s>",           "also store feature types in comma separated string <s>", \%opt_HH, \@opt_order_A);
@@ -149,6 +149,7 @@ opt_Add("--sgminfo",    "boolean", 0,         $g,    undef,     undef,    "outpu
 $opt_group_desc_H{++$g} = "other expert options";
 #       option       type          default     group  requires incompat  preamble-output                                 help-output    
 opt_Add("--execname",   "string",  undef,         $g,    undef, undef,   "define executable name of this script as <s>", "define executable name of this script as <s>", \%opt_HH, \@opt_order_A);        
+opt_Add("--nosig2mat",  "boolean",  0,            $g,    undef, undef,   "do not treat sig_peptide as mat_peptide",      "do not treat sig_peptide as mat_peptide", \%opt_HH, \@opt_order_A);        
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -196,7 +197,8 @@ my $options_okay =
                 'sgminfo'      => \$GetOptions_H{"--sgminfo"},
                 'ftrinfo'      => \$GetOptions_H{"--ftrinfo"},
 # other expert options
-                'execname=s'   => \$GetOptions_H{"--execname"});
+                'execname=s'   => \$GetOptions_H{"--execname"},
+                'nosig2mat'    => \$GetOptions_H{"--nosig2mat"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another ofile_SecondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
@@ -474,7 +476,7 @@ $start_secs = ofile_OutputProgressPrior("Pruning data read from GenBank", $progr
 my %fdf_H   = (); # default feature types to keep
 my %fadd_H  = (); # feature types to add
 my %fskip_H = (); # feature types to skip
-process_add_and_skip_options("CDS,gene,mat_peptide", "--fadd", "--fskip", undef, \%fdf_H, \%fadd_H, \%fskip_H, undef, \%opt_HH, $FH_HR);
+process_add_and_skip_options("CDS,gene,mat_peptide,sig_peptide", "--fadd", "--fskip", undef, \%fdf_H, \%fadd_H, \%fskip_H, undef, \%opt_HH, $FH_HR);
 
 # determine what qualifiers we will store based on cmdline options
 # --qall is incompatible with --qadd
@@ -581,6 +583,20 @@ if(opt_Get("--gb", \%opt_HH)) {
   }
 }
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+####################################################################################
+# Change 'type' value for sig_peptide features to 'mat_peptide' (unless --nosig2mat)
+####################################################################################
+if(! opt_Get("--nosig2mat", \%opt_HH)) { 
+  for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
+    if((defined $ftr_info_HAH{$mdl_name}[$ftr_idx]) && 
+       (defined $ftr_info_HAH{$mdl_name}[$ftr_idx]{"type"}) && 
+       ($ftr_info_HAH{$mdl_name}[$ftr_idx]{"type"} eq "sig_peptide")) { 
+      $ftr_info_HAH{$mdl_name}[$ftr_idx]{"type"}     = "mat_peptide";
+      $ftr_info_HAH{$mdl_name}[$ftr_idx]{"out_type"} = "sig_peptide";
+    }
+  }
+}
 
 ###############################################
 # Add in features read from --addminfo if used
@@ -960,7 +976,7 @@ sub stockholm_validate_single_sequence_input {
 #           for features or qualifiers.
 #
 # Arguments:
-#  $df_string:  comma separated string of default values (e.g. "CDS,gene,mat_peptide")
+#  $df_string:  comma separated string of default values (e.g. "CDS,gene,mat_peptide,sig_peptide")
 #  $add_opt:    name of add option (e.g. "--fadd")
 #  $skip_opt:   name of skip option (e.g. "--fskip")
 #  $sub_opt:    name of option with subset of features add option applies to, or undef
@@ -1102,7 +1118,7 @@ sub fetch_and_parse_cds_protein_feature_tables {
             }
           }
           else { # we didn't find this feature already in the feature info hash, add it
-            # printf("adding feature " . $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"type"} . " with coords " . $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"coords"} . "\n");
+            #printf("adding feature " . $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"type"} . " with coords " . $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"coords"} . "\n");
             my $nxt_ftr_idx = scalar(@{$ftr_info_AHR});
             %{$ftr_info_AHR->[$nxt_ftr_idx]} = ();
             foreach my $prot_key (sort keys (%{$prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]})) { 

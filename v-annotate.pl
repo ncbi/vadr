@@ -9760,6 +9760,7 @@ sub output_tabular {
             my $ftr_name2print = helper_tabular_replace_spaces($ftr_name);
             my $ftr_parent_idx = ((defined $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"}) && ($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} ne "GBNULL")) ? ($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"}+1) : -1;
             my $ftr_type = $ftr_info_AHR->[$ftr_idx]{"type"};
+            my $ftr_type2print = vdr_FeatureOutType($ftr_info_AHR, $ftr_idx);
             my $ftr_strand   = helper_tabular_ftr_results_strand($ftr_info_AHR, $ftr_results_HR, $ftr_idx);
             my $ftr_trunc    = helper_tabular_ftr_results_trunc_string($ftr_results_HR);
             my $ftr_5ablen   = (defined $ftr_results_HR->{"n_5ablen"})   ? $ftr_results_HR->{"n_5ablen"}   : "-";
@@ -9836,7 +9837,7 @@ sub output_tabular {
                   push(@data_sgm_AA, []); # empty array -> blank line
                   # if (!$do_headers) for --split, we add blank line before first data line to mimic non-split output
                 }
-                push(@data_sgm_AA, [$sgm_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_mdl1, $ftr_type, $ftr_name2print, ($ftr_idx+1), 
+                push(@data_sgm_AA, [$sgm_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_mdl1, $ftr_type2print, $ftr_name2print, ($ftr_idx+1), 
                                     $ftr_nsgm, ($sgm_idx-$ftr_first_sgm+1), $sgm_sstart, $sgm_sstop, $sgm_mstart, $sgm_mstop, $sgm_slen, $sgm_strand, 
                                     $sgm_trunc, $sgm_pp5, $sgm_pp3, $sgm_gap5, $sgm_gap3]);
                 $sgm_nprinted++;
@@ -9853,7 +9854,7 @@ sub output_tabular {
             } 
             if($s_coords_str eq "") { $s_coords_str = "-"; } # will happen only for protein-validation only predictions
             if($m_coords_str eq "") { $m_coords_str = "-"; } # will happen only for protein-validation only predictions
-            push(@data_ftr_AA, [$ftr_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_mdl1, $ftr_type, $ftr_name2print, $ftr_len_by_sgm, 
+            push(@data_ftr_AA, [$ftr_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_mdl1, $ftr_type2print, $ftr_name2print, $ftr_len_by_sgm, 
                                 ($ftr_idx+1), $ftr_parent_idx, $ftr_strand, $ftr_n_start, $ftr_n_stop, $ftr_n_stop_c, $ftr_trunc, $ftr_5ablen, $ftr_3ablen, 
                                 $ftr_p_qstart, $ftr_p_qstop, $ftr_p_qstop_c, $ftr_p_score, $ftr_nsgm_annot, $ftr_nsgm_noannot, 
                                 $s_coords_str, $m_coords_str, $ftr_alt_str]);
@@ -9883,7 +9884,7 @@ sub output_tabular {
                     $alt_nseqftr++;
                     $alt_ct_H{$alt_code}++;
                     my $alt_idx2print = $seq_idx2print . "." . $alt_nftr . "." . $alt_nseqftr;
-                    push(@data_alt_AA, [$alt_idx2print, $seq_name, $seq_mdl1, $ftr_type, $ftr_name2print, ($ftr_idx+1), $alt_code, 
+                    push(@data_alt_AA, [$alt_idx2print, $seq_name, $seq_mdl1, $ftr_type2print, $ftr_name2print, ($ftr_idx+1), $alt_code, 
                                         vdr_FeatureAlertCausesFailure($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code) ? "yes" : "no", 
                                         helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
                                         ($instance_scoords eq "VADRNULL") ? "-" : $instance_scoords, 
@@ -10514,7 +10515,8 @@ sub output_feature_table {
             } # end of 'if($is_cds)' entered to determine codon_start
             
             # convert coordinate string to output string
-            $ftr_out_str = helper_ftable_coords_to_out_str($ftr_ftbl_coords_str, $feature_type, $FH_HR);
+            my $out_feature_type = vdr_FeatureOutType($ftr_info_AHR, $ftr_idx);
+            $ftr_out_str = helper_ftable_coords_to_out_str($ftr_ftbl_coords_str, $out_feature_type, $FH_HR);
             
             # add qualifiers: product, gene, exception and codon_start
             if(! $is_misc_feature) { 
