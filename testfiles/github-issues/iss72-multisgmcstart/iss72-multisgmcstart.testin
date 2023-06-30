@@ -16,8 +16,8 @@ command: perl $VADRSCRIPTSDIR/v-annotate.pl -m $VADRSCRIPTSDIR/testfiles/models/
 desc: iss72-multisgmcstart
 out: va-iss72/va-iss72.vadr.pass.tbl
 out: va-iss72/va-iss72.vadr.fail.tbl
-out: va-iss72/va-iss72.vadr.alt
+out: va-iss72/va-iss72.vadr.alt.list
 exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss72-multisgmcstart/va-iss72.vadr.pass.tbl
 exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss72-multisgmcstart/va-iss72.vadr.fail.tbl
-exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss72-multisgmcstart/va-iss72.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss72-multisgmcstart/va-iss72.vadr.alt.list
 rmdir: va-iss72
