@@ -10855,9 +10855,9 @@ sub output_feature_table {
 #             $ftr_ftbl_coords_str: string that gives the coordinates for this feature in feature table format
 #                                   "" if entire feature is ambigs, in this case we won't output it to feature table
 #             $ftr_ftbl_coords_len: length in nt of feature in output coords for feature table
-#             $min_coord:           minimum coordinate for feature
-#             $is_5trunc:           '1' if first segment is truncated on 5' end due to sequence terminus or ambigs
-#             $is_3trunc:           '1' if final segment is truncated on 3' end due to sequence terminus or ambigs
+#             $min_coord:       minimum coordinate for feature
+#             $is_5trunc:       '1' if first segment is truncated on 5' end due to sequence terminus or ambigs
+#             $is_3trunc:       '1' if final segment is truncated on 3' end due to sequence terminus or ambigs
 #
 # Dies: if either @{$start_AR} or @{$stop_AR} are empty
 #       if $start_non_ab is -1 but stop_non_ab is not
@@ -10886,8 +10886,12 @@ sub helper_ftable_coords_from_nt_prediction {
       push(@is_3trunc_A, $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"3trunc"});
     }
   }
+  my $missing_first_sgm = (defined $sgm_results_HAHR->{$seq_name}[($ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"})]{"sstart"}) ? 0 : 1;
+  my $missing_final_sgm = (defined $sgm_results_HAHR->{$seq_name}[($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"})]{"sstart"}) ? 0 : 1;
+  
   return helper_ftable_start_stop_strand_arrays_to_coords(\@start_A, \@stop_A, \@strand_A, \@is_5trunc_A, \@is_3trunc_A, 
-                                                          $start_non_ab, $stop_non_ab, $FH_HR);
+                                                          $start_non_ab, $stop_non_ab, $missing_first_sgm, $missing_final_sgm,
+                                                          $FH_HR);
 }
 
 #################################################################
@@ -10936,7 +10940,7 @@ sub helper_ftable_coords_prot_only_prediction {
   my @is_3trunc_A = (0); # can't detect truncation for protein predictions, currently
 
   return helper_ftable_start_stop_strand_arrays_to_coords(\@start_A, \@stop_A, \@strand_A, \@is_5trunc_A, \@is_3trunc_A, 
-                                                          undef, undef, $FH_HR);
+                                                          undef, undef, 0, 0, $FH_HR);
 }
 
 #################################################################
@@ -10947,14 +10951,18 @@ sub helper_ftable_coords_prot_only_prediction {
 #             construct coordinate strings in feature table format.
 #
 # Arguments: 
-#  $start_AR:      REF to array of start coordinates, one per sgm
-#  $stop_AR:       REF to array of stop coordinates, one per sgm
-#  $strand_AR:     REF to array of strands, one per sgm
-#  $is_5trunc_AR:  REF to array of is_5trunc values, one per sgm
-#  $is_3trunc_AR:  REF to array of is_3trunc values, one per sgm
-#  $start_non_ab:  first position of feature that is not an N (may be > $stop_non_ab)
-#  $stop_non_ab:   final position of feature that is not an N (may be < $start_non_ab)
-#  $FH_HR:         REF to hash of file handles
+#  $start_AR:          REF to array of start coordinates, one per sgm
+#  $stop_AR:           REF to array of stop coordinates, one per sgm
+#  $strand_AR:         REF to array of strands, one per sgm
+#  $is_5trunc_AR:      REF to array of is_5trunc values, one per sgm
+#  $is_3trunc_AR:      REF to array of is_3trunc values, one per sgm
+#  $start_non_ab:      first position of feature that is not an N (may be > $stop_non_ab)
+#  $stop_non_ab:       final position of feature that is not an N (may be < $start_non_ab)
+#  $missing_first_sgm: '1' if first segment is not annotated, results in first annotated 
+#                      segment being defined as 5' truncated
+#  $missing_final_sgm: '1' if final segment is not annotated, results in final annotated 
+#                      segment being defined as 3' truncated
+#  $FH_HR:             REF to hash of file handles
 #
 # Returns:    Five values:
 #             $ftr_ftbl_coords_str: string that gives the coordinates for this feature in feature table format
@@ -10970,10 +10978,11 @@ sub helper_ftable_coords_prot_only_prediction {
 ################################################################# 
 sub helper_ftable_start_stop_strand_arrays_to_coords { 
   my $sub_name = "helper_ftable_start_stop_strand_arrays_to_coords";
-  my $nargs_exp = 8;
+  my $nargs_exp = 10;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($start_AR, $stop_AR, $strand_AR, $is_5trunc_AR, $is_3trunc_AR, $start_non_ab, $stop_non_ab, $FH_HR) = @_;
+  my ($start_AR, $stop_AR, $strand_AR, $is_5trunc_AR, $is_3trunc_AR, $start_non_ab, $stop_non_ab, 
+      $missing_first_sgm, $missing_final_sgm, $FH_HR) = @_;
 
   # return values
   my $ret_ftr_ftbl_coords_str = "";
@@ -11001,6 +11010,16 @@ sub helper_ftable_start_stop_strand_arrays_to_coords {
     my $strand    = $strand_AR->[$c];
     my $is_5trunc_term = $is_5trunc_AR->[$c]; # segment is 5' truncated due to sequence terminus
     my $is_3trunc_term = $is_3trunc_AR->[$c]; # segment is 3' truncated due to sequence terminus
+    if(($c == 0) && ($missing_first_sgm)) { 
+      # missing first segment of the feature and this is the first annotated 
+      # segment, this qualifies as a 5' truncation
+      $is_5trunc_term = 1; 
+    }
+    if(($c == ($ncoord-1)) && ($missing_final_sgm)) { 
+      # missing final segment of the feature and this is the final annotated 
+      # segment, this qualifies as a 3' truncation
+      $is_3trunc_term = 1; 
+    }
 
     # potentially modify start/stop based on $start_non_ab and $stop_non_ab
     my $is_5trunc_n = 0; # set to 1 below if start position is truncated due to ambigs
