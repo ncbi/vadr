@@ -1,6 +1,7 @@
 >Feature ENTOY100A/66..100,stop-at-67..69
-1	8	CDS
+<1	8	CDS
 			product	protein two
+			codon_start	3
 			protein_id	ENTOY100A/66..100,stop-at-67..69_1
 2	14	misc_feature
 20	30

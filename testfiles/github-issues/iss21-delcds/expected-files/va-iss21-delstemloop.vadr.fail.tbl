@@ -15,7 +15,7 @@ ERROR: DELETION_OF_FEATURE: (*sequence*) internal deletion of a complete feature
 42	62	CDS
 			product	protein two
 			protein_id	entoy.delcds/cds3-sgm1-deleted/1-70,79-123_2
-73	74	misc_feature
+<73	74	misc_feature
 77	85
 			note	similar to SL1
 
@@ -43,7 +43,7 @@ ERROR: DELETION_OF_FEATURE_SECTION: (stem_loop:SL1) internal deletion of complet
 			product	protein two
 			protein_id	entoy.delcds/cds3-sgm3-deleted/1-83,97-123_2
 73	78	misc_feature
-80	82
+80	>82
 			note	similar to SL1
 
 Additional note(s) to submitter:
@@ -55,7 +55,7 @@ ERROR: DELETION_OF_FEATURE_SECTION: (stem_loop:SL1) internal deletion of complet
 42	62	CDS
 			product	protein two
 			protein_id	entoy.delcds/cds3-sgm1and2-deleted/1-65,87-123_2
-66	72	misc_feature
+<66	72	misc_feature
 			note	similar to SL1
 
 Additional note(s) to submitter:
@@ -69,7 +69,7 @@ ERROR: INDEFINITE_ANNOTATION_START: (stem_loop:SL1) alignment to homology model 
 42	62	CDS
 			product	protein two
 			protein_id	entoy.delcds/cds3-sgm2and3-deleted/1-79,97-123_2
-73	78	misc_feature
+73	>78	misc_feature
 			note	similar to SL1
 
 Additional note(s) to submitter:
@@ -82,7 +82,7 @@ ERROR: DELETION_OF_FEATURE_SECTION: (stem_loop:SL1) internal deletion of complet
 42	62	CDS
 			product	protein two
 			protein_id	entoy.delcds/cds3-sgm1and3-deleted/1-70,79..84,97-123_2
-72	74	misc_feature
+<72	>74	misc_feature
 			note	similar to SL1
 
 Additional note(s) to submitter:
