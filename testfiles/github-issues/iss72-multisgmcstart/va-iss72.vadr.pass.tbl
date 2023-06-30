@@ -1,0 +1,37 @@
+>Feature NC_001959.2/5830-6950
+<1	1121	gene
+			gene	ORF2
+<2	171	CDS
+292	1121
+			product	VP1
+			codon_start	2
+			protein_id	NC_001959.2/5830-6950_1
+>Feature NC_001959.2/5831-6950
+<1	1120	gene
+			gene	ORF2
+<1	170	CDS
+291	1120
+			product	VP1
+			codon_start	2
+			protein_id	NC_001959.2/5831-6950_1
+>Feature NC_001959.2/5831-6000
+<1	>170	gene
+			gene	ORF2
+<1	>170	CDS
+			product	VP1
+			codon_start	2
+			protein_id	NC_001959.2/5831-6000_1
+>Feature NC_001959.2/5831-6100
+<1	>270	gene
+			gene	ORF2
+<1	>170	CDS
+			product	VP1
+			codon_start	2
+			protein_id	NC_001959.2/5831-6100_1
+>Feature NC_001959.2/5815-6100
+<1	>286	gene
+			gene	ORF2
+<17	>186	CDS
+			product	VP1
+			codon_start	2
+			protein_id	NC_001959.2/5815-6100_1
