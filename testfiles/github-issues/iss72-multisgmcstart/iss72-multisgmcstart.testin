@@ -12,7 +12,7 @@
 # 'out:' file is compared against the first 'exp:' file, the second 
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
-command: perl $VADRSCRIPTSDIR/v-annotate.pl -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.multisgm.minfo -f $VADRSCRIPTSDIR/testfiles/github-issues/iss72-multisgmcstart/iss72-multisgmcstart.fa va-iss72 > va-iss72.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.multisgm.minfo -x $VADRSCRIPTSDIR/testfiles/models/blastx-NC_001959-multisgm -f $VADRSCRIPTSDIR/testfiles/github-issues/iss72-multisgmcstart/iss72-multisgmcstart.fa va-iss72 > va-iss72.out
 desc: iss72-multisgmcstart
 out: va-iss72/va-iss72.vadr.pass.tbl
 out: va-iss72/va-iss72.vadr.fail.tbl
