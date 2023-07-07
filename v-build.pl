@@ -128,13 +128,14 @@ $opt_group_desc_H{++$g} = "options for controlling CDS translation step";
 opt_Add("--ttbl",     "integer", 1,            $g,  undef,         undef,  "use NCBI translation table <n> to translate CDS",          "use NCBI translation table <n> to translate CDS", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling cmbuild step";
-#     option          type       default    group   requires    incompat              preamble-output                                             help-output    
-opt_Add("--cmn",      "integer", undef,       $g,   undef, "--skipbuild,--cminfile",  "set number of seqs for glocal fwd HMM calibration to <n>", "set number of seqs for glocal fwd HMM calibration to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--cmp7ml",   "boolean", 0,           $g,   undef, "--skipbuild,--cminfile",  "set CM's filter p7 HMM as the ML p7 HMM",                  "set CM's filter p7 HMM as the ML p7 HMM",                  \%opt_HH, \@opt_order_A);
-opt_Add("--cmere",    "real",    undef,       $g,   undef,  "--skipbuild,--cminfile", "set CM relative entropy target to <x>",                    "set CM relative entropy target to <x>",                    \%opt_HH, \@opt_order_A);
-opt_Add("--cmeset",   "real",    undef,       $g,   undef,  "--skipbuild,--cminfile", "set CM eff seq # for CM to <x>",                           "set CM eff seq # for CM to <x>",                           \%opt_HH, \@opt_order_A);
-opt_Add("--cmemaxseq","real",    undef,       $g,   undef,  "--skipbuild,--cminfile", "set CM maximum allowed eff seq # for CM to <x>",           "set CM maximum alowed eff seq # for CM to <x>",            \%opt_HH, \@opt_order_A);
-opt_Add("--cminfile", "string",  undef,       $g,   undef,  "--skipbuild",            "read cmbuild options from file <s>",                       "read cmbuild options from file <s>",                       \%opt_HH, \@opt_order_A);
+#     option          type       default    group   requires    incompat             preamble-output                                             help-output    
+opt_Add("--cmn",      "integer", undef,       $g,   undef, "--skipbuild,--cminfile", "set number of seqs for glocal fwd HMM calibration to <n>", "set number of seqs for glocal fwd HMM calibration to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--cmp7ml",   "boolean", 0,           $g,   undef, "--skipbuild,--cminfile", "set CM's filter p7 HMM as the ML p7 HMM",                  "set CM's filter p7 HMM as the ML p7 HMM",                  \%opt_HH, \@opt_order_A);
+opt_Add("--cmere",    "real",    undef,       $g,   undef, "--skipbuild,--cminfile", "set CM relative entropy target to <x>",                    "set CM relative entropy target to <x>",                    \%opt_HH, \@opt_order_A);
+opt_Add("--cmeset",   "real",    undef,       $g,   undef, "--skipbuild,--cminfile", "set CM eff seq # for CM to <x>",                           "set CM eff seq # for CM to <x>",                           \%opt_HH, \@opt_order_A);
+opt_Add("--cmemaxseq","real",    undef,       $g,   undef, "--skipbuild,--cminfile", "set CM maximum allowed eff seq # for CM to <x>",           "set CM maximum alowed eff seq # for CM to <x>",            \%opt_HH, \@opt_order_A);
+opt_Add("--cmnoprior","boolean", 0,           $g,   undef, "--skipbuild,--cminfile", "do not use --prior vadr.prior with cmbuild",               "do not use --prior vadr.prior with cmbuild",               \%opt_HH, \@opt_order_A);
+opt_Add("--cminfile", "string",  undef,       $g,   undef, "--skipbuild",            "read cmbuild options from file <s>, one per line",         "read cmbuild options from file <s>, one per line",         \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for skipping stages";
 #       option             type       default     group requires   incompat  preamble-output                                    help-output    
@@ -189,6 +190,7 @@ my $options_okay =
                 'cmere=s'      => \$GetOptions_H{"--cmere"},
                 'cmeset=s'     => \$GetOptions_H{"--cmeset"},
                 'cmemaxseq=s'  => \$GetOptions_H{"--cmemaxseq"},
+                'cmnoprior'    => \$GetOptions_H{"--cmnoprior"},
                 'cminfile=s'   => \$GetOptions_H{"--cminfile"},
 # options for skipping stages
                 'skipbuild'    => \$GetOptions_H{"--skipbuild"},
@@ -350,6 +352,15 @@ if(defined $addminfo_file) {
   vdr_ModelInfoFileParse($addminfo_file, \@reqd_mdl_keys_A, \@reqd_ftr_keys_A, \@add_mdl_info_AH, \%add_ftr_info_HAH, $FH_HR);
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+}
+
+#########################################
+# Validate we have all the files we need:
+#########################################
+my $prior_file  = $env_vadr_scripts_dir . "/vadr.prior";
+# only check for existence of $prior_file if we need it
+if(! opt_IsUsed("--cmnoprior", \%opt_HH)) { 
+  utl_FileValidateExistsAndNonEmpty($prior_file,  sprintf("prior file: $prior_file (skip with --cmnoprior)"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
 
 ###################################################
@@ -820,19 +831,22 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
   my $cmbuild_fp7occ_file = $out_root . ".cmbuild.fp7occ";
 
   my $cmbuild_opts = "-n $mdl_name --verbose --occfile $cmbuild_occ_file --cp9occfile $cmbuild_cp9occ_file --fp7occfile $cmbuild_fp7occ_file ";
-  if((! defined $stk_has_ss) || (! $stk_has_ss)) { $cmbuild_opts .= " --noss"; }
-  if(opt_IsUsed("--cmn",       \%opt_HH)) { $cmbuild_opts .= " --EgfN "    . opt_Get("--cmn", \%opt_HH); }
-  if(opt_IsUsed("--cmp7ml",    \%opt_HH)) { $cmbuild_opts .= " --p7ml"; }
-  if(opt_IsUsed("--cmere",     \%opt_HH)) { $cmbuild_opts .= " --ere "     . opt_Get("--cmere", \%opt_HH); }
-  if(opt_IsUsed("--cmeset",    \%opt_HH)) { $cmbuild_opts .= " --eset "    . opt_Get("--cmeset", \%opt_HH); }
-  if(opt_IsUsed("--cmemaxseq", \%opt_HH)) { $cmbuild_opts .= " --emaxseq " . opt_Get("--cmemaxseq", \%opt_HH); }
-  if(opt_IsUsed("--cminfile",  \%opt_HH)) { 
+  if(opt_IsUsed("--cminfile",  \%opt_HH))   { 
     my @cminfile_A = ();
     utl_FileLinesToArray(opt_Get("--cminfile", \%opt_HH), 1, \@cminfile_A, $FH_HR);
     foreach my $optline (@cminfile_A) { 
       chomp $optline;
       $cmbuild_opts .= " " . $optline . " ";
     }
+  }
+  else { 
+    if((! defined $stk_has_ss) || (! $stk_has_ss)) { $cmbuild_opts .= " --noss"; }
+    if(opt_IsUsed("--cmn",       \%opt_HH))   { $cmbuild_opts .= " --EgfN "    . opt_Get("--cmn", \%opt_HH); }
+    if(opt_IsUsed("--cmp7ml",    \%opt_HH))   { $cmbuild_opts .= " --p7ml"; }
+    if(opt_IsUsed("--cmere",     \%opt_HH))   { $cmbuild_opts .= " --ere "     . opt_Get("--cmere", \%opt_HH); }
+    if(opt_IsUsed("--cmeset",    \%opt_HH))   { $cmbuild_opts .= " --eset "    . opt_Get("--cmeset", \%opt_HH); }
+    if(opt_IsUsed("--cmemaxseq", \%opt_HH))   { $cmbuild_opts .= " --emaxseq " . opt_Get("--cmemaxseq", \%opt_HH); }
+    if(! opt_IsUsed("--cmnoprior", \%opt_HH)) { $cmbuild_opts .= " --prior $prior_file"; }
   }
   # if model is big > 0.5 * 25Kb (maxlen), then use the --Egcmult option
   # this avoids problems and slowness with very large sequence lengths for glocal HMM calibration
