@@ -10,8 +10,9 @@
 			note	similar to protein three mp2
 34	26	misc_feature
 			note	similar to protein three mp1
-35	28	CDS
+<35	28	CDS
 			product	protein two
+			codon_start	3
 			protein_id	ENTOY100A/66..100,stop-at-67..69/35-1_1
 
 Additional note(s) to submitter:

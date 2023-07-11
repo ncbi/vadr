@@ -19,6 +19,7 @@ for i in \
     iss69-shortfs \
     iss70-cdsstopn3p \
     iss71-multisgmcdsstopn \
+    iss72-multisgmcstart \
     ; do
     $VADRSCRIPTSDIR/v-test.pl -f --rmout $VADRSCRIPTSDIR/testfiles/github-issues/$i/$i.testin vt-$i
     if [ $? != 0 ]; then

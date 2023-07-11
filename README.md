@@ -33,8 +33,8 @@ features) and reports them to the user in the form of *alerts*.  A
 subset of alerts are *fatal* and cause a sequence to *fail*. A
 sequence *passes* if zero fatal alerts are reported for it.  VADR is
 used by GenBank staff to evaluate incoming sequence submissions of
-some viruses (currently Norovirus, Dengue virus, and SARS-CoV-2.
-Submitted Norovirus and Dengue virus sequences that pass
+some viruses (currently Norovirus, Dengue virus, and SARS-CoV-2).
+Submitted Norovirus, Dengue virus and SARS-CoV-2 sequences that pass
 `v-annotate.pl` are accepted into GenBank.
 
 The homology search and alignment components of VADR scripts, the most
