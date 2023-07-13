@@ -135,10 +135,13 @@ require "sqp_utils.pm";
 #  8. add_low_similarity_alerts_for_one_sequence()
 #     lowsim5c, lowsim3c, lowsimic, lowsim5n, lowsim3n, lowsimin, lowsim5s, lowsim3s, lowsimis (9)
 # 
-#  9. add_frameshift_alerts_for_one_sequence()
+#  9. add_extrant_alerts_for_one_sequence()
+#     extrant5, extrant3
+# 
+# 10. add_frameshift_alerts_for_one_sequence()
 #     fsthicft, fsthicfi, fstloft, fstlocfi, fstukcft, fstukcfi (6)
 #
-# 10. join_alignments_and_add_unjoinbl_alerts()
+# 11. join_alignments_and_add_unjoinbl_alerts()
 #     unjoinbl (1)
 #
 # 12. output_feature_table()
@@ -275,6 +278,8 @@ opt_Add("--lowsimiftr", "integer",   1,         $g,   undef,   undef,           
 opt_Add("--lowsim5lftr", "integer",  30,        $g,   undef,   undef,            "long lowsim5l/LOW_FEATURE_SIMILARITY_START minimum length is <n>",                "long lowsim5l/LOW_FEATURE_SIMILARITY_START minimum length is <n>",                 \%opt_HH, \@opt_order_A);
 opt_Add("--lowsim3lftr", "integer",  30,        $g,   undef,   undef,            "long lowsim3l/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                  "long lowsim3l/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                   \%opt_HH, \@opt_order_A);
 opt_Add("--lowsimilftr", "integer",  30,        $g,   undef,   undef,            "long lowsimil/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",           "long lowsimil/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",            \%opt_HH, \@opt_order_A);
+opt_Add("--extrant5",    "integer",  5,         $g,   undef,   undef,            "extrant5/EXTRA_SEQUENCE_START minimum length is <n>",                             "extrant5/EXTRA_SEQUENCE_START minimum length is <n>",                             \%opt_HH, \@opt_order_A);
+opt_Add("--extrant3",    "integer",  5,         $g,   undef,   undef,            "extrant3/EXTRA_SEQUENCE_END minimum length is <n>",                               "extrant3/EXTRA_SEQUENCE_END minimum length is <n>",                               \%opt_HH, \@opt_order_A);
 opt_Add("--biasfract",  "real",      0.25,      $g,   undef,   undef,            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            \%opt_HH, \@opt_order_A);
 opt_Add("--nmiscftrthr","integer",   4,         $g,   undef,   undef,            "nmiscftr/TOO_MANY_MISC_FEATURES reported if <n> or more misc_features",           "nmiscftr/TOO_MANY_MISC_FEATURES reported if <n> or more misc_features",           \%opt_HH, \@opt_order_A);
 opt_Add("--indefann",   "real",      0.8,       $g,   undef,   undef,            "indf{5,3}lc{c,n}/INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>",         "indf{5,3}lc{c,n}/'INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
@@ -482,6 +487,8 @@ my $options_okay =
                 'lowsim5lftr=s' => \$GetOptions_H{"--lowsim5lftr"},
                 'lowsim3lftr=s' => \$GetOptions_H{"--lowsim3lftr"},
                 'lowsimilftr=s' => \$GetOptions_H{"--lowsimilftr"},
+                'extrant5=s'    => \$GetOptions_H{"--extrant5"},
+                'extrant3=s'    => \$GetOptions_H{"--extrant3"},
                 'biasfract=s'   => \$GetOptions_H{"--biasfract"},  
                 'nmiscftrthr=s' => \$GetOptions_H{"--nmiscftrthr"},  
                 'indefann=s'    => \$GetOptions_H{"--indefann"},  
@@ -1850,6 +1857,7 @@ $start_secs = ofile_OutputProgressPrior("Determining annotation", $progress_w, $
 
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  $mdl_len  = $mdl_info_AH[$mdl_idx]{"length"};
   my $mdl_tt   = (defined $mdl_info_AH[$mdl_idx]{"transl_table"}) ? $mdl_info_AH[$mdl_idx]{"transl_table"} : 1; # default to standard genetic code
   if(defined $mdl_seq_name_HA{$mdl_name}) { 
     my $mdl_nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
@@ -1886,7 +1894,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                                       \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, \%stg_results_HHH,
                                                       \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
                                                       \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, \%dcr_output_HAH,
-                                                      $mdl_name, \@ftr_fileroot_A, \@ftr_outroot_A, 
+                                                      $mdl_name, $mdl_len, \@ftr_fileroot_A, \@ftr_outroot_A, 
                                                       $$sqfile_for_cds_mp_alerts_R, $$sqfile_for_output_fastas_R, $$sqfile_for_pv_R,
                                                       $do_separate_cds_fa_files_for_protein_validation, \@to_remove_A,
                                                       ($do_replace_ns) ? \%rpn_output_HH : undef, 
@@ -4109,6 +4117,7 @@ sub cmalign_or_glsearch_run {
 #  $alt_ftr_instances_HHHR:    REF to error instances HHH, ADDED TO HERE
 #  $dcr_output_HAHR:           REF to hash of array of hashes with info on doctored seqs to output, ADDED TO HERE
 #  $mdl_name:                  model name this alignment pertains to
+#  $mdl_len:                   model length
 #  $ftr_fileroot_AR:           REF to array of per-feature file root values, pre-calc'ed and passed in so we don't need to do it per-seq
 #  $ftr_outroot_AR:            REF to array of per-feature output root values, pre-calc'ed and passed in so we don't need to do it per-seq
 #  $sqfile_for_cds_mp_alerts:  REF to Bio::Easel::SqFile object, open sequence file with sequences
@@ -4132,13 +4141,13 @@ sub cmalign_or_glsearch_run {
 ################################################################# 
 sub parse_stk_and_add_alignment_cds_and_mp_alerts { 
   my $sub_name = "parse_stk_and_add_alignment_cds_and_mp_alerts()";
-  my $nargs_exp = 26;
+  my $nargs_exp = 27;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
   my ($stk_file, $in_sqfile_R, $mdl_tt, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, 
       $ftr_info_AHR, $alt_info_HHR, $stg_results_HHHR, $sgm_results_HAHR, $ftr_results_HAHR, 
       $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $dcr_output_HAHR, 
-      $mdl_name, $ftr_fileroot_AR, $ftr_outroot_AR, 
+      $mdl_name, $mdl_len, $ftr_fileroot_AR, $ftr_outroot_AR, 
       $sqfile_for_cds_mp_alerts, $sqfile_for_output_fastas, $sqfile_for_pv,
       $do_separate_cds_fa_files, $to_remove_AR, $rpn_output_HHR,
       $out_root, $opt_HHR, $ofile_info_HHR) = @_;
@@ -4824,7 +4833,11 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
                                                  $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, 
                                                  $rpn_output_HHR, # may be undef
                                                  $opt_HHR, $ofile_info_HHR);
-      
+
+      # add extrant{5,3} alerts based on the alignment, these are based on inserts before/after first/final model position and
+      add_extrant_alerts_for_one_sequence($seq_name, $seq_len_HR, $mdl_len, \@ua2rf_A, $alt_info_HHR, $alt_seq_instances_HHR, 
+                                          $opt_HHR, $ofile_info_HHR);
+
       # update the model coords for ambgnt5s/ambgnt3s seqs, now that we have the alignment
       alert_sequence_instance_update_mdl_coords($alt_seq_instances_HHR, $alt_info_HHR, "ambgnt5s", $seq_name, \@ua2rf_A, $FH_HR);
       alert_sequence_instance_update_mdl_coords($alt_seq_instances_HHR, $alt_info_HHR, "ambgnt3s", $seq_name, \@ua2rf_A, $FH_HR);
@@ -6691,6 +6704,83 @@ sub add_low_similarity_alerts_for_one_sequence {
         } # end of 'if($length >= $min_length)'
       } # end of 'foreach my $missing_coords_tok (@missing_coords_A)'
     }
+  }
+  return;
+}
+
+#################################################################
+# Subroutine: add_extrant_alerts_for_one_sequence
+# Incept:     EPN, Tue Jul 11 10:44:07 2023
+#
+# Purpose:   For a given sequence, check for and report extrant5 and extrant3 
+#            alerts by looking at the ua2rf_AR alignment map.
+#
+# Arguments:
+#  $seq_name:               name of the sequence
+#  $seq_len_HR:             REF to hash of sequence lengths, PRE-FILLED
+#  $mdl_len:                length of model for this sequence
+#  $ua2rf_AR:               REF to array that maps unaligned positions to reference positions
+#                           [1..$uapos..$ualen]: reference position that unaligned position $uapos aligns to 
+#                           if $ua2rf_A[$uapos] <  0, $uapos inserts *after* ref posn (-1 * $ua2rf_A[$uapos])
+#                           if $ua2rf_A[$uapos] == 0, $uapos inserts *before* ref posn 1
+#                           $ua2rf_A[0] is invalid (set to 0)
+#                           can be undef, if so, we just don't report model coords in alert instances
+#  $alt_info_HHR:           REF to the alert info hash of arrays, PRE-FILLED
+#  $alt_seq_instances_HHR:  REF to array of hash with per-sequence alerts, PRE-FILLED
+#  $opt_HHR:                REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:         REF to the 2D hash of output file information
+#             
+# Returns:  void
+# 
+# Dies:     never
+#
+#################################################################
+sub add_extrant_alerts_for_one_sequence { 
+  my $sub_name = "add_extrant_alerts_for_one_sequence";
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($seq_name, $seq_len_HR, $mdl_len, $ua2rf_AR, $alt_info_HHR, $alt_seq_instances_HHR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR   = $ofile_info_HHR->{"FH"}; # for convenience
+  my $seq_len = $seq_len_HR->{$seq_name};
+
+  # find how many nt are inserted before first rf position
+  my $nextra5 = 0;
+  for(my $i = 1; $i <= $seq_len; $i++) { 
+    if($ua2rf_AR->[$i] == 0) { 
+      $nextra5++;
+    }
+    else { 
+      $i = $seq_len + 1; # breaks loop
+    }
+  }
+  if($nextra5 >= (opt_Get("--extrant5", $opt_HHR))) { 
+    my $alt_msg = sprintf("%s%s%d extra nucleotide%s", 
+                       sprintf("seq:" . vdr_CoordsSegmentCreate(1, $nextra5, "+", $FH_HR) . ";"), 
+                       sprintf("mdl:" . vdr_CoordsSegmentCreate(0, 0, "+", $FH_HR) . ";"), 
+                       $nextra5, 
+                       ($nextra5 == 1 ? "" : "s")); 
+    alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "extrant5", $seq_name, $alt_msg, $FH_HR);
+  }
+
+  # find how many nt are inserted after final rf position
+  my $nextra3 = 0;
+  for(my $i = $seq_len; $i >= 1; $i--) { 
+    if($ua2rf_AR->[$i] == (-1 * $mdl_len)) { 
+      $nextra3++;
+    }
+    else { 
+      $i = 0; # breaks loop
+    }
+  }
+  if($nextra3 >= (opt_Get("--extrant3", $opt_HHR))) { 
+    my $alt_msg = sprintf("%s%s%d extra nucleotide%s", 
+                       sprintf("seq:" . vdr_CoordsSegmentCreate(($seq_len - $nextra3 + 1), $seq_len, "+", $FH_HR) . ";"), 
+                       sprintf("mdl:" . vdr_CoordsSegmentCreate($mdl_len, $mdl_len, "+", $FH_HR) . ";"), 
+                       $nextra3, 
+                       ($nextra3 == 1 ? "" : "s")); 
+    alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "extrant3", $seq_name, $alt_msg, $FH_HR);
   }
   return;
 }

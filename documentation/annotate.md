@@ -697,6 +697,8 @@ In the table below, `<n>` represents a positive interger argument and
 | `--lowsim5lftr  <n>`| [*lowsim5l*](#lowsim5l1)                             | LOW_FEATURE_SIMILARITY_START           | >= 30  | <a name="options-alerts-lowsim5lftr"></a> set length (nt) threshold for alert to `<n>` |
 | `--lowsim3lftr  <n>`| [*lowsim3l*](#lowsim3l1)                             | LOW_FEATURE_SIMILARITY_END             | >= 30  | <a name="options-alerts-lowsim3lftr"></a> set length (nt) threshold for alert to `<n>` |
 | `--lowsimilftr <n>` | [*lowsimil*](#lowsimil1)                             | LOW_FEATURE_SIMILARITY                 | >= 30  | <a name="options-alerts-lowsimilftr"></a> set length (nt) threshold for alert to `<n>` |
+| `--extrant5 <n>`    | [*extrant5*](#extrant51)                             | EXTRA_SEQUENCE_START                   | >= 5   | <a name="options-alerts-extrant5"></a> set length (nt) threshold for alert to `<n>` |
+| `--extrant3 <n>`    | [*extrant3*](#extrant31)                             | EXTRA_SEQUENCE_END                     | >= 5   | <a name="options-alerts-extrant3"></a> set length (nt) threshold for alert to `<n>` |
 | `--biasfrac <x>`    | [*biasdseq*](#biasdseq1)                             | BIASED_SEQUENCE                        | >= 0.25| <a name="options-alerts-biasfrac"></a>  set fractional bit score threshold for biased score/total score for alert to `<x>` |
 | `--nmiscftrthr <n>` | [*nmiscftr*](#nmiscftr1)                             | TOO_MANY_MISC_FEATURES                 | >= 4   | <a name="options-alerts-nmiscftr"></a>  set minimum number of misc_features per sequence for alert to `<n>` |
 | `--indefann <x>`    | [*indf5lcc*](#indf5lcc1), [*indf5lcn*](#indf5lcn1), [*indf3lcc*](#indf3lcc1), [*indf3lcn*](#indf3lcn1)   | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.8 | <a name="options-alerts-indefann"></a> set posterior probability threshold for non-mat_peptide features for alert to `<x>` |
@@ -1007,6 +1009,8 @@ features as described more [below](#mnf).
 | [*lowsim5s*](#lowsim5s2)  | sequence | never | LOW_SIMILARITY_START            | <a name="lowsim5s1"></a> significant similarity not detected at 5' end of the sequence | 
 | [*lowsim3s*](#lowsim3s2)  | sequence | never | LOW_SIMILARITY_END              | <a name="lowsim3s1"></a> significant similarity not detected at 3' end of the sequence | 
 | [*lowsimis*](#lowsimis2)  | sequence | never | LOW_SIMILARITY                  | <a name="lowsimis1"></a> internal region without significant similarity | 
+| [*extrant5*](#extrant52)  | sequence | never | EXTRA_SEQUENCE_START            | <a name="extrant51"></a> extra sequence detected 5' of expected sequence start |
+| [*extrant3*](#extrant32)  | sequence | never | EXTRA_SEQUENCE_END              | <a name="extrant31"></a> extra sequence detected 3' of expected sequence end |
 | [*nmiscftr*](#nmiscftr2)  | sequence | never | TOO_MANY_MISC_FEATURES          | <a name="nmiscftr1"></a> too many features reported as misc_features |
 | [*deletins*](#deletins2)  | sequence | never | DELETION_OF_FEATURE             | <a name="deletins1"></a> internal deletion of a complete feature |
 | [*mutstart*](#mutstart2)  | feature  | yes   | MUTATION_AT_START               | <a name="mutstart1"></a> expected start codon could not be identified | 
@@ -1041,6 +1045,7 @@ features as described more [below](#mnf).
 | [*lowsim3n*](#lowsim3n2)  | feature  | yes   | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3n1"></a> region overlapping annotated feature that does not match a CDS at 3' end of sequence lacks significant similarity | 
 | [*lowsim3l*](#lowsim3l2)  | feature  | no    | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3l1"></a> long region overlapping annotated feature that does not match a CDS at 3' end of sequence lacks significant similarity | 
 | [*lowsimin*](#lowsimin2)  | feature  | yes   | LOW_FEATURE_SIMILARITY          | <a name="lowsimin1"></a> region overlapping annotated feature that does not match a CDS lacks significant similarity  |
+| [*lowsimil*](#lowsimil2)  | feature  | no    | LOW_FEATURE_SIMILARITY          | <a name="lowsimil1"></a> long region overlapping annotated feature that does not match a CDS lacks significant similarity  |
 | [*lowsimil*](#lowsimil2)  | feature  | no    | LOW_FEATURE_SIMILARITY          | <a name="lowsimil1"></a> long region overlapping annotated feature that does not match a CDS lacks significant similarity  |
 
 #### Description of alerts that are *non-fatal* by default <a name="nonfatal1"></a>
@@ -1107,6 +1112,8 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*lowsim5s*](#lowsim5s1)  | LOW_SIMILARITY_START            | [`--lowsim5seq`](#options-alerts-lowsim5seq) | - | - <a name="lowsim5s2"></a> | 
 | [*lowsim3s*](#lowsim3s1)  | LOW_SIMILARITY_END              | [`--lowsim3seq`](#options-alerts-lowsim3seq) | - | - <a name="lowsim3s2"></a> | 
 | [*lowsimis*](#lowsimis1)  | LOW_SIMILARITY                  | [`--lowsimint`](#options-alerts-lowsimint) | - | - <a name="lowsimis2"></a> |
+| [*extrant5*](#extrant51)  | EXTRA_SEQUENCE_START            | [`--extrant5`](#options-alerts-extrant5) | - | - <a name="extrant52"></a> |
+| [*extrant3*](#extrant31)  | EXTRA_SEQUENCE_END              | [`--extrant3`](#options-alerts-extrant3) | - | - <a name="extrant32"></a> |
 | [*nmiscftr*](#nmiscftr1)  | TOO_MANY_MISC_FEATURES          | [`--nmiscftrthr`](#options-alerts-nmiscftr) | all | - <a name="nmiscftr2"></a> | 
 | [*deletins*](#deletins1)  | DELETION_OF_FEATURE             | none | all | - <a name="deletins2"></a> | 
 | [*mutstart*](#mutstart1)  | MUTATION_AT_START               | [`--atgonly`](#options-basic-atgonly) | CDS | - <a name="mutstart2"></a> | 
