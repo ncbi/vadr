@@ -5867,6 +5867,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
     my $alt_scoords; # sequence coordinates related to an alert
     my $alt_mcoords; # model    coordinates related to an alert
     my $alt_codon;   # codon string for an alert message
+    my $intron_idx = 1; # intron index, only used if we have multiple segments
 
     # determine if this feature is 5' and/or 3' truncated
     # we do this outside the main loop since the logic is a bit complex:
@@ -5899,7 +5900,99 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
         my $sgm_results_HR = $sgm_results_HAHR->{$seq_name}[$sgm_idx]; # for convenience
         my ($sstart, $sstop, $sstrand) = ($sgm_results_HR->{"sstart"}, $sgm_results_HR->{"sstop"}, $sgm_results_HR->{"strand"});
         my ($mstart, $mstop)           = ($sgm_results_HR->{"mstart"}, $sgm_results_HR->{"mstop"});
-        
+
+        # if cds, check validity of splice sites (mutspst5 and mutspst3 alerts)
+        if($ftr_is_cds) { 
+          # we check 3' splice site (upstream of this segment) first and 5' splice site (downstream of this segment) second
+          # which may be confusing to follow because typically we would do 5' first, then 3', but in this case we are actually
+          # still working in the 5' to 3' direction, it's just that the 3' splice site of the intron before this segment
+          # comes before the 5' splice site of the intron after this segment 
+          my $ss3_sqstring = undef; # 3' splice site of previous intron, upstream of this segment
+          my $ss5_sqstring = undef; # 5' splice site of next intron, downstream of this segment
+
+          # note: we don't check that adjacent segments are the same strand here, because we assume a CDS has all segments on same strand 
+          # (we explicitly check for this below and fail if it is not true)
+
+          # check 3' splice site upstream of this segment
+          if($sgm_idx != $first_sgm_idx) { # not first segment
+            my $intron_length = 0;
+            my $ss3_start  = undef;
+            my $ss3_stop   = undef;
+            my $ss3_strand = $sgm_info_AHR->[$sgm_idx]{"strand"};
+            # can't use abs() because they segments may overlap (e.g. programmed frameshift)
+            if($ss3_strand eq "+") { 
+              $intron_length = ($sgm_info_AHR->[$sgm_idx]{"start"} - $sgm_info_AHR->[($sgm_idx-1)]{"stop"}) - 1;
+              if(($intron_length >= 4) && (($sstart-2) >= 1)) { # don't check splice site if it is 0 or 1 nt due to seq truncation
+                ($ss3_start, $ss3_stop) = (($sstart-2), ($sstart-1));
+              }
+            }
+            elsif($ss3_strand eq "-") { 
+              $intron_length = ($sgm_info_AHR->[($sgm_idx-1)]{"stop"} - $sgm_info_AHR->[$sgm_idx]{"start"}) - 1;
+              if(($intron_length >= 4) && (($sstart+2) <= $seq_len)) { # don't check splice site if it is 0 or 1 nt due to seq truncation
+                ($ss3_start, $ss3_stop) = (($sstart+2), ($sstart+1));
+              }
+            }
+            if((defined $ss3_start) && (defined $ss3_stop)) { 
+              $ss3_sqstring = $sqfile_for_pv->fetch_subseq_to_sqstring($seq_name, $ss3_start, $ss3_stop, (($sgm_info_AHR->[$sgm_idx]{"strand"} eq "-") ? 1 : 0));
+              if(! sqstring_check_splice_site($ss3_sqstring, 0, $FH_HR)) { 
+                $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ss3_start, $ss3_stop, $ss3_strand, $FH_HR) . ";";
+                $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ss3_start]), abs($ua2rf_AR->[$ss3_stop]), $ss3_strand, $FH_HR) . ";";
+                $ss3_sqstring =~ tr/a-z/A-Z/;
+                # need to be careful about the alert string, we could have more than one for this CDS
+                if(defined $alt_str_H{"mutspst3"}) { 
+                  $alt_str_H{"mutspst3"} .= ":VADRSEP:"; 
+                }
+                else { 
+                  $alt_str_H{"mutspst3"} = "";
+                }
+                $alt_str_H{"mutspst3"} .= sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $ss3_sqstring . ", intron#" . determine_intron_index($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx-1, $sgm_idx, $FH_HR));
+              }
+            }
+          }
+
+          # check 5' splice site downstream of this segment
+          if($sgm_idx != $final_sgm_idx) { # not final segment
+            # determine length of region between the exons (the 'intron')
+            my $intron_length = 0;
+            my $ss5_start  = undef;
+            my $ss5_stop   = undef;
+            my $ss5_strand = $sgm_info_AHR->[$sgm_idx]{"strand"};
+            # can't use abs() because they segments may overlap (e.g. programmed frameshift)
+            if($ss5_strand eq "+") { 
+              $intron_length = ($sgm_info_AHR->[($sgm_idx+1)]{"start"} - $sgm_info_AHR->[$sgm_idx]{"stop"}) - 1;
+              if(($intron_length >= 4) && (($sstop+2) <= $seq_len)) { # don't check splice site if it is 0 or 1 nt due to seq truncation
+                ($ss5_start, $ss5_stop) = (($sstop+1), ($sstop+2));
+
+                #$ss5_sqstring = $sqfile_for_pv->fetch_subseq_to_sqstring($seq_name, $sstop+1, $sstop+2, 0);
+              }
+            }
+            elsif($ss5_strand eq "-") { 
+              $intron_length = ($sgm_info_AHR->[$sgm_idx]{"stop"} - $sgm_info_AHR->[($sgm_idx+1)]{"start"}) - 1;
+              if(($intron_length >= 4) && (($sstop-2) >= 1)) { # don't check splice site if it is 0 or 1 nt due to seq truncation
+                ($ss5_start, $ss5_stop) = (($sstop-1), ($sstop-2));
+                #$ss5_sqstring = $sqfile_for_pv->fetch_subseq_to_sqstring($seq_name, $sstop-1, $sstop-2, 0);
+              }
+            }
+            if((defined $ss5_start) && (defined $ss5_stop)) { 
+              $ss5_sqstring = $sqfile_for_pv->fetch_subseq_to_sqstring($seq_name, $ss5_start, $ss5_stop, (($sgm_info_AHR->[$sgm_idx]{"strand"} eq "-") ? 1 : 0));
+              if(! sqstring_check_splice_site($ss5_sqstring, 1, $FH_HR)) { 
+                $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ss5_start, $ss5_stop, $ss5_strand, $FH_HR) . ";";
+                $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ss5_start]), abs($ua2rf_AR->[$ss5_stop]), $ss5_strand, $FH_HR) . ";";
+                $ss5_sqstring =~ tr/a-z/A-Z/;
+                # need to be careful about the alert string, we could have more than one for this CDS
+                if(defined $alt_str_H{"mutspst5"}) { 
+                  $alt_str_H{"mutspst5"} .= ":VADRSEP:"; 
+                }
+                else { 
+                  $alt_str_H{"mutspst5"} = "";
+                }
+                $alt_str_H{"mutspst5"} .= sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $ss5_sqstring . ", intron#" . determine_intron_index($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx, $sgm_idx+1, $FH_HR));
+              }
+            }
+          }
+        }
+        # end of block that checks validity of splice sites (mutspst5, mutspst3 alerts)
+
         # only update start and 5trunc value if this is the first segment annotated
         if(! defined $ftr_start) { $ftr_start = $sstart; }
         $ftr_stop = $sstop; # always update $ftr_stop
@@ -6433,6 +6526,54 @@ sub sqstring_find_stops {
 #  }
 
   return;
+}
+
+#################################################################
+# Subroutine: sqstring_check_splice_site()
+# Incept:     EPN, Tue Jul 25 13:53:59 2023
+#
+# Arguments:
+#  $sqstring: the sequence string, should be length 2
+#  $is_5p:    '1' if this a 5' splice site ('GT'), '0' if 3' splice site ('AG')
+#  $FH_HR:    REF to hash of file handles
+#  
+# Returns:  return '1' if $sqstring is valid splice site (GT or AG) 
+#           including ambiguities (e.g. NN is valid), else return '0'
+# 
+#################################################################
+sub sqstring_check_splice_site {
+  my $sub_name = "sqstring_check_splice_site";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sqstring, $is_5p, $FH_HR) = @_;
+
+  my $sqlen = length($sqstring);
+  if($sqlen != 2) { 
+    return 0;
+  }
+  $sqstring =~ tr/a-z/A-Z/; # convert to uppercase
+  $sqstring =~ tr/U/T/;     # convert to DNA
+
+  # logic here is different than in _5p sister subroutine above
+  # because if we only have 1 nt, it should be the first nt (A)
+  # not the second like it is 
+  my $first_nt  = substr($sqstring, 0, 1);
+  my $second_nt = substr($sqstring, 1, 1);
+
+  my $first_nt_valid  = 0;
+  my $second_nt_valid = 0;
+
+  if($is_5p) { 
+    $first_nt_valid  = ($first_nt =~  /[GRSKVDBN]/) ? 1 : 0; # should be G
+    $second_nt_valid = ($second_nt =~ /[TWYKHDBN]/) ? 1 : 0; # should be T
+  }
+  else { # 3p
+    $first_nt_valid  = ($first_nt =~  /[AMRWVHDN]/) ? 1 : 0; # should be A
+    $second_nt_valid = ($second_nt =~ /[GRSKVDBN]/) ? 1 : 0; # should be G
+  }
+
+  return ($first_nt_valid && $second_nt_valid) ? 1 : 0;
 }
 
 #################################################################
@@ -14331,3 +14472,71 @@ sub helper_dupregin {
   return ($ret_alt_str, $ret_alt_scoords, $ret_alt_mcoords);
 }
 
+#################################################################
+# Subroutine: determine_intron_index
+# Incept:     EPN, Tue Jul 25 15:01:01 2023
+#
+# Purpose:    Determine the intron index for an intron between two
+#             segments. An intron has to be 1 or more nt (overlapping
+#             segments do not have an intron between them). This subroutine
+#             does not check that the feature is a CDS.
+#
+# Arguments:
+#  $ftr_info_AHR:    REF to array of hashes with information on the features, PRE-FILLED
+#  $sgm_info_AHR:    REF to hash of arrays with information on the model segments, PRE-FILLED
+#  $ftr_idx:         feature index we are interested in
+#  $prv_sgm_idx:     segment 5' of the intron
+#  $nxt_sgm_idx:     segment 3' of the intron
+#  $FH_HR:           ref to hash of file handles
+#
+# Returns:  index (1..n) of the intron that occurs between $prv_sgm_idx and $nxt_sgm_idx
+#           
+# Dies:     if $nxt_sgm_idx is >= $prv_sgm_idx
+#           if $prv_sgm_idx or $nxt_sgm_idx do not belong to $ftr_idx
+#
+#################################################################
+sub determine_intron_index { 
+  my $sub_name = "determine_intron_index";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $prv_sgm_idx, $nxt_sgm_idx, $FH_HR) = (@_);
+
+  if($nxt_sgm_idx <= $prv_sgm_idx) { 
+    ofile_FAIL("ERROR, in $sub_name, ftr_idx: $ftr_idx, next sgm idx ($nxt_sgm_idx) <= prev sgm idx ($prv_sgm_idx)", 1, undef);
+  }
+  if(($nxt_sgm_idx < $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) || 
+     ($nxt_sgm_idx > $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"})) { 
+    ofile_FAIL("ERROR, in $sub_name, ftr_idx: $ftr_idx, next sgm idx ($nxt_sgm_idx) outside expected range of " . $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} . " to " . $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}, 1, $FH_HR);
+  }
+  if(($prv_sgm_idx < $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) || 
+     ($prv_sgm_idx > $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"})) { 
+    ofile_FAIL("ERROR, in $sub_name, ftr_idx: $ftr_idx, prev sgm idx ($prv_sgm_idx) outside expected range of " . $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} . " to " . $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}, 1, $FH_HR);
+  }
+
+  my $intron_length = 0;
+  my $intron_idx = 0; 
+  for(my $sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
+    if($sgm_idx > $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) { 
+      # careful we can't use strand-agnostic abs() because we may have overlapping segments (e.g. programmed frameshifts)
+      if($sgm_info_AHR->[$sgm_idx]{"strand"} eq "+") { 
+        $intron_length = ($sgm_info_AHR->[$sgm_idx]{"start"} - $sgm_info_AHR->[($sgm_idx-1)]{"stop"}) - 1;
+      }
+      elsif($sgm_info_AHR->[$sgm_idx]{"strand"} eq "-") { 
+        $intron_length = ($sgm_info_AHR->[($sgm_idx-1)]{"stop"} - $sgm_info_AHR->[$sgm_idx]{"start"}) - 1;
+      }
+      if($intron_length >= 4) { 
+        $intron_idx++;
+      }
+      if($nxt_sgm_idx == $sgm_idx) { 
+        if($intron_length < 4) { 
+          ofile_FAIL("ERROR, in $sub_name, ftr_idx: $ftr_idx, asking for intron length for a space between segments less than 4nt (between segments $prv_sgm_idx and $nxt_sgm_idx)", 1, $FH_HR);
+        }
+        return $intron_idx;
+      }
+    }
+  }
+
+  # should never be reached
+  return $intron_idx;
+}
