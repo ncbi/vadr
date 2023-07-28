@@ -2256,6 +2256,57 @@ sub vdr_FeatureCoordsListValueBreakdown {
 }
 
 #################################################################
+# Subroutine: vdr_FeatureLengthBetweenAdjacentSegments()
+# Incept:     EPN, Fri Jul 28 14:08:20 2023
+#
+# Synopsis: Return number of positions in between two adjacent 
+#           segments for a feature.
+# 
+# Arguments:
+#  $ftr_info_AHR: ref to feature info array of hashes, PRE-FILLED
+#  $sgm_info_AHR: ref to segment info array of hashes, PRE-FILLED
+#  $ftr_idx:      feature index we are interested in
+#  $sgm_idx_5p:   segment index *within feature* (0 for feature's first segment)
+#                 we will return distance between this segment and next segment
+#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:  number of positions between $sgm_idx_5p and ($sgm_idx_5p+1)
+#
+# Dies: if $sgm_idx_5p is the final segment for the feature
+#       if $sgm_idx_5p is higher than number of segments for this feature
+#       if the segment and the next segment are on different strands
+#################################################################
+sub vdr_FeatureLengthBetweenAdjacentSegments { 
+  my $sub_name = "vdr_FeatureLengthBetweenAdjacentSegments";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx_5p, $FH_HR) = @_;
+  
+  my $nsgm = $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + 1;
+  if($sgm_idx_5p >= $nsgm) { 
+    ofile_FAIL(sprintf("ERROR in $sub_name, ftr_idx $ftr_idx has $nsgm segments, and requesting distance between segments %d and %d", $sgm_idx_5p, ($sgm_idx_5p+1)), 1, $FH_HR); 
+  }
+
+  my $sgm_idx     = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + $sgm_idx_5p;
+  my $nxt_sgm_idx = $sgm_idx + 1;
+  my $strand = $sgm_info_AHR->[$sgm_idx]{"strand"};
+  if($sgm_info_AHR->[$nxt_sgm_idx]{"strand"} ne $strand) { 
+    ofile_FAIL("ERROR in $sub_name, segment and next segment have different strands", 1, $FH_HR); 
+  }
+    
+  # determine start/stop and length of region between the two segments
+  # we can't use strand agnostic 
+  my $region_start  = ($strand eq "+") ? $sgm_info_AHR->[$sgm_idx]{"stop"}+1      : $sgm_info_AHR->[$sgm_idx]{"stop"}-1;
+  my $region_stop   = ($strand eq "+") ? $sgm_info_AHR->[$nxt_sgm_idx]{"start"}-1 : $sgm_info_AHR->[$nxt_sgm_idx]{"start"}+1;
+  my $region_length = ($strand eq "+") ? ($region_stop - $region_start) + 1       : ($region_start - $region_stop) + 1;
+
+  printf("in $sub_name, returning $region_length\n");
+
+  return $region_length;
+}
+
+#################################################################
 # Subroutine: vdr_SegmentStartIdenticalToCds()
 # Incept:     EPN, Mon Feb  1 15:58:25 2021
 #
