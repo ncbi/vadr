@@ -234,12 +234,13 @@ opt_Add("--alt_fail",      "string",  undef,     $g,     undef, undef,         "
 opt_Add("--alt_mnf_yes",   "string",  undef,     $g,     undef,"--ignore_mnf", "alert codes in <s> for 'misc_not_failure' features cause misc_feature-ization, not failure", "alert codes in <s> for 'misc_not_failure' features cause misc_feature-ization, not failure", \%opt_HH, \@opt_order_A);
 opt_Add("--alt_mnf_no",    "string",  undef,     $g,     undef,"--ignore_mnf", "alert codes in <s> for 'misc_not_failure' features cause failure, not misc_feature-ization", "alert codes in <s> for 'misc_not_failure' features cause failure, not misc-feature-ization", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options for ignoring specific keys in the input model info (.minfo) file";
+$opt_group_desc_H{++$g} = "options for ignoring/forcing specific keys in the input model info (.minfo) file";
 #        option               type        default  group requires incompat  preamble-output                                                                               help-output    
 opt_Add("--ignore_mnf",       "boolean",  0,       $g,     undef, undef,    "ignore non-zero 'misc_not_failure' values in .minfo file, set to 0 for all features/models", "ignore non-zero 'misc_not_feature' values in .minfo file, set to 0 for all features/models", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_isdel",     "boolean",  0,       $g,     undef, undef,    "ignore non-zero 'is_deletable' values in .minfo file, set to 0 for all features/models",     "ignore non-zero 'is_deletable' values in .minfo file, set to 0 for all features/models", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_afset",     "boolean",  0,       $g,     undef, undef,    "ignore 'alternative_ftr_set' and 'alternative_ftr_set_subn' values in .minfo file",          "ignore 'alternative_ftr_set' and 'alternative_ftr_set_subn' values in .minfo file", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_afsetsubn", "boolean",  0,       $g,     undef, undef,    "ignore 'alternative_ftr_set_subn' values in .minfo file",                                    "ignore 'alternative_ftr_set_subn' values in .minfo file", \%opt_HH, \@opt_order_A);
+opt_Add("--ignore_canonss",   "boolean",  0,       $g,     undef, undef,    "ignore 'canon_splice_sites' values in .minfo file (never check intron splice sites)",        "ignore 'canon_splice_sites' values in .minfo file (never check intron splice sites)", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to model files";
 #        option               type default  group  requires incompat   preamble-output                                                                   help-output    
@@ -396,8 +397,6 @@ $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 opt_Add("-p",           "boolean", 0,          $g,    undef,  undef,      "parallelize cmsearch/cmalign on a compute farm",              "parallelize cmsearch/cmalign on a compute farm", \%opt_HH, \@opt_order_A);
 opt_Add("-q",           "string",  undef,      $g,     "-p",  undef,      "use qsub info file <s> instead of default",                   "use qsub info file <s> instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("--errcheck",   "boolean", 0,          $g,     "-p",  undef,      "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
-
-$opt_group_desc_H{++$g} = "options related to splitting input and parallelization on compute farm";
 opt_Add("--wait",       "integer", 500,        $g,    undef,  undef,      "allow <n> minutes for jobs on farm",                          "allow <n> wall-clock minutes for jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
 opt_Add("--maxnjobs",   "integer", 2500,       $g,    undef,  undef,      "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
 
@@ -430,7 +429,7 @@ opt_Add("--xsub",         "string",  undef,         $g,    undef,   undef,    "r
 opt_Add("--nodcr",        "boolean", 0,             $g,    undef,   undef,    "do not doctor alignments to shift gaps in start/stop codons",            "do not doctor alignments to shift gaps in start/stop codons", \%opt_HH, \@opt_order_A);
 opt_Add("--forcedcrins",  "boolean", 0,             $g,"--cmindi",  undef,    "force insert type alignment doctoring, requires --cmindi",               "force insert type alignment doctoring, requires --cmindi", \%opt_HH, \@opt_order_A);
 opt_Add("--xnoid",        "boolean", 0,             $g,    undef,"--pv_hmmer,--pv_skip", "ignore blastx hits that are full length and 100% identical",  "ignore blastx hits that are full length and 100% identical", \%opt_HH, \@opt_order_A);
-opt_Add("--intlen",       "integer", 40,            $g,    undef,   undef,    "set min length of intron to check for splice sites to <n>"               "set min length of intron to check for splice sites to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--intlen",       "integer", 40,            $g,    undef,   undef,    "set min length of intron to check for splice sites to <n>",              "set min length of intron to check for splice sites to <n>", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -456,6 +455,7 @@ my $options_okay =
                 "ignore_isdel"     => \$GetOptions_H{"--ignore_isdel"},
                 "ignore_afset"     => \$GetOptions_H{"--ignore_afset"},
                 "ignore_afsetsubn" => \$GetOptions_H{"--ignore_afsetsubn"},
+                "ignore_canonss"   => \$GetOptions_H{"--ignore_canonss"},
 # options related to model files
                 'm=s'           => \$GetOptions_H{"-m"}, 
                 'a=s'           => \$GetOptions_H{"-a"}, 
@@ -1100,10 +1100,12 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   vdr_FeatureInfoInitializeIsDeletable(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--ignore_isdel", \%opt_HH), $FH_HR);
   vdr_FeatureInfoInitializeAlternativeFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--ignore_afset", \%opt_HH), $FH_HR);
   vdr_FeatureInfoInitializeAlternativeFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, (opt_Get("--ignore_afset", \%opt_HH) || opt_Get("--ignore_afsetsubn", \%opt_HH)), $FH_HR);
+  vdr_FeatureInfoInitializeCanonSpliceSites(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--ignore_canonss", \%opt_HH), $FH_HR);
   vdr_FeatureInfoValidateMiscNotFailure(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoValidateIsDeletable(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoValidateAlternativeFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoValidateAlternativeFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  vdr_FeatureInfoValidateCanonSpliceSites(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_SegmentInfoPopulate(\@{$sgm_info_HAH{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 }
 
@@ -5827,7 +5829,6 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
   my $sqfile_for_pv_path            = $sqfile_for_pv->path;
 
   my $seq_len  = $seq_len_HR->{$seq_name};
-
   my $min_intron_length = opt_Get("--intlen", $opt_HHR);
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
@@ -5865,6 +5866,8 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
     my $ftr_ambg_stop_codon_flag     = 0; # set to 1 if ambgcd3c thrown in helper_feature_terminal_ambiguities (or would be if for genes that match a CDS)
     my $ftr_ambg_start_codon_flag_pv = 0; # for pv case, set to 1 if ambgcd5c would have been thrown in helper_feature_terminal_ambiguities (or would be for genes that match a CDS)
     my $ftr_ambg_stop_codon_flag_pv  = 0; # for pv case, set to 1 if ambgcd3c would have been thrown in helper_feature_terminal_ambiguities (or would be for genes that match a CDS)
+    my $do_check_splice_sites = ((defined $ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"}) && 
+                                 ($ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"} == 1)) ? 1 : 0;
 
     my %alt_str_H = (); # added to as we find alerts below
     # ambgnt5c, ambgnt3c, ambgnt5f, ambgnt3f, mutstart, unexleng, mutendcd, mutendex, mutendns, cdsstopn
@@ -5905,8 +5908,8 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
         my ($sstart, $sstop, $sstrand) = ($sgm_results_HR->{"sstart"}, $sgm_results_HR->{"sstop"}, $sgm_results_HR->{"strand"});
         my ($mstart, $mstop)           = ($sgm_results_HR->{"mstart"}, $sgm_results_HR->{"mstop"});
 
-        # if cds, check validity of splice sites (mutspst5 and mutspst3 alerts)
-        if($ftr_is_cds) { 
+        # if cds and we have a canon_splice_sites value, check validity of splice sites (mutspst5 and mutspst3 alerts)
+        if(($ftr_is_cds) && ($do_check_splice_sites)) { 
           # we check 3' splice site (upstream of this segment) first and 5' splice site (downstream of this segment) second
           # which may be confusing to follow because typically we would do 5' first, then 3', but in this case we are actually
           # still working in the 5' to 3' direction, it's just that the 3' splice site of the intron before this segment
@@ -5947,7 +5950,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
                 else { 
                   $alt_str_H{"mutspst3"} = "";
                 }
-                $alt_str_H{"mutspst3"} .= sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $ss3_sqstring . ", intron#" . determine_intron_index($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx-1, $FH_HR));
+                $alt_str_H{"mutspst3"} .= sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $ss3_sqstring . ", intron#" . determine_intron_index($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx-1, $opt_HHR, $FH_HR));
               }
             }
           }
@@ -14497,15 +14500,15 @@ sub helper_dupregin {
 #################################################################
 sub determine_intron_index { 
   my $sub_name = "determine_intron_index";
-  my $nargs_exp = 5;
+  my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx_5p, $FH_HR) = (@_);
+  my ($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx_5p, $opt_HHR, $FH_HR) = (@_);
 
   my $min_intron_length = opt_Get("--intlen", $opt_HHR);
 
   if(($sgm_idx_5p < $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) || 
-     ($sgm_idx_5p > ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} -1)) { 
+     ($sgm_idx_5p > ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} -1))) { 
     ofile_FAIL(sprintf("ERROR, in $sub_name, ftr_idx: $ftr_idx, sgm idx ($sgm_idx_5p) outside expected range of %d to %d", $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}, ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}-1)), 1, $FH_HR);
   }
 

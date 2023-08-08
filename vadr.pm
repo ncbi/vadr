@@ -656,6 +656,42 @@ sub vdr_FeatureInfoInitializeAlternativeFeatureSetSubstitution {
 }
 
 #################################################################
+# Subroutine: vdr_FeatureInfoInitializeCanonSpliceSites
+# Incept:     EPN, Mon Aug  7 13:34:57 2023
+# 
+# Purpose:    Set "canon_splice_sites" value to 0 for any feature 
+#             in which it is not already defined in @{$ftr_info_AHR}.
+#             If $force_empty, set all values to 0 even if they are
+#             already defined.
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $force_empty:   '1' to set values to 0 for all features, even if already defined
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#
+#################################################################
+sub vdr_FeatureInfoInitializeCanonSpliceSites {
+  my $sub_name = "vdr_FeatureInfoInitializeCanonSpliceSites";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_AHR, $force_empty, $FH_HR) = @_;
+
+  my $nftr = scalar(@{$ftr_info_AHR});
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(($force_empty) || (! defined $ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"})) { 
+      $ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"} = 0;
+    }
+  }
+
+  return;
+}
+
+#################################################################
 # Subroutine: vdr_FeatureInfoValidateMiscNotFailure
 # Incept:     EPN, Fri Feb  5 11:45:29 2021
 # 
@@ -705,7 +741,6 @@ sub vdr_FeatureInfoValidateMiscNotFailure {
   }
 
   return;
-  
 }
 
 #################################################################
@@ -747,7 +782,6 @@ sub vdr_FeatureInfoValidateIsDeletable {
   }
 
   return;
-  
 }
 
 #################################################################
@@ -842,7 +876,6 @@ sub vdr_FeatureInfoValidateAlternativeFeatureSet {
   }
 
   return $ret_val;
-  
 }
 
 #################################################################
@@ -903,6 +936,47 @@ sub vdr_FeatureInfoValidateAlternativeFeatureSetSubstitution {
 
   if($fail_str ne "") { 
     ofile_FAIL("ERROR in $sub_name, some alternative_ftr_set_subn index strings are undefined or don't make sense:\n$fail_str\n", 1, $FH_HR);
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureInfoValidateCanonSpliceSites
+# Incept:     EPN, Mon Aug  7 13:37:15 2023
+# 
+# Purpose:    Validate "canon_splice_sites" values are either 0 or 1.
+#             Should probably be called after vdr_FeatureInfoInitializeCanonSpliceSites()
+#
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#
+#################################################################
+sub vdr_FeatureInfoValidateCanonSpliceSites {
+  my $sub_name = "vdr_FeatureInfoValidateCanonSpliceSites";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  
+  my ($ftr_info_AHR, $FH_HR) = @_;
+  
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $fail_str = ""; # added to if any elements are out of range
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(! defined $ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"}) { 
+      $fail_str .= "ftr_idx: $ftr_idx, undefined\n"; 
+    }
+    elsif(($ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"} != 1) && ($ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"} != 0)) { 
+      $fail_str .= "ftr_idx: $ftr_idx, " . $ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"} . " != 0 and != 1\n"; 
+    }
+  }
+  
+  if($fail_str ne "") { 
+    ofile_FAIL("ERROR in $sub_name, some canon_splice_sites values are invalid or don't make sense:\n$fail_str\n", 1, $FH_HR);
   }
 
   return;
