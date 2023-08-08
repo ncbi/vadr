@@ -527,7 +527,7 @@ sub vdr_FeatureInfoImputeByOverlap {
 #
 # Returns:    void
 # 
-# Dies:       if $ftr_info_AHR is invalid upon entry
+# Dies:       never
 #
 #################################################################
 sub vdr_FeatureInfoInitializeMiscNotFailure {
@@ -563,7 +563,7 @@ sub vdr_FeatureInfoInitializeMiscNotFailure {
 #
 # Returns:    void
 # 
-# Dies:       if $ftr_info_AHR is invalid upon entry
+# Dies:       never
 #
 #################################################################
 sub vdr_FeatureInfoInitializeIsDeletable {
@@ -599,7 +599,7 @@ sub vdr_FeatureInfoInitializeIsDeletable {
 #
 # Returns:    void
 # 
-# Dies:       if $ftr_info_AHR is invalid upon entry
+# Dies:       never
 #
 #################################################################
 sub vdr_FeatureInfoInitializeAlternativeFeatureSet {
@@ -635,7 +635,7 @@ sub vdr_FeatureInfoInitializeAlternativeFeatureSet {
 #
 # Returns:    void
 # 
-# Dies:       if $ftr_info_AHR is invalid upon entry
+# Dies:       never
 #
 #################################################################
 sub vdr_FeatureInfoInitializeAlternativeFeatureSetSubstitution {
@@ -666,24 +666,28 @@ sub vdr_FeatureInfoInitializeAlternativeFeatureSetSubstitution {
 # 
 # Arguments:
 #   $ftr_info_AHR:  REF to feature information, added to here
-#   $force_empty:   '1' to set values to 0 for all features, even if already defined
+#   $force_one:     '1' to set values to 1 for all features, even if already defined as 0
+#   $force_zero:    '1' to set values to 0 for all features, even if already defined as 1
 #   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
 # 
-# Dies:       if $ftr_info_AHR is invalid upon entry
+# Dies:       never
 #
 #################################################################
 sub vdr_FeatureInfoInitializeCanonSpliceSites {
   my $sub_name = "vdr_FeatureInfoInitializeCanonSpliceSites";
-  my $nargs_expected = 3;
+  my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
-  my ($ftr_info_AHR, $force_empty, $FH_HR) = @_;
+  my ($ftr_info_AHR, $force_one, $force_zero, $FH_HR) = @_;
 
   my $nftr = scalar(@{$ftr_info_AHR});
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if(($force_empty) || (! defined $ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"})) { 
+    if($force_one) { 
+      $ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"} = 1;
+    }
+    if(($force_zero) || (! defined $ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"})) { 
       $ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"} = 0;
     }
   }
@@ -711,7 +715,7 @@ sub vdr_FeatureInfoInitializeCanonSpliceSites {
 #
 # Returns:    void
 # 
-# Dies:       if $ftr_info_AHR is invalid upon entry
+# Dies:       if misc_not_failure is invalid for any feature
 #
 #################################################################
 sub vdr_FeatureInfoValidateMiscNotFailure {
@@ -756,7 +760,7 @@ sub vdr_FeatureInfoValidateMiscNotFailure {
 #
 # Returns:    void
 # 
-# Dies:       if $ftr_info_AHR is invalid upon entry
+# Dies:       if is_deletable is invalid for any feature
 #
 #################################################################
 sub vdr_FeatureInfoValidateIsDeletable {
@@ -808,8 +812,7 @@ sub vdr_FeatureInfoValidateIsDeletable {
 # Returns:    '1' if there are any 'alternative_ftr_set' values ne ""
 #             '0' if all 'alternative_ftr_set' values are ""
 # 
-# Dies:       if $ftr_info_AHR is invalid upon entry
-#             if any alternative_ftr_set values are undefined
+# Dies:       if any alternative_ftr_set values are undefined
 #             if any alternative_ftr_set values exist only once 
 #
 #################################################################
@@ -897,8 +900,7 @@ sub vdr_FeatureInfoValidateAlternativeFeatureSet {
 #
 # Returns:    void
 # 
-# Dies:       if $ftr_info_AHR is invalid upon entry
-#             if any alternative_ftr_set_subn values are undefined
+# Dies:       if any alternative_ftr_set_subn values are undefined
 #             if any alternative_ftr_set_subn values are invalid
 #
 #################################################################
@@ -954,7 +956,7 @@ sub vdr_FeatureInfoValidateAlternativeFeatureSetSubstitution {
 #
 # Returns:    void
 # 
-# Dies:       if $ftr_info_AHR is invalid upon entry
+# Dies:       if canon_splice_sites is invalid for any feature
 #
 #################################################################
 sub vdr_FeatureInfoValidateCanonSpliceSites {
@@ -2375,7 +2377,7 @@ sub vdr_FeatureLengthBetweenAdjacentSegments {
   my $region_stop   = ($strand eq "+") ? $sgm_info_AHR->[$nxt_sgm_idx]{"start"}-1 : $sgm_info_AHR->[$nxt_sgm_idx]{"start"}+1;
   my $region_length = ($strand eq "+") ? ($region_stop - $region_start) + 1       : ($region_start - $region_stop) + 1;
 
-  printf("in $sub_name, returning $region_length\n");
+  # printf("in $sub_name, returning $region_length\n");
 
   return $region_length;
 }

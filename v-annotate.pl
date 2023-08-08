@@ -241,6 +241,7 @@ opt_Add("--ignore_isdel",     "boolean",  0,       $g,     undef, undef,    "ign
 opt_Add("--ignore_afset",     "boolean",  0,       $g,     undef, undef,    "ignore 'alternative_ftr_set' and 'alternative_ftr_set_subn' values in .minfo file",          "ignore 'alternative_ftr_set' and 'alternative_ftr_set_subn' values in .minfo file", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_afsetsubn", "boolean",  0,       $g,     undef, undef,    "ignore 'alternative_ftr_set_subn' values in .minfo file",                                    "ignore 'alternative_ftr_set_subn' values in .minfo file", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_canonss",   "boolean",  0,       $g,     undef, undef,    "ignore 'canon_splice_sites' values in .minfo file (never check intron splice sites)",        "ignore 'canon_splice_sites' values in .minfo file (never check intron splice sites)", \%opt_HH, \@opt_order_A);
+opt_Add("--force_canonss",    "boolean",  0,       $g,     undef,"--ignore_canonss", "force 'canon_splice_sites' is 1 for all CDS with qualifying introns",               "force 'canon_splice_sites' is 1 for all CDS with qualifying introns", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to model files";
 #        option               type default  group  requires incompat   preamble-output                                                                   help-output    
@@ -429,7 +430,7 @@ opt_Add("--xsub",         "string",  undef,         $g,    undef,   undef,    "r
 opt_Add("--nodcr",        "boolean", 0,             $g,    undef,   undef,    "do not doctor alignments to shift gaps in start/stop codons",            "do not doctor alignments to shift gaps in start/stop codons", \%opt_HH, \@opt_order_A);
 opt_Add("--forcedcrins",  "boolean", 0,             $g,"--cmindi",  undef,    "force insert type alignment doctoring, requires --cmindi",               "force insert type alignment doctoring, requires --cmindi", \%opt_HH, \@opt_order_A);
 opt_Add("--xnoid",        "boolean", 0,             $g,    undef,"--pv_hmmer,--pv_skip", "ignore blastx hits that are full length and 100% identical",  "ignore blastx hits that are full length and 100% identical", \%opt_HH, \@opt_order_A);
-opt_Add("--intlen",       "integer", 40,            $g,    undef,   undef,    "set min length of intron to check for splice sites to <n>",              "set min length of intron to check for splice sites to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--intlen",       "integer", 40,            $g,    undef,"--ignore_canonss", "set min length of intron to check for splice sites to <n>",       "set min length of intron to check for splice sites to <n>", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -456,6 +457,7 @@ my $options_okay =
                 "ignore_afset"     => \$GetOptions_H{"--ignore_afset"},
                 "ignore_afsetsubn" => \$GetOptions_H{"--ignore_afsetsubn"},
                 "ignore_canonss"   => \$GetOptions_H{"--ignore_canonss"},
+                "force_canonss"    => \$GetOptions_H{"--force_canonss"},
 # options related to model files
                 'm=s'           => \$GetOptions_H{"-m"}, 
                 'a=s'           => \$GetOptions_H{"-a"}, 
@@ -1100,7 +1102,7 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   vdr_FeatureInfoInitializeIsDeletable(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--ignore_isdel", \%opt_HH), $FH_HR);
   vdr_FeatureInfoInitializeAlternativeFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--ignore_afset", \%opt_HH), $FH_HR);
   vdr_FeatureInfoInitializeAlternativeFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, (opt_Get("--ignore_afset", \%opt_HH) || opt_Get("--ignore_afsetsubn", \%opt_HH)), $FH_HR);
-  vdr_FeatureInfoInitializeCanonSpliceSites(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--ignore_canonss", \%opt_HH), $FH_HR);
+  vdr_FeatureInfoInitializeCanonSpliceSites(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--force_canonss", \%opt_HH), opt_Get("--ignore_canonss", \%opt_HH), $FH_HR);
   vdr_FeatureInfoValidateMiscNotFailure(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoValidateIsDeletable(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoValidateAlternativeFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
