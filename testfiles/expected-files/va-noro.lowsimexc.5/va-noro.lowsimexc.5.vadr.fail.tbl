@@ -1,0 +1,9 @@
+>Feature gi|106060735|ref|NC_001959.2|
+7090	7728	gene
+			gene	ORF3
+7090	7728	CDS
+			product	VP2
+			protein_id	106060735_1
+
+Additional note(s) to submitter:
+ERROR: LOW_SIMILARITY: (*sequence*) internal region without significant similarity [low similarity region of length 280]; seq-coords:421..700:+; mdl-coords:419..560:+; mdl:NC_001959-vp2only;
