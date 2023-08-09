@@ -1864,7 +1864,6 @@ $start_secs = ofile_OutputProgressPrior("Determining annotation", $progress_w, $
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   $mdl_len  = $mdl_info_AH[$mdl_idx]{"length"};
-  my $mdl_tt   = (defined $mdl_info_AH[$mdl_idx]{"transl_table"}) ? $mdl_info_AH[$mdl_idx]{"transl_table"} : 1; # default to standard genetic code
   if(defined $mdl_seq_name_HA{$mdl_name}) { 
     my $mdl_nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
     initialize_ftr_or_sgm_results_for_model(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, $FH_HR);
@@ -1895,12 +1894,12 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     # parse the stk alignments
     for(my $a = 0; $a < scalar(@{$stk_file_HA{$mdl_name}}); $a++) { 
       if(-s $stk_file_HA{$mdl_name}[$a]) { # skip empty alignments, which may exist if all seqs were not alignable
-        parse_stk_and_add_alignment_cds_and_mp_alerts($stk_file_HA{$mdl_name}[$a], \$in_sqfile, $mdl_tt,
+        parse_stk_and_add_alignment_cds_and_mp_alerts($stk_file_HA{$mdl_name}[$a], \$in_sqfile, 
                                                       \%seq_len_H, \%seq_inserts_HH, \@{$sgm_info_HAH{$mdl_name}},
                                                       \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, \%stg_results_HHH,
                                                       \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
                                                       \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, \%dcr_output_HAH,
-                                                      $mdl_name, $mdl_len, \@ftr_fileroot_A, \@ftr_outroot_A, 
+                                                      \@mdl_info_AH, $mdl_idx, \@ftr_fileroot_A, \@ftr_outroot_A, 
                                                       $$sqfile_for_cds_mp_alerts_R, $$sqfile_for_output_fastas_R, $$sqfile_for_pv_R,
                                                       $do_separate_cds_fa_files_for_protein_validation, \@to_remove_A,
                                                       ($do_replace_ns) ? \%rpn_output_HH : undef, 
@@ -1924,7 +1923,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   if(defined $mdl_unexdivg_HA{$mdl_name}) { 
     foreach my $seq_name (@{$mdl_unexdivg_HA{$mdl_name}}) { 
-      add_low_similarity_alerts_for_one_sequence($seq_name, \%seq_len_H, undef,
+      add_low_similarity_alerts_for_one_sequence($seq_name, \%seq_len_H, undef, \@mdl_info_AH, $mdl_idx, 
                                                  \@{$ftr_info_HAH{$mdl_name}}, \@{$sgm_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                                  \%stg_results_HHH, \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
                                                  \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, 
@@ -3064,7 +3063,7 @@ sub cmsearch_store_hit {
 # Arguments:
 #  $alt_seq_instances_HHR:   REF to 2D hash with per-sequence alerts, added to here
 #  $seq_len_HR:              REF to hash of sequence lengths
-#  $mdl_info_AHR:            REF to array of hashes with information on the sequences, PRE-FILLED
+#  $mdl_info_AHR:            REF to array of hashes with information on the models, PRE-FILLED
 #  $alt_info_HHR:            REF to the alert info hash of arrays, PRE-FILLED
 #  $stg_results_HHHR:        REF to 3D hash with classification search results, PRE-FILLED
 #  $cls_output_HHR:          REF to 2D hash of classification output info, FILLED HERE 
@@ -3118,7 +3117,7 @@ sub add_classification_alerts {
   my $incspec_opt2print    = sprintf("%.3f", opt_Get("--incspec",    $opt_HHR));
   my $dupregsc_opt2print   = sprintf("%.1f", opt_Get("--dupregsc",   $opt_HHR));
 
-  # get info on position-specific indfstrn exceptions, if any
+  # get info on position-specific dupregion and indfstrn exceptions, if any
   my @dupregin_exc_AA = ();
   my @indfstrn_exc_AA = ();
   my $nmdl = scalar(@{$mdl_info_AHR});
@@ -4110,7 +4109,6 @@ sub cmalign_or_glsearch_run {
 # Arguments: 
 #  $stk_file:                  stockholm alignment file to parse
 #  $in_sqfile_R:               REF to Bio::Easel::SqFile object from input fasta file, can be undef unless --alicheck used
-#  $mdl_tt:                    the translation table ('1' for standard)
 #  $seq_len_HR:                REF to hash of sequence lengths, PRE-FILLED
 #  $seq_inserts_HHR:           REF to hash of hashes with sequence insert information, PRE-FILLED
 #  $sgm_info_AHR:              REF to array of hashes with information on the model segments, PRE-FILLED
@@ -4122,8 +4120,8 @@ sub cmalign_or_glsearch_run {
 #  $alt_seq_instances_HHR:     REF to array of hash with per-sequence alerts, ADDED TO HERE
 #  $alt_ftr_instances_HHHR:    REF to error instances HHH, ADDED TO HERE
 #  $dcr_output_HAHR:           REF to hash of array of hashes with info on doctored seqs to output, ADDED TO HERE
-#  $mdl_name:                  model name this alignment pertains to
-#  $mdl_len:                   model length
+#  $mdl_info_AHR:              REF to array of hashes with model info     
+#  $mdl_idx:                   index of best matching model for this sequence
 #  $ftr_fileroot_AR:           REF to array of per-feature file root values, pre-calc'ed and passed in so we don't need to do it per-seq
 #  $ftr_outroot_AR:            REF to array of per-feature output root values, pre-calc'ed and passed in so we don't need to do it per-seq
 #  $sqfile_for_cds_mp_alerts:  REF to Bio::Easel::SqFile object, open sequence file with sequences
@@ -4147,13 +4145,13 @@ sub cmalign_or_glsearch_run {
 ################################################################# 
 sub parse_stk_and_add_alignment_cds_and_mp_alerts { 
   my $sub_name = "parse_stk_and_add_alignment_cds_and_mp_alerts()";
-  my $nargs_exp = 27;
+  my $nargs_exp = 26;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($stk_file, $in_sqfile_R, $mdl_tt, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, 
+  my ($stk_file, $in_sqfile_R, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, 
       $ftr_info_AHR, $alt_info_HHR, $stg_results_HHHR, $sgm_results_HAHR, $ftr_results_HAHR, 
       $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $dcr_output_HAHR, 
-      $mdl_name, $mdl_len, $ftr_fileroot_AR, $ftr_outroot_AR, 
+      $mdl_info_AHR, $mdl_idx, $ftr_fileroot_AR, $ftr_outroot_AR, 
       $sqfile_for_cds_mp_alerts, $sqfile_for_output_fastas, $sqfile_for_pv,
       $do_separate_cds_fa_files, $to_remove_AR, $rpn_output_HHR,
       $out_root, $opt_HHR, $ofile_info_HHR) = @_;
@@ -4169,6 +4167,9 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
   my $small_value = 0.000001; # for checking if PPs are below threshold
   my $nftr = scalar(@{$ftr_info_AHR});
   my $nsgm = scalar(@{$sgm_info_AHR});
+  my $mdl_tt = (defined $mdl_info_AHR->[$mdl_idx]{"transl_table"}) ? $mdl_info_AHR->[$mdl_idx]{"transl_table"} : 1; # default to standard genetic code
+  my $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
+  my $mdl_len  = $mdl_info_AHR->[$mdl_idx]{"length"};
 
   # create an ESL_MSA object from the alignment
   # open and validate file
@@ -4833,7 +4834,7 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
       # add low similarity alerts for this sequence
       # we have to do this here because we need @ua2rf_A map of unaligned positions 
       # to RF positions to report model positions for alerts
-      add_low_similarity_alerts_for_one_sequence($seq_name, \%seq_len_H, \@ua2rf_A, 
+      add_low_similarity_alerts_for_one_sequence($seq_name, \%seq_len_H, \@ua2rf_A, $mdl_info_AHR, $mdl_idx,
                                                  $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, 
                                                  $stg_results_HHHR, $sgm_results_HAHR, $ftr_results_HAHR, 
                                                  $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, 
@@ -6601,6 +6602,8 @@ sub sqstring_check_splice_site {
 #                           if $ua2rf_A[$uapos] == 0, $uapos inserts *before* ref posn 1
 #                           $ua2rf_A[0] is invalid (set to 0)
 #                           can be undef, if so, we just don't report model coords in alert instances
+#  $mdl_info_HR:            REF to hash of arrays with information on the models, used only to get lowsim_exc, PRE-FILLED
+#  $mdl_idx:                index of best-matching model for this sequence, used only to get lowsim_exc
 #  $ftr_info_AHR:           REF to hash of arrays with information on the features, PRE-FILLED
 #  $sgm_info_AHR:           REF to hash of arrays with information on the model segments, PRE-FILLED
 #  $alt_info_HHR:           REF to the alert info hash of arrays, PRE-FILLED
@@ -6620,10 +6623,10 @@ sub sqstring_check_splice_site {
 #################################################################
 sub add_low_similarity_alerts_for_one_sequence { 
   my $sub_name = "add_low_similarity_alerts_for_one_sequence";
-  my $nargs_exp = 14;
+  my $nargs_exp = 16;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($seq_name, $seq_len_HR, $ua2rf_AR, $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, 
+  my ($seq_name, $seq_len_HR, $ua2rf_AR, $mdl_info_AHR, $mdl_idx, $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, 
       $stg_results_HHHR, $sgm_results_HAHR, $ftr_results_HAHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, 
       $rpn_output_HHR, $opt_HHR, $ofile_info_HHR) = @_;
 
@@ -6640,6 +6643,11 @@ sub add_low_similarity_alerts_for_one_sequence {
   my $long_terminal_ftr_5_min_length = opt_Get("--lowsim5lftr", $opt_HHR); # minimum length of terminal missing region in a feature that triggers a lowsim5l alert
   my $long_terminal_ftr_3_min_length = opt_Get("--lowsim3lftr", $opt_HHR); # minimum length of terminal missing region in a feature that triggers a lowsim3l alert
   my $long_internal_ftr_min_length   = opt_Get("--lowsimilftr", $opt_HHR); # minimum length of internal missing region in a feature that triggers a lowsimil alert
+
+  my @lowsim_exc_A = ();
+  if(defined $ua2rf_AR) { 
+    vdr_ModelInfoCoordsListValueBreakdown($mdl_info_AHR, $mdl_idx, "lowsim_exc", \@lowsim_exc_A, $FH_HR);
+  }
 
   # When doing check of sophisticated checks of options, we already checked that 
   # if --lowsim5ftr <n1> or --lowsim5lftr <n2> used, <n1> must be <= <n2>
@@ -6706,9 +6714,19 @@ sub add_low_similarity_alerts_for_one_sequence {
       my @missing_coords_A = split(",", $missing_coords);
       foreach my $missing_coords_tok (@missing_coords_A) { 
         my ($start, $stop, undef) = vdr_CoordsSegmentParse($missing_coords_tok, $FH_HR);
+        my $exempted_region = 0;
+        if((defined $ua2rf_AR) && ($bstrand eq "+")) { # only allow exceptions on plus strand, and when we have the alignment info
+          # check if the model coords this missing region aligns to is covered by a low similarity exception from the .minfo file (lowsim_exc)
+          my $mdl_coords = vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$start]), abs($ua2rf_AR->[$stop]), "+", $FH_HR);
+          foreach my $exc_coords (@lowsim_exc_A) { 
+            if(vdr_CoordsCheckIfSpans($exc_coords, $mdl_coords, $FH_HR)) { 
+              $exempted_region = 1;
+            }
+          }
+        }
         my $length = abs($start - $stop) + 1;
-        if($length >= $min_length) { 
-          # length is greater than the minimum of all alert length reporting thresholds
+        if(($length >= $min_length) && (! $exempted_region)) { 
+          # length is greater than the minimum of all alert length reporting thresholds, and we're not in an exempted region
           if($bstrand eq "+") { 
             my $is_start   = ($start == 1)        ? 1 : 0;
             my $is_end     = ($stop  == $seq_len) ? 1 : 0;
