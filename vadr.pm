@@ -2761,13 +2761,13 @@ sub vdr_AlertInfoInitialize {
 
   vdr_AlertInfoAdd($alt_info_HHR, "mutspst5", "feature",
                    "MUTATION_AT_SPLICE_SITE", # short description
-                   "expected splice site at 5' end of intron could not be identified", # long description
+                   "expected splice site at 5' end of intron (GT) could not be identified", # long description
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "mutspst3", "feature",
                    "MUTATION_AT_SPLICE_SITE", # short description
-                   "expected splice site at 3' end of intron could not be identified", # long description
+                   "expected splice site at 3' end of intron (AG) could not be identified", # long description
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
