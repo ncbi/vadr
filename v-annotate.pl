@@ -5993,7 +5993,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
                 else { 
                   $alt_str_H{"mutspst5"} = "";
                 }
-                $alt_str_H{"mutspst5"} .= sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $ss5_sqstring . ", intron#" . determine_intron_index($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx, $FH_HR));
+                $alt_str_H{"mutspst5"} .= sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $ss5_sqstring . ", intron#" . determine_intron_index($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx, $opt_HHR, $FH_HR));
               }
             }
           }
@@ -14510,6 +14510,7 @@ sub helper_dupregin {
 #  $sgm_info_AHR:    REF to hash of arrays with information on the model segments, PRE-FILLED
 #  $ftr_idx:         feature index we are interested in
 #  $sgm_idx_5p:      segment index 5' of the intron
+#  $opt_HHR:         REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $FH_HR:           ref to hash of file handles
 #
 # Returns:  index (1..n) of the intron that occurs between $prv_sgm_idx and $nxt_sgm_idx
