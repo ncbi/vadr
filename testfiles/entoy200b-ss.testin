@@ -1,0 +1,65 @@
+# format of this file:
+# '#' prefixed files are comments, and are not parsed.
+# 'command:' prefix indicates remainder of line is a command to run
+# 'desc:' prefix indicates description of test for dnaorg_test.pl output        
+# 'out:' prefix indicates output file to check against an expected file
+# 'exp:' prefix indicates expected file to check against an output file
+# 'rmdir:' prefix indicates name of output directory to remove after 
+# command is run and all output files have been checked.
+#
+# All 'out:' and 'exp:' lines following a 'command:' line (and before the 
+# next 'command:' line, will be checked after that command runs. The first
+# 'out:' file is compared against the first 'exp:' file, the second 
+# 'out:' file is compared against the second 'exp:' file, the second 'out:'
+# file, etc.
+# 
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --alt_fail mutspst5,mutspst3 --minpvlen 3 --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy200b.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy200b.minfo -f $VADRSCRIPTSDIR/testfiles/entoy200b-ss1.fa va-entoy200b-ss1 > va-entoy200b-ss1.out
+desc: annotate-entoy200b-ss1
+out: va-entoy200b-ss1/va-entoy200b-ss1.vadr.pass.tbl 
+out: va-entoy200b-ss1/va-entoy200b-ss1.vadr.fail.tbl
+out: va-entoy200b-ss1/va-entoy200b-ss1.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy200b-ss1/va-entoy200b-ss1.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy200b-ss1/va-entoy200b-ss1.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy200b-ss1/va-entoy200b-ss1.vadr.alt
+rmdir: va-entoy200b-ss1
+#
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --alt_fail mutspst5,mutspst3 --intlen 50 --minpvlen 3 --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy200b.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy200b.minfo -f $VADRSCRIPTSDIR/testfiles/entoy200b-ss1.fa va-entoy200b-ss2 > va-entoy200b-ss2.out
+desc: annotate-entoy200b-ss2
+out: va-entoy200b-ss2/va-entoy200b-ss2.vadr.pass.tbl 
+out: va-entoy200b-ss2/va-entoy200b-ss2.vadr.fail.tbl
+out: va-entoy200b-ss2/va-entoy200b-ss2.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy200b-ss2/va-entoy200b-ss2.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy200b-ss2/va-entoy200b-ss2.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy200b-ss2/va-entoy200b-ss2.vadr.alt
+rmdir: va-entoy200b-ss2
+#
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --alt_fail mutspst5,mutspst3 --ignore_canonss --minpvlen 3 --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy200b.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy200b.minfo -f $VADRSCRIPTSDIR/testfiles/entoy200b-ss1.fa va-entoy200b-ss3 > va-entoy200b-ss3.out
+desc: annotate-entoy200b-ss3
+out: va-entoy200b-ss3/va-entoy200b-ss3.vadr.pass.tbl 
+out: va-entoy200b-ss3/va-entoy200b-ss3.vadr.fail.tbl
+out: va-entoy200b-ss3/va-entoy200b-ss3.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy200b-ss3/va-entoy200b-ss3.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy200b-ss3/va-entoy200b-ss3.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy200b-ss3/va-entoy200b-ss3.vadr.alt
+rmdir: va-entoy200b-ss3
+#
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --alt_fail mutspst5,mutspst3 --minpvlen 3 --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy200b.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy200b.noss.minfo -f $VADRSCRIPTSDIR/testfiles/entoy200b-ss1.fa va-entoy200b-ss4 > va-entoy200b-ss4.out
+desc: annotate-entoy200b-ss4
+out: va-entoy200b-ss4/va-entoy200b-ss4.vadr.pass.tbl 
+out: va-entoy200b-ss4/va-entoy200b-ss4.vadr.fail.tbl
+out: va-entoy200b-ss4/va-entoy200b-ss4.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy200b-ss3/va-entoy200b-ss3.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy200b-ss3/va-entoy200b-ss3.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy200b-ss3/va-entoy200b-ss3.vadr.alt
+rmdir: va-entoy200b-ss4
+#
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --force_canonss --alicheck --alt_fail mutspst5,mutspst3 --minpvlen 3 --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy200b.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy200b.noss.minfo -f $VADRSCRIPTSDIR/testfiles/entoy200b-ss1.fa va-entoy200b-ss5 > va-entoy200b-ss5.out
+desc: annotate-entoy200b-ss5
+out: va-entoy200b-ss5/va-entoy200b-ss5.vadr.pass.tbl 
+out: va-entoy200b-ss5/va-entoy200b-ss5.vadr.fail.tbl
+out: va-entoy200b-ss5/va-entoy200b-ss5.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy200b-ss1/va-entoy200b-ss1.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy200b-ss1/va-entoy200b-ss1.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy200b-ss1/va-entoy200b-ss1.vadr.alt
+rmdir: va-entoy200b-ss5
+#

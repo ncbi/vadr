@@ -1,0 +1,5 @@
+MODEL ENTOY200B cmfile:"entoy200b.cm" group:"toy" length:"200" subgroup:"B"
+FEATURE ENTOY200B type:"gene" coords:"3..97:+" parent_idx_str:"GBNULL" gene:"one"
+FEATURE ENTOY200B type:"CDS" coords:"3..13:+,67..97:+" parent_idx_str:"GBNULL" gene:"one" product:"protein one"
+FEATURE ENTOY200B type:"gene" coords:"6..181:+" parent_idx_str:"GBNULL" gene:"two"
+FEATURE ENTOY200B type:"CDS" coords:"6..24:+,71..117:+,161..181:+" parent_idx_str:"GBNULL" gene:"two" product:"protein two"
