@@ -818,6 +818,9 @@ is created, with format described [here](formats.md#sda).
 | `--s_overhang <n>`  | for `-s`, set the length, in nt, of overlap between the 5' and 3' regions that are aligned with cmalign and the seed region to `<n>`, the default value for `<n>` is `100` |
 
 ### <a name="options-mm2"></a> `v-annotate.pl` options for deriving seeds from minimap2 as an alternative to blastn
+
+| .........option.........  | explanation |
+|---------------------|--------------------|
 | `--minimap2`  | use minimap2 insead of blastn to derive seeds, also requires `-s` and `--glsearch` |
 | `--mm2_asm5`  | use the option `-x asm5` with minimap2, instead of `-x asm20` which is used by default  |  
 | `--mm2_asm10` | use the option `-x asm10` with minimap2, instead of `-x asm20` which is used by default | 
