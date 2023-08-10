@@ -651,6 +651,8 @@ integer.
 | `--ignore_isdel`     | ignore non-zero 'is_deletable' values in `modelinfo` file, set to 0 for all features/models |
 | `--ignore_afset`     | ignore non-zero 'alternative_ftr_set' and 'alternative_ftr_set_subn' values in `modelinfo` file |
 | `--ignore_afsetsubn` | ignore non-zero 'alternative_ftr_set_subn' values in `modelinfo` file |
+| `--ignore_canonss`   | ignore non-zero 'canon_splice_sites' values in `modelinfo` file |
+| `--force_canonss`    | force 'canon_splice_sites' value is 1 for all CDS with qualifying introns (gaps between segments >= `<n>` nucleotides from `--intlen` option, by default `<n>` is `40`), this will force a check for GT/AG splice sites in all introns |
 
 ### `v-annotate.pl` options related to model files<a name="options-modelfiles"></a>
 
@@ -965,6 +967,7 @@ explained more [here](#memory).
 | `--nodcr`        | never doctor alignments to shift gaps to correct start/stop codon annotation |
 | `--forcedcrins`  | force insert type alignment doctoring, requires `--cmindi`, mainly useful for debugging/testing |
 | `--xnoid`        | ignore blastx hits that are full length and 100% identical, mainly useful for testing |
+| `--intlen <n>`   | define intron as any gap >= `<n>` nucleotides between segments in a CDS, only relevant for identifying canonical splice sites, the default value for `<n>` is `40` |
 
 ## Information on `v-annotate.pl` alerts <a name="alerts"></a>
 
@@ -1024,6 +1027,8 @@ features as described more [below](#mnf).
 | [*fsthicfi*](#fsthicfi2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_HIGH_CONF   | <a name="fsthicfi1"></a> high confidence possible frameshift in CDS (frame restored before end) (not reported if `--glsearch`)|
 | [*fstukcf3*](#fstukcft2)  | feature  | yes   | POSSIBLE_FRAMESHIFT             | <a name="fstukcft1"></a> possible frameshift in CDS (frame not restored before end) (only reported if `--glsearch`) |
 | [*fstukcfi*](#fstukcfi2)  | feature  | yes   | POSSIBLE_FRAMESHIFT             | <a name="fstukcfi1"></a> possible frameshift in CDS (frame restored before end) (only reported if `--glsearch`) |
+| [*mutspst5*](#mutspst52)  | feature  | yes   | MUTATION_AT_SPLICE_SITE         | <a name="mutspst51"></a> expected splice site at 5' end of intron (GT) could not be identified | <a name="mutspst51"></a> |
+| [*mutspst3*](#mutspst32)  | feature  | yes   | MUTATION_AT_SPLICE_SITE         | <a name="mutspst31"></a> expected splice site at 3' end of intron (AG) could not be identified | <a name="mutspst31"></a> |
 | [*peptrans*](#peptrans2)  | feature  | yes   | PEPTIDE_TRANSLATION_PROBLEM     | <a name="peptrans1"></a> mat_peptide may not be translated because its parent CDS has a problem |
 | [*pepadjcy*](#pepadjcy2)  | feature  | yes   | PEPTIDE_ADJACENCY_PROBLEM       | <a name="pepadjcy1"></a> predictions of two mat_peptides expected to be adjacent are not adjacent |
 | [*indfantp*](#indfantp2)  | feature  | no    | INDEFINITE_ANNOTATION           | <a name="indfantp1"></a> protein-based search identifies CDS not identified in nucleotide-based search |
@@ -1126,7 +1131,9 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*fsthicft*](#fsthicft1)  | POSSIBLE_FRAMESHIFT_HIGH_CONF   | [`--fsthighthr`, `--fstminntt`](#options-alerts-fstminntt) | CDS | - <a name="fsthicft2"></a> |
 | [*fsthicfi*](#fsthicfi1)  | POSSIBLE_FRAMESHIFT_HIGH_CONF   | [`--fsthighthr`, `--fstminnti`](#options-alerts-fstminnti) | CDS | - <a name="fsthicfi2"></a> |
 | [*fstukcft*](#fstukcft1)  | POSSIBLE_FRAMESHIFT             | [`--glsearch`, `--fstminntt`](#options-alerts-fstminntt)   | CDS | - <a name="fstukcft2"></a> |
-| [*fstukcfi*](#fstukcfi1)  | POSSIBLE_FRAMESHIFT             | [`--glsearch`, `--fstminnti`](#options-alerts-fstminnti)   | CDS | - <a name="fstukcfi2"></a> |
+a| [*fstukcfi*](#fstukcfi1)  | POSSIBLE_FRAMESHIFT             | [`--glsearch`, `--fstminnti`](#options-alerts-fstminnti)   | CDS | - <a name="fstukcfi2"></a> |
+| [*mutspst5*](#mutspst51)  | MUTATION_AT_SPLICE_SITE         | [`--ignore_canonss`, `--force-canonss`, `--intlen`](#options-ignore) | CDS | - <a name="mutspst52"></a> |
+| [*mutspst3*](#mutspst31)  | MUTATION_AT_SPLICE_SITE         | [`--ignore_canonss`, `--force-canonss`, `--intlen`](#options-ignore) | CDS | - <a name="mutspst32"></a> |
 | [*peptrans*](#peptrans1)  | PEPTIDE_TRANSLATION_PROBLEM     | none | mat_peptide | - <a name="peptrans2"></a> | 
 | [*pepadjcy*](#pepadjcy1)  | PEPTIDE_ADJACENCY_PROBLEM       | none | mat_peptide | - <a name="pepadcy2"></a> | 
 | [*indfantp*](#indfantp1)  | INDEFINITE_ANNOTATION           | [`--xlonescore`](#options-alerts-xlonescore) | CDS | - <a name="indfantp2"></a> | 
