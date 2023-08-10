@@ -51,6 +51,7 @@ for t in \
     do-dupregin-tests.sh \
     do-minimap2-tests.sh \
     do-lowsimexc-tests.sh \
+    do-ss-tests.sh \
     github-issues/do-issue-tests.sh \
     ; do
     sh $VADRSCRIPTSDIR/testfiles/$t

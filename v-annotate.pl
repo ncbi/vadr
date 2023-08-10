@@ -234,12 +234,14 @@ opt_Add("--alt_fail",      "string",  undef,     $g,     undef, undef,         "
 opt_Add("--alt_mnf_yes",   "string",  undef,     $g,     undef,"--ignore_mnf", "alert codes in <s> for 'misc_not_failure' features cause misc_feature-ization, not failure", "alert codes in <s> for 'misc_not_failure' features cause misc_feature-ization, not failure", \%opt_HH, \@opt_order_A);
 opt_Add("--alt_mnf_no",    "string",  undef,     $g,     undef,"--ignore_mnf", "alert codes in <s> for 'misc_not_failure' features cause failure, not misc_feature-ization", "alert codes in <s> for 'misc_not_failure' features cause failure, not misc-feature-ization", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options for ignoring specific keys in the input model info (.minfo) file";
+$opt_group_desc_H{++$g} = "options for ignoring/forcing specific keys in the input model info (.minfo) file";
 #        option               type        default  group requires incompat  preamble-output                                                                               help-output    
 opt_Add("--ignore_mnf",       "boolean",  0,       $g,     undef, undef,    "ignore non-zero 'misc_not_failure' values in .minfo file, set to 0 for all features/models", "ignore non-zero 'misc_not_feature' values in .minfo file, set to 0 for all features/models", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_isdel",     "boolean",  0,       $g,     undef, undef,    "ignore non-zero 'is_deletable' values in .minfo file, set to 0 for all features/models",     "ignore non-zero 'is_deletable' values in .minfo file, set to 0 for all features/models", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_afset",     "boolean",  0,       $g,     undef, undef,    "ignore 'alternative_ftr_set' and 'alternative_ftr_set_subn' values in .minfo file",          "ignore 'alternative_ftr_set' and 'alternative_ftr_set_subn' values in .minfo file", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_afsetsubn", "boolean",  0,       $g,     undef, undef,    "ignore 'alternative_ftr_set_subn' values in .minfo file",                                    "ignore 'alternative_ftr_set_subn' values in .minfo file", \%opt_HH, \@opt_order_A);
+opt_Add("--ignore_canonss",   "boolean",  0,       $g,     undef, undef,    "ignore 'canon_splice_sites' values in .minfo file (never check intron splice sites)",        "ignore 'canon_splice_sites' values in .minfo file (never check intron splice sites)", \%opt_HH, \@opt_order_A);
+opt_Add("--force_canonss",    "boolean",  0,       $g,     undef,"--ignore_canonss", "force 'canon_splice_sites' is 1 for all CDS with qualifying introns",               "force 'canon_splice_sites' is 1 for all CDS with qualifying introns", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to model files";
 #        option               type default  group  requires incompat   preamble-output                                                                   help-output    
@@ -396,8 +398,6 @@ $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 opt_Add("-p",           "boolean", 0,          $g,    undef,  undef,      "parallelize cmsearch/cmalign on a compute farm",              "parallelize cmsearch/cmalign on a compute farm", \%opt_HH, \@opt_order_A);
 opt_Add("-q",           "string",  undef,      $g,     "-p",  undef,      "use qsub info file <s> instead of default",                   "use qsub info file <s> instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("--errcheck",   "boolean", 0,          $g,     "-p",  undef,      "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
-
-$opt_group_desc_H{++$g} = "options related to splitting input and parallelization on compute farm";
 opt_Add("--wait",       "integer", 500,        $g,    undef,  undef,      "allow <n> minutes for jobs on farm",                          "allow <n> wall-clock minutes for jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
 opt_Add("--maxnjobs",   "integer", 2500,       $g,    undef,  undef,      "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
 
@@ -430,6 +430,7 @@ opt_Add("--xsub",         "string",  undef,         $g,    undef,   undef,    "r
 opt_Add("--nodcr",        "boolean", 0,             $g,    undef,   undef,    "do not doctor alignments to shift gaps in start/stop codons",            "do not doctor alignments to shift gaps in start/stop codons", \%opt_HH, \@opt_order_A);
 opt_Add("--forcedcrins",  "boolean", 0,             $g,"--cmindi",  undef,    "force insert type alignment doctoring, requires --cmindi",               "force insert type alignment doctoring, requires --cmindi", \%opt_HH, \@opt_order_A);
 opt_Add("--xnoid",        "boolean", 0,             $g,    undef,"--pv_hmmer,--pv_skip", "ignore blastx hits that are full length and 100% identical",  "ignore blastx hits that are full length and 100% identical", \%opt_HH, \@opt_order_A);
+opt_Add("--intlen",       "integer", 40,            $g,    undef,"--ignore_canonss", "set min length of intron to check for splice sites to <n>",       "set min length of intron to check for splice sites to <n>", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -455,6 +456,8 @@ my $options_okay =
                 "ignore_isdel"     => \$GetOptions_H{"--ignore_isdel"},
                 "ignore_afset"     => \$GetOptions_H{"--ignore_afset"},
                 "ignore_afsetsubn" => \$GetOptions_H{"--ignore_afsetsubn"},
+                "ignore_canonss"   => \$GetOptions_H{"--ignore_canonss"},
+                "force_canonss"    => \$GetOptions_H{"--force_canonss"},
 # options related to model files
                 'm=s'           => \$GetOptions_H{"-m"}, 
                 'a=s'           => \$GetOptions_H{"-a"}, 
@@ -613,7 +616,8 @@ my $options_okay =
                 'xsub=s'        => \$GetOptions_H{"--xsub"},
                 'nodcr'         => \$GetOptions_H{"--nodcr"},
                 'forcedcrins'   => \$GetOptions_H{"--forcedcrins"},
-                'xnoid'         => \$GetOptions_H{"--xnoid"});
+                'xnoid'         => \$GetOptions_H{"--xnoid"},
+                'intlen=s'      => \$GetOptions_H{"--intlen"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
@@ -1098,10 +1102,12 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   vdr_FeatureInfoInitializeIsDeletable(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--ignore_isdel", \%opt_HH), $FH_HR);
   vdr_FeatureInfoInitializeAlternativeFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--ignore_afset", \%opt_HH), $FH_HR);
   vdr_FeatureInfoInitializeAlternativeFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, (opt_Get("--ignore_afset", \%opt_HH) || opt_Get("--ignore_afsetsubn", \%opt_HH)), $FH_HR);
+  vdr_FeatureInfoInitializeCanonSpliceSites(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--force_canonss", \%opt_HH), opt_Get("--ignore_canonss", \%opt_HH), $FH_HR);
   vdr_FeatureInfoValidateMiscNotFailure(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoValidateIsDeletable(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoValidateAlternativeFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoValidateAlternativeFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  vdr_FeatureInfoValidateCanonSpliceSites(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_SegmentInfoPopulate(\@{$sgm_info_HAH{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 }
 
@@ -5826,6 +5832,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
   my $sqfile_for_pv_path            = $sqfile_for_pv->path;
 
   my $seq_len  = $seq_len_HR->{$seq_name};
+  my $min_intron_length = opt_Get("--intlen", $opt_HHR);
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     my $ftr_is_cds_or_mp = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
@@ -5862,12 +5869,15 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
     my $ftr_ambg_stop_codon_flag     = 0; # set to 1 if ambgcd3c thrown in helper_feature_terminal_ambiguities (or would be if for genes that match a CDS)
     my $ftr_ambg_start_codon_flag_pv = 0; # for pv case, set to 1 if ambgcd5c would have been thrown in helper_feature_terminal_ambiguities (or would be for genes that match a CDS)
     my $ftr_ambg_stop_codon_flag_pv  = 0; # for pv case, set to 1 if ambgcd3c would have been thrown in helper_feature_terminal_ambiguities (or would be for genes that match a CDS)
+    my $do_check_splice_sites = ((defined $ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"}) && 
+                                 ($ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"} == 1)) ? 1 : 0;
 
     my %alt_str_H = (); # added to as we find alerts below
     # ambgnt5c, ambgnt3c, ambgnt5f, ambgnt3f, mutstart, unexleng, mutendcd, mutendex, mutendns, cdsstopn
     my $alt_scoords; # sequence coordinates related to an alert
     my $alt_mcoords; # model    coordinates related to an alert
     my $alt_codon;   # codon string for an alert message
+    my $intron_idx = 1; # intron index, only used if we have multiple segments
 
     # determine if this feature is 5' and/or 3' truncated
     # we do this outside the main loop since the logic is a bit complex:
@@ -5900,7 +5910,96 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
         my $sgm_results_HR = $sgm_results_HAHR->{$seq_name}[$sgm_idx]; # for convenience
         my ($sstart, $sstop, $sstrand) = ($sgm_results_HR->{"sstart"}, $sgm_results_HR->{"sstop"}, $sgm_results_HR->{"strand"});
         my ($mstart, $mstop)           = ($sgm_results_HR->{"mstart"}, $sgm_results_HR->{"mstop"});
-        
+
+        # if cds and we have a canon_splice_sites value, check validity of splice sites (mutspst5 and mutspst3 alerts)
+        if(($ftr_is_cds) && ($do_check_splice_sites)) { 
+          # we check 3' splice site (upstream of this segment) first and 5' splice site (downstream of this segment) second
+          # which may be confusing to follow because typically we would do 5' first, then 3', but in this case we are actually
+          # still working in the 5' to 3' direction, it's just that the 3' splice site of the intron before this segment
+          # comes before the 5' splice site of the intron after this segment 
+          my $ss3_sqstring = undef; # 3' splice site of previous intron, upstream of this segment
+          my $ss5_sqstring = undef; # 5' splice site of next intron, downstream of this segment
+
+          # note: we don't check that adjacent segments are the same strand here, because we assume a CDS has all segments on same strand 
+          # (we explicitly check for this below and fail if it is not true)
+
+          # check 3' splice site upstream of this segment
+          if($sgm_idx != $first_sgm_idx) { # not first segment
+            my $intron_length = 0;
+            my $ss3_start  = undef;
+            my $ss3_stop   = undef;
+            my $ss3_strand = $sgm_info_AHR->[$sgm_idx]{"strand"};
+            $intron_length = vdr_FeatureLengthBetweenAdjacentSegments($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, (($sgm_idx-1) - ($ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"})), $FH_HR);
+            if($ss3_strand eq "+") { 
+              if(($intron_length >= $min_intron_length) && (($sstart-2) >= 1)) { # don't check splice site if it is 0 or 1 nt due to seq truncation
+                ($ss3_start, $ss3_stop) = (($sstart-2), ($sstart-1));
+              }
+            }
+            elsif($ss3_strand eq "-") { 
+              if(($intron_length >= $min_intron_length) && (($sstart+2) <= $seq_len)) { # don't check splice site if it is 0 or 1 nt due to seq truncation
+                ($ss3_start, $ss3_stop) = (($sstart+2), ($sstart+1));
+              }
+            }
+            if((defined $ss3_start) && (defined $ss3_stop)) { 
+              $ss3_sqstring = $sqfile_for_pv->fetch_subseq_to_sqstring($seq_name, $ss3_start, $ss3_stop, (($sgm_info_AHR->[$sgm_idx]{"strand"} eq "-") ? 1 : 0));
+              if(! sqstring_check_splice_site($ss3_sqstring, 0, $FH_HR)) { 
+                $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ss3_start, $ss3_stop, $ss3_strand, $FH_HR) . ";";
+                $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ss3_start]), abs($ua2rf_AR->[$ss3_stop]), $ss3_strand, $FH_HR) . ";";
+                $ss3_sqstring =~ tr/a-z/A-Z/;
+                # need to be careful about the alert string, we could have more than one for this CDS
+                if(defined $alt_str_H{"mutspst3"}) { 
+                  $alt_str_H{"mutspst3"} .= ":VADRSEP:"; 
+                }
+                else { 
+                  $alt_str_H{"mutspst3"} = "";
+                }
+                $alt_str_H{"mutspst3"} .= sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $ss3_sqstring . ", intron#" . determine_intron_index($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx-1, $opt_HHR, $FH_HR));
+              }
+            }
+          }
+
+          # check 5' splice site downstream of this segment
+          if($sgm_idx != $final_sgm_idx) { # not final segment
+            # determine length of region between the exons (the 'intron')
+            my $intron_length = 0;
+            my $ss5_start  = undef;
+            my $ss5_stop   = undef;
+            my $ss5_strand = $sgm_info_AHR->[$sgm_idx]{"strand"};
+            $intron_length = vdr_FeatureLengthBetweenAdjacentSegments($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, ($sgm_idx - ($ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"})), $FH_HR);
+            # can't use abs() because they segments may overlap (e.g. programmed frameshift)
+            if($ss5_strand eq "+") { 
+              if(($intron_length >= $min_intron_length) && (($sstop+2) <= $seq_len)) { # don't check splice site if it is 0 or 1 nt due to seq truncation
+                ($ss5_start, $ss5_stop) = (($sstop+1), ($sstop+2));
+
+                #$ss5_sqstring = $sqfile_for_pv->fetch_subseq_to_sqstring($seq_name, $sstop+1, $sstop+2, 0);
+              }
+            }
+            elsif($ss5_strand eq "-") { 
+              if(($intron_length >= $min_intron_length) && (($sstop-2) >= 1)) { # don't check splice site if it is 0 or 1 nt due to seq truncation
+                ($ss5_start, $ss5_stop) = (($sstop-1), ($sstop-2));
+                #$ss5_sqstring = $sqfile_for_pv->fetch_subseq_to_sqstring($seq_name, $sstop-1, $sstop-2, 0);
+              }
+            }
+            if((defined $ss5_start) && (defined $ss5_stop)) { 
+              $ss5_sqstring = $sqfile_for_pv->fetch_subseq_to_sqstring($seq_name, $ss5_start, $ss5_stop, (($sgm_info_AHR->[$sgm_idx]{"strand"} eq "-") ? 1 : 0));
+              if(! sqstring_check_splice_site($ss5_sqstring, 1, $FH_HR)) { 
+                $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ss5_start, $ss5_stop, $ss5_strand, $FH_HR) . ";";
+                $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ss5_start]), abs($ua2rf_AR->[$ss5_stop]), $ss5_strand, $FH_HR) . ";";
+                $ss5_sqstring =~ tr/a-z/A-Z/;
+                # need to be careful about the alert string, we could have more than one for this CDS
+                if(defined $alt_str_H{"mutspst5"}) { 
+                  $alt_str_H{"mutspst5"} .= ":VADRSEP:"; 
+                }
+                else { 
+                  $alt_str_H{"mutspst5"} = "";
+                }
+                $alt_str_H{"mutspst5"} .= sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $ss5_sqstring . ", intron#" . determine_intron_index($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx, $opt_HHR, $FH_HR));
+              }
+            }
+          }
+        }
+        # end of block that checks validity of splice sites (mutspst5, mutspst3 alerts)
+
         # only update start and 5trunc value if this is the first segment annotated
         if(! defined $ftr_start) { $ftr_start = $sstart; }
         $ftr_stop = $sstop; # always update $ftr_stop
@@ -6434,6 +6533,54 @@ sub sqstring_find_stops {
 #  }
 
   return;
+}
+
+#################################################################
+# Subroutine: sqstring_check_splice_site()
+# Incept:     EPN, Tue Jul 25 13:53:59 2023
+#
+# Arguments:
+#  $sqstring: the sequence string, should be length 2
+#  $is_5p:    '1' if this a 5' splice site ('GT'), '0' if 3' splice site ('AG')
+#  $FH_HR:    REF to hash of file handles
+#  
+# Returns:  return '1' if $sqstring is valid splice site (GT or AG) 
+#           including ambiguities (e.g. NN is valid), else return '0'
+# 
+#################################################################
+sub sqstring_check_splice_site {
+  my $sub_name = "sqstring_check_splice_site";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sqstring, $is_5p, $FH_HR) = @_;
+
+  my $sqlen = length($sqstring);
+  if($sqlen != 2) { 
+    return 0;
+  }
+  $sqstring =~ tr/a-z/A-Z/; # convert to uppercase
+  $sqstring =~ tr/U/T/;     # convert to DNA
+
+  # logic here is different than in _5p sister subroutine above
+  # because if we only have 1 nt, it should be the first nt (A)
+  # not the second like it is 
+  my $first_nt  = substr($sqstring, 0, 1);
+  my $second_nt = substr($sqstring, 1, 1);
+
+  my $first_nt_valid  = 0;
+  my $second_nt_valid = 0;
+
+  if($is_5p) { 
+    $first_nt_valid  = ($first_nt =~  /[GRSKVDBN]/) ? 1 : 0; # should be G
+    $second_nt_valid = ($second_nt =~ /[TWYKHDBN]/) ? 1 : 0; # should be T
+  }
+  else { # 3p
+    $first_nt_valid  = ($first_nt =~  /[AMRWVHDN]/) ? 1 : 0; # should be A
+    $second_nt_valid = ($second_nt =~ /[GRSKVDBN]/) ? 1 : 0; # should be G
+  }
+
+  return ($first_nt_valid && $second_nt_valid) ? 1 : 0;
 }
 
 #################################################################
@@ -14349,3 +14496,55 @@ sub helper_dupregin {
   return ($ret_alt_str, $ret_alt_scoords, $ret_alt_mcoords);
 }
 
+#################################################################
+# Subroutine: determine_intron_index
+# Incept:     EPN, Tue Jul 25 15:01:01 2023
+#
+# Purpose:    Determine the intron index for an intron between two
+#             segments. An intron has to be 1 or more nt (overlapping
+#             segments do not have an intron between them). This subroutine
+#             does not check that the feature is a CDS.
+#
+# Arguments:
+#  $ftr_info_AHR:    REF to array of hashes with information on the features, PRE-FILLED
+#  $sgm_info_AHR:    REF to hash of arrays with information on the model segments, PRE-FILLED
+#  $ftr_idx:         feature index we are interested in
+#  $sgm_idx_5p:      segment index 5' of the intron
+#  $opt_HHR:         REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $FH_HR:           ref to hash of file handles
+#
+# Returns:  index (1..n) of the intron that occurs between $prv_sgm_idx and $nxt_sgm_idx
+#           
+# Dies:     if $nxt_sgm_idx is >= $prv_sgm_idx
+#           if $prv_sgm_idx or $nxt_sgm_idx do not belong to $ftr_idx
+#
+#################################################################
+sub determine_intron_index { 
+  my $sub_name = "determine_intron_index";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx_5p, $opt_HHR, $FH_HR) = (@_);
+
+  my $min_intron_length = opt_Get("--intlen", $opt_HHR);
+
+  if(($sgm_idx_5p < $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) || 
+     ($sgm_idx_5p > ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} -1))) { 
+    ofile_FAIL(sprintf("ERROR, in $sub_name, ftr_idx: $ftr_idx, sgm idx ($sgm_idx_5p) outside expected range of %d to %d", $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}, ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}-1)), 1, $FH_HR);
+  }
+
+  my $intron_length;
+  my $intron_idx = 0; 
+  for(my $sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx < $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
+    $intron_length = vdr_FeatureLengthBetweenAdjacentSegments($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx - ($ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}), $FH_HR);
+    if($intron_length >= $min_intron_length) { 
+      $intron_idx++;
+    }
+    if($sgm_idx_5p == $sgm_idx) { 
+      return $intron_idx;
+    }
+  }
+
+  # should never be reached
+  return $intron_idx;
+}

@@ -527,7 +527,7 @@ sub vdr_FeatureInfoImputeByOverlap {
 #
 # Returns:    void
 # 
-# Dies:       if $ftr_info_AHR is invalid upon entry
+# Dies:       never
 #
 #################################################################
 sub vdr_FeatureInfoInitializeMiscNotFailure {
@@ -563,7 +563,7 @@ sub vdr_FeatureInfoInitializeMiscNotFailure {
 #
 # Returns:    void
 # 
-# Dies:       if $ftr_info_AHR is invalid upon entry
+# Dies:       never
 #
 #################################################################
 sub vdr_FeatureInfoInitializeIsDeletable {
@@ -599,7 +599,7 @@ sub vdr_FeatureInfoInitializeIsDeletable {
 #
 # Returns:    void
 # 
-# Dies:       if $ftr_info_AHR is invalid upon entry
+# Dies:       never
 #
 #################################################################
 sub vdr_FeatureInfoInitializeAlternativeFeatureSet {
@@ -635,7 +635,7 @@ sub vdr_FeatureInfoInitializeAlternativeFeatureSet {
 #
 # Returns:    void
 # 
-# Dies:       if $ftr_info_AHR is invalid upon entry
+# Dies:       never
 #
 #################################################################
 sub vdr_FeatureInfoInitializeAlternativeFeatureSetSubstitution {
@@ -649,6 +649,46 @@ sub vdr_FeatureInfoInitializeAlternativeFeatureSetSubstitution {
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if(($force_empty) || (! defined $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set_subn"})) { 
       $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set_subn"} = "";
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureInfoInitializeCanonSpliceSites
+# Incept:     EPN, Mon Aug  7 13:34:57 2023
+# 
+# Purpose:    Set "canon_splice_sites" value to 0 for any feature 
+#             in which it is not already defined in @{$ftr_info_AHR}.
+#             If $force_empty, set all values to 0 even if they are
+#             already defined.
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $force_one:     '1' to set values to 1 for all features, even if already defined as 0
+#   $force_zero:    '1' to set values to 0 for all features, even if already defined as 1
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       never
+#
+#################################################################
+sub vdr_FeatureInfoInitializeCanonSpliceSites {
+  my $sub_name = "vdr_FeatureInfoInitializeCanonSpliceSites";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_AHR, $force_one, $force_zero, $FH_HR) = @_;
+
+  my $nftr = scalar(@{$ftr_info_AHR});
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if($force_one) { 
+      $ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"} = 1;
+    }
+    if(($force_zero) || (! defined $ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"})) { 
+      $ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"} = 0;
     }
   }
 
@@ -675,7 +715,7 @@ sub vdr_FeatureInfoInitializeAlternativeFeatureSetSubstitution {
 #
 # Returns:    void
 # 
-# Dies:       if $ftr_info_AHR is invalid upon entry
+# Dies:       if misc_not_failure is invalid for any feature
 #
 #################################################################
 sub vdr_FeatureInfoValidateMiscNotFailure {
@@ -705,7 +745,6 @@ sub vdr_FeatureInfoValidateMiscNotFailure {
   }
 
   return;
-  
 }
 
 #################################################################
@@ -721,7 +760,7 @@ sub vdr_FeatureInfoValidateMiscNotFailure {
 #
 # Returns:    void
 # 
-# Dies:       if $ftr_info_AHR is invalid upon entry
+# Dies:       if is_deletable is invalid for any feature
 #
 #################################################################
 sub vdr_FeatureInfoValidateIsDeletable {
@@ -747,7 +786,6 @@ sub vdr_FeatureInfoValidateIsDeletable {
   }
 
   return;
-  
 }
 
 #################################################################
@@ -774,8 +812,7 @@ sub vdr_FeatureInfoValidateIsDeletable {
 # Returns:    '1' if there are any 'alternative_ftr_set' values ne ""
 #             '0' if all 'alternative_ftr_set' values are ""
 # 
-# Dies:       if $ftr_info_AHR is invalid upon entry
-#             if any alternative_ftr_set values are undefined
+# Dies:       if any alternative_ftr_set values are undefined
 #             if any alternative_ftr_set values exist only once 
 #
 #################################################################
@@ -842,7 +879,6 @@ sub vdr_FeatureInfoValidateAlternativeFeatureSet {
   }
 
   return $ret_val;
-  
 }
 
 #################################################################
@@ -864,8 +900,7 @@ sub vdr_FeatureInfoValidateAlternativeFeatureSet {
 #
 # Returns:    void
 # 
-# Dies:       if $ftr_info_AHR is invalid upon entry
-#             if any alternative_ftr_set_subn values are undefined
+# Dies:       if any alternative_ftr_set_subn values are undefined
 #             if any alternative_ftr_set_subn values are invalid
 #
 #################################################################
@@ -903,6 +938,47 @@ sub vdr_FeatureInfoValidateAlternativeFeatureSetSubstitution {
 
   if($fail_str ne "") { 
     ofile_FAIL("ERROR in $sub_name, some alternative_ftr_set_subn index strings are undefined or don't make sense:\n$fail_str\n", 1, $FH_HR);
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureInfoValidateCanonSpliceSites
+# Incept:     EPN, Mon Aug  7 13:37:15 2023
+# 
+# Purpose:    Validate "canon_splice_sites" values are either 0 or 1.
+#             Should probably be called after vdr_FeatureInfoInitializeCanonSpliceSites()
+#
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if canon_splice_sites is invalid for any feature
+#
+#################################################################
+sub vdr_FeatureInfoValidateCanonSpliceSites {
+  my $sub_name = "vdr_FeatureInfoValidateCanonSpliceSites";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  
+  my ($ftr_info_AHR, $FH_HR) = @_;
+  
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $fail_str = ""; # added to if any elements are out of range
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(! defined $ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"}) { 
+      $fail_str .= "ftr_idx: $ftr_idx, undefined\n"; 
+    }
+    elsif(($ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"} != 1) && ($ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"} != 0)) { 
+      $fail_str .= "ftr_idx: $ftr_idx, " . $ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"} . " != 0 and != 1\n"; 
+    }
+  }
+  
+  if($fail_str ne "") { 
+    ofile_FAIL("ERROR in $sub_name, some canon_splice_sites values are invalid or don't make sense:\n$fail_str\n", 1, $FH_HR);
   }
 
   return;
@@ -2256,6 +2332,57 @@ sub vdr_FeatureCoordsListValueBreakdown {
 }
 
 #################################################################
+# Subroutine: vdr_FeatureLengthBetweenAdjacentSegments()
+# Incept:     EPN, Fri Jul 28 14:08:20 2023
+#
+# Synopsis: Return number of positions in between two adjacent 
+#           segments for a feature.
+# 
+# Arguments:
+#  $ftr_info_AHR: ref to feature info array of hashes, PRE-FILLED
+#  $sgm_info_AHR: ref to segment info array of hashes, PRE-FILLED
+#  $ftr_idx:      feature index we are interested in
+#  $sgm_idx_5p:   segment index *within feature* (0 for feature's first segment)
+#                 we will return distance between this segment and next segment
+#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:  number of positions between $sgm_idx_5p and ($sgm_idx_5p+1)
+#
+# Dies: if $sgm_idx_5p is the final segment for the feature
+#       if $sgm_idx_5p is higher than number of segments for this feature
+#       if the segment and the next segment are on different strands
+#################################################################
+sub vdr_FeatureLengthBetweenAdjacentSegments { 
+  my $sub_name = "vdr_FeatureLengthBetweenAdjacentSegments";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx_5p, $FH_HR) = @_;
+  
+  my $nsgm = $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + 1;
+  if($sgm_idx_5p >= $nsgm) { 
+    ofile_FAIL(sprintf("ERROR in $sub_name, ftr_idx $ftr_idx has $nsgm segments, and requesting distance between segments %d and %d", $sgm_idx_5p, ($sgm_idx_5p+1)), 1, $FH_HR); 
+  }
+
+  my $sgm_idx     = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + $sgm_idx_5p;
+  my $nxt_sgm_idx = $sgm_idx + 1;
+  my $strand = $sgm_info_AHR->[$sgm_idx]{"strand"};
+  if($sgm_info_AHR->[$nxt_sgm_idx]{"strand"} ne $strand) { 
+    ofile_FAIL("ERROR in $sub_name, segment and next segment have different strands", 1, $FH_HR); 
+  }
+    
+  # determine start/stop and length of region between the two segments
+  # we can't use strand agnostic 
+  my $region_start  = ($strand eq "+") ? $sgm_info_AHR->[$sgm_idx]{"stop"}+1      : $sgm_info_AHR->[$sgm_idx]{"stop"}-1;
+  my $region_stop   = ($strand eq "+") ? $sgm_info_AHR->[$nxt_sgm_idx]{"start"}-1 : $sgm_info_AHR->[$nxt_sgm_idx]{"start"}+1;
+  my $region_length = ($strand eq "+") ? ($region_stop - $region_start) + 1       : ($region_start - $region_stop) + 1;
+
+  # printf("in $sub_name, returning $region_length\n");
+
+  return $region_length;
+}
+
+#################################################################
 # Subroutine: vdr_SegmentStartIdenticalToCds()
 # Incept:     EPN, Mon Feb  1 15:58:25 2021
 #
@@ -2629,6 +2756,18 @@ sub vdr_AlertInfoInitialize {
   vdr_AlertInfoAdd($alt_info_HHR, "fstukcfi", "feature",
                    "POSSIBLE_FRAMESHIFT", # short description
                    "possible frameshift in CDS (frame restored before end)", # long description
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "mutspst5", "feature",
+                   "MUTATION_AT_SPLICE_SITE", # short description
+                   "expected splice site at 5' end of intron (GT) could not be identified", # long description
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "mutspst3", "feature",
+                   "MUTATION_AT_SPLICE_SITE", # short description
+                   "expected splice site at 3' end of intron (AG) could not be identified", # long description
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 

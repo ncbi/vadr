@@ -290,6 +290,8 @@ model library [here](#1.0library-dengue").
 | `--qftradd <s>`  | specify that the qualifiers listed in `<s2>` from `qadd <s2>` only apply for feature types in the string `<s>`, where `<s>` is a comma-separated string with each qualifier separated by a comma with no whitespace |
 | `--qskip <s>`  | do not store information for qualifiers listed in `<s>`, where `<s>` is a comma-separated string with each qualifier separated by a comma with no whitespace; `<s>` may contain qualifiers from the default set, or from other qualifiers (if `--qall` also used) |
 | `--noaddgene`  | do not automatically add `gene` qualifiers from `gene` features to any overlapping non-gene features | 
+| `--nosplice`   | do not automatically check for GT/AG intron splice sites and add `canon_splice_sites` qualifiers for introns with valid splice sites, an intron is defined as a gap between CDS segments >= `<n>` nucleotides from `--intlen` option, by default `<n>` is `40` |
+| `--ssplice`    | exit if any introns in CDS are found that do not have valid GT/AG splice sites, introns defined as explained in `--nosplice` description above |
 
 ### `v-build.pl` options for including additional model attributes<a name="options-attributes"></a>
 
@@ -346,14 +348,17 @@ User's Guide manual page for `cmbuild` (section 8 of http://eddylab.org/infernal
 
 | .......option....... | explanation | 
 |--------|-------------| 
-| `--sgminfo <s>` | output information on the internal data structure used to keep track of segments of features to `<s>`, mainly useful for debugging |
 | `--ftrinfo <s>` | output information on the internal data structure used to keep track of features to `<s>`, mainly useful for debugging |
+| `--sgminfo <s>` | output information on the internal data structure used to keep track of segments of features to `<s>`, mainly useful for debugging |
 
 ### Other `v-build.pl` expert options<a name="options-expert"></a>
 
 | .......option....... | explanation | 
 |--------|-------------| 
 | `--execname <s>` | in banner and usage output, replace `v-annotate.pl` with `<s>` |
+| `--nosig2mat`    | do not treat `sig_peptide` features as `mat_peptide` in model info file |
+| `--intlen <n>`   | define intron as any gap >= `<n>` nucleotides between segments in a CDS, only relevant for checking for canonical splice sites, the default value for `<n>` is `40` |
+
 
 ---
 ## Building a VADR model library<a name="library"></a>
