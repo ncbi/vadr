@@ -23,7 +23,7 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy200b-ss1/va-entoy200b-ss1
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy200b-ss1/va-entoy200b-ss1.vadr.alt
 rmdir: va-entoy200b-ss1
 #
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --alt_fail mutspst5,mutspst3 --intlen 50 --minpvlen 3 --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy200b.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy200b.minfo -f $VADRSCRIPTSDIR/testfiles/entoy200b-ss1.fa va-entoy200b-ss2 > va-entoy200b-ss2.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --alt_fail mutspst5,mutspst3 --intlen 47 --minpvlen 3 --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy200b.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy200b.minfo -f $VADRSCRIPTSDIR/testfiles/entoy200b-ss1.fa va-entoy200b-ss2 > va-entoy200b-ss2.out
 desc: annotate-entoy200b-ss2
 out: va-entoy200b-ss2/va-entoy200b-ss2.vadr.pass.tbl 
 out: va-entoy200b-ss2/va-entoy200b-ss2.vadr.fail.tbl
