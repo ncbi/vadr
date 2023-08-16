@@ -416,6 +416,7 @@ opt_Add("--out_rpafa",      "boolean", 0,    $g,     "-r","--keep", "with -r, ou
 opt_Add("--out_fsstk",      "boolean", 0,    $g,    undef,"--keep", "additionally output frameshift stockholm alignment files",          "additionally output frameshift stockholm alignment files",          \%opt_HH, \@opt_order_A);
 opt_Add("--out_allfasta",   "boolean", 0,    $g,    undef,"--keep", "additionally output fasta files of features",                       "additionally output fasta files of features",                       \%opt_HH, \@opt_order_A);
 opt_Add("--out_nofasta",    "boolean", 0,    $g,    undef,"--keep,--out_allfasta", "do not output fasta files of passing/failing seqs",  "do not output fasta files of passing/failing seqs",                 \%opt_HH, \@opt_order_A);
+opt_Add("--out_noftrfasta", "boolean", 0,    $g, "--keep","--out_allfasta", "with --keep, do not output fasta for each feature",         "with --keep, do not output fasta for each feature",                 \%opt_HH, \@opt_order_A);
 opt_Add("--out_debug",      "boolean", 0,    $g,    undef,"--split","dump voluminous info from various data structures to output files", "dump voluminous info from various data structures to output files", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "other expert options";
@@ -605,6 +606,7 @@ my $options_okay =
                 'out_fsstk'     => \$GetOptions_H{"--out_fsstk"}, 
                 'out_allfasta'  => \$GetOptions_H{"--out_allfasta"}, 
                 'out_nofasta'   => \$GetOptions_H{"--out_nofasta"}, 
+                'out_noftrfasta'=> \$GetOptions_H{"--out_noftrfasta"}, 
                 'out_debug'     => \$GetOptions_H{"--out_debug"},
 # other expert options
                 'execname=s'    => \$GetOptions_H{"--execname"},
@@ -5821,9 +5823,12 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
   my $nftr = scalar(@{$ftr_info_AHR});
   my $nsgm = scalar(@{$sgm_info_AHR});
 
-  my $atg_only    = opt_Get("--atgonly", $opt_HHR);
-  my $do_keep     = opt_Get("--keep", $opt_HHR);
-  my $do_allfasta = ($do_keep || opt_Get("--out_allfasta", $opt_HHR)) ? 1 : 0;
+  my $atg_only      = opt_Get("--atgonly", $opt_HHR);
+  my $do_keep       = opt_Get("--keep", $opt_HHR);
+  my $do_allfasta   = opt_Get("--out_allfasta", $opt_HHR);
+  my $do_noftrfasta = opt_Get("--out_noftrfasta", $opt_HHR);
+  # determine if we should output separate fasta files for each feature
+  my $do_ftrfasta = (($do_keep && (! $do_noftrfasta)) || ($do_allfasta)) ? 1 : 0;
 
   my $ftr_idx;
 
@@ -6123,15 +6128,19 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
         $ftr_3ablen_pv = $ftr_len;
       }
 
-      # output the sequence
-      if(! exists $ofile_info_HHR->{"FH"}{$ftr_ofile_key}) { 
-        ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $ftr_ofile_key,  $out_root . "." . $mdl_name . "." . $ftr_fileroot_AR->[$ftr_idx] . ".fa", ($do_allfasta ? 1 : 0), ($do_allfasta ? 1 : 0), "model $mdl_name feature " . $ftr_outroot_AR->[$ftr_idx] . " predicted seqs");
-        if(! $do_allfasta) { 
-          push(@{$to_remove_AR}, $ofile_info_HHR->{"fullpath"}{$ftr_ofile_key});
+      # output the feature sequence to a fasta file, if nec
+      if($do_ftrfasta || ($ftr_is_cds && (! $do_separate_cds_fa_files))) { 
+        if(! exists $ofile_info_HHR->{"FH"}{$ftr_ofile_key}) { 
+          ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $ftr_ofile_key,  $out_root . "." . $mdl_name . "." . $ftr_fileroot_AR->[$ftr_idx] . ".fa", $do_ftrfasta, $do_ftrfasta, "model $mdl_name feature " . $ftr_outroot_AR->[$ftr_idx] . " predicted seqs");
+          if(! $do_ftrfasta) { 
+            push(@{$to_remove_AR}, $ofile_info_HHR->{"fullpath"}{$ftr_ofile_key});
+          }
         }
+        print { $ofile_info_HHR->{"FH"}{$ftr_ofile_key} } (">" . $ftr_seq_name . "\n" . 
+                                                           seq_SqstringAddNewlines($ftr_sqstring_out, 60)); 
+
       }
-      print { $ofile_info_HHR->{"FH"}{$ftr_ofile_key} } (">" . $ftr_seq_name . "\n" . 
-                                                         seq_SqstringAddNewlines($ftr_sqstring_out, 60)); 
+      # output the fasta file for CDS 
       if(($do_separate_cds_fa_files) && ($ftr_is_cds)) { 
         if(! exists $ofile_info_HHR->{"FH"}{$pv_ftr_ofile_key}) { 
           my $separate_cds_fa_file = $out_root . "." . $mdl_name . "." . $ftr_fileroot_AR->[$ftr_idx] . ".pv.fa"; 
