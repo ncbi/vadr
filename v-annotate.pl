@@ -2236,6 +2236,7 @@ exit 0;
 # fetch_features_and_add_cds_and_mp_alerts_for_one_sequence
 # sqstring_check_start
 # sqstring_find_stops 
+# sqstring_check_splice_site
 # add_low_similarity_alerts_for_one_sequence
 # frameshift_determine_span
 #
@@ -5931,13 +5932,23 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
             my $ss3_strand = $sgm_info_AHR->[$sgm_idx]{"strand"};
             $intron_length = vdr_FeatureLengthBetweenAdjacentSegments($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, (($sgm_idx-1) - ($ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"})), $FH_HR);
             if($ss3_strand eq "+") { 
-              if(($intron_length >= $min_intron_length) && (($sstart-2) >= 1)) { # don't check splice site if it is 0 or 1 nt due to seq truncation
-                ($ss3_start, $ss3_stop) = (($sstart-2), ($sstart-1));
+              if(($intron_length >= $min_intron_length) && (($sstart-1) >= 1)) { # don't check splice site if it is 0 nt due to seq truncation
+                if(($sstart-1) == 1) {  # we only have 1 nt
+                  ($ss3_start, $ss3_stop) = (($sstart-1), ($sstart-1));
+                }
+                else { # normal case
+                  ($ss3_start, $ss3_stop) = (($sstart-2), ($sstart-1));
+                }
               }
             }
             elsif($ss3_strand eq "-") { 
-              if(($intron_length >= $min_intron_length) && (($sstart+2) <= $seq_len)) { # don't check splice site if it is 0 or 1 nt due to seq truncation
-                ($ss3_start, $ss3_stop) = (($sstart+2), ($sstart+1));
+              if(($intron_length >= $min_intron_length) && (($sstart+1) <= $seq_len)) { # don't check splice site if it 0 nt due to seq truncation
+                if(($sstart+1) == $seq_len) {  # we only have 1 nt
+                  ($ss3_start, $ss3_stop) = (($sstart+1), ($sstart+1));
+                }
+                else { 
+                  ($ss3_start, $ss3_stop) = (($sstart+2), ($sstart+1));
+                }
               }
             }
             if((defined $ss3_start) && (defined $ss3_stop)) { 
@@ -5968,16 +5979,23 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
             $intron_length = vdr_FeatureLengthBetweenAdjacentSegments($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, ($sgm_idx - ($ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"})), $FH_HR);
             # can't use abs() because they segments may overlap (e.g. programmed frameshift)
             if($ss5_strand eq "+") { 
-              if(($intron_length >= $min_intron_length) && (($sstop+2) <= $seq_len)) { # don't check splice site if it is 0 or 1 nt due to seq truncation
-                ($ss5_start, $ss5_stop) = (($sstop+1), ($sstop+2));
-
-                #$ss5_sqstring = $sqfile_for_pv->fetch_subseq_to_sqstring($seq_name, $sstop+1, $sstop+2, 0);
+              if(($intron_length >= $min_intron_length) && (($sstop+1) <= $seq_len)) { # don't check splice site if it is 0 nt due to seq truncation
+                if(($sstop+1) == $seq_len) { # we only have 1 nt
+                  ($ss5_start, $ss5_stop) = (($sstop+1), ($sstop+1));
+                }
+                else { 
+                  ($ss5_start, $ss5_stop) = (($sstop+1), ($sstop+2));
+                }
               }
             }
             elsif($ss5_strand eq "-") { 
-              if(($intron_length >= $min_intron_length) && (($sstop-2) >= 1)) { # don't check splice site if it is 0 or 1 nt due to seq truncation
-                ($ss5_start, $ss5_stop) = (($sstop-1), ($sstop-2));
-                #$ss5_sqstring = $sqfile_for_pv->fetch_subseq_to_sqstring($seq_name, $sstop-1, $sstop-2, 0);
+              if(($intron_length >= $min_intron_length) && (($sstop-1) >= 1)) { # don't check splice site if it is 0 nt due to seq truncation
+                if(($sstop-1) == 1) { # we only have 1 nt
+                  ($ss5_start, $ss5_stop) = (($sstop-1), ($sstop-1));
+                }
+                else { 
+                  ($ss5_start, $ss5_stop) = (($sstop-1), ($sstop-2));
+                }
               }
             }
             if((defined $ss5_start) && (defined $ss5_stop)) { 
@@ -6554,6 +6572,8 @@ sub sqstring_check_splice_site {
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($sqstring, $is_5p, $FH_HR) = @_;
+
+  printf("in sqstring_check_splice_site(), sqstring: $sqstring\n");
 
   my $sqlen = length($sqstring);
   if($sqlen != 2) { 
