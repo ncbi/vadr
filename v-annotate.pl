@@ -7212,12 +7212,12 @@ sub add_protein_validation_alerts {
                 $p_strand  = $ftr_results_HR->{($ftr_results_prefix . "strand")};
                 $p_query   = $ftr_results_HR->{($ftr_results_prefix . "query")};
                 $p_hlen    = $ftr_results_HR->{($ftr_results_prefix . "len")};
-                if(defined $ftr_results_HR->{($ftr_results_prefix . "ins")})     { $p_ins     = $ftr_results_HR->{($ftr_results_prefix . "ins")};  }
-                if(defined $ftr_results_HR->{($ftr_results_prefix . "del")})     { $p_del     = $ftr_results_HR->{($ftr_results_prefix . "del")};  }
-                if(defined $ftr_results_HR->{($ftr_results_prefix . "trcstop")}) { $p_trcstop = $ftr_results_HR->{($ftr_results_prefix . "trcstop")}; }
-                if(defined $ftr_results_HR->{($ftr_results_prefix . "score")})   { $p_score   = $ftr_results_HR->{($ftr_results_prefix . "score")};   }
-                if(defined $ftr_results_HR->{($ftr_results_prefix . "hstart")})  { $p_hstart  = $ftr_results_HR->{($ftr_results_prefix . "hstart")}; }
-                if(defined $ftr_results_HR->{($ftr_results_prefix . "hstop")})   { $p_hstop   = $ftr_results_HR->{($ftr_results_prefix . "hstop")};   }
+                $p_ins     = (defined $ftr_results_HR->{($ftr_results_prefix . "ins")})     ? $ftr_results_HR->{($ftr_results_prefix . "ins")}     : undef;
+                $p_del     = (defined $ftr_results_HR->{($ftr_results_prefix . "del")})     ? $ftr_results_HR->{($ftr_results_prefix . "del")}     : undef;
+                $p_trcstop = (defined $ftr_results_HR->{($ftr_results_prefix . "trcstop")}) ? $ftr_results_HR->{($ftr_results_prefix . "trcstop")} : undef;
+                $p_score   = (defined $ftr_results_HR->{($ftr_results_prefix . "score")})   ? $ftr_results_HR->{($ftr_results_prefix . "score")}   : undef;
+                $p_hstart  = (defined $ftr_results_HR->{($ftr_results_prefix . "hstart")})  ? $ftr_results_HR->{($ftr_results_prefix . "hstart")}  : undef;
+                $p_hstop   = (defined $ftr_results_HR->{($ftr_results_prefix . "hstop")})   ? $ftr_results_HR->{($ftr_results_prefix . "hstop")}   : undef;
 
                 # determine if the query is a full length sequence, or a fetched sequence feature:
                 ($p_qseq_name, $p_qftr_idx, $p_qlen, $p_ftr_scoords) = helper_protein_validation_breakdown_source($p_query, $seq_len_HR, $FH_HR); 
