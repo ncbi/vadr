@@ -947,14 +947,15 @@ explained more [here](#memory).
 
 | .......option....... | explanation | 
 |--------|-------------| 
-| `--out_stk`     | create additional per-model output [stockholm](formats.md#stockholmformat) alignments with `.stk` suffix |
-| `--out_afa`     | create additional per-model output aligned fasta alignments with `.afa` suffix |
-| `--out_rpstk`   | with `-r`, create additional per-model output [stockholm](formats.md#stockholmformat) alignments with sequences *with Ns replaced* with `.rpstk` suffix |
-| `--out_rpafa`   | create additional per-model output aligned fasta alignments with sequences *with Ns replaced* with `.rpafa` suffix |
-| `--out_fsstk`   | output frameshift [stockholm](formats.md#stockholmformat) alignment files with `.frameshift.stk` suffix |
-| `--out_allfasta`| output fasta files of predicted features |
-| `--out_nofasta` | minimize total size of output; do not output fasta files of all passing and all failing sequences |
-| `--out_debug`   | create additional output files with information on various data structures |
+| `--out_stk`        | create additional per-model output [stockholm](formats.md#stockholmformat) alignments with `.stk` suffix |
+| `--out_afa`        | create additional per-model output aligned fasta alignments with `.afa` suffix |
+| `--out_rpstk`      | with `-r`, create additional per-model output [stockholm](formats.md#stockholmformat) alignments with sequences *with Ns replaced* with `.rpstk` suffix |
+| `--out_rpafa`      | create additional per-model output aligned fasta alignments with sequences *with Ns replaced* with `.rpafa` suffix |
+| `--out_fsstk`      | output frameshift [stockholm](formats.md#stockholmformat) alignment files with `.frameshift.stk` suffix |
+| `--out_allfasta`   | output fasta files of predicted features |
+| `--out_nofasta`    | minimize total size of output; do not output fasta files of all passing and all failing sequences |
+| `--out_noftrfasta` | with --keep, do not output fasta file for each feature | 
+| `--out_debug`      | create additional output files with information on various data structures |
 
 ### Other `v-annotate.pl` expert options<a name="options-expert"></a>
 
