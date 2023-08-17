@@ -6138,7 +6138,6 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
         }
         print { $ofile_info_HHR->{"FH"}{$ftr_ofile_key} } (">" . $ftr_seq_name . "\n" . 
                                                            seq_SqstringAddNewlines($ftr_sqstring_out, 60)); 
-
       }
       # output the fasta file for CDS 
       if(($do_separate_cds_fa_files) && ($ftr_is_cds)) { 
@@ -6393,6 +6392,11 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
       $ftr_results_HR->{"n_len"}             = $ftr_len;
       $ftr_results_HR->{"n_scoords"}         = $ftr_scoords;
       $ftr_results_HR->{"n_mcoords"}         = $ftr_mcoords;
+
+      # close the file handle if it exists
+      if(exists $ofile_info_HHR->{"FH"}{$ftr_ofile_key}) { 
+        close $ofile_info_HHR->{"FH"}{$ftr_ofile_key};
+      }
     } # end of 'if($ftr_len > 0)'
   } # end of 'for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { '
   
