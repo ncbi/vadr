@@ -5969,7 +5969,12 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
                 else { 
                   $alt_str_H{"mutspst3"} = "";
                 }
-                $alt_str_H{"mutspst3"} .= sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $ss3_sqstring . ", intron#" . determine_intron_index($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx-1, $opt_HHR, $FH_HR));
+                if(length($ss3_sqstring) == 1) { 
+                  $alt_str_H{"mutspst3"} .= sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $ss3_sqstring . ", intron#" . determine_intron_index($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx-1, $opt_HHR, $FH_HR) . " (second position missing due to end of sequence)");
+                }
+                else { # length == 2, normal case
+                  $alt_str_H{"mutspst3"} .= sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $ss3_sqstring . ", intron#" . determine_intron_index($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx-1, $opt_HHR, $FH_HR));
+                }
               }
             }
           }
@@ -6016,7 +6021,12 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
                 else { 
                   $alt_str_H{"mutspst5"} = "";
                 }
-                $alt_str_H{"mutspst5"} .= sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $ss5_sqstring . ", intron#" . determine_intron_index($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx, $opt_HHR, $FH_HR));
+                if(length($ss5_sqstring) == 1) { 
+                  $alt_str_H{"mutspst5"} .= sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $ss5_sqstring . ", intron#" . determine_intron_index($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx, $opt_HHR, $FH_HR) . " (second position missing due to end of sequence)");
+                }
+                else { # length == 2, normal case
+                  $alt_str_H{"mutspst5"} .= sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $ss5_sqstring . ", intron#" . determine_intron_index($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx, $opt_HHR, $FH_HR));
+                }
               }
             }
           }
