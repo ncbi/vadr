@@ -2238,6 +2238,7 @@ exit 0;
 # fetch_features_and_add_cds_and_mp_alerts_for_one_sequence
 # sqstring_check_start
 # sqstring_find_stops 
+# sqstring_check_splice_site
 # add_low_similarity_alerts_for_one_sequence
 # frameshift_determine_span
 #
@@ -5929,25 +5930,35 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
           # (we explicitly check for this below and fail if it is not true)
 
           # check 3' splice site upstream of this segment
-          if($sgm_idx != $first_sgm_idx) { # not first segment
+          if($sgm_idx != $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) { # not first segment of CDS (may be first segment we have results for)
             my $intron_length = 0;
             my $ss3_start  = undef;
             my $ss3_stop   = undef;
             my $ss3_strand = $sgm_info_AHR->[$sgm_idx]{"strand"};
             $intron_length = vdr_FeatureLengthBetweenAdjacentSegments($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, (($sgm_idx-1) - ($ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"})), $FH_HR);
             if($ss3_strand eq "+") { 
-              if(($intron_length >= $min_intron_length) && (($sstart-2) >= 1)) { # don't check splice site if it is 0 or 1 nt due to seq truncation
-                ($ss3_start, $ss3_stop) = (($sstart-2), ($sstart-1));
+              if(($intron_length >= $min_intron_length) && (($sstart-1) >= 1)) { # don't check splice site if it is 0 nt due to seq truncation
+                if(($sstart-1) == 1) {  # we only have 1 nt
+                  ($ss3_start, $ss3_stop) = (($sstart-1), ($sstart-1));
+                }
+                else { # normal case
+                  ($ss3_start, $ss3_stop) = (($sstart-2), ($sstart-1));
+                }
               }
             }
             elsif($ss3_strand eq "-") { 
-              if(($intron_length >= $min_intron_length) && (($sstart+2) <= $seq_len)) { # don't check splice site if it is 0 or 1 nt due to seq truncation
-                ($ss3_start, $ss3_stop) = (($sstart+2), ($sstart+1));
+              if(($intron_length >= $min_intron_length) && (($sstart+1) <= $seq_len)) { # don't check splice site if it 0 nt due to seq truncation
+                if(($sstart+1) == $seq_len) {  # we only have 1 nt
+                  ($ss3_start, $ss3_stop) = (($sstart+1), ($sstart+1));
+                }
+                else { 
+                  ($ss3_start, $ss3_stop) = (($sstart+2), ($sstart+1));
+                }
               }
             }
             if((defined $ss3_start) && (defined $ss3_stop)) { 
               $ss3_sqstring = $sqfile_for_pv->fetch_subseq_to_sqstring($seq_name, $ss3_start, $ss3_stop, (($sgm_info_AHR->[$sgm_idx]{"strand"} eq "-") ? 1 : 0));
-              if(! sqstring_check_splice_site($ss3_sqstring, 0, $FH_HR)) { 
+              if(! sqstring_check_splice_site($ss3_sqstring, 0, $ss3_strand, $FH_HR)) { 
                 $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ss3_start, $ss3_stop, $ss3_strand, $FH_HR) . ";";
                 $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ss3_start]), abs($ua2rf_AR->[$ss3_stop]), $ss3_strand, $FH_HR) . ";";
                 $ss3_sqstring =~ tr/a-z/A-Z/;
@@ -5958,13 +5969,18 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
                 else { 
                   $alt_str_H{"mutspst3"} = "";
                 }
-                $alt_str_H{"mutspst3"} .= sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $ss3_sqstring . ", intron#" . determine_intron_index($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx-1, $opt_HHR, $FH_HR));
+                if(length($ss3_sqstring) == 1) { 
+                  $alt_str_H{"mutspst3"} .= sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $ss3_sqstring . ", intron#" . determine_intron_index($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx-1, $opt_HHR, $FH_HR) . " (second position missing due to end of sequence)");
+                }
+                else { # length == 2, normal case
+                  $alt_str_H{"mutspst3"} .= sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $ss3_sqstring . ", intron#" . determine_intron_index($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx-1, $opt_HHR, $FH_HR));
+                }
               }
             }
           }
 
           # check 5' splice site downstream of this segment
-          if($sgm_idx != $final_sgm_idx) { # not final segment
+          if($sgm_idx != $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}) { # not final segment of CDS (may be final segment we have results for)
             # determine length of region between the exons (the 'intron')
             my $intron_length = 0;
             my $ss5_start  = undef;
@@ -5973,21 +5989,28 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
             $intron_length = vdr_FeatureLengthBetweenAdjacentSegments($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, ($sgm_idx - ($ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"})), $FH_HR);
             # can't use abs() because they segments may overlap (e.g. programmed frameshift)
             if($ss5_strand eq "+") { 
-              if(($intron_length >= $min_intron_length) && (($sstop+2) <= $seq_len)) { # don't check splice site if it is 0 or 1 nt due to seq truncation
-                ($ss5_start, $ss5_stop) = (($sstop+1), ($sstop+2));
-
-                #$ss5_sqstring = $sqfile_for_pv->fetch_subseq_to_sqstring($seq_name, $sstop+1, $sstop+2, 0);
+              if(($intron_length >= $min_intron_length) && (($sstop+1) <= $seq_len)) { # don't check splice site if it is 0 nt due to seq truncation
+                if(($sstop+1) == $seq_len) { # we only have 1 nt
+                  ($ss5_start, $ss5_stop) = (($sstop+1), ($sstop+1));
+                }
+                else { 
+                  ($ss5_start, $ss5_stop) = (($sstop+1), ($sstop+2));
+                }
               }
             }
             elsif($ss5_strand eq "-") { 
-              if(($intron_length >= $min_intron_length) && (($sstop-2) >= 1)) { # don't check splice site if it is 0 or 1 nt due to seq truncation
-                ($ss5_start, $ss5_stop) = (($sstop-1), ($sstop-2));
-                #$ss5_sqstring = $sqfile_for_pv->fetch_subseq_to_sqstring($seq_name, $sstop-1, $sstop-2, 0);
+              if(($intron_length >= $min_intron_length) && (($sstop-1) >= 1)) { # don't check splice site if it is 0 nt due to seq truncation
+                if(($sstop-1) == 1) { # we only have 1 nt
+                  ($ss5_start, $ss5_stop) = (($sstop-1), ($sstop-1));
+                }
+                else { 
+                  ($ss5_start, $ss5_stop) = (($sstop-1), ($sstop-2));
+                }
               }
             }
             if((defined $ss5_start) && (defined $ss5_stop)) { 
               $ss5_sqstring = $sqfile_for_pv->fetch_subseq_to_sqstring($seq_name, $ss5_start, $ss5_stop, (($sgm_info_AHR->[$sgm_idx]{"strand"} eq "-") ? 1 : 0));
-              if(! sqstring_check_splice_site($ss5_sqstring, 1, $FH_HR)) { 
+              if(! sqstring_check_splice_site($ss5_sqstring, 1, $ss5_strand, $FH_HR)) { 
                 $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ss5_start, $ss5_stop, $ss5_strand, $FH_HR) . ";";
                 $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ss5_start]), abs($ua2rf_AR->[$ss5_stop]), $ss5_strand, $FH_HR) . ";";
                 $ss5_sqstring =~ tr/a-z/A-Z/;
@@ -5998,7 +6021,12 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
                 else { 
                   $alt_str_H{"mutspst5"} = "";
                 }
-                $alt_str_H{"mutspst5"} .= sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $ss5_sqstring . ", intron#" . determine_intron_index($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx, $opt_HHR, $FH_HR));
+                if(length($ss5_sqstring) == 1) { 
+                  $alt_str_H{"mutspst5"} .= sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $ss5_sqstring . ", intron#" . determine_intron_index($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx, $opt_HHR, $FH_HR) . " (second position missing due to end of sequence)");
+                }
+                else { # length == 2, normal case
+                  $alt_str_H{"mutspst5"} .= sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $ss5_sqstring . ", intron#" . determine_intron_index($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx, $opt_HHR, $FH_HR));
+                }
               }
             }
           }
@@ -6550,6 +6578,9 @@ sub sqstring_find_stops {
 # Arguments:
 #  $sqstring: the sequence string, should be length 2
 #  $is_5p:    '1' if this a 5' splice site ('GT'), '0' if 3' splice site ('AG')
+#  $strand:   '+' if CDS is on the + strand, '-' if on - strand
+#             if '-', $sqstring should already be revcomped (and so is still
+#             expected to be 'GT' or 'AG'
 #  $FH_HR:    REF to hash of file handles
 #  
 # Returns:  return '1' if $sqstring is valid splice site (GT or AG) 
@@ -6558,35 +6589,72 @@ sub sqstring_find_stops {
 #################################################################
 sub sqstring_check_splice_site {
   my $sub_name = "sqstring_check_splice_site";
-  my $nargs_exp = 3;
+  my $nargs_exp = 4;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($sqstring, $is_5p, $FH_HR) = @_;
+  my ($sqstring, $is_5p, $strand, $FH_HR) = @_;
 
-  my $sqlen = length($sqstring);
-  if($sqlen != 2) { 
-    return 0;
-  }
+  printf("in sqstring_check_splice_site(), sqstring: $sqstring\n");
+
   $sqstring =~ tr/a-z/A-Z/; # convert to uppercase
   $sqstring =~ tr/U/T/;     # convert to DNA
 
+  my $first_nt        = undef;
+  my $second_nt       = undef;
+  my $first_nt_valid  = undef;
+  my $second_nt_valid = undef;
+
   # logic here is different than in _5p sister subroutine above
   # because if we only have 1 nt, it should be the first nt (A)
-  # not the second like it is 
-  my $first_nt  = substr($sqstring, 0, 1);
-  my $second_nt = substr($sqstring, 1, 1);
+  # not the second like it is with 5' 
 
-  my $first_nt_valid  = 0;
-  my $second_nt_valid = 0;
+  my $sqlen = length($sqstring);
+  if($sqlen == 2) { 
+    # strand doesn't matter when seqlen is 2
+    $first_nt  = substr($sqstring, 0, 1);
+    $second_nt = substr($sqstring, 1, 1);
 
-  if($is_5p) { 
-    $first_nt_valid  = ($first_nt =~  /[GRSKVDBN]/) ? 1 : 0; # should be G
-    $second_nt_valid = ($second_nt =~ /[TWYKHDBN]/) ? 1 : 0; # should be T
+    $first_nt_valid  = 0;
+    $second_nt_valid = 0;
+
+    if($is_5p) { 
+      $first_nt_valid  = ($first_nt =~  /[GRSKVDBN]/) ? 1 : 0; # should be G
+      $second_nt_valid = ($second_nt =~ /[TWYKHDBN]/) ? 1 : 0; # should be T
+    }
+    else { # 3p
+      $first_nt_valid  = ($first_nt =~  /[AMRWVHDN]/) ? 1 : 0; # should be A
+      $second_nt_valid = ($second_nt =~ /[GRSKVDBN]/) ? 1 : 0; # should be G
+    }
   }
-  else { # 3p
-    $first_nt_valid  = ($first_nt =~  /[AMRWVHDN]/) ? 1 : 0; # should be A
-    $second_nt_valid = ($second_nt =~ /[GRSKVDBN]/) ? 1 : 0; # should be G
+  elsif($sqlen == 1) { 
+    # strand matters:
+    # if +, we should have 5' most nt of the slice site,
+    # if -, we should have 3' most nt of the slice site,
+    if($strand eq "+") { 
+      $second_nt_valid = 1;
+      $first_nt = substr($sqstring, 0, 1);
+      if($is_5p) { 
+        $first_nt_valid  = ($first_nt =~  /[GRSKVDBN]/) ? 1 : 0; # should be G
+      }
+      else { # 3p
+        $first_nt_valid  = ($first_nt =~  /[AMRWVHDN]/) ? 1 : 0; # should be A
+      }
+    }
+    else { 
+      $first_nt_valid = 1;
+      $second_nt = substr($sqstring, 0, 1);
+      if($is_5p) { 
+        $second_nt_valid = ($second_nt =~ /[TWYKHDBN]/) ? 1 : 0; # should be T
+      }
+      else { # 3p
+        $second_nt_valid = ($second_nt =~ /[GRSKVDBN]/) ? 1 : 0; # should be G
+      }
+    }
   }
+  else { # this shouldn't happen but if it does we just return 0 (alert will be thrown) instead of failing
+    return 0;
+  }
+  printf("in $sub_name, first_nt_valid: $first_nt_valid, second_nt_valid: $second_nt_valid\n");
 
   return ($first_nt_valid && $second_nt_valid) ? 1 : 0;
 }
