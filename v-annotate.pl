@@ -6594,7 +6594,7 @@ sub sqstring_check_splice_site {
 
   my ($sqstring, $is_5p, $strand, $FH_HR) = @_;
 
-  printf("in sqstring_check_splice_site(), sqstring: $sqstring\n");
+  # printf("in sqstring_check_splice_site(), sqstring: $sqstring\n");
 
   $sqstring =~ tr/a-z/A-Z/; # convert to uppercase
   $sqstring =~ tr/U/T/;     # convert to DNA
@@ -6654,7 +6654,7 @@ sub sqstring_check_splice_site {
   else { # this shouldn't happen but if it does we just return 0 (alert will be thrown) instead of failing
     return 0;
   }
-  printf("in $sub_name, first_nt_valid: $first_nt_valid, second_nt_valid: $second_nt_valid\n");
+  # printf("in $sub_name, first_nt_valid: $first_nt_valid, second_nt_valid: $second_nt_valid\n");
 
   return ($first_nt_valid && $second_nt_valid) ? 1 : 0;
 }
@@ -7328,7 +7328,7 @@ sub add_protein_validation_alerts {
                   # so we can just use $p_hstart/$p_hstop for model positions
                   $alt_str_HH{$ftr_results_prefix}{"indfantp"} = $alt_scoords . $alt_mcoords . "raw_score:$p_score";
                 }
-                   }              
+              }              
               if(defined $n_start) { 
                 my $cur_5aln_tol = $aln_tol;
                 my $cur_3aln_tol = $aln_tol;
@@ -8695,7 +8695,7 @@ sub helper_blastx_max_indel_token_to_alt_coords {
   
   my ($is_insert, $spos, $aa_mpos, $len, $is_feature, $ftr_scoords, $ftr_mcoords, $ftr_strand, $blastx_strand, $seq_len, $FH_HR) = (@_);
 
-  #printf("in $sub_name\n\tspos: $spos\n\taa_mpos: $aa_mpos\n\tlen: $len\n\tis_feature: $is_feature\n\tftr_scoords: $ftr_scoords\n\tftr_mcoords: $ftr_mcoords\n\tblastx_strand: $blastx_strand\n\tseq_len: $seq_len\n\n");
+  # printf("in $sub_name\n\tspos: $spos\n\taa_mpos: $aa_mpos\n\tlen: $len\n\tis_feature: $is_feature\n\tftr_scoords: $ftr_scoords\n\tftr_mcoords: $ftr_mcoords\n\tblastx_strand: $blastx_strand\n\tseq_len: $seq_len\n\n");
 
   my $absolute_scoords = undef; # absolute sequence coords
   my $relative_scoords = undef; # relative sequence coords
@@ -8724,8 +8724,12 @@ sub helper_blastx_max_indel_token_to_alt_coords {
     $absolute_mcoords = vdr_CoordsProteinRelativeToAbsolute($ftr_mcoords,
                                                             vdr_CoordsSegmentCreate($aa_mpos, $aa_mpos, "+", $FH_HR), $FH_HR);
     # $absolute_mcoords will now be a full codon, but we only want the final position
-    (undef, $absolute_mpos, $absolute_mstrand) = vdr_CoordsSegmentParse($absolute_mcoords, $FH_HR);
-    $absolute_mcoords = vdr_CoordsSegmentCreate($absolute_mpos, $absolute_mpos, $absolute_mstrand, $FH_HR); # yes, we want same start/end
+    # the codon could be split across multiple segments
+    my @absolute_stop_A   = ();
+    my @absolute_strand_A = ();
+    vdr_FeatureStartStopStrandArrays($absolute_mcoords, undef, \@absolute_stop_A, \@absolute_strand_A, $FH_HR);
+    my $absolute_nsgm = scalar(@absolute_stop_A);
+    $absolute_mcoords = vdr_CoordsSegmentCreate($absolute_stop_A[($absolute_nsgm-1)], $absolute_stop_A[($absolute_nsgm-1)], $absolute_strand_A[($absolute_nsgm-1)], $FH_HR); # yes, we want same start/end
     $alt_mcoords = sprintf("mdl:%s;", $absolute_mcoords);
   }
   else { # delete
@@ -8741,7 +8745,7 @@ sub helper_blastx_max_indel_token_to_alt_coords {
                                                             vdr_CoordsSegmentCreate($aa_mpos+1, $aa_mpos+$aa_len, "+", $FH_HR), $FH_HR);
     $alt_mcoords = sprintf("mdl:%s;", $absolute_mcoords);
   }
-  
+
   return($alt_scoords, $alt_mcoords);
 }
 
