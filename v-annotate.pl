@@ -6942,7 +6942,7 @@ sub add_low_similarity_alerts_for_one_sequence {
               }
             }
           }
-        } # end of 'if($length >= $min_length)'
+        } # end of 'if(($length >= $min_length) && (! $exempted_region))'
       } # end of 'foreach my $missing_coords_tok (@missing_coords_A)'
     }
   }
