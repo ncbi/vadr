@@ -3132,8 +3132,8 @@ sub add_classification_alerts {
     @{$dupregin_exc_AA[$mdl_idx]} = ();
     @{$indfstrn_exc_AA[$mdl_idx]} = ();
     if(! opt_Get("--ignore_exc", $opt_HHR)) { 
-      vdr_ModelInfoCoordsListValueBreakdown($mdl_info_AHR, $mdl_idx, $alert_info_HH{"dupregin"}{"minfo_exc_key"}, \@{$dupregin_exc_AA[$mdl_idx]}, $FH_HR);
-      vdr_ModelInfoCoordsListValueBreakdown($mdl_info_AHR, $mdl_idx, $alert_info_HH{"indfstrn"}{"minfo_exc_key"}, \@{$indfstrn_exc_AA[$mdl_idx]}, $FH_HR);
+      vdr_ModelInfoCoordsListValueBreakdown($mdl_info_AHR, $mdl_idx, $alt_info_HHR->{"dupregin"}{"minfo_exc_key"}, \@{$dupregin_exc_AA[$mdl_idx]}, $FH_HR);
+      vdr_ModelInfoCoordsListValueBreakdown($mdl_info_AHR, $mdl_idx, $alt_info_HHR->{"indfstrn"}{"minfo_exc_key"}, \@{$indfstrn_exc_AA[$mdl_idx]}, $FH_HR);
     }
   }
 

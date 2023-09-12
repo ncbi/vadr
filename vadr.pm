@@ -78,6 +78,7 @@ require "sqp_utils.pm";
 # vdr_FeatureInfoCountType()
 # vdr_FeatureInfoValidateCoords()
 # vdr_FeatureInfoValidateParentIndexStrings()
+# vdr_ModelInfoValidateExceptionKeys()
 # vdr_FeatureInfoChildrenArrayOfArrays()
 # vdr_FeatureInfoMapFtrTypeIndicesToFtrIndices()
 # vdr_FeatureInfoMerge()
@@ -163,7 +164,7 @@ require "sqp_utils.pm";
 # vdr_ModelInfoFileWrite()
 # vdr_ModelInfoFileParse()
 # vdr_ModelInfoCoordListValueBreakdown()
-# vdr_ModelInfoValidateAndTransferExceptions()
+# vdr_ModelInfoValidateExceptionKeys()
 #
 # Subroutines related to cmalign output:
 # vdr_CmalignCheckStdOutput()
@@ -994,47 +995,47 @@ sub vdr_FeatureInfoValidateCanonSpliceSites {
 # Purpose:    Validate any feature info keys that pertain to
 #             alert exceptions.
 # 
-#             Uses 'minfo_exc_key' value in alert_info_HH
+#             Uses 'minfo_exc_key' value in alt_info_HH
 #             to validate all ftr_info_AH keys that end in 
 #             '_exc', and dies if any such keys are not valid.
 #             
 # Arguments: 
-#  $ftr_info_AHR:   ref to the model info hash (for one model)
-#  $alert_info_HHR: ref to the alert info hash of hashes
-#  $FH_HR:          ref to hash of file handles, including "log" and "cmd"
+#  $ftr_info_AHR: ref to the model info hash (for one model)
+#  $alt_info_HHR: ref to the alert info hash of hashes
+#  $FH_HR:        ref to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
 #
 # Dies:       if $ftr_info_AHR->[]{"*_exc"} = $exc_str is not valid 
-#             (if no alert_info_HH{<code>}{"minfo_exc_key"} eq $exc_str)
+#             (if no alt_info_HH{<code>}{"minfo_exc_key"} eq $exc_str)
 #
 ################################################################# 
 sub vdr_FeatureInfoValidateExceptionKeys {
   my $sub_name = "vdr_FeatureInfoValidateExceptionKeys";
   my $nargs_exp = 3;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($mdl_info_HR, $alert_info_HHR, $FH_HR) = @_;
-
+  
+  my ($mdl_info_HR, $alt_info_HHR, $FH_HR) = @_;
+  
   # small optimization, make temporary hash of all $alt_code_HH{<code>}{"minfo_exc_key"}
   my %tmp_key_H = ();
-  foreach my $code (sort keys %alt_code_HH) { 
-    if(defined $alt_code_HH{$code}{"minfo_exc_key"}) { 
+  foreach my $code (sort keys %{$alt_info_HHR}) { 
+    if(defined $alt_info_HHR->{$code}{"minfo_exc_key"}) { 
       $tmp_key_H{"minfo_exc_key"} = 1;
     }
   }
-
+  
   my $nftr = scalar(@{$ftr_info_AHR});
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     foreach my $exc_key (sort keys %{$ftr_info_AHR->[$ftr_idx]}) { 
-      if($exc_key =~ /^.+\_exc$//) { 
+      if($exc_key =~ /^.+\_exc$/) { 
         if(! defined $tmp_key_H{$exc_key}) { 
           ofile_FAIL("ERROR, in $sub_name, invalid exception key $exc_key read in model info file", 1, $FH_HR);
         }
       }
     }
   }
-
+  
   return;
 }
 
@@ -2780,37 +2781,37 @@ sub vdr_AlertInfoInitialize {
   vdr_AlertInfoAdd($alt_info_HHR, "fsthicft", "feature",
                    "POSSIBLE_FRAMESHIFT_HIGH_CONF", # short description
                    "high confidence possible frameshift in CDS (frame not restored before end)", # long description
-                   0, 1, 0, 1, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, minfo_exc_key
+                   0, 1, 0, 1, "fst_exc", # always_fails, causes_failure, prevents_annot, misc_not_failure, minfo_exc_key
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "fsthicfi", "feature",
                    "POSSIBLE_FRAMESHIFT_HIGH_CONF", # short description
                    "high confidence possible frameshift in CDS (frame restored before end)", # long description
-                   0, 1, 0, 1, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, minfo_exc_key
+                   0, 1, 0, 1, "fst_exc", # always_fails, causes_failure, prevents_annot, misc_not_failure, minfo_exc_key
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "fstlocft", "feature",
                    "POSSIBLE_FRAMESHIFT_LOW_CONF", # short description
                    "low confidence possible frameshift in CDS (frame not restored before end)", # long description
-                   0, 0, 0, 1, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, minfo_exc_key
+                   0, 0, 0, 1, "fst_exc", # always_fails, causes_failure, prevents_annot, misc_not_failure, minfo_exc_key
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "fstlocfi", "feature",
                    "POSSIBLE_FRAMESHIFT_LOW_CONF", # short description
                    "low confidence possible frameshift in CDS (frame restored before end)", # long description
-                   0, 0, 0, 1, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, minfo_exc_key
+                   0, 0, 0, 1, "fst_exc", # always_fails, causes_failure, prevents_annot, misc_not_failure, minfo_exc_key
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "fstukcft", "feature",
                    "POSSIBLE_FRAMESHIFT", # short description
                    "possible frameshift in CDS (frame not restored before end)", # long description
-                   0, 1, 0, 1, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, minfo_exc_key
+                   0, 1, 0, 1, "fst_exc", # always_fails, causes_failure, prevents_annot, misc_not_failure, minfo_exc_key
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "fstukcfi", "feature",
                    "POSSIBLE_FRAMESHIFT", # short description
                    "possible frameshift in CDS (frame restored before end)", # long description
-                   0, 1, 0, 1, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, minfo_exc_key
+                   0, 1, 0, 1, "fst_exc", # always_fails, causes_failure, prevents_annot, misc_not_failure, minfo_exc_key
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "mutspst5", "feature",
@@ -2918,25 +2919,25 @@ sub vdr_AlertInfoInitialize {
   vdr_AlertInfoAdd($alt_info_HHR, "insertnp", "feature",
                    "INSERTION_OF_NT", # short description
                    "too large of an insertion in protein-based alignment", # long description
-                   0, 1, 0, 0, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, minfo_exc_key
+                   0, 1, 0, 0, "insertn_exc", # always_fails, causes_failure, prevents_annot, misc_not_failure, minfo_exc_key
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "insertnn", "feature",
                    "INSERTION_OF_NT", # short description
                    "too large of an insertion in nucleotide-based alignment of CDS feature", # long description
-                   0, 0, 0, 0, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, minfo_exc_key
+                   0, 0, 0, 0, "insertn_exc", # always_fails, causes_failure, prevents_annot, misc_not_failure, minfo_exc_key
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "deletinp", "feature",
                    "DELETION_OF_NT", # short description
                    "too large of a deletion in protein-based alignment", # long description
-                   0, 1, 0, 1, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, minfo_exc_key
+                   0, 1, 0, 1, "deletin_exc", # always_fails, causes_failure, prevents_annot, misc_not_failure, minfo_exc_key
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "deletinn", "feature",
                    "DELETION_OF_NT", # short description
                    "too large of a deletion in nucleotide-based alignment of CDS feature", # long description
-                   0, 0, 0, 1, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, minfo_exc_key
+                   0, 0, 0, 1, "deletin_exc", # always_fails, causes_failure, prevents_annot, misc_not_failure, minfo_exc_key
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "deletinf", "feature",
@@ -5489,19 +5490,19 @@ sub vdr_ModelInfoCoordsListValueBreakdown {
 # Purpose:    Validate any model info keys that pertain to
 #             alert exceptions.
 # 
-#             Uses 'minfo_exc_key' value in alert_info_HH
+#             Uses 'minfo_exc_key' value in alt_info_HH
 #             to validate all mdl_info_H keys that end in 
 #             '_exc', and dies if any such keys are not valid.
 #             
 # Arguments: 
 #  $mdl_info_HR:    ref to the model info hash (for one model)
-#  $alert_info_HHR: ref to the alert info hash of hashes
+#  $alt_info_HHR: ref to the alert info hash of hashes
 #  $FH_HR:          ref to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
 #
 # Dies:       if $mdl_info_HR->{"*_exc"} = $exc_str is not valid 
-#             (if no alert_info_HH{<code>}{"minfo_exc_key"} eq $exc_str)
+#             (if no alt_info_HH{<code>}{"minfo_exc_key"} eq $exc_str)
 #
 ################################################################# 
 sub vdr_ModelInfoValidateExceptionKeys {
@@ -5509,18 +5510,18 @@ sub vdr_ModelInfoValidateExceptionKeys {
   my $nargs_exp = 3;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($mdl_info_HR, $alert_info_HHR, $FH_HR) = @_;
+  my ($mdl_info_HR, $alt_info_HHR, $FH_HR) = @_;
 
-  # small optimization, make temporary hash of all $alt_code_HH{<code>}{"minfo_exc_key"}
+  # small optimization, make temporary hash of all $alt_info_HH{<code>}{"minfo_exc_key"}
   my %tmp_key_H = ();
-  foreach my $code (sort keys %alt_code_HH) { 
-    if(defined $alt_code_HH{$code}{"minfo_exc_key"}) { 
+  foreach my $code (sort keys %{$alt_info_HHR}) { 
+    if(defined $alt_info_HHR->{$code}{"minfo_exc_key"}) { 
       $tmp_key_H{"minfo_exc_key"} = 1;
     }
   }
  
   foreach my $exc_key (sort keys %{$mdl_info_HR}) { 
-    if($exc_key =~ /^.+\_exc$//) { 
+    if($exc_key =~ /^.+\_exc$/) { 
       if(! defined $tmp_key_H{$exc_key}) { 
         ofile_FAIL("ERROR, in $sub_name, no alert codes use the exception key $exc_key read in model info file", 1, $FH_HR);
       }
