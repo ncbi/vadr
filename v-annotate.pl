@@ -4963,7 +4963,7 @@ sub add_frameshift_alerts_for_one_sequence {
     vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, $alt_info_HH{"insertnn"}{"minfo_exc_key"}, \%{$insertn_exc_AH[$ftr_idx]}, $FH_HR);
     vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, $alt_info_HH{"deletinn"}{"minfo_exc_key"}, \%{$deletin_exc_AH[$ftr_idx]}, $FH_HR);
     vdr_FeatureCoordsListValueBreakdown      ($ftr_info_AHR, $ftr_idx, $alt_info_HH{"fstukcft"}{"minfo_exc_key"}, \@{$fst_exc_AA[$ftr_idx]}, $FH_HR);
-    # all $alt_info_HH{"fst*"} should be the same, any one could be passed in line above
+    # all $alt_info_HH{"fst*"} should be the same, so any one could be passed in line above
   }
 
   # for each CDS: determine frame, and report frameshift alerts
@@ -6732,7 +6732,8 @@ sub add_low_similarity_alerts_for_one_sequence {
 
   my @lowsim_exc_A = ();
   if(defined $ua2rf_AR) { 
-    vdr_ModelInfoCoordsListValueBreakdown($mdl_info_AHR, $mdl_idx, "lowsim_exc", \@lowsim_exc_A, $FH_HR);
+    vdr_ModelInfoCoordsListValueBreakdown($mdl_info_AHR, $mdl_idx, $alt_info_HHR->{"lowsimis"}{"minfo_exc_key"}, \@lowsim_exc_A, $FH_HR);
+    # all $alt_info_HH{"lowsim*"} should be the same, so any one could be passed in line above
   }
 
   # When doing check of sophisticated checks of options, we already checked that 
