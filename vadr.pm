@@ -1015,7 +1015,7 @@ sub vdr_FeatureInfoValidateExceptionKeys {
   my $nargs_exp = 3;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($mdl_info_HR, $alt_info_HHR, $FH_HR) = @_;
+  my ($ftr_info_AHR, $alt_info_HHR, $FH_HR) = @_;
   
   # small optimization, make temporary hash of all $alt_code_HH{<code>}{"minfo_exc_key"}
   my %tmp_key_H = ();
@@ -3077,7 +3077,6 @@ sub vdr_AlertInfoInitialize {
 #          if $type eq "sequence"  and $misc_not_failure == 1 (not allowed)
 #          if $always_fails == 1   and $causes_failure   != 1 (not allowed)
 #          if $always_fails == 1   and $misc_not_failure == 1 (not allowed)
-#          if $type eq "sequence"  and $minfo_exc_key is defined (not allowed)
 #
 ######################p###########################################
 sub vdr_AlertInfoAdd { 
@@ -3126,11 +3125,6 @@ sub vdr_AlertInfoAdd {
     ofile_FAIL("ERROR in $sub_name, trying to add code $code but misc_not_failure is 1 and pertype is sequence", 1, $FH_HR);
   }
   
-  # make sure $minfo_exc_key is only defined if type is feature
-  if((defined $minfo_exc_key) && ($pertype ne "feature")) { 
-    ofile_FAIL("ERROR in $sub_name, trying to add code $code but minfo_exc_key is defined and pertype is sequence", 1, $FH_HR);
-  }
-
   # check if $code already exists
   if(defined $alt_info_HHR->{$code}) { 
     ofile_FAIL("ERROR in $sub_name, trying to add code $code, but it already exists in the error info hash", 1, $FH_HR);
