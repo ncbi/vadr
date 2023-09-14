@@ -125,6 +125,11 @@ require "sqp_utils.pm";
 # vdr_FeatureAlertCausesFailure()
 # vdr_FeatureAlertIsMiscNotFailure()
 # 
+# Subroutines related to alert exceptions:
+# vdr_ExceptionCoordsAndValuesToSegmentsAndValues()
+# vdr_ExceptionSegmentAndValueToPositionsAndValues()
+# vdr_ExceptionSegmentAndValueParse()
+# 
 # Subroutines related to parallelization on the compute farm:
 # vdr_ParseQsubFile()
 # vdr_SubmitJob()
@@ -3434,6 +3439,196 @@ sub vdr_FeatureAlertIsMiscNotFailure {
 }
 
 #################################################################
+# Subroutine: vdr_ExceptionCoordsAndValuesToSegmentsAndValues()
+# Incept:     EPN, Thu Sep 14 14:55:00 2023
+#
+# Purpose:    Given a coords plus value string like we expect 
+#             in exception strings of the type 'coords-value'.
+#             Update a provided hash with keys equal to each segment
+#             and values equal to the parsed value.
+#
+#             Example:
+#             coords_value: "11..13:+:36,40..27:-:23";
+#             $ret_sgm_value_HR->{"11..13:+"} = 36;
+#             $ret_sgm_value_HR->{"40..27:-"} = 23;
+#
+# Arguments: 
+#  $coords_value:      the coords segment plus value
+#  $ret_sgm_value_HR:  ref to hash to update
+#  $FH_HR:             ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies: if unable to parse $coords_value (invalid format)
+#       if any of the segments overlap 
+# 
+################################################################# 
+sub vdr_ExceptionCoordsAndValuesToSegmentsAndValues {
+  my $sub_name = "vdr_ExceptionCoordsAndValuesToSegmentsAndValues";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords_value, $ret_sgm_value_HR, $FH_HR) = @_;
+  if(! defined $coords_value) { 
+    ofile_FAIL("ERROR in $sub_name, coords_value is undefined", 1, $FH_HR); 
+  }
+  my @sgm_value_A = split(",", $coords_value);
+  foreach my $sgm_value (@sgm_value_A) { 
+    my ($start, $stop, $strand, $value) = vdr_ExceptionSegmentAndValueParse($sgm_value, $FH_HR); # this will die if format is invalid
+    $ret_sgm_value_HR->{(vdr_CoordsSegmentCreate($start, $stop, $strand, $FH_HR))} = $value;
+  }
+
+  # check for any overlap segments, die if so
+  my $noverlap;
+  foreach my $key1 (sort keys (%{$ret_sgm_value_HR})) { 
+    foreach my $key2 (sort keys (%{$ret_sgm_value_HR})) { 
+      if($key1 ne $key2) { 
+        ($noverlap, undef) = vdr_CoordsSegmentOverlap($key1, $key2);
+        if($noverlap > 0) { 
+          ofile_FAIL("ERROR in $sub_name, two coords segments overlap in exception coords: $key1 and $key2.", 1, $FH_HR);
+        }
+      }
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_ExceptionSegmentsAndValuesToPositionsAndValues()
+# Incept:     EPN, Thu Sep 14 15:20:48 2023
+#
+# Purpose:    Given a hash with keys of coords segments, fill a 
+#             different hash with per position keys, one for each
+#             position of the coords range.
+#
+#             Example:
+#             $coords_value_HR->{"11..13:+"} = "36";
+#             $coords_value_HR->{"17..17:+"} = "42";
+#
+#             $ret_posn_value_HR->{"11"} = "36";
+#             $ret_posn_value_HR->{"12"} = "36";
+#             $ret_posn_value_HR->{"13"} = "36";
+#             $ret_posn_value_HR->{"17"} = "42";
+#
+# Arguments: 
+#  $coords_value_HR:   the coords segment plus value
+#  $allow_updates:     1 if we can update value for an already set key in %{$ret_posn_value_HR}
+#                      0 if we should die if we try to update a value for an already set key
+#  $ret_posn_value_HR: ref to hash to update
+#  $FH_HR:             ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies: if unable to parse $coords_value (invalid format)
+#       if we try to set a value for a key in $ret_posn_value_HR->{key} that is already defined
+#
+################################################################# 
+sub vdr_ExceptionSegmentsAndValuesToPositionsAndValues {
+  my $sub_name = "vdr_ExceptionSegmentsAndValuesToPositionsAndValues";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords_value_HR, $allow_updates, $ret_posn_value_HR, $FH_HR) = @_;
+  foreach my $coords_key (sort keys (%{$coords_value_HR})) { 
+    vdr_ExceptionOneSegmentAndValueToPositionsAndValues($coords_key, $coords_value_HR->{$coords_key}, $allow_updates, $ret_posn_value_HR, $FH_HR);
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_ExceptionOneSegmentAndValueToPositionsAndValues()
+# Incept:     EPN, Thu Sep 14 14:38:42 2023
+#
+# Purpose:    Given a single coords token plus a value 
+#             update a provided hash with key equal to a position
+#             and value.
+#
+#             Example:
+#             coords: "11..13:+";
+#             value:  "36"
+#             $ret_posn_value_HR->{"11"} = 36;
+#             $ret_posn_value_HR->{"12"} = 36;
+#             $ret_posn_value_HR->{"13"} = 36;
+#
+# Arguments: 
+#  $coords:            the coords segment
+#  $value:             the value
+#  $allow_updates:     1 if we can update value for an already set key in %{$ret_posn_value_HR}
+#                      0 if we should die if we try to update a value for an already set key
+#  $ret_posn_value_HR: ref to hash to update
+#  $FH_HR:             ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies: if unable to parse $coords_value (invalid format)
+#       if we try to set a value for a key in $ret_posn_value_HR->{key} that is already defined
+#
+################################################################# 
+sub vdr_ExceptionOneSegmentAndValueToPositionsAndValues {
+  my $sub_name = "vdr_ExceptionOneSegmentAndValueToPositionsAndValues";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords, $value, $allow_updates, $ret_posn_value_HR, $FH_HR) = @_;
+  if(! defined $coords) { 
+    ofile_FAIL("ERROR in $sub_name, coords is undefined", 1, $FH_HR); 
+  }
+  my ($start, $stop, $strand) = vdr_CoordsSegmentParse($coords, $FH_HR); # this will die if format is invalid
+  if($start >= $stop) { 
+    my $tmp = $start;
+    $start = $stop;
+    $stop  = $tmp;
+  }
+  for(my $posn = $start; $posn <= $stop; $posn++) { 
+    if((! $allow_updates) && (defined $ret_posn_value_HR->{$posn})) { 
+      ofile_FAIL("ERROR in $sub_name, trying to update already set key ($posn) and allow_updates is false.\nThis could be because Two coords segments in an exception string overlap.", 1, $FH_HR); 
+    }
+    $ret_posn_value_HR->{$posn} = $value;
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_ExceptionSegmentAndValueParse()
+# Incept:     EPN, Thu Sep 14 14:31:48 2023
+#
+# Purpose:    Given a single coords token plus a value in format
+#             return its start, stop, strand and value.
+#
+# Arguments: 
+#  $coords_value:  the coords segment plus value
+#  $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    4 values:
+#             $start:  start position
+#             $stop:   stop position
+#             $strand: strand
+#             $value:  value
+#
+# Dies: if unable to parse $coords_value (invalid format)
+#
+################################################################# 
+sub vdr_ExceptionSegmentAndValueParse {
+  my $sub_name = "vdr_ExceptionSegmentAndValueParse";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords_value, $FH_HR) = @_;
+  if(! defined $coords_value) { 
+    ofile_FAIL("ERROR in $sub_name, coords_value is undefined", 1, $FH_HR); 
+  }
+  if($coords_value =~ /^\<?(\d+)\.\.\>?(\d+)\:([\+\-]):(\S+)$/) { 
+    return ($1, $2, $3, $4);
+  }
+  ofile_FAIL("ERROR in $sub_name, unable to parse coords-value token $coords_value", 1, $FH_HR); 
+
+  return; # NEVER REACHED
+}
+
+#################################################################
 # Subroutine:  vdr_ParseQsubFile()
 # Incept:      EPN, Mon Jul  9 10:30:41 2018 [ribovore:ribo.pm]
 #
@@ -3784,9 +3979,9 @@ sub vdr_CoordsToSegments {
   if(! defined $coords) { 
     ofile_FAIL("ERROR in $sub_name, coords is undefined", 1, $FH_HR); 
   }
-  my @{$ret_sgm_AR} = split(",", $coords);
+  @{$ret_sgm_AR} = split(",", $coords);
   foreach my $coords_tok (@{$ret_sgm_AR}) { 
-    vdr_CoordsSegmentParse($coords_stok, $FH_HR); # this will fail if token is not in correct format
+    vdr_CoordsSegmentParse($coords_tok, $FH_HR); # this will fail if token is not in correct format
   }
 
   return scalar(@{$ret_sgm_AR});

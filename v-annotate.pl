@@ -3136,11 +3136,11 @@ sub add_classification_alerts {
     if(! opt_Get("--ignore_exc", $opt_HHR)) { 
       if((defined $alt_info_HHR->{"dupregin"}{"exc_key"}) && 
          (defined $mdl_info_AHR->[$mdl_idx]{$alt_info_HHR->{"dupregin"}{"exc_key"}})) { 
-        vdr_CoordsToSegments($mdl_info_AHR->[$mdl_idx]{$alt_info_HHR->{"dupregin"}{"exc_key"}}, \@{$dupregin_exc_AA[$mdi_idx]}, $FH_HR);
+        vdr_CoordsToSegments($mdl_info_AHR->[$mdl_idx]{$alt_info_HHR->{"dupregin"}{"exc_key"}}, \@{$dupregin_exc_AA[$mdl_idx]}, $FH_HR);
       }
       if((defined $alt_info_HHR->{"indfstrn"}{"exc_key"}) && 
          (defined $mdl_info_AHR->[$mdl_idx]{$alt_info_HHR->{"indfstrn"}{"exc_key"}})) { 
-        vdr_CoordsToSegments($mdl_info_AHR->[$mdl_idx]{$alt_info_HHR->{"indstrn"}{"exc_key"}}, \@{$indfstrn_exc_AA[$mdi_idx]}, $FH_HR);
+        vdr_CoordsToSegments($mdl_info_AHR->[$mdl_idx]{$alt_info_HHR->{"indstrn"}{"exc_key"}}, \@{$indfstrn_exc_AA[$mdl_idx]}, $FH_HR);
       }
     }
   }
@@ -4970,27 +4970,24 @@ sub add_frameshift_alerts_for_one_sequence {
     %{$deletin_posn_exc_AH[$ftr_idx]} = ();
     @{$fst_exc_AA[$ftr_idx]} = ();
     if(! opt_Get("--ignore_exc", $opt_HHR)) { 
-      # TODO update these so they take coords:value
-      #if((defined $alt_info_HHR->{"insertnn"}{"exc_key"}) && 
-      #   (defined $ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"insertnn"}{"exc_key"}})) { 
-      #  vdr_ExceptionCoordsAndValuesToSegmentsAndValues($ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"insertnn"}{"exc_key"}}, \@{$insertn_sgm_exc_AH[$ftr_idx]}, $FH_HR);
-      #  vdr_ExceptionSegmentAndValueToPositionAndValue(\@{$insertn_sgm_exc_AH[$ftr_idx]}, \@{$insert_posn_exc_AH[$ftr_idx]}, $FH_HR);
-      #}
-      #if((defined $alt_info_HHR->{"deletinn"}{"exc_key"}) && 
-      #   (defined $ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"deletinn"}{"exc_key"}})) { 
-      #  vdr_ExceptionCoordsAndValuesToSegmentsAndValues($ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"deletinn"}{"exc_key"}}, \@{$deletn_sgm_exc_AH[$ftr_idx]}, $FH_HR);
-      #  vdr_ExceptionSegmentAndValueToPositionAndValue(\@{$deletn_sgm_exc_AH[$ftr_idx]}, \@{$deletn_posn_exc_AH[$ftr_idx]}, $FH_HR);
-      #}
-      vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, $alt_info_HH{"insertnn"}{"exc_key"}, \%{$insertn_exc_AH[$ftr_idx]}, $FH_HR);
-      vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, $alt_info_HH{"deletinn"}{"exc_key"}, \%{$deletin_exc_AH[$ftr_idx]}, $FH_HR);
+      if((defined $alt_info_HHR->{"insertnn"}{"exc_key"}) && 
+         (defined $ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"insertnn"}{"exc_key"}})) { 
+        vdr_ExceptionCoordsAndValuesToSegmentsAndValues($ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"insertnn"}{"exc_key"}}, \%{$insertn_sgm_exc_AH[$ftr_idx]}, $FH_HR);
+        vdr_ExceptionSegmentsAndValuesToPositionsAndValues(\%{$insertn_sgm_exc_AH[$ftr_idx]}, 0, \%{$insertn_posn_exc_AH[$ftr_idx]}, $FH_HR);
+      }
+      if((defined $alt_info_HHR->{"deletinn"}{"exc_key"}) && 
+         (defined $ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"deletinn"}{"exc_key"}})) { 
+        vdr_ExceptionCoordsAndValuesToSegmentsAndValues($ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"deletinn"}{"exc_key"}}, \%{$deletin_sgm_exc_AH[$ftr_idx]}, $FH_HR);
+        vdr_ExceptionSegmentsAndValuesToPositionsAndValues(\%{$deletin_sgm_exc_AH[$ftr_idx]}, 0, \%{$deletin_posn_exc_AH[$ftr_idx]}, $FH_HR);
+      }
       if((defined $alt_info_HHR->{"fstukcft"}{"exc_key"}) && 
          (defined $ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"fstukcft"}{"exc_key"}})) { 
-        vdr_CoordsToSegments($ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"fstukcft"}{"exc_key"}}, \@{$fst_exc_AA[$ftr_idx]}, $FH_HR);
+        vdr_CoordsToSegments($ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"fstukcft"}{"exc_key"}}, \%{$fst_exc_AA[$ftr_idx]}, $FH_HR);
         # all $alt_info_HH{"fst*"} should be the same, so any one could be passed in line above
       }    
     }
   }
-
+  
   # for each CDS: determine frame, and report frameshift alerts
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
@@ -5109,7 +5106,7 @@ sub add_frameshift_alerts_for_one_sequence {
                 $rfpos_prv = $rfpos;
                 $F_prv     = $F_cur;
                 my $local_rfpos   = ($strand eq "+") ? ($rfpos - $cur_delete_len) : ($rfpos + $cur_delete_len);
-                my $local_nmaxdel = defined ($deletin_exc_AH[$ftr_idx]{$local_rfpos}) ? $deletin_exc_AH[$ftr_idx]{$local_rfpos} : $nmaxdel;
+                my $local_nmaxdel = defined ($deletin_posn_exc_AH[$ftr_idx]{$local_rfpos}) ? $deletin_posn_exc_AH[$ftr_idx]{$local_rfpos} : $nmaxdel;
                 if($cur_delete_len > $local_nmaxdel) { 
                   $alert_scoords = sprintf("seq:%s;", ($strand eq "+") ? 
                                            vdr_CoordsSegmentCreate($uapos-1, $uapos-1, $strand, $FH_HR) : 
@@ -5146,7 +5143,7 @@ sub add_frameshift_alerts_for_one_sequence {
                 }
               }
               # add insertnn alert, if nec
-              my $local_nmaxins = defined ($insertn_exc_AH[$ftr_idx]{$rfpos}) ? $insertn_exc_AH[$ftr_idx]{$rfpos} : $nmaxins;
+              my $local_nmaxins = defined ($insertn_posn_exc_AH[$ftr_idx]{$rfpos}) ? $insertn_posn_exc_AH[$ftr_idx]{$rfpos} : $nmaxins;
               if($rf2ilen_AR->[$rfpos] > $local_nmaxins) { 
                 $alert_scoords = sprintf("seq:%s;", ($strand eq "+") ? 
                                          vdr_CoordsSegmentCreate($uapos+1, $uapos+1 + $rf2ilen_AR->[$rfpos]-1, $strand, $FH_HR) : 
@@ -5169,7 +5166,7 @@ sub add_frameshift_alerts_for_one_sequence {
             $nsgm++;
             push(@gr_frame_str_A, $gr_frame_str);
             my $local_rfpos   = ($strand eq "+") ? ($rfpos - $cur_delete_len) : ($rfpos + $cur_delete_len);
-            my $local_nmaxdel = defined ($deletin_exc_AH[$ftr_idx]{$local_rfpos}) ? $deletin_exc_AH[$ftr_idx]{$local_rfpos} : $nmaxdel;
+            my $local_nmaxdel = defined ($deletin_posn_exc_AH[$ftr_idx]{$local_rfpos}) ? $deletin_posn_exc_AH[$ftr_idx]{$local_rfpos} : $nmaxdel;
             if($cur_delete_len > $local_nmaxdel) { 
               $alert_scoords = sprintf("seq:%s;", ($strand eq "+") ? 
                                        vdr_CoordsSegmentCreate($uapos-1, $uapos-1, $strand, $FH_HR) : 
@@ -7228,16 +7225,28 @@ sub add_protein_validation_alerts {
   # get info on position-specific insert and delete maximum exceptions if there are any
   # skip this if we are using hmmer instead of blastx b/c we don't check for inserts/deletes
   # with hmmer
-  my @insertn_exc_AH = ();
-  my @deletin_exc_AH = ();
+  my @insertn_sgm_exc_AH  = (); # 1D array: per feature, 2D hash: key is coords segment, value is maximum allowed insert for that segment
+  my @deletin_sgm_exc_AH  = (); # 1D array: per feature, 2D hash: key is coords segment, value is maximum allowed delete for that segment
+  my @insertn_posn_exc_AH = (); # 1D array: per feature, 2D hash: key is model position, value is maximum allowed insert for that position
+  my @deletin_posn_exc_AH = (); # 1D array: per feature, 2D hash: key is model position, value is maximum allowed delete for that position
   if(! $do_pv_hmmer) { 
     for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      # HERE HERE HERE, updae .minfo to use coords..coords:value, then update this block to call function to switch to nt coords
-      %{$insertn_exc_AH[$ftr_idx]} = ();
-      %{$deletin_exc_AH[$ftr_idx]} = ();
-      vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, $alt_info_HH{"insertnp"}{"exc_key"}, \%{$insertn_exc_AH[$ftr_idx]}, $FH_HR);
-      vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, $alt_info_HH{"deletinp"}{"exc_key"}, \%{$deletin_exc_AH[$ftr_idx]}, $FH_HR);
-      
+      %{$insertn_sgm_exc_AH[$ftr_idx]}  = ();
+      %{$deletin_sgm_exc_AH[$ftr_idx]}  = ();
+      %{$insertn_posn_exc_AH[$ftr_idx]} = ();
+      %{$deletin_posn_exc_AH[$ftr_idx]} = ();
+      if(! opt_Get("--ignore_exc", $opt_HHR)) { 
+        if((defined $alt_info_HHR->{"insertnp"}{"exc_key"}) && 
+           (defined $ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"insertnp"}{"exc_key"}})) { 
+          vdr_ExceptionCoordsAndValuesToSegmentsAndValues($ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"insertnp"}{"exc_key"}}, \%{$insertn_sgm_exc_AH[$ftr_idx]}, $FH_HR);
+          vdr_ExceptionSegmentsAndValuesToPositionsAndValues(\%{$insertn_sgm_exc_AH[$ftr_idx]}, 0, \%{$insertn_posn_exc_AH[$ftr_idx]}, $FH_HR);
+        }
+        if((defined $alt_info_HHR->{"deletinp"}{"exc_key"}) && 
+           (defined $ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"deletinp"}{"exc_key"}})) { 
+          vdr_ExceptionCoordsAndValuesToSegmentsAndValues($ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"deletinp"}{"exc_key"}}, \%{$deletin_sgm_exc_AH[$ftr_idx]}, $FH_HR);
+          vdr_ExceptionSegmentsAndValuesToPositionsAndValues(\%{$deletin_sgm_exc_AH[$ftr_idx]}, 0, \%{$deletin_posn_exc_AH[$ftr_idx]}, $FH_HR);
+        }
+      }
     }
   }
 
@@ -7512,7 +7521,7 @@ sub add_protein_validation_alerts {
                       my @p_ins_len_A  = ();
                       my $nins = helper_blastx_breakdown_max_indel_str($p_ins, \@p_ins_qpos_A, \@p_ins_spos_A, \@p_ins_len_A, $FH_HR);
                       for(my $ins_idx = 0; $ins_idx < $nins; $ins_idx++) { 
-                        my $local_xmaxins = defined ($insertn_exc_AH[$ftr_idx]{$p_ins_spos_A[$ins_idx]}) ? $insertn_exc_AH[$ftr_idx]{$p_ins_spos_A[$ins_idx]} : $xmaxins;
+                        my $local_xmaxins = defined ($insertn_posn_exc_AH[$ftr_idx]{$p_ins_spos_A[$ins_idx]}) ? $insertn_posn_exc_AH[$ftr_idx]{$p_ins_spos_A[$ins_idx]} : $xmaxins;
                         printf("HEYA local_xmaxins: $local_xmaxins for position p_ins_spos_A[$ins_idx]: %d\n", $p_ins_spos_A[$ins_idx]);
                         if($p_ins_len_A[$ins_idx] > $local_xmaxins) { 
                           if(defined $alt_str_HH{$ftr_results_prefix}{"insertnp"}) { $alt_str_HH{$ftr_results_prefix}{"insertnp"} .= ":VADRSEP:"; } # we are adding another instance
@@ -7534,7 +7543,7 @@ sub add_protein_validation_alerts {
                       my @p_del_len_A  = ();
                       my $ndel = helper_blastx_breakdown_max_indel_str($p_del, \@p_del_qpos_A, \@p_del_spos_A, \@p_del_len_A, $FH_HR);
                       for(my $del_idx = 0; $del_idx < $ndel; $del_idx++) { 
-                        my $local_xmaxdel = defined ($deletin_exc_AH[$ftr_idx]{$p_del_spos_A[$del_idx]}) ? $deletin_exc_AH[$ftr_idx]{$p_del_spos_A[$del_idx]} : $xmaxdel;
+                        my $local_xmaxdel = defined ($deletin_posn_exc_AH[$ftr_idx]{$p_del_spos_A[$del_idx]}) ? $deletin_posn_exc_AH[$ftr_idx]{$p_del_spos_A[$del_idx]} : $xmaxdel;
                         if($p_del_len_A[$del_idx] > $local_xmaxdel) { 
                           if(defined $alt_str_HH{$ftr_results_prefix}{"deletinp"}) { $alt_str_HH{$ftr_results_prefix}{"deletinp"} .= ":VADRSEP:"; } # we are adding another instance
                           else                                                     { $alt_str_HH{$ftr_results_prefix}{"deletinp"} = ""; }           # initialize
