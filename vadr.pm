@@ -1021,7 +1021,7 @@ sub vdr_FeatureInfoValidateExceptionKeys {
   my %tmp_key_H = ();
   foreach my $code (sort keys %{$alt_info_HHR}) { 
     if(defined $alt_info_HHR->{$code}{"minfo_exc_key"}) { 
-      $tmp_key_H{"minfo_exc_key"} = 1;
+      $tmp_key_H{$alt_info_HHR->{$code}{"minfo_exc_key"}} = 1;
     }
   }
   
@@ -5510,7 +5510,7 @@ sub vdr_ModelInfoValidateExceptionKeys {
   my %tmp_key_H = ();
   foreach my $code (sort keys %{$alt_info_HHR}) { 
     if(defined $alt_info_HHR->{$code}{"minfo_exc_key"}) { 
-      $tmp_key_H{"minfo_exc_key"} = 1;
+      $tmp_key_H{$alt_info_HHR->{$code}{"minfo_exc_key"}} = 1;
     }
   }
  
