@@ -3134,8 +3134,14 @@ sub add_classification_alerts {
     @{$dupregin_exc_AA[$mdl_idx]} = ();
     @{$indfstrn_exc_AA[$mdl_idx]} = ();
     if(! opt_Get("--ignore_exc", $opt_HHR)) { 
-      vdr_ModelInfoCoordsListValueBreakdown($mdl_info_AHR, $mdl_idx, $alt_info_HHR->{"dupregin"}{"exc_key"}, \@{$dupregin_exc_AA[$mdl_idx]}, $FH_HR);
-      vdr_ModelInfoCoordsListValueBreakdown($mdl_info_AHR, $mdl_idx, $alt_info_HHR->{"indfstrn"}{"exc_key"}, \@{$indfstrn_exc_AA[$mdl_idx]}, $FH_HR);
+      if((defined $alt_info_HHR->{"dupregin"}{"exc_key"}) && 
+         (defined $mdl_info_AHR->[$mdl_idx]{$alt_info_HHR->{"dupregin"}{"exc_key"}})) { 
+        vdr_CoordsToSegments($mdl_info_AHR->[$mdl_idx]{$alt_info_HHR->{"dupregin"}{"exc_key"}}, \@{$dupregin_exc_AA[$mdi_idx]}, $FH_HR);
+      }
+      if((defined $alt_info_HHR->{"indfstrn"}{"exc_key"}) && 
+         (defined $mdl_info_AHR->[$mdl_idx]{$alt_info_HHR->{"indfstrn"}{"exc_key"}})) { 
+        vdr_CoordsToSegments($mdl_info_AHR->[$mdl_idx]{$alt_info_HHR->{"indstrn"}{"exc_key"}}, \@{$indfstrn_exc_AA[$mdi_idx]}, $FH_HR);
+      }
     }
   }
 
@@ -4952,18 +4958,37 @@ sub add_frameshift_alerts_for_one_sequence {
   my $alert_mcoords = undef; # model coords string for an alert
 
   # get info on position-specific insert and delete maximum exceptions, and frameshift regions, if there are any
-  my @insertn_exc_AH  = ();
-  my @deletin_exc_AH  = ();
-  my @fst_exc_AA      = ();
+  my @insertn_sgm_exc_AH  = (); # 1D array: per feature, 2D hash: key is coords segment, value is maximum allowed insert for that segment
+  my @deletin_sgm_exc_AH  = (); # 1D array: per feature, 2D hash: key is coords segment, value is maximum allowed delete for that segment
+  my @insertn_posn_exc_AH = (); # 1D array: per feature, 2D hash: key is model position, value is maximum allowed insert for that position
+  my @deletin_posn_exc_AH = (); # 1D array: per feature, 2D hash: key is model position, value is maximum allowed delete for that position
+  my @fst_exc_AA          = (); # 1D array: per feature, 2D array: coords segments that are frameshift exceptions
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    %{$insertn_exc_AH[$ftr_idx]} = ();
-    %{$deletin_exc_AH[$ftr_idx]} = ();
+    %{$insertn_sgm_exc_AH[$ftr_idx]}  = ();
+    %{$deletin_sgm_exc_AH[$ftr_idx]}  = ();
+    %{$insertn_posn_exc_AH[$ftr_idx]} = ();
+    %{$deletin_posn_exc_AH[$ftr_idx]} = ();
     @{$fst_exc_AA[$ftr_idx]} = ();
-    # TODO update these so they take coords:value
-    vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, $alt_info_HH{"insertnn"}{"exc_key"}, \%{$insertn_exc_AH[$ftr_idx]}, $FH_HR);
-    vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, $alt_info_HH{"deletinn"}{"exc_key"}, \%{$deletin_exc_AH[$ftr_idx]}, $FH_HR);
-    vdr_FeatureCoordsListValueBreakdown      ($ftr_info_AHR, $ftr_idx, $alt_info_HH{"fstukcft"}{"exc_key"}, \@{$fst_exc_AA[$ftr_idx]}, $FH_HR);
-    # all $alt_info_HH{"fst*"} should be the same, so any one could be passed in line above
+    if(! opt_Get("--ignore_exc", $opt_HHR)) { 
+      # TODO update these so they take coords:value
+      #if((defined $alt_info_HHR->{"insertnn"}{"exc_key"}) && 
+      #   (defined $ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"insertnn"}{"exc_key"}})) { 
+      #  vdr_ExceptionCoordsAndValuesToSegmentsAndValues($ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"insertnn"}{"exc_key"}}, \@{$insertn_sgm_exc_AH[$ftr_idx]}, $FH_HR);
+      #  vdr_ExceptionSegmentAndValueToPositionAndValue(\@{$insertn_sgm_exc_AH[$ftr_idx]}, \@{$insert_posn_exc_AH[$ftr_idx]}, $FH_HR);
+      #}
+      #if((defined $alt_info_HHR->{"deletinn"}{"exc_key"}) && 
+      #   (defined $ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"deletinn"}{"exc_key"}})) { 
+      #  vdr_ExceptionCoordsAndValuesToSegmentsAndValues($ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"deletinn"}{"exc_key"}}, \@{$deletn_sgm_exc_AH[$ftr_idx]}, $FH_HR);
+      #  vdr_ExceptionSegmentAndValueToPositionAndValue(\@{$deletn_sgm_exc_AH[$ftr_idx]}, \@{$deletn_posn_exc_AH[$ftr_idx]}, $FH_HR);
+      #}
+      vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, $alt_info_HH{"insertnn"}{"exc_key"}, \%{$insertn_exc_AH[$ftr_idx]}, $FH_HR);
+      vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, $alt_info_HH{"deletinn"}{"exc_key"}, \%{$deletin_exc_AH[$ftr_idx]}, $FH_HR);
+      if((defined $alt_info_HHR->{"fstukcft"}{"exc_key"}) && 
+         (defined $ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"fstukcft"}{"exc_key"}})) { 
+        vdr_CoordsToSegments($ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"fstukcft"}{"exc_key"}}, \@{$fst_exc_AA[$ftr_idx]}, $FH_HR);
+        # all $alt_info_HH{"fst*"} should be the same, so any one could be passed in line above
+      }    
+    }
   }
 
   # for each CDS: determine frame, and report frameshift alerts
@@ -6732,8 +6757,13 @@ sub add_low_similarity_alerts_for_one_sequence {
 
   my @lowsim_exc_A = ();
   if(defined $ua2rf_AR) { 
-    vdr_ModelInfoCoordsListValueBreakdown($mdl_info_AHR, $mdl_idx, $alt_info_HHR->{"lowsimis"}{"exc_key"}, \@lowsim_exc_A, $FH_HR);
-    # all $alt_info_HH{"lowsim*"} should be the same, so any one could be passed in line above
+    if(! opt_Get("--ignore_exc", $opt_HHR)) { 
+      if((defined $alt_info_HHR->{"lowsimis"}{"exc_key"}) && 
+         (defined $mdl_info_AHR->[$mdl_idx]{$alt_info_HHR->{"lowsimis"}{"exc_key"}})) { 
+        vdr_CoordsToSegments($mdl_info_AHR->[$mdl_idx]{$alt_info_HHR->{"lowsimis"}{"exc_key"}}, \@lowsim_exc_A, $FH_HR);
+        # all $alt_info_HH{"lowsim*"}{"exc_key"} should be the same, so any one could be passed in line above
+      }
+    }
   }
 
   # When doing check of sophisticated checks of options, we already checked that 
