@@ -3134,8 +3134,8 @@ sub add_classification_alerts {
     @{$dupregin_exc_AA[$mdl_idx]} = ();
     @{$indfstrn_exc_AA[$mdl_idx]} = ();
     if(! opt_Get("--ignore_exc", $opt_HHR)) { 
-      vdr_ModelInfoCoordsListValueBreakdown($mdl_info_AHR, $mdl_idx, $alt_info_HHR->{"dupregin"}{"minfo_exc_key"}, \@{$dupregin_exc_AA[$mdl_idx]}, $FH_HR);
-      vdr_ModelInfoCoordsListValueBreakdown($mdl_info_AHR, $mdl_idx, $alt_info_HHR->{"indfstrn"}{"minfo_exc_key"}, \@{$indfstrn_exc_AA[$mdl_idx]}, $FH_HR);
+      vdr_ModelInfoCoordsListValueBreakdown($mdl_info_AHR, $mdl_idx, $alt_info_HHR->{"dupregin"}{"exc_key"}, \@{$dupregin_exc_AA[$mdl_idx]}, $FH_HR);
+      vdr_ModelInfoCoordsListValueBreakdown($mdl_info_AHR, $mdl_idx, $alt_info_HHR->{"indfstrn"}{"exc_key"}, \@{$indfstrn_exc_AA[$mdl_idx]}, $FH_HR);
     }
   }
 
@@ -4960,9 +4960,9 @@ sub add_frameshift_alerts_for_one_sequence {
     %{$deletin_exc_AH[$ftr_idx]} = ();
     @{$fst_exc_AA[$ftr_idx]} = ();
     # TODO update these so they take coords:value
-    vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, $alt_info_HH{"insertnn"}{"minfo_exc_key"}, \%{$insertn_exc_AH[$ftr_idx]}, $FH_HR);
-    vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, $alt_info_HH{"deletinn"}{"minfo_exc_key"}, \%{$deletin_exc_AH[$ftr_idx]}, $FH_HR);
-    vdr_FeatureCoordsListValueBreakdown      ($ftr_info_AHR, $ftr_idx, $alt_info_HH{"fstukcft"}{"minfo_exc_key"}, \@{$fst_exc_AA[$ftr_idx]}, $FH_HR);
+    vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, $alt_info_HH{"insertnn"}{"exc_key"}, \%{$insertn_exc_AH[$ftr_idx]}, $FH_HR);
+    vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, $alt_info_HH{"deletinn"}{"exc_key"}, \%{$deletin_exc_AH[$ftr_idx]}, $FH_HR);
+    vdr_FeatureCoordsListValueBreakdown      ($ftr_info_AHR, $ftr_idx, $alt_info_HH{"fstukcft"}{"exc_key"}, \@{$fst_exc_AA[$ftr_idx]}, $FH_HR);
     # all $alt_info_HH{"fst*"} should be the same, so any one could be passed in line above
   }
 
@@ -6732,7 +6732,7 @@ sub add_low_similarity_alerts_for_one_sequence {
 
   my @lowsim_exc_A = ();
   if(defined $ua2rf_AR) { 
-    vdr_ModelInfoCoordsListValueBreakdown($mdl_info_AHR, $mdl_idx, $alt_info_HHR->{"lowsimis"}{"minfo_exc_key"}, \@lowsim_exc_A, $FH_HR);
+    vdr_ModelInfoCoordsListValueBreakdown($mdl_info_AHR, $mdl_idx, $alt_info_HHR->{"lowsimis"}{"exc_key"}, \@lowsim_exc_A, $FH_HR);
     # all $alt_info_HH{"lowsim*"} should be the same, so any one could be passed in line above
   }
 
@@ -7202,10 +7202,12 @@ sub add_protein_validation_alerts {
   my @deletin_exc_AH = ();
   if(! $do_pv_hmmer) { 
     for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      # HERE HERE HERE, updae .minfo to use coords..coords:value, then update this block to call function to switch to nt coords
       %{$insertn_exc_AH[$ftr_idx]} = ();
       %{$deletin_exc_AH[$ftr_idx]} = ();
-      vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, $alt_info_HH{"insertnp"}{"minfo_exc_key"}, \%{$insertn_exc_AH[$ftr_idx]}, $FH_HR);
-      vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, $alt_info_HH{"deletinp"}{"minfo_exc_key"}, \%{$deletin_exc_AH[$ftr_idx]}, $FH_HR);
+      vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, $alt_info_HH{"insertnp"}{"exc_key"}, \%{$insertn_exc_AH[$ftr_idx]}, $FH_HR);
+      vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, $alt_info_HH{"deletinp"}{"exc_key"}, \%{$deletin_exc_AH[$ftr_idx]}, $FH_HR);
+      
     }
   }
 
@@ -7481,6 +7483,7 @@ sub add_protein_validation_alerts {
                       my $nins = helper_blastx_breakdown_max_indel_str($p_ins, \@p_ins_qpos_A, \@p_ins_spos_A, \@p_ins_len_A, $FH_HR);
                       for(my $ins_idx = 0; $ins_idx < $nins; $ins_idx++) { 
                         my $local_xmaxins = defined ($insertn_exc_AH[$ftr_idx]{$p_ins_spos_A[$ins_idx]}) ? $insertn_exc_AH[$ftr_idx]{$p_ins_spos_A[$ins_idx]} : $xmaxins;
+                        printf("HEYA local_xmaxins: $local_xmaxins for position p_ins_spos_A[$ins_idx]: %d\n", $p_ins_spos_A[$ins_idx]);
                         if($p_ins_len_A[$ins_idx] > $local_xmaxins) { 
                           if(defined $alt_str_HH{$ftr_results_prefix}{"insertnp"}) { $alt_str_HH{$ftr_results_prefix}{"insertnp"} .= ":VADRSEP:"; } # we are adding another instance
                           else                               { $alt_str_HH{$ftr_results_prefix}{"insertnp"}  = ""; } # initialize
@@ -7504,7 +7507,7 @@ sub add_protein_validation_alerts {
                         my $local_xmaxdel = defined ($deletin_exc_AH[$ftr_idx]{$p_del_spos_A[$del_idx]}) ? $deletin_exc_AH[$ftr_idx]{$p_del_spos_A[$del_idx]} : $xmaxdel;
                         if($p_del_len_A[$del_idx] > $local_xmaxdel) { 
                           if(defined $alt_str_HH{$ftr_results_prefix}{"deletinp"}) { $alt_str_HH{$ftr_results_prefix}{"deletinp"} .= ":VADRSEP:"; } # we are adding another instance
-                          else                               { $alt_str_HH{$ftr_results_prefix}{"deletinp"} = ""; }           # initialize
+                          else                                                     { $alt_str_HH{$ftr_results_prefix}{"deletinp"} = ""; }           # initialize
                           ($alt_scoords, $alt_mcoords) = helper_blastx_max_indel_token_to_alt_coords(0, # $is_insert
                                                                                                      $p_del_qpos_A[$del_idx], $p_del_spos_A[$del_idx], $p_del_len_A[$del_idx], 
                                                                                                      $p_blastx_feature_flag, $p_ftr_scoords, $ftr_info_AHR->[$ftr_idx]{"coords"}, $ftr_strand, $p_strand, 
