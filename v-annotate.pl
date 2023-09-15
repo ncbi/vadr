@@ -7521,7 +7521,7 @@ sub add_protein_validation_alerts {
                       my @p_ins_len_A  = ();
                       my $nins = helper_blastx_breakdown_max_indel_str($p_ins, \@p_ins_qpos_A, \@p_ins_spos_A, \@p_ins_len_A, $FH_HR);
                       for(my $ins_idx = 0; $ins_idx < $nins; $ins_idx++) { 
-                        my $nt_ins_spos = vdr_Feature5pMostPosition(vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, 
+                        my $nt_ins_spos = vdr_Feature3pMostPosition(vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, 
                                                                                                         vdr_CoordsSinglePositionSegmentCreate($p_ins_spos_A[$ins_idx], "+", $FH_HR),
                                                                                                         $FH_HR), $FH_HR);
                         my $local_xmaxins = defined ($insertn_posn_exc_AH[$ftr_idx]{$nt_ins_spos}) ? $insertn_posn_exc_AH[$ftr_idx]{$nt_ins_spos} : $xmaxins;
@@ -7546,7 +7546,7 @@ sub add_protein_validation_alerts {
                       my @p_del_len_A  = ();
                       my $ndel = helper_blastx_breakdown_max_indel_str($p_del, \@p_del_qpos_A, \@p_del_spos_A, \@p_del_len_A, $FH_HR);
                       for(my $del_idx = 0; $del_idx < $ndel; $del_idx++) { 
-                        my $nt_del_spos = vdr_Feature5pMostPosition(vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, 
+                        my $nt_del_spos = vdr_Feature3pMostPosition(vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, 
                                                                                                         vdr_CoordsSinglePositionSegmentCreate($p_del_spos_A[$del_idx], "+", $FH_HR),
                                                                                                         $FH_HR), $FH_HR);
                         my $local_xmaxdel = defined ($deletin_posn_exc_AH[$ftr_idx]{$nt_del_spos}) ? $deletin_posn_exc_AH[$ftr_idx]{$nt_del_spos} : $xmaxdel;
