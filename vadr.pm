@@ -7067,16 +7067,21 @@ sub vdr_BackwardsCompatibilityExceptions {
         # swap ; with ,
         $ftr_info_AHR->[$ftr_idx]{$exc_key} =~ s/\;/\,/g;
       }
-      printf("HEYA0 exc_key: $exc_key\n");
       if(($exc_key eq "nmaxins_exc") || ($exc_key eq "nmaxdel_exc") || ($exc_key eq "xmaxins_exc") || ($exc_key eq "xmaxdel_exc")) { 
-        printf("HEYA1 exc_key: $exc_key\n");
         my $new_value = "";
         my @posn_value_A = split(",", $ftr_info_AHR->[$ftr_idx]{$exc_key});
         foreach my $posn_value (@posn_value_A) { 
           if($posn_value =~ /(\d+)\:(\d+)/) { 
             my ($posn, $value) = ($1, $2);
             if($new_value ne "") { $new_value .= ","; }
-            $new_value .= vdr_CoordsSinglePositionSegmentCreate($posn, "+", $FH_HR) . ":" . $value;
+            my $nt_posn = $posn; # nt position
+            if(($exc_key eq "xmaxins_exc") || ($exc_key eq "xmaxdel_exc")) { 
+              # convert from protein to nucleotide coords
+              $nt_posn = vdr_Feature3pMostPosition(vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, 
+                                                                                       vdr_CoordsSinglePositionSegmentCreate($posn, "+", $FH_HR),
+                                                                                       $FH_HR), $FH_HR);
+            }
+            $new_value .= vdr_CoordsSinglePositionSegmentCreate($nt_posn, "+", $FH_HR) . ":" . $value;
           }
           else { 
             ofile_FAIL("ERROR, in $sub_name, trying to update old exception key $exc_key, but unable to parse value: $posn_value", 1, $FH_HR);
@@ -7100,7 +7105,7 @@ sub vdr_BackwardsCompatibilityExceptions {
         if(! defined $new_key) { 
           ofile_FAIL("ERROR, in $sub_name, trying to update old exception key $exc_key, but unable to determine new key", 1, $FH_HR);
         }
-        printf("HEYA replacing $exc_key " . $ftr_info_AHR->[$ftr_idx]{$exc_key} . " with $new_key $new_value\n");
+        printf("HEYA replacing $exc_key " . $ftr_info_AHR->[$ftr_idx]{$exc_key} . " with " . $ftr_info_AHR->[$ftr_idx]{$exc_key} . "\n");
         $ftr_info_AHR->[$ftr_idx]{$new_key} = $new_value;
         delete($ftr_info_AHR->[$ftr_idx]{$exc_key});
       }
