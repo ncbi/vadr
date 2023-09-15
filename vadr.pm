@@ -129,6 +129,7 @@ require "sqp_utils.pm";
 # vdr_ExceptionCoordsAndValuesToSegmentsAndValues()
 # vdr_ExceptionSegmentAndValueToPositionsAndValues()
 # vdr_ExceptionSegmentAndValueParse()
+# vdr_ExceptionCoordsAndValuesValidate()
 # 
 # Subroutines related to parallelization on the compute farm:
 # vdr_ParseQsubFile()
@@ -139,6 +140,9 @@ require "sqp_utils.pm";
 # vdr_CoordsToSegments()
 # vdr_CoordsSegmentParse()
 # vdr_CoordsSegmentCreate()
+# vdr_CoordsValidate()
+# vdr_CoordsSegmentValidate()
+# vdr_CoordsSinglePositionSegmentCreate()
 # vdr_CoordsAppendSegment()
 # vdr_CoordsLength()
 # vdr_CoordsFromLocation()
@@ -1026,7 +1030,7 @@ sub vdr_FeatureInfoValidateExceptionKeys {
   my %tmp_key_H = ();
   foreach my $code (sort keys %{$alt_info_HHR}) { 
     if(defined $alt_info_HHR->{$code}{"exc_key"}) { 
-      $tmp_key_H{$alt_info_HHR->{$code}{"exc_key"}} = 1;
+      $tmp_key_H{$alt_info_HHR->{$code}{"exc_key"}} = $alt_info_HHR->{$code}{"exc_type"};
     }
   }
   
@@ -1036,6 +1040,18 @@ sub vdr_FeatureInfoValidateExceptionKeys {
       if($exc_key =~ /^.+\_exc$/) { 
         if(! defined $tmp_key_H{$exc_key}) { 
           ofile_FAIL("ERROR, in $sub_name, invalid exception key $exc_key read in model info file", 1, $FH_HR);
+        }
+        # now validate format of value
+        if($tmp_key_H{$exc_key} eq "coords-only") { 
+          if(! vdr_CoordsValidate($ftr_info_AHR->[$ftr_idx]{$exc_key}, $FH_HR)) { 
+            ofile_FAIL(sprintf("ERROR, in $sub_name, invalid format for exception key: $exc_key, type 'coords-only', read %s.\nBut expected coords string, with spans separated by commas, e.g. \"11..15:+\" or \"11..15:+,18..18:+\".", $ftr_info_AHR->[$ftr_idx]{$exc_key}), 1, $FH_HR);
+          }
+        }
+        else { # coords-value
+          # validate it by parsing it
+          my %sgm_value_H = (); # we won't use this but need to pass it to vdr_ExceptionCoordsAndValuesToSegmentsAndValues()
+          my $errmsg = sprintf("ERROR, in $sub_name, invalid format for exception key: $exc_key, type 'coords-value', read %s.\nBut expected coords-value string, with span separated by commas, e.g. \"11..15:+:23\" or \"11..15:+:23,18..18:+:36\".", $ftr_info_AHR->[$ftr_idx]{$exc_key});
+          vdr_ExceptionCoordsAndValuesToSegmentsAndValues($ftr_info_AHR->[$ftr_idx]{$exc_key}, $errmsg, \%sgm_value_H, $FH_HR);
         }
       }
     }
@@ -1398,7 +1414,7 @@ sub vdr_FeatureInfoMerge {
       if(($nconsistent > 0) && ($ninconsistent == 0)) { 
         # we found a match, merge them
         if($found_consistent) { 
-          ofile_FAIL("ERROR in $sub_name, trying to merge feature number " . ($src_ftr_idx + 1) . " but found more than one feature consistent with it", 1, $FH_HR);
+          ofile_FAIL("ERROR, in $sub_name, trying to merge feature number " . ($src_ftr_idx + 1) . " but found more than one feature consistent with it", 1, $FH_HR);
         }
         foreach $src_ftr_key (sort keys (%{$src_ftr_info_AHR->[$src_ftr_idx]})) { 
           if(! defined $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key}) { 
@@ -1410,7 +1426,7 @@ sub vdr_FeatureInfoMerge {
       }
     }
     if(! $found_consistent) { 
-      ofile_FAIL("ERROR in $sub_name, trying to merge feature number " . ($src_ftr_idx + 1) . " but did not find any features consistent with it (we can't add new features like this)", 1, $FH_HR);
+      ofile_FAIL("ERROR, in $sub_name, trying to merge feature number " . ($src_ftr_idx + 1) . " but did not find any features consistent with it (we can't add new features like this)", 1, $FH_HR);
     }
   }
 
@@ -1456,7 +1472,7 @@ sub vdr_FeatureInfoCdsStartStopCodonCoords {
       my $coords = $ftr_info_AHR->[$ftr_idx]{"coords"};
       my $length = vdr_CoordsLength($coords, $FH_HR);
       if($length < 6) { 
-        ofile_FAIL("ERROR in $sub_name, CDS (ftr_idx: $ftr_idx) coords length is below 6", 1, $FH_HR); 
+        ofile_FAIL("ERROR, in $sub_name, CDS (ftr_idx: $ftr_idx) coords length is below 6", 1, $FH_HR); 
       }
       if($ret_start_codon_coords ne "") { 
         $ret_start_codon_coords .= ",";
@@ -1547,7 +1563,7 @@ sub vdr_SegmentInfoPopulate {
 
   # ftr_info_AHR should already have array data for keys "type", "coords"
   my @keys_A = ("type", "coords");
-  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR, in $sub_name", $FH_HR);
 
   # initialize new %{$ftr_info_AHR} values
   my ($ftr_idx, $ftr_idx2, $sgm_idx, $sgm_idx2); # feature and segment indices
@@ -2073,7 +2089,7 @@ sub vdr_Feature5pMostPosition {
     return $1;
   }
   else { 
-    ofile_FAIL("ERROR in $sub_name, unable to parse ftr_info_HA coords string " . $coords, 1, $FH_HR); 
+    ofile_FAIL("ERROR, in $sub_name, unable to parse ftr_info_HA coords string " . $coords, 1, $FH_HR); 
   }
 
   return; # NEVER REACHED
@@ -2105,7 +2121,7 @@ sub vdr_Feature3pMostPosition {
     return $1;
   }
   else { 
-    ofile_FAIL("ERROR in $sub_name, unable to parse ftr_info_HA coords string " . $coords, 1, $FH_HR); 
+    ofile_FAIL("ERROR, in $sub_name, unable to parse ftr_info_HA coords string " . $coords, 1, $FH_HR); 
   }
 
   return; # NEVER REACHED
@@ -2205,7 +2221,7 @@ sub vdr_FeatureStartStopStrandArrays {
 
   my ($coords, $start_AR, $stop_AR, $strand_AR, $FH_HR) = @_;
   if(! defined $coords) { 
-    ofile_FAIL("ERROR in $sub_name, coords is undefined", 1, $FH_HR); 
+    ofile_FAIL("ERROR, in $sub_name, coords is undefined", 1, $FH_HR); 
   }
 
   my @start_A  = ();
@@ -2269,14 +2285,14 @@ sub vdr_FeatureSummaryStrand {
   foreach my $strand (@strand_A) { 
     if   ($strand eq "+") { $npos++; }
     elsif($strand eq "-") { $nneg++; }
-    else { ofile_FAIL("ERROR in $sub_name, unable to determine strands in coords $coords", 1, $FH_HR); }
+    else { ofile_FAIL("ERROR, in $sub_name, unable to determine strands in coords $coords", 1, $FH_HR); }
   }
 
   if(($npos >  0) && ($nneg >  0)) { return "!"; }
   if(($npos >  0) && ($nneg == 0)) { return "+"; }
   if(($npos == 0) && ($nneg >  0)) { return "-"; }
   if(($npos == 0) && ($nneg == 0)) { 
-    ofile_FAIL("ERROR in $sub_name, unable to determine strands in coords $coords", 1, $FH_HR); 
+    ofile_FAIL("ERROR, in $sub_name, unable to determine strands in coords $coords", 1, $FH_HR); 
   }
 
   return; # NEVER REACHED
@@ -2421,14 +2437,14 @@ sub vdr_FeatureLengthBetweenAdjacentSegments {
   
   my $nsgm = $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + 1;
   if($sgm_idx_5p >= $nsgm) { 
-    ofile_FAIL(sprintf("ERROR in $sub_name, ftr_idx $ftr_idx has $nsgm segments, and requesting distance between segments %d and %d", $sgm_idx_5p, ($sgm_idx_5p+1)), 1, $FH_HR); 
+    ofile_FAIL(sprintf("ERROR, in $sub_name, ftr_idx $ftr_idx has $nsgm segments, and requesting distance between segments %d and %d", $sgm_idx_5p, ($sgm_idx_5p+1)), 1, $FH_HR); 
   }
 
   my $sgm_idx     = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + $sgm_idx_5p;
   my $nxt_sgm_idx = $sgm_idx + 1;
   my $strand = $sgm_info_AHR->[$sgm_idx]{"strand"};
   if($sgm_info_AHR->[$nxt_sgm_idx]{"strand"} ne $strand) { 
-    ofile_FAIL("ERROR in $sub_name, segment and next segment have different strands", 1, $FH_HR); 
+    ofile_FAIL("ERROR, in $sub_name, segment and next segment have different strands", 1, $FH_HR); 
   }
     
   # determine start/stop and length of region between the two segments
@@ -2561,7 +2577,7 @@ sub vdr_AlertInfoInitialize {
   my ($alt_info_HHR, $FH_HR) = (@_);
 
   if(scalar (keys(%{$alt_info_HHR})) > 0) { 
-    ofile_FAIL("ERROR in $sub_name, alert info hash of arrays already has at least one key", 1, $FH_HR);
+    ofile_FAIL("ERROR, in $sub_name, alert info hash of arrays already has at least one key", 1, $FH_HR);
   }
 
   # add each alert code, this function will die if we try to add the same code twice, or if something is wrong 
@@ -3081,13 +3097,14 @@ sub vdr_AlertInfoInitialize {
 #
 # Dies:    if $alt_info_HHR->{"$code"} already exists
 #          if $type ne "feature and ne "sequence"
-#          if $type ne "sequence"  and $prevents_annot   == 1 (not allowed)
-#          if $type eq "sequence"  and $misc_not_failure == 1 (not allowed)
-#          if $always_fails == 1   and $causes_failure   != 1 (not allowed)
-#          if $always_fails == 1   and $misc_not_failure == 1 (not allowed)
-#          if (  defined $exc_key) and (! defined $exc_type)  (not allowed)
-#          if (! defined $exc_key) and (  defined $exc_type)  (not allowed)
-#          if (defined $exc_type)  and ($exc_type ne "coords-only) and ($exc_type ne "coords-value") (not allowed)
+#          if $type ne "sequence"  and $prevents_annot   == 1
+#          if $type eq "sequence"  and $misc_not_failure == 1
+#          if $always_fails == 1   and $causes_failure   != 1
+#          if $always_fails == 1   and $misc_not_failure == 1
+#          if (  defined $exc_key) and (! defined $exc_type) 
+#          if (! defined $exc_key) and (  defined $exc_type) 
+#          if (defined $exc_type)  and ($exc_type ne "coords-only) and ($exc_type ne "coords-value")
+#          if an existing code with same exc_key has different exc_type
 #
 ######################p###########################################
 sub vdr_AlertInfoAdd { 
@@ -3147,7 +3164,7 @@ sub vdr_AlertInfoAdd {
   if((defined $exc_type) && (($exc_type ne "coords-only") && ($exc_type ne "coords-value"))) { 
     ofile_FAIL("ERROR in $sub_name, trying to add code $code but exc_type ($exc_type) is invalid, it must be either 'coords-only' or 'coords-value'", 1, $FH_HR);
   }
-  # check that all exisitng codes with same $exc_type (if any) are of type $exc_type 
+  # check that all exisitng codes with same $exc_key (if any) are of type $exc_type 
   if(defined $exc_key) { 
     foreach my $existing_code (sort keys (%{$alt_info_HHR})) { 
       if((defined $alt_info_HHR->{$existing_code}{"exc_key"}) && 
@@ -3454,6 +3471,7 @@ sub vdr_FeatureAlertIsMiscNotFailure {
 #
 # Arguments: 
 #  $coords_value:      the coords segment plus value
+#  $extra_errmsg:      upon failure, extra string to add to error message (can be undef)
 #  $ret_sgm_value_HR:  ref to hash to update
 #  $FH_HR:             ref to hash of file handles, including "log" and "cmd"
 #
@@ -3465,16 +3483,16 @@ sub vdr_FeatureAlertIsMiscNotFailure {
 ################################################################# 
 sub vdr_ExceptionCoordsAndValuesToSegmentsAndValues {
   my $sub_name = "vdr_ExceptionCoordsAndValuesToSegmentsAndValues";
-  my $nargs_expected = 3;
+  my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($coords_value, $ret_sgm_value_HR, $FH_HR) = @_;
+  my ($coords_value, $extra_errmsg, $ret_sgm_value_HR, $FH_HR) = @_;
   if(! defined $coords_value) { 
-    ofile_FAIL("ERROR in $sub_name, coords_value is undefined", 1, $FH_HR); 
+    ofile_FAIL(sprintf("ERROR in $sub_name, coords_value is undefined.%s", (defined $extra_errmsg) ? ("\n" . $extra_errmsg) : ""), 1, $FH_HR);
   }
   my @sgm_value_A = split(",", $coords_value);
   foreach my $sgm_value (@sgm_value_A) { 
-    my ($start, $stop, $strand, $value) = vdr_ExceptionSegmentAndValueParse($sgm_value, $FH_HR); # this will die if format is invalid
+    my ($start, $stop, $strand, $value) = vdr_ExceptionSegmentAndValueParse($sgm_value, $extra_errmsg, $FH_HR); # this will die if format is invalid
     $ret_sgm_value_HR->{(vdr_CoordsSegmentCreate($start, $stop, $strand, $FH_HR))} = $value;
   }
 
@@ -3485,13 +3503,51 @@ sub vdr_ExceptionCoordsAndValuesToSegmentsAndValues {
       if($key1 ne $key2) { 
         ($noverlap, undef) = vdr_CoordsSegmentOverlap($key1, $key2);
         if($noverlap > 0) { 
-          ofile_FAIL("ERROR in $sub_name, two coords segments overlap in exception coords: $key1 and $key2.", 1, $FH_HR);
+          ofile_FAIL(sprintf("ERROR in $sub_name, two coords segments overlap in exception coords: $key1 and $key2.%s", (defined $extra_errmsg) ? ("\n" . $extra_errmsg) : ""), 1, $FH_HR);
         }
       }
     }
   }
 
   return;
+}
+
+#################################################################
+# Subroutine: vdr_ExceptionSegmentAndValueParse()
+# Incept:     EPN, Thu Sep 14 14:31:48 2023
+#
+# Purpose:    Given a single coords token plus a value in format
+#             return its start, stop, strand and value.
+#
+# Arguments: 
+#  $coords_value:  the coords segment plus value
+#  $extra_errmsg:  upon failure, extra string to add to error message (can be undef)
+#  $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    4 values:
+#             $start:  start position
+#             $stop:   stop position
+#             $strand: strand
+#             $value:  value
+#
+# Dies: if unable to parse $coords_value (invalid format)
+#
+################################################################# 
+sub vdr_ExceptionSegmentAndValueParse {
+  my $sub_name = "vdr_ExceptionSegmentAndValueParse";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords_value, $extra_errmsg, $FH_HR) = @_;
+  if(! defined $coords_value) { 
+    ofile_FAIL(sprintf("ERROR in $sub_name, coords_value is undefined.%s", (defined $extra_errmsg) ? ("\n" . $extra_errmsg) : ""), 1, $FH_HR);
+  }
+  if($coords_value =~ /^\<?(\d+)\.\.\>?(\d+)\:([\+\-]):(\S+)$/) { 
+    return ($1, $2, $3, $4);
+  }
+  ofile_FAIL(sprintf("ERROR in $sub_name, unable to parse coords-value token $coords_value.%s", (defined $extra_errmsg) ? ("\n" . $extra_errmsg) : ""), 1, $FH_HR); 
+
+  return; # NEVER REACHED
 }
 
 #################################################################
@@ -3573,9 +3629,12 @@ sub vdr_ExceptionOneSegmentAndValueToPositionsAndValues {
 
   my ($coords, $value, $allow_updates, $ret_posn_value_HR, $FH_HR) = @_;
   if(! defined $coords) { 
-    ofile_FAIL("ERROR in $sub_name, coords is undefined", 1, $FH_HR); 
+    ofile_FAIL("ERROR in $sub_name, coords is undefined", 1, $FH_HR);
   }
-  my ($start, $stop, $strand) = vdr_CoordsSegmentParse($coords, $FH_HR); # this will die if format is invalid
+  if(! vdr_CoordsSegmentValidate($coords, $FH_HR)) { 
+    ofile_FAIL("ERROR in $sub_name, coords is in incorrect format", 1, $FH_HR);
+  }
+  my ($start, $stop, $strand) = vdr_CoordsSegmentParse($coords, $FH_HR);
   if($start >= $stop) { 
     my $tmp = $start;
     $start = $stop;
@@ -3583,7 +3642,7 @@ sub vdr_ExceptionOneSegmentAndValueToPositionsAndValues {
   }
   for(my $posn = $start; $posn <= $stop; $posn++) { 
     if((! $allow_updates) && (defined $ret_posn_value_HR->{$posn})) { 
-      ofile_FAIL("ERROR in $sub_name, trying to update already set key ($posn) and allow_updates is false.\nThis could be because Two coords segments in an exception string overlap.", 1, $FH_HR); 
+      ofile_FAIL("ERROR in $sub_name, trying to update already set key ($posn) and allow_updates is false.\nThis could be because two coords segments in an exception string overlap.", 1, $FH_HR); 
     }
     $ret_posn_value_HR->{$posn} = $value;
   }
@@ -3591,42 +3650,6 @@ sub vdr_ExceptionOneSegmentAndValueToPositionsAndValues {
   return;
 }
 
-#################################################################
-# Subroutine: vdr_ExceptionSegmentAndValueParse()
-# Incept:     EPN, Thu Sep 14 14:31:48 2023
-#
-# Purpose:    Given a single coords token plus a value in format
-#             return its start, stop, strand and value.
-#
-# Arguments: 
-#  $coords_value:  the coords segment plus value
-#  $FH_HR:         REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    4 values:
-#             $start:  start position
-#             $stop:   stop position
-#             $strand: strand
-#             $value:  value
-#
-# Dies: if unable to parse $coords_value (invalid format)
-#
-################################################################# 
-sub vdr_ExceptionSegmentAndValueParse {
-  my $sub_name = "vdr_ExceptionSegmentAndValueParse";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($coords_value, $FH_HR) = @_;
-  if(! defined $coords_value) { 
-    ofile_FAIL("ERROR in $sub_name, coords_value is undefined", 1, $FH_HR); 
-  }
-  if($coords_value =~ /^\<?(\d+)\.\.\>?(\d+)\:([\+\-]):(\S+)$/) { 
-    return ($1, $2, $3, $4);
-  }
-  ofile_FAIL("ERROR in $sub_name, unable to parse coords-value token $coords_value", 1, $FH_HR); 
-
-  return; # NEVER REACHED
-}
 
 #################################################################
 # Subroutine:  vdr_ParseQsubFile()
@@ -4052,6 +4075,81 @@ sub vdr_CoordsSegmentCreate {
   if(($strand ne "+") && ($strand ne "-")) { ofile_FAIL("ERROR in $sub_name, strand is invalid ($strand)", 1, $FH_HR); }
 
   return $start . ".." . $stop . ":" . $strand;
+}
+
+#################################################################
+# Subroutine: vdr_CoordsValidate()
+# Incept:     EPN, Fri Sep 15 10:45:06 2023
+#
+# Synopsis: Return '1' if a given coords string is valid
+#           else '0'. Useful if caller wants to check format
+#           but not die if format is incorrect, possibly so 
+#           it can report an informative error message.
+# 
+# Arguments:
+#  $coords:   coordinate string
+#  $FH_HR:    REF to has of file handles
+#
+# Returns:    '1' if coordinate string is in the correct format
+#             '0' if not
+#
+# Dies: never
+#
+#################################################################
+sub vdr_CoordsValidate {
+  my $sub_name = "vdr_CoordsValidate";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords, $FH_HR) = @_;
+  if(! defined $coords) { 
+    ofile_FAIL("ERROR in $sub_name, coords is undefined", 1, $FH_HR); 
+  }
+
+  my @coords_A  = split(",", $coords);
+  foreach my $coords_tok (@coords_A) {
+    if(! vdr_CoordsSegmentValidate($coords_tok, $FH_HR)) { 
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+#################################################################
+# Subroutine: vdr_CoordsSegmentValidate()
+# Incept:     EPN, Fri Sep 15 10:49:19 2023
+#
+# Synopsis: Return '1' if a given coords segment string is valid
+#           else '0'. Useful if caller wants to check format
+#           but not die if format is incorrect, possibly so 
+#           it can report an informative error message.
+# 
+# Arguments:
+#  $coords_tok: coordinate string
+#  $FH_HR:      REF to has of file handles
+#
+# Returns:    '1' if coordinate string is in the correct format
+#             '0' if not
+#
+# Dies: never
+#
+#################################################################
+sub vdr_CoordsSegmentValidate {
+  my $sub_name = "vdr_CoordsSegmentValidate";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords_tok, $FH_HR) = @_;
+  if(! defined $coords_tok) { 
+    ofile_FAIL("ERROR in $sub_name, coords_tok is undefined", 1, $FH_HR); 
+  }
+
+  if($coords_tok =~ /^\<?(\d+)\.\.\>?(\d+)\:([\+\-])$/) { 
+    return 1;
+  }
+
+  return 0;
 }
 
 #################################################################
@@ -5731,9 +5829,20 @@ sub vdr_ModelInfoValidateExceptionKeys {
       if(! defined $tmp_key_H{$exc_key}) { 
         ofile_FAIL("ERROR, in $sub_name, no alert codes use the exception key $exc_key read in model info file", 1, $FH_HR);
       }
+      # now validate format of value
+      if($tmp_key_H{$exc_key} eq "coords-only") { 
+        if(! vdr_CoordsValidate($mdl_info_HR->{$exc_key}, $FH_HR)) { 
+          ofile_FAIL(sprintf("ERROR, in $sub_name, invalid format for exception key: $exc_key, type 'coords-only', read %s.\nBut expected coords string, with spans separated by commas, e.g. \"11..15:+\" or \"11..15:+,18..18:+\".", $mdl_info_HR->{$exc_key}), 1, $FH_HR);
+        }
+      }
+      else { # coords-value
+        # validate it by parsing it
+        my %sgm_value_H = (); # we won't use this but need to pass it to vdr_ExceptionCoordsAndValuesToSegmentsAndValues()
+        my $errmsg = sprintf("ERROR, in $sub_name, invalid format for exception key: $exc_key, type 'coords-value', read %s.\nBut expected coords-value string, with span separated by commas, e.g. \"11..15:+:23\" or \"11..15:+:23,18..18:+:36\".", $mdl_info_HR->{$exc_key});
+        vdr_ExceptionCoordsAndValuesToSegmentsAndValues($mdl_info_HR->{$exc_key}, $errmsg, \%sgm_value_H, $FH_HR);
+      }
     }
   }
-
   return;
 }
 
@@ -6567,7 +6676,6 @@ sub vdr_MergePerFeatureFastaFiles {
       vdr_MergeOutputConcatenateOnly($out_root_no_vadr, $ftr_out_sfx, $ftr_ofile_key, $ftr_ofile_desc, 0, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR);
     }
   }
-
   return;
 }
 

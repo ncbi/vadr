@@ -4972,12 +4972,12 @@ sub add_frameshift_alerts_for_one_sequence {
     if(! opt_Get("--ignore_exc", $opt_HHR)) { 
       if((defined $alt_info_HHR->{"insertnn"}{"exc_key"}) && 
          (defined $ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"insertnn"}{"exc_key"}})) { 
-        vdr_ExceptionCoordsAndValuesToSegmentsAndValues($ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"insertnn"}{"exc_key"}}, \%{$insertn_sgm_exc_AH[$ftr_idx]}, $FH_HR);
+        vdr_ExceptionCoordsAndValuesToSegmentsAndValues($ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"insertnn"}{"exc_key"}}, undef, \%{$insertn_sgm_exc_AH[$ftr_idx]}, $FH_HR);
         vdr_ExceptionSegmentsAndValuesToPositionsAndValues(\%{$insertn_sgm_exc_AH[$ftr_idx]}, 0, \%{$insertn_posn_exc_AH[$ftr_idx]}, $FH_HR);
       }
       if((defined $alt_info_HHR->{"deletinn"}{"exc_key"}) && 
          (defined $ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"deletinn"}{"exc_key"}})) { 
-        vdr_ExceptionCoordsAndValuesToSegmentsAndValues($ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"deletinn"}{"exc_key"}}, \%{$deletin_sgm_exc_AH[$ftr_idx]}, $FH_HR);
+        vdr_ExceptionCoordsAndValuesToSegmentsAndValues($ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"deletinn"}{"exc_key"}}, undef, \%{$deletin_sgm_exc_AH[$ftr_idx]}, $FH_HR);
         vdr_ExceptionSegmentsAndValuesToPositionsAndValues(\%{$deletin_sgm_exc_AH[$ftr_idx]}, 0, \%{$deletin_posn_exc_AH[$ftr_idx]}, $FH_HR);
       }
       if((defined $alt_info_HHR->{"fstukcft"}{"exc_key"}) && 
@@ -7238,12 +7238,12 @@ sub add_protein_validation_alerts {
       if(! opt_Get("--ignore_exc", $opt_HHR)) { 
         if((defined $alt_info_HHR->{"insertnp"}{"exc_key"}) && 
            (defined $ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"insertnp"}{"exc_key"}})) { 
-          vdr_ExceptionCoordsAndValuesToSegmentsAndValues($ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"insertnp"}{"exc_key"}}, \%{$insertn_sgm_exc_AH[$ftr_idx]}, $FH_HR);
+          vdr_ExceptionCoordsAndValuesToSegmentsAndValues($ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"insertnp"}{"exc_key"}}, undef, \%{$insertn_sgm_exc_AH[$ftr_idx]}, $FH_HR);
           vdr_ExceptionSegmentsAndValuesToPositionsAndValues(\%{$insertn_sgm_exc_AH[$ftr_idx]}, 0, \%{$insertn_posn_exc_AH[$ftr_idx]}, $FH_HR);
         }
         if((defined $alt_info_HHR->{"deletinp"}{"exc_key"}) && 
            (defined $ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"deletinp"}{"exc_key"}})) { 
-          vdr_ExceptionCoordsAndValuesToSegmentsAndValues($ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"deletinp"}{"exc_key"}}, \%{$deletin_sgm_exc_AH[$ftr_idx]}, $FH_HR);
+          vdr_ExceptionCoordsAndValuesToSegmentsAndValues($ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"deletinp"}{"exc_key"}}, undef, \%{$deletin_sgm_exc_AH[$ftr_idx]}, $FH_HR);
           vdr_ExceptionSegmentsAndValuesToPositionsAndValues(\%{$deletin_sgm_exc_AH[$ftr_idx]}, 0, \%{$deletin_posn_exc_AH[$ftr_idx]}, $FH_HR);
         }
       }
@@ -7521,8 +7521,11 @@ sub add_protein_validation_alerts {
                       my @p_ins_len_A  = ();
                       my $nins = helper_blastx_breakdown_max_indel_str($p_ins, \@p_ins_qpos_A, \@p_ins_spos_A, \@p_ins_len_A, $FH_HR);
                       for(my $ins_idx = 0; $ins_idx < $nins; $ins_idx++) { 
-                        my $local_xmaxins = defined ($insertn_posn_exc_AH[$ftr_idx]{$p_ins_spos_A[$ins_idx]}) ? $insertn_posn_exc_AH[$ftr_idx]{$p_ins_spos_A[$ins_idx]} : $xmaxins;
-                        printf("HEYA local_xmaxins: $local_xmaxins for position p_ins_spos_A[$ins_idx]: %d\n", $p_ins_spos_A[$ins_idx]);
+                        my $nt_ins_spos = vdr_Feature5pMostPosition(vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, 
+                                                                                                        vdr_CoordsSinglePositionSegmentCreate($p_ins_spos_A[$ins_idx], "+", $FH_HR),
+                                                                                                        $FH_HR), $FH_HR);
+                        my $local_xmaxins = defined ($insertn_posn_exc_AH[$ftr_idx]{$nt_ins_spos}) ? $insertn_posn_exc_AH[$ftr_idx]{$nt_ins_spos} : $xmaxins;
+                        printf("HEYA local_xmaxins: $local_xmaxins for position p_ins_spos_A[$ins_idx]: %d nt_ins_spos: $nt_ins_spos\n", $p_ins_spos_A[$ins_idx]);
                         if($p_ins_len_A[$ins_idx] > $local_xmaxins) { 
                           if(defined $alt_str_HH{$ftr_results_prefix}{"insertnp"}) { $alt_str_HH{$ftr_results_prefix}{"insertnp"} .= ":VADRSEP:"; } # we are adding another instance
                           else                               { $alt_str_HH{$ftr_results_prefix}{"insertnp"}  = ""; } # initialize
@@ -7543,7 +7546,10 @@ sub add_protein_validation_alerts {
                       my @p_del_len_A  = ();
                       my $ndel = helper_blastx_breakdown_max_indel_str($p_del, \@p_del_qpos_A, \@p_del_spos_A, \@p_del_len_A, $FH_HR);
                       for(my $del_idx = 0; $del_idx < $ndel; $del_idx++) { 
-                        my $local_xmaxdel = defined ($deletin_posn_exc_AH[$ftr_idx]{$p_del_spos_A[$del_idx]}) ? $deletin_posn_exc_AH[$ftr_idx]{$p_del_spos_A[$del_idx]} : $xmaxdel;
+                        my $nt_del_spos = vdr_Feature5pMostPosition(vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, 
+                                                                                                        vdr_CoordsSinglePositionSegmentCreate($p_del_spos_A[$del_idx], "+", $FH_HR),
+                                                                                                        $FH_HR), $FH_HR);
+                        my $local_xmaxdel = defined ($deletin_posn_exc_AH[$ftr_idx]{$nt_del_spos}) ? $deletin_posn_exc_AH[$ftr_idx]{$nt_del_spos} : $xmaxdel;
                         if($p_del_len_A[$del_idx] > $local_xmaxdel) { 
                           if(defined $alt_str_HH{$ftr_results_prefix}{"deletinp"}) { $alt_str_HH{$ftr_results_prefix}{"deletinp"} .= ":VADRSEP:"; } # we are adding another instance
                           else                                                     { $alt_str_HH{$ftr_results_prefix}{"deletinp"} = ""; }           # initialize
