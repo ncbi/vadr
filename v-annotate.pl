@@ -1114,6 +1114,7 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   vdr_FeatureInfoValidateCanonSpliceSites(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_SegmentInfoPopulate(\@{$sgm_info_HAH{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   if(! opt_Get("--ignore_exc", \%opt_HH)) { 
+    vdr_BackwardsCompatibilityExceptions(\%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, $FH_HR);
     vdr_ModelInfoValidateExceptionKeys(\%{$mdl_info_AH[$mdl_idx]}, \%alt_info_HH, $FH_HR);
     vdr_FeatureInfoValidateExceptionKeys(\@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, $FH_HR);
   }

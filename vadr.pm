@@ -201,6 +201,9 @@ require "sqp_utils.pm";
 # vdr_ReplacePseudoCoordsStringCreate()
 # vdr_ReplacePseudoCoordsStringParse()
 #
+# Subroutines related to backwards compatibility:
+# vdr_BackwardsCompatibilityExceptions()
+#
 # Miscellaneous subroutines:
 # vdr_SplitFastaFile()
 # vdr_SplitNumSeqFiles()
@@ -1009,7 +1012,7 @@ sub vdr_FeatureInfoValidateCanonSpliceSites {
 #             '_exc', and dies if any such keys are not valid.
 #             
 # Arguments: 
-#  $ftr_info_AHR: ref to the model info hash (for one model)
+#  $ftr_info_AHR: ref to the feature info array of hashes
 #  $alt_info_HHR: ref to the alert info hash of hashes
 #  $FH_HR:        ref to hash of file handles, including "log" and "cmd"
 #
@@ -6975,6 +6978,142 @@ sub vdr_ReplacePseudoCoordsStringParse {
   if(defined $replaced_AR)     { @{$replaced_AR}    = @ret_replaced_A; }
 
   return $ntok;
+}
+
+#################################################################
+# Subroutine: vdr_BackwardsCompatibilityExceptions()
+# Incept:     EPN, Fri Sep 15 12:58:40 2023
+#
+# Purpose:    Update any 'exception' related keys and values in 
+#             @{$ftr_info_AH} that were accepted in pre-v1.6 versions
+#             of vadr. We will make two types of changes:
+#
+#             - change separator character for multiple coords strings 
+#               any values of keys that end with "_exc" from ";" (old)
+#               to "," (new)
+#               example: "1..3:+;4..6:+" (old) to "1..3:+,4..6:+" (new)
+#
+#             - for "nmax{ins,del}_exc" exception keys, convert values from 
+#               old format <posn>:<value> to new format: <coords_segment>:<value>
+#               example: "333:40" (old) to "333..333:+:40" (new)
+#               
+#             - for "xmax{ins,del}_exc" exception keys, convert values from 
+#               old format <posn>:<value> to new format: <coords_segment>:<value>
+#               *and* convert from relative protein (amino acid) coords to 
+#               global nucleotide coords example: 
+# 
+#               "1:40" (old) in protein with coords "100..129:+" to "102..102:+:40"
+#               
+#             Old {n,x}max{ins,del}_exc exception key values are single position, so
+#             it could be possible to convert those to multiple position ranges, 
+#             but we don't do that. We leave those as single position segments.
+#       
+#             This subroutine must be called prior to calling 
+#               vdr_ModelInfoValidateExceptionKeys()
+#               vdr_FeatureInfoValidateExceptionKeys()
+# 
+# modelinfo
+# dupregin_exc - ; to ,
+# indfstrn_exc - ; to ,
+#
+# featureinfo
+# nmaxins_exc - convert to coords-value
+# nmaxdel_exc - convert to coords-value
+# xmaxins_exc - convert to coords-value
+# xmaxdel_exc - convert to coords-value
+# frameshift_exc - ; to ,
+# 
+# Args:
+#  $mdl_info_HR:       ref to the model info hash (for one model)
+#  $ftr_info_AHR:      ref to the feature info array of hashes
+#  $alt_info_HHR:      ref to the alert info hash of hashes
+#  $FH_HR:             ref to hash of file handles
+#
+# Returns: void
+#
+#################################################################
+sub vdr_BackwardsCompatibilityExceptions {
+  my $sub_name = "vdr_BackwardsCompatibilityExceptions";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mdl_info_HR, $ftr_info_AHR, $alt_info_HHR, $FH_HR) = @_;
+  
+  printf("HEYA in $sub_name\n");
+  
+  if(! defined $mdl_info_HR->{"length"}) { 
+    ofile_FAIL("ERROR in $sub_name, model length undefined", 1, $FH_HR);
+  }
+  my $mdl_len = $mdl_info_HR->{"length"};
+
+  my $exc_key; 
+  foreach $exc_key (sort keys %{$mdl_info_HR}) { 
+    # only 2 possibilities:
+    # dupregin_exc
+    # indfstrn_exc
+    # for both of these we only need to swap ';' for ','
+    if($exc_key =~ /^.+\_exc$/) { 
+      # swap ; with ,
+      $mdl_info_HR->{$exc_key} =~ s/\;/\,/g;
+    }
+  }
+
+  # move onto ftr_info_AHR
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $new_key = undef;
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    foreach my $exc_key (sort keys %{$ftr_info_AHR->[$ftr_idx]}) { 
+      if($exc_key =~ /^.+\_exc$/) { 
+        # swap ; with ,
+        $ftr_info_AHR->[$ftr_idx]{$exc_key} =~ s/\;/\,/g;
+      }
+      printf("HEYA0 exc_key: $exc_key\n");
+      if(($exc_key eq "nmaxins_exc") || ($exc_key eq "nmaxdel_exc") || ($exc_key eq "xmaxins_exc") || ($exc_key eq "xmaxdel_exc")) { 
+        printf("HEYA1 exc_key: $exc_key\n");
+        my $new_value = "";
+        my @posn_value_A = split(",", $ftr_info_AHR->[$ftr_idx]{$exc_key});
+        foreach my $posn_value (@posn_value_A) { 
+          if($posn_value =~ /(\d+)\:(\d+)/) { 
+            my ($posn, $value) = ($1, $2);
+            if($new_value ne "") { $new_value .= ","; }
+            $new_value .= vdr_CoordsSinglePositionSegmentCreate($posn, "+", $FH_HR) . ":" . $value;
+          }
+          else { 
+            ofile_FAIL("ERROR, in $sub_name, trying to update old exception key $exc_key, but unable to parse value: $posn_value", 1, $FH_HR);
+          }
+        }
+        if($new_value eq "") { 
+          ofile_FAIL("ERROR, in $sub_name, trying to update old exception key $exc_key, but unable to parse value: " . $ftr_info_AHR->[$ftr_idx]{$exc_key}, 1, $FH_HR);
+        }
+        if($exc_key eq "nmaxins_exc") { 
+          $new_key = $alt_info_HHR->{"insertnn"}{"exc_key"};
+        }
+        elsif($exc_key eq "nmaxdel_exc") { 
+          $new_key = $alt_info_HHR->{"deletinn"}{"exc_key"};
+        }
+        if($exc_key eq "xmaxins_exc") { 
+          $new_key = $alt_info_HHR->{"insertnp"}{"exc_key"};
+        }
+        if($exc_key eq "xmaxdel_exc") { 
+          $new_key = $alt_info_HHR->{"deletinp"}{"exc_key"};
+        }
+        if(! defined $new_key) { 
+          ofile_FAIL("ERROR, in $sub_name, trying to update old exception key $exc_key, but unable to determine new key", 1, $FH_HR);
+        }
+        printf("HEYA replacing $exc_key " . $ftr_info_AHR->[$ftr_idx]{$exc_key} . " with $new_key $new_value\n");
+        $ftr_info_AHR->[$ftr_idx]{$new_key} = $new_value;
+        delete($ftr_info_AHR->[$ftr_idx]{$exc_key});
+      }
+      if($exc_key eq "frameshift_exc") { 
+        $new_key = $alt_info_HHR->{"fstukcfi"}{"exc_key"};
+        printf("HEYA replacing $exc_key " . $ftr_info_AHR->[$ftr_idx]{$exc_key} . " with " . $ftr_info_AHR->[$ftr_idx]{$exc_key} . "\n");
+        $ftr_info_AHR->[$ftr_idx]{$new_key} = $ftr_info_AHR->[$ftr_idx]{$exc_key};
+        delete($ftr_info_AHR->[$ftr_idx]{$exc_key});
+      }
+    }
+  }
+
+  return;
 }
 
 #################################################################
