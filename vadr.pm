@@ -3504,7 +3504,7 @@ sub vdr_ExceptionCoordsAndValuesToSegmentsAndValues {
   foreach my $key1 (sort keys (%{$ret_sgm_value_HR})) { 
     foreach my $key2 (sort keys (%{$ret_sgm_value_HR})) { 
       if($key1 ne $key2) { 
-        ($noverlap, undef) = vdr_CoordsSegmentOverlap($key1, $key2);
+        ($noverlap, undef) = vdr_CoordsSegmentOverlap($key1, $key2, $FH_HR);
         if($noverlap > 0) { 
           ofile_FAIL(sprintf("ERROR in $sub_name, two coords segments overlap in exception coords: $key1 and $key2.%s", (defined $extra_errmsg) ? ("\n" . $extra_errmsg) : ""), 1, $FH_HR);
         }
@@ -7105,7 +7105,7 @@ sub vdr_BackwardsCompatibilityExceptions {
         if(! defined $new_key) { 
           ofile_FAIL("ERROR, in $sub_name, trying to update old exception key $exc_key, but unable to determine new key", 1, $FH_HR);
         }
-        printf("HEYA replacing $exc_key " . $ftr_info_AHR->[$ftr_idx]{$exc_key} . " with " . $ftr_info_AHR->[$ftr_idx]{$exc_key} . "\n");
+        printf("HEYA replacing $exc_key " . $ftr_info_AHR->[$ftr_idx]{$exc_key} . " (exc_key: $exc_key) with " . $new_value . " (exc_key: $new_key)\n");
         $ftr_info_AHR->[$ftr_idx]{$new_key} = $new_value;
         delete($ftr_info_AHR->[$ftr_idx]{$exc_key});
       }
