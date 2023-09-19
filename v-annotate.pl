@@ -8962,9 +8962,10 @@ sub alert_list_option {
   my @head_AA  = ();
   my @bcom_A   = ();
 
-  @{$head_AA[0]} = ("",    "",       "",    "misc, not",      "",            "");
-  @{$head_AA[1]} = ("",    "alert",  "",    "failure",        "short",       "long");
-  @{$head_AA[2]} = ("idx", "code",   "S/F", "(if in .minfo)", "description", "description");
+  @{$head_AA[0]} = ("",    "",       "",    "",            "misc, not", "",             "",           "");
+  @{$head_AA[1]} = ("",    "",       "",    "",            "failure",   "exception",    "exception",  "");
+  @{$head_AA[2]} = ("",    "alert",  "",    "short",       "(if in",    "key",          "value",      "long");
+  @{$head_AA[3]} = ("idx", "code",   "S/F", "description", ".minfo)",   "(in .minfo)",  "type",       "description");
 
 
   push(@bcom_A, $div_line);
@@ -8980,8 +8981,10 @@ sub alert_list_option {
       $idx++;
       push(@data_AA, [$idx, $code, 
                       ($alt_info_HHR->{$code}{"pertype"} eq "sequence" ? "S" : "F"), 
-                      "never",
                       helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
+                      "never",
+                      ((defined $alt_info_HHR->{$code}{"exc_key"})  ? $alt_info_HHR->{$code}{"exc_key"}  : "-"), 
+                      ((defined $alt_info_HHR->{$code}{"exc_type"}) ? $alt_info_HHR->{$code}{"exc_type"} : "-"), 
                       $alt_info_HHR->{$code}{"ldesc"}]);
     }
   }
@@ -9006,8 +9009,10 @@ sub alert_list_option {
       }
       push(@data_AA, [$idx, $code, 
                       ($alt_info_HHR->{$code}{"pertype"} eq "sequence" ? "S" : "F"), 
-                      $misc_not_fail_str,
                       helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
+                      $misc_not_fail_str,
+                      ((defined $alt_info_HHR->{$code}{"exc_key"})  ? $alt_info_HHR->{$code}{"exc_key"}  : "-"), 
+                      ((defined $alt_info_HHR->{$code}{"exc_type"}) ? $alt_info_HHR->{$code}{"exc_type"} : "-"), 
                       $alt_info_HHR->{$code}{"ldesc"}]);
     }
   }
@@ -9032,8 +9037,10 @@ sub alert_list_option {
       }
       push(@data_AA, [$idx, $code, 
                       ($alt_info_HHR->{$code}{"pertype"} eq "sequence" ? "S" : "F"), 
-                      $misc_not_fail_str,
                       helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
+                      $misc_not_fail_str,
+                      ((defined $alt_info_HHR->{$code}{"exc_key"})  ? $alt_info_HHR->{$code}{"exc_key"}  : "-"), 
+                      ((defined $alt_info_HHR->{$code}{"exc_type"}) ? $alt_info_HHR->{$code}{"exc_type"} : "-"), 
                       $alt_info_HHR->{$code}{"ldesc"}]);
     }
   }
