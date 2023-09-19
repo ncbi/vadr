@@ -8962,10 +8962,10 @@ sub alert_list_option {
   my @head_AA  = ();
   my @bcom_A   = ();
 
-  @{$head_AA[0]} = ("",    "",       "",    "",            "misc, not", "",             "",           "");
-  @{$head_AA[1]} = ("",    "",       "",    "",            "failure",   "exception",    "exception",  "");
-  @{$head_AA[2]} = ("",    "alert",  "",    "short",       "(if in",    "key",          "value",      "long");
-  @{$head_AA[3]} = ("idx", "code",   "S/F", "description", ".minfo)",   "(in .minfo)",  "type",       "description");
+  @{$head_AA[0]} = ("",    "",       "",    "misc, not", "",            "",            "",             "");
+  @{$head_AA[1]} = ("",    "",       "",    "failure",   "",            "",            "exception",    "exception");
+  @{$head_AA[2]} = ("",    "alert",  "",    "(if in",    "short",       "long",        "key",          "value");
+  @{$head_AA[3]} = ("idx", "code",   "S/F", ".minfo)",   "description", "description", "(in .minfo)",  "type");
 
 
   push(@bcom_A, $div_line);
@@ -8981,11 +8981,11 @@ sub alert_list_option {
       $idx++;
       push(@data_AA, [$idx, $code, 
                       ($alt_info_HHR->{$code}{"pertype"} eq "sequence" ? "S" : "F"), 
-                      helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
                       "never",
+                      helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
+                      $alt_info_HHR->{$code}{"ldesc"},
                       ((defined $alt_info_HHR->{$code}{"exc_key"})  ? $alt_info_HHR->{$code}{"exc_key"}  : "-"), 
-                      ((defined $alt_info_HHR->{$code}{"exc_type"}) ? $alt_info_HHR->{$code}{"exc_type"} : "-"), 
-                      $alt_info_HHR->{$code}{"ldesc"}]);
+                      ((defined $alt_info_HHR->{$code}{"exc_type"}) ? $alt_info_HHR->{$code}{"exc_type"} : "-")]);
     }
   }
   ofile_TableHumanOutput(\@data_AA, \@head_AA, undef, \@bcom_A, undef, "  ", "-", "#", "", "", "-", *STDOUT, undef, undef);
@@ -9009,11 +9009,11 @@ sub alert_list_option {
       }
       push(@data_AA, [$idx, $code, 
                       ($alt_info_HHR->{$code}{"pertype"} eq "sequence" ? "S" : "F"), 
-                      helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
                       $misc_not_fail_str,
+                      helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
+                      $alt_info_HHR->{$code}{"ldesc"},
                       ((defined $alt_info_HHR->{$code}{"exc_key"})  ? $alt_info_HHR->{$code}{"exc_key"}  : "-"), 
-                      ((defined $alt_info_HHR->{$code}{"exc_type"}) ? $alt_info_HHR->{$code}{"exc_type"} : "-"), 
-                      $alt_info_HHR->{$code}{"ldesc"}]);
+                      ((defined $alt_info_HHR->{$code}{"exc_type"}) ? $alt_info_HHR->{$code}{"exc_type"} : "-")]);
     }
   }
   ofile_TableHumanOutput(\@data_AA, \@head_AA, undef, \@bcom_A, undef, "  ", "-", "#", "", "", "-", *STDOUT, undef, undef);
@@ -9037,11 +9037,11 @@ sub alert_list_option {
       }
       push(@data_AA, [$idx, $code, 
                       ($alt_info_HHR->{$code}{"pertype"} eq "sequence" ? "S" : "F"), 
-                      helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
                       $misc_not_fail_str,
+                      helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
+                      $alt_info_HHR->{$code}{"ldesc"},
                       ((defined $alt_info_HHR->{$code}{"exc_key"})  ? $alt_info_HHR->{$code}{"exc_key"}  : "-"), 
-                      ((defined $alt_info_HHR->{$code}{"exc_type"}) ? $alt_info_HHR->{$code}{"exc_type"} : "-"), 
-                      $alt_info_HHR->{$code}{"ldesc"}]);
+                      ((defined $alt_info_HHR->{$code}{"exc_type"}) ? $alt_info_HHR->{$code}{"exc_type"} : "-")]); 
     }
   }
   ofile_TableHumanOutput(\@data_AA, \@head_AA, undef, \@bcom_A, undef, "  ", "-", "#", "", "", "-", *STDOUT, undef, undef);
