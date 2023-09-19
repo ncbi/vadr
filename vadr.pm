@@ -3548,7 +3548,7 @@ sub vdr_ExceptionSegmentAndValueParse {
   if($coords_value =~ /^\<?(\d+)\.\.\>?(\d+)\:([\+\-]):(\S+)$/) { 
     return ($1, $2, $3, $4);
   }
-  ofile_FAIL(sprintf("ERROR in $sub_name, unable to parse coords-value token $coords_value.%s", (defined $extra_errmsg) ? ("\n" . $extra_errmsg) : ""), 1, $FH_HR); 
+  ofile_FAIL(sprintf("ERROR in $sub_name, unable to parse coords-value token $coords_value%s", (defined $extra_errmsg) ? ("\n" . $extra_errmsg) : ""), 1, $FH_HR); 
 
   return; # NEVER REACHED
 }
@@ -5823,7 +5823,7 @@ sub vdr_ModelInfoValidateExceptionKeys {
   my %tmp_key_H = ();
   foreach my $code (sort keys %{$alt_info_HHR}) { 
     if(defined $alt_info_HHR->{$code}{"exc_key"}) { 
-      $tmp_key_H{$alt_info_HHR->{$code}{"exc_key"}} = 1;
+      $tmp_key_H{$alt_info_HHR->{$code}{"exc_key"}} = $alt_info_HHR->{$code}{"exc_type"};
     }
   }
  
@@ -7047,25 +7047,34 @@ sub vdr_BackwardsCompatibilityExceptions {
   my $mdl_len = $mdl_info_HR->{"length"};
 
   my $exc_key; 
+  my $new_key = undef;
   foreach $exc_key (sort keys %{$mdl_info_HR}) { 
     # only 2 possibilities:
     # dupregin_exc
-    # indfstrn_exc
-    # for both of these we only need to swap ';' for ','
+    # indfstrn_exc --> indfstr_exc
+    # for both of these we need to swap ';' for ','
     if($exc_key =~ /^.+\_exc$/) { 
       # swap ; with ,
       $mdl_info_HR->{$exc_key} =~ s/\;/\,/g;
+      $mdl_info_HR->{$exc_key} =~ s/\,$//; # remove final ',' if any
+    }
+    # and update indfstrn exc-key: indfstrn_exc --> indfstr_exc
+    if($exc_key eq "indfstrn_exc") { 
+      $new_key = $alt_info_HHR->{"indfstrn"}{"exc_key"};
+      printf("HEYA replacing $exc_key " . $mdl_info_HR->{$exc_key} . " with $new_key " . $mdl_info_HR->{$exc_key} . "\n");
+      $mdl_info_HR->{$new_key} = $mdl_info_HR->{$exc_key};
+      delete($mdl_info_HR->{$exc_key});
     }
   }
 
   # move onto ftr_info_AHR
   my $nftr = scalar(@{$ftr_info_AHR});
-  my $new_key = undef;
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     foreach my $exc_key (sort keys %{$ftr_info_AHR->[$ftr_idx]}) { 
       if($exc_key =~ /^.+\_exc$/) { 
         # swap ; with ,
         $ftr_info_AHR->[$ftr_idx]{$exc_key} =~ s/\;/\,/g;
+        $ftr_info_AHR->[$ftr_idx]{$exc_key} =~ s/\,$//; # remove final ',' if any
       }
       if(($exc_key eq "nmaxins_exc") || ($exc_key eq "nmaxdel_exc") || ($exc_key eq "xmaxins_exc") || ($exc_key eq "xmaxdel_exc")) { 
         my $new_value = "";
