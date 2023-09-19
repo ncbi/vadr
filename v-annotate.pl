@@ -3141,7 +3141,7 @@ sub add_classification_alerts {
       }
       if((defined $alt_info_HHR->{"indfstrn"}{"exc_key"}) && 
          (defined $mdl_info_AHR->[$mdl_idx]{$alt_info_HHR->{"indfstrn"}{"exc_key"}})) { 
-        vdr_CoordsToSegments($mdl_info_AHR->[$mdl_idx]{$alt_info_HHR->{"indstrn"}{"exc_key"}}, \@{$indfstrn_exc_AA[$mdl_idx]}, $FH_HR);
+        vdr_CoordsToSegments($mdl_info_AHR->[$mdl_idx]{$alt_info_HHR->{"indfstrn"}{"exc_key"}}, \@{$indfstrn_exc_AA[$mdl_idx]}, $FH_HR);
       }
     }
   }
