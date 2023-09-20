@@ -998,7 +998,7 @@ and type for defining exceptions in the model info file. These columns will be `
 exception ranges are not allowed.
 
 #### Description of *always fatal* alert codes <a name="always1"></a>
-| alert code | type  | causes `misc_feature`, not failure (if in modelinfo file) |short description/error name | ......long_description...... | exception key (in modelinfo file) | exception value type |
+| alert code | type  | causes `misc_feature`, not failure (if in modelinfo file) |short description/error name | .........long_description......... | exception key (in modelinfo file) | exception value type |
 |------------|-------|-----------------------------------------------------------|-----------------------------|------------------|-----------------------------------|----------------------|
 | [*noannotn*](#noannotn2)  | sequence | never | NO_ANNOTATION                   | <a name="noannotn1"></a> no significant similarity detected  | - | - |
 | [*revcompl*](#revcompl2)  | sequence | never | REVCOMPLEM                      | <a name="revcompl1"></a> sequence appears to be reverse complemented  | - | - |
@@ -1008,7 +1008,7 @@ exception ranges are not allowed.
 | [*ftskipfl*](#ftskipfl2)  | sequence | never | UNREPORTED_FEATURE_PROBLEM      | <a name="ftskipfl1"></a> only fatal alerts are for feature(s) not output to feature table | - | - |
 
 #### Description of alerts that are *fatal* by default <a name="fatal1"></a>
-| alert code | type  | causes `misc_feature`, not failure (if in modelinfo file) |short description/error name | long description | exception key (in modelinfo file) | exception value type |
+| alert code | type  | causes `misc_feature`, not failure (if in modelinfo file) |short description/error name | .........long_description......... | exception key (in modelinfo file) | exception value type |
 |------------|-------|-----------------------------------------------------------|-----------------------------|------------------|-----------------------------------|----------------------|
 | [*incsbgrp*](#incsbgrp2)  | sequence | never | INCORRECT_SPECIFIED_SUBGROUP    | <a name="incsbgrp1"></a> score difference too large between best overall model and best specified subgroup model |  - | - |
 | [*incgroup*](#incgroup2)  | sequence | never | INCORRECT_SPECIFIED_GROUP       | <a name="incgroup1"></a> score difference too large between best overall model and best specified group model | - | - |
@@ -1061,7 +1061,7 @@ exception ranges are not allowed.
 | [*lowsimil*](#lowsimil2)  | feature  | no    | LOW_FEATURE_SIMILARITY          | <a name="lowsimil1"></a> long region overlapping annotated feature that does not match a CDS lacks significant similarity  | `lowsim_exc` | coords-only |
 
 #### Description of alerts that are *non-fatal* by default <a name="nonfatal1"></a>
-| alert code | type  | causes `misc_feature`, not failure (if in modelinfo file) |short description/error name | long description | exception key (in modelinfo file) | exception value type |
+| alert code | type  | causes `misc_feature`, not failure (if in modelinfo file) |short description/error name | .........long_description......... | exception key (in modelinfo file) | exception value type |
 |------------|-------|-----------------------------------------------------------|-----------------------------|------------------|-----------------------------------|----------------------|
 | [*qstsbgrp*](#qstsbgrp2)  | sequence | never | QUESTIONABLE_SPECIFIED_SUBGROUP | <a name="qstsbgrp1"></a> best overall model is not from specified subgroup  | - | - |
 | [*qstgroup*](#qstgroup2)  | sequence | never | QUESTIONABLE_SPECIFIED_GROUP    | <a name="qstgroup1"></a> best overall model is not from specified group  | - | - |
