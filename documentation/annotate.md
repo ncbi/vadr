@@ -1311,25 +1311,27 @@ misc_feature-ization:
 
 ## <a name="exceptions"></a>Alert *exceptions*: ignoring alerts in specific model position ranges
 
-It is possible to prevent certain types of alerts from being reported
-if they pertain to specific model position ranges. This can be useful
-for alerts that are permissible or even expected in a given sequence
-region. For example, a known repeat region of a sequence can trigger a
-**dupregin** (`DUPLICATE_REGIONS`) alert that you do not want to cause
-a sequence to fail or even be reported. However, you still want other
-**dupregin** alerts outside of the repeat region to be reported.  To
-ignore (and not report) any `dupregin` alerts completely within the
-model position range `37` to `100` on the top (`+`) strand you would
-add the string `dupregin_exc:"37..100:+"` to the relevant `MODEL` line
-of the model info file. In this example, `dupregin_exc` is the
-*exception key* and `"37..100:+" is the *exception value*.
+For some alerts, it is possible to specify model position ranges as
+*exceptions*, any of these alerts that occur within these regions will
+not be reported. This can be useful for alerts that are permissible,
+or even expected, in a given sequence region. For example, a known
+repeat region of a sequence may consistently trigger a **dupregin**
+(`DUPLICATE_REGIONS`) alert that we do not want to cause a sequence to
+fail. However, we may still want other **dupregin** alerts outside of
+the repeat region to be reported. To ignore (and not report) any
+`dupregin` alerts completely within the model position range `37` to
+`100` on the top (`+`) strand, add the string
+`dupregin_exc:"37..100:+"` to the relevant `MODEL` line of the model
+info file. In this case, `dupregin_exc` is the *exception key* and
+`"37..100:+" is the *exception value*.
 
-The table below lists all alert codes for which exceptions are allowed:
+The table below lists all alert codes for which exceptions are allowed
+along with their specific exception keys and value types:
 
 | alert code | short description              | exception key | exception value type | 
 |------------|--------------------------------|---------------|----------------------|
 | dupregin   | DUPLICATE_REGIONS              | dupregin_exc  | coords-only          | 
-| indfstrn   | INDEFINITE_STRAND              | indfstrn_exc  | coords-only          | 
+| indfstrn   | INDEFINITE_STRAND              | indfstr_exc   | coords-only          | 
 | indfstrp   | INDEFINITE_STRAND              | indfstr_exc   | coords-only          | 
 | insertnp   | INSERTION_OF_NT                | insertn_exc   | coords-value         | 
 | insertnn   | INSERTION_OF_NT                | insertn_exc   | coords-value         | 
@@ -1353,6 +1355,12 @@ The table below lists all alert codes for which exceptions are allowed:
 | fstukcfi   | POSSIBLE_FRAMESHIFT            | fst_exc       | coords-only          | 
 | fstlocft   | POSSIBLE_FRAMESHIFT_LOW_CONF   | fst_exc       | coords-only          | 
 | fstlocfi   | POSSIBLE_FRAMESHIFT_LOW_CONF   | fst_exc       | coords-only          | 
+
+If you specify a given exception key and value in the model info file,
+it will mean that all alerts with that specific key will have
+exceptions in that region. For example, a `indfstr_exc` 
+exception will prevent reporting of both `indfstrn` and `indfstrp` in
+the region specified.
 
 There are two types of alert `exception value types`, differentiated by the required format
 of the value string in the model info file:
