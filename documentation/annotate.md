@@ -1136,7 +1136,7 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*fsthicft*](#fsthicft1)  | POSSIBLE_FRAMESHIFT_HIGH_CONF   | [`--fsthighthr`, `--fstminntt`](#options-alerts-fstminntt) | CDS | - <a name="fsthicft2"></a> |
 | [*fsthicfi*](#fsthicfi1)  | POSSIBLE_FRAMESHIFT_HIGH_CONF   | [`--fsthighthr`, `--fstminnti`](#options-alerts-fstminnti) | CDS | - <a name="fsthicfi2"></a> |
 | [*fstukcft*](#fstukcft1)  | POSSIBLE_FRAMESHIFT             | [`--glsearch`, `--fstminntt`](#options-alerts-fstminntt)   | CDS | - <a name="fstukcft2"></a> |
-a| [*fstukcfi*](#fstukcfi1)  | POSSIBLE_FRAMESHIFT             | [`--glsearch`, `--fstminnti`](#options-alerts-fstminnti)   | CDS | - <a name="fstukcfi2"></a> |
+| [*fstukcfi*](#fstukcfi1)  | POSSIBLE_FRAMESHIFT             | [`--glsearch`, `--fstminnti`](#options-alerts-fstminnti)   | CDS | - <a name="fstukcfi2"></a> |
 | [*mutspst5*](#mutspst51)  | MUTATION_AT_SPLICE_SITE         | [`--ignore_canonss`, `--force-canonss`, `--intlen`](#options-ignore) | CDS | - <a name="mutspst52"></a> |
 | [*mutspst3*](#mutspst31)  | MUTATION_AT_SPLICE_SITE         | [`--ignore_canonss`, `--force-canonss`, `--intlen`](#options-ignore) | CDS | - <a name="mutspst32"></a> |
 | [*peptrans*](#peptrans1)  | PEPTIDE_TRANSLATION_PROBLEM     | none | mat_peptide | - <a name="peptrans2"></a> | 
@@ -1312,54 +1312,54 @@ misc_feature-ization:
 ## <a name="exceptions"></a>Alert *exceptions*: ignoring alerts in specific model position ranges
 
 For some alerts, it is possible to specify model position ranges as
-*exceptions*, any of these alerts that occur within these regions will
+*exceptions* - alert instances that occur within these regions will
 not be reported. This can be useful for alerts that are permissible,
 or even expected, in a given sequence region. For example, a known
-repeat region of a sequence may consistently trigger a **dupregin**
-(`DUPLICATE_REGIONS`) alert that we do not want to cause a sequence to
-fail. However, we may still want other **dupregin** alerts outside of
+repeat region of a sequence may consistently trigger a *dupregin*
+(DUPLICATE_REGIONS) alert that we do not want to cause a sequence to
+fail. However, we may still want other *dupregin* alerts outside of
 the repeat region to be reported. To ignore (and not report) any
-`dupregin` alerts completely within the model position range `37` to
+*dupregin* alerts completely within the model position range `37` to
 `100` on the top (`+`) strand, add the string
 `dupregin_exc:"37..100:+"` to the relevant `MODEL` line of the model
 info file. In this case, `dupregin_exc` is the *exception key* and
-`"37..100:+" is the *exception value*.
+`"37..100:+"` is the *exception value*.
 
 The table below lists all alert codes for which exceptions are allowed
 along with their specific exception keys and value types:
 
-| alert code | short description              | exception key | exception value type | 
-|------------|--------------------------------|---------------|----------------------|
-| dupregin   | DUPLICATE_REGIONS              | dupregin_exc  | coords-only          | 
-| indfstrn   | INDEFINITE_STRAND              | indfstr_exc   | coords-only          | 
-| indfstrp   | INDEFINITE_STRAND              | indfstr_exc   | coords-only          | 
-| insertnp   | INSERTION_OF_NT                | insertn_exc   | coords-value         | 
-| insertnn   | INSERTION_OF_NT                | insertn_exc   | coords-value         | 
-| deletinn   | DELETION_OF_NT                 | deletin_exc   | coords-value         | 
-| deletinp   | DELETION_OF_NT                 | deletin_exc   | coords-value         | 
-| lowsim5s   | LOW_SIMILARITY_START           | lowsim_exc    | coords-only          | 
-| lowsim3s   | LOW_SIMILARITY_END             | lowsim_exc    | coords-only          | 
-| lowsimis   | LOW_SIMILARITY                 | lowsim_exc    | coords-only          | 
-| lowsim5n   | LOW_FEATURE_SIMILARITY_START   | lowsim_exc    | coords-only          | 
-| lowsim5l   | LOW_FEATURE_SIMILARITY_START   | lowsim_exc    | coords-only          | 
-| lowsim3n   | LOW_FEATURE_SIMILARITY_END     | lowsim_exc    | coords-only          | 
-| lowsim3l   | LOW_FEATURE_SIMILARITY_END     | lowsim_exc    | coords-only          | 
-| lowsimin   | LOW_FEATURE_SIMILARITY         | lowsim_exc    | coords-only          | 
-| lowsimil   | LOW_FEATURE_SIMILARITY         | lowsim_exc    | coords-only          | 
-| lowsim5c   | LOW_FEATURE_SIMILARITY_START   | lowsim_exc    | coords-only          | 
-| lowsim3c   | LOW_FEATURE_SIMILARITY_END     | lowsim_exc    | coords-only          | 
-| lowsimic   | LOW_FEATURE_SIMILARITY         | lowsim_exc    | coords-only          | 
-| fsthicft   | POSSIBLE_FRAMESHIFT_HIGH_CONF  | fst_exc       | coords-only          |
-| fsthicfi   | POSSIBLE_FRAMESHIFT_HIGH_CONF  | fst_exc       | coords-only          | 
-| fstukcft   | POSSIBLE_FRAMESHIFT            | fst_exc       | coords-only          | 
-| fstukcfi   | POSSIBLE_FRAMESHIFT            | fst_exc       | coords-only          | 
-| fstlocft   | POSSIBLE_FRAMESHIFT_LOW_CONF   | fst_exc       | coords-only          | 
-| fstlocfi   | POSSIBLE_FRAMESHIFT_LOW_CONF   | fst_exc       | coords-only          | 
+| alert code   | short description              | exception key   | exception value type | 
+|--------------|--------------------------------|-----------------|----------------------|
+| *dupregin*   | DUPLICATE_REGIONS              | `dupregin_exc`  | coords-only          | 
+| *indfstrn*   | INDEFINITE_STRAND              | `indfstr_exc`   | coords-only          | 
+| *indfstrp*   | INDEFINITE_STRAND              | `indfstr_exc`   | coords-only          | 
+| *insertnp*   | INSERTION_OF_NT                | `insertn_exc`   | coords-value         | 
+| *insertnn*   | INSERTION_OF_NT                | `insertn_exc`   | coords-value         | 
+| *deletinn*   | DELETION_OF_NT                 | `deletin_exc`   | coords-value         | 
+| *deletinp*   | DELETION_OF_NT                 | `deletin_exc`   | coords-value         | 
+| *lowsim5s*   | LOW_SIMILARITY_START           | `lowsim_exc`    | coords-only          | 
+| *lowsim3s*   | LOW_SIMILARITY_END             | `lowsim_exc`    | coords-only          | 
+| *lowsimis*   | LOW_SIMILARITY                 | `lowsim_exc`    | coords-only          | 
+| *lowsim5n*   | LOW_FEATURE_SIMILARITY_START   | `lowsim_exc`    | coords-only          | 
+| *lowsim5l*   | LOW_FEATURE_SIMILARITY_START   | `lowsim_exc`    | coords-only          | 
+| *lowsim3n*   | LOW_FEATURE_SIMILARITY_END     | `lowsim_exc`    | coords-only          | 
+| *lowsim3l*   | LOW_FEATURE_SIMILARITY_END     | `lowsim_exc`    | coords-only          | 
+| *lowsimin*   | LOW_FEATURE_SIMILARITY         | `lowsim_exc`    | coords-only          | 
+| *lowsimil*   | LOW_FEATURE_SIMILARITY         | `lowsim_exc`    | coords-only          | 
+| *lowsim5c*   | LOW_FEATURE_SIMILARITY_START   | `lowsim_exc`    | coords-only          | 
+| *lowsim3c*   | LOW_FEATURE_SIMILARITY_END     | `lowsim_exc`    | coords-only          | 
+| *lowsimic*   | LOW_FEATURE_SIMILARITY         | `lowsim_exc`    | coords-only          | 
+| *fsthicft*   | POSSIBLE_FRAMESHIFT_HIGH_CONF  | `fst_exc`       | coords-only          |
+| *fsthicfi*   | POSSIBLE_FRAMESHIFT_HIGH_CONF  | `fst_exc`       | coords-only          | 
+| *fstukcft*   | POSSIBLE_FRAMESHIFT            | `fst_exc`       | coords-only          | 
+| *fstukcfi*   | POSSIBLE_FRAMESHIFT            | `fst_exc`       | coords-only          | 
+| *fstlocft*   | POSSIBLE_FRAMESHIFT_LOW_CONF   | `fst_exc`       | coords-only          | 
+| *fstlocfi*   | POSSIBLE_FRAMESHIFT_LOW_CONF   | `fst_exc`       | coords-only          | 
 
 If you specify a given exception key and value in the model info file,
 it will mean that all alerts with that specific key will have
 exceptions in that region. For example, a `indfstr_exc` 
-exception will prevent reporting of both `indfstrn` and `indfstrp` in
+exception will prevent reporting of both *indfstrn* and *indfstrp* in
 the region specified.
 
 There are two types of alert `exception value types`, differentiated by the required format
