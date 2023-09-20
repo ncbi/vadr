@@ -25,6 +25,7 @@
 * [Basic Information on `v-annotate.pl` alerts](#alerts)
 * [Additional information on `v-annotate.pl` alerts](#alerts2)
 * [Expendable features: allowing sequences to pass despite fatal alerts for specific features](#mnf)
+* [Alert *exceptions*: ignoring alerts in specific model position ranges](#exceptions)
 * [Limiting memory usage and multi-threading](#memory)
 * [Alternative parallelization using a cluster](#altparallel)
 
@@ -1305,6 +1306,83 @@ misc_feature-ization:
    for expendable features as explained above even when the
    option `--nomisc` is used. (The `--nomisc` option causes
    `misc_feature`s not to be reported in `.fail.tbl` files.)
+
+---
+
+## <a name="exceptions"></a>Alert *exceptions*: ignoring alerts in specific model position ranges
+
+It is possible to prevent certain types of alerts from being reported
+if they pertain to specific model position ranges. This can be useful
+for alerts that are permissible or even expected in a given sequence
+region. For example, a known repeat region of a sequence can trigger a
+**dupregin** (`DUPLICATE_REGIONS`) alert that you do not want to cause
+a sequence to fail or even be reported. However, you still want other
+**dupregin** alerts outside of the repeat region to be reported.  To
+ignore (and not report) any `dupregin` alerts completely within the
+model position range `37` to `100` on the top (`+`) strand you would
+add the string `dupregin_exc:"37..100:+"` to the relevant `MODEL` line
+of the model info file. In this example, `dupregin_exc` is the
+*exception key* and `"37..100:+" is the *exception value*.
+
+The table below lists all alert codes for which exceptions are allowed:
+
+| alert code | short description              | exception key | exception value type | 
+|------------|--------------------------------|---------------|----------------------|
+| dupregin   | DUPLICATE_REGIONS              | dupregin_exc  | coords-only          | 
+| indfstrn   | INDEFINITE_STRAND              | indfstrn_exc  | coords-only          | 
+| indfstrp   | INDEFINITE_STRAND              | indfstr_exc   | coords-only          | 
+| insertnp   | INSERTION_OF_NT                | insertn_exc   | coords-value         | 
+| insertnn   | INSERTION_OF_NT                | insertn_exc   | coords-value         | 
+| deletinn   | DELETION_OF_NT                 | deletin_exc   | coords-value         | 
+| deletinp   | DELETION_OF_NT                 | deletin_exc   | coords-value         | 
+| lowsim5s   | LOW_SIMILARITY_START           | lowsim_exc    | coords-only          | 
+| lowsim3s   | LOW_SIMILARITY_END             | lowsim_exc    | coords-only          | 
+| lowsimis   | LOW_SIMILARITY                 | lowsim_exc    | coords-only          | 
+| lowsim5n   | LOW_FEATURE_SIMILARITY_START   | lowsim_exc    | coords-only          | 
+| lowsim5l   | LOW_FEATURE_SIMILARITY_START   | lowsim_exc    | coords-only          | 
+| lowsim3n   | LOW_FEATURE_SIMILARITY_END     | lowsim_exc    | coords-only          | 
+| lowsim3l   | LOW_FEATURE_SIMILARITY_END     | lowsim_exc    | coords-only          | 
+| lowsimin   | LOW_FEATURE_SIMILARITY         | lowsim_exc    | coords-only          | 
+| lowsimil   | LOW_FEATURE_SIMILARITY         | lowsim_exc    | coords-only          | 
+| lowsim5c   | LOW_FEATURE_SIMILARITY_START   | lowsim_exc    | coords-only          | 
+| lowsim3c   | LOW_FEATURE_SIMILARITY_END     | lowsim_exc    | coords-only          | 
+| lowsimic   | LOW_FEATURE_SIMILARITY         | lowsim_exc    | coords-only          | 
+| fsthicft   | POSSIBLE_FRAMESHIFT_HIGH_CONF  | fst_exc       | coords-only          |
+| fsthicfi   | POSSIBLE_FRAMESHIFT_HIGH_CONF  | fst_exc       | coords-only          | 
+| fstukcft   | POSSIBLE_FRAMESHIFT            | fst_exc       | coords-only          | 
+| fstukcfi   | POSSIBLE_FRAMESHIFT            | fst_exc       | coords-only          | 
+| fstlocft   | POSSIBLE_FRAMESHIFT_LOW_CONF   | fst_exc       | coords-only          | 
+| fstlocfi   | POSSIBLE_FRAMESHIFT_LOW_CONF   | fst_exc       | coords-only          | 
+
+There are two types of alert `exception value types`, differentiated by the required format
+of the value string in the model info file:
+
+1. `coords-only` exception keys have value strings that are [VADR
+coordinate (`coords`) strings](formats.md#coords). Our previous
+example of `dupregin` exception is an example of a `coords-only`
+exception. If you want to allow exceptions for multiple regions, they 
+be separated by commas, for example to additionally exclude
+positions `181` to `333` the string to add would be
+`dupregin_exc:"37..100:+,181..333:+"`.
+
+2. `coords-value` exception keys have value strings that are [VADR
+coordinate (`coords`) strings](formats.md#coords) appended with
+`:<d>`, where `<d>` is a number relevant to the alert. For example, to
+increase the maximum allowed insertion length without a `insertnn` or
+`insertnp` alert after model (nucleotide) position
+`367` or `368` for a CDS feature encoded on the top (`+`) strand from
+the default value of `27` to `36`, add the following string to the
+`FEATURE` line for that CDS feature in the model info file:
+`insertnn_exc:367..368:+:36`. As with `coords-only` keys, to add
+multiple position ranges and values, separate with commas.
+
+The alert codes which allow exception ranges can also be viewed by
+running `v-annotate.pl` with the `--alt_list` option.
+
+Prior to VADR version 1.6, some alert exceptions in model info files
+were permitted in different formats. As of version 1.6, the formats
+above are enforced, but the formats present in publicly available
+model files created prior to v1.6 are also compatible with v1.6+.
 
 ---
 
