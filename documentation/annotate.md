@@ -998,7 +998,7 @@ and type for defining exceptions in the model info file. These columns will be `
 exception ranges are not allowed.
 
 #### Description of *always fatal* alert codes <a name="always1"></a>
-| alert code | type  | causes `misc_feature`, not failure (if in modelinfo file) |short description/error name | _____long_description_____ | exception key (in modelinfo file) | exception value type |
+| alert code | type  | causes `misc_feature`, not failure (if in modelinfo file) |short description/error name | ......long_description...... | exception key (in modelinfo file) | exception value type |
 |------------|-------|-----------------------------------------------------------|-----------------------------|------------------|-----------------------------------|----------------------|
 | [*noannotn*](#noannotn2)  | sequence | never | NO_ANNOTATION                   | <a name="noannotn1"></a> no significant similarity detected  | - | - |
 | [*revcompl*](#revcompl2)  | sequence | never | REVCOMPLEM                      | <a name="revcompl1"></a> sequence appears to be reverse complemented  | - | - |
