@@ -991,101 +991,103 @@ An example is included [below](#alerttoggle).
 
 In the table below, the **type** column reports if each alert pertains to an entire
 `sequence` or a specific annotated `feature` within a sequence. The
-**causes `misc_feature`, not failure (if in
-modelinfo file** shows which alerts are not fatal for expendable
-features as described more [below](#mnf).
+**causes `misc_feature`, not failure (if in modelinfo file)** 
+shows which alerts are not fatal for expendable
+features as described more [below](#mnf). The **exception key** and **exception value type** indicate the key string
+and type for defining exceptions in the model info file. These columns will be `-` for any alert for which
+exception ranges are not allowed.
 
 #### Description of *always fatal* alert codes <a name="always1"></a>
-| alert code | type  | causes `misc_feature`, not failure (if in modelinfo file) |short description/error name | long description |
-|------------|-------|-----------------------------------------------------------|-----------------------------|------------------|
-| [*noannotn*](#noannotn2)  | sequence | never | NO_ANNOTATION                   | <a name="noannotn1"></a> no significant similarity detected  |
-| [*revcompl*](#revcompl2)  | sequence | never | REVCOMPLEM                      | <a name="revcompl1"></a> sequence appears to be reverse complemented  |
-| [*unexdivg*](#unexdivg2)  | sequence | never | UNEXPECTED_DIVERGENCE           | <a name="unexdivg1"></a> sequence is too divergent to confidently assign nucleotide-based annotation  |
-| [*noftrann*](#noftrann2)  | sequence | never | NO_FEATURES_ANNOTATED           | <a name="noftrann1"></a> sequence similarity to homology model does not overlap with any features |
-| [*noftrant*](#noftrant2)  | sequence | never | NO_FEATURES_ANNOTATED           | <a name="noftrant1"></a> all annotated features are too short to be output to feature table |
-| [*ftskipfl*](#ftskipfl2)  | sequence | never | UNREPORTED_FEATURE_PROBLEM      | <a name="ftskipfl1"></a> only fatal alerts are for feature(s) not output to feature table |
+| alert code | type  | causes `misc_feature`, not failure (if in modelinfo file) |short description/error name | long description | exception key (in modelinfo file) | exception value type |
+|------------|-------|-----------------------------------------------------------|-----------------------------|------------------|-----------------------------------|----------------------|
+| [*noannotn*](#noannotn2)  | sequence | never | NO_ANNOTATION                   | <a name="noannotn1"></a> no significant similarity detected  | - | - |
+| [*revcompl*](#revcompl2)  | sequence | never | REVCOMPLEM                      | <a name="revcompl1"></a> sequence appears to be reverse complemented  | - | - |
+| [*unexdivg*](#unexdivg2)  | sequence | never | UNEXPECTED_DIVERGENCE           | <a name="unexdivg1"></a> sequence is too divergent to confidently assign nucleotide-based annotation  | - | - |
+| [*noftrann*](#noftrann2)  | sequence | never | NO_FEATURES_ANNOTATED           | <a name="noftrann1"></a> sequence similarity to homology model does not overlap with any features | - | - |
+| [*noftrant*](#noftrant2)  | sequence | never | NO_FEATURES_ANNOTATED           | <a name="noftrant1"></a> all annotated features are too short to be output to feature table | - | - |
+| [*ftskipfl*](#ftskipfl2)  | sequence | never | UNREPORTED_FEATURE_PROBLEM      | <a name="ftskipfl1"></a> only fatal alerts are for feature(s) not output to feature table | - | - |
 
 #### Description of alerts that are *fatal* by default <a name="fatal1"></a>
-| alert code | type  | causes `misc_feature`, not failure (if in modelinfo file) |short description/error name | long description |
-|------------|-------|-----------------------------------------------------------|-----------------------------|------------------|
-| [*incsbgrp*](#incsbgrp2)  | sequence | never | INCORRECT_SPECIFIED_SUBGROUP    | <a name="incsbgrp1"></a> score difference too large between best overall model and best specified subgroup model |
-| [*incgroup*](#incgroup2)  | sequence | never | INCORRECT_SPECIFIED_GROUP       | <a name="incgroup1"></a> score difference too large between best overall model and best specified group model |
-| [*lowcovrg*](#lowcovrg2)  | sequence | never | LOW_COVERAGE                    | <a name="lowcovrg1"></a> low sequence fraction with significant similarity to homology model |
-| [*dupregin*](#dupregin2)  | sequence | never | DUPLICATE_REGIONS               | <a name="dupregin1"></a> similarity to a model region occurs more than once |
-| [*discontn*](#discontn2)  | sequence | never | DISCONTINUOUS_SIMILARITY        | <a name="discontn1"></a> not all hits are in the same order in the sequence and the homology model |
-| [*indfstrn*](#indfstrn2)  | sequence | never | INDEFINITE_STRAND               | <a name="indfstrn1"></a> significant similarity detected on both strands |
-| [*lowsim5s*](#lowsim5s2)  | sequence | never | LOW_SIMILARITY_START            | <a name="lowsim5s1"></a> significant similarity not detected at 5' end of the sequence | 
-| [*lowsim3s*](#lowsim3s2)  | sequence | never | LOW_SIMILARITY_END              | <a name="lowsim3s1"></a> significant similarity not detected at 3' end of the sequence | 
-| [*lowsimis*](#lowsimis2)  | sequence | never | LOW_SIMILARITY                  | <a name="lowsimis1"></a> internal region without significant similarity | 
-| [*extrant5*](#extrant52)  | sequence | never | EXTRA_SEQUENCE_START            | <a name="extrant51"></a> extra sequence detected 5' of expected sequence start |
-| [*extrant3*](#extrant32)  | sequence | never | EXTRA_SEQUENCE_END              | <a name="extrant31"></a> extra sequence detected 3' of expected sequence end |
-| [*nmiscftr*](#nmiscftr2)  | sequence | never | TOO_MANY_MISC_FEATURES          | <a name="nmiscftr1"></a> too many features reported as misc_features |
-| [*deletins*](#deletins2)  | sequence | never | DELETION_OF_FEATURE             | <a name="deletins1"></a> internal deletion of a complete feature |
-| [*mutstart*](#mutstart2)  | feature  | yes   | MUTATION_AT_START               | <a name="mutstart1"></a> expected start codon could not be identified | 
-| [*mutendcd*](#mutendcd2)  | feature  | yes   | MUTATION_AT_END                 | <a name="mutendcd1"></a> expected stop codon could not be identified, predicted CDS stop by homology is invalid | 
-| [*mutendns*](#mutendns2)  | feature  | yes   | MUTATION_AT_END                 | <a name="mutendns1"></a> expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon | 
-| [*mutendex*](#mutendex2)  | feature  | yes   | MUTATION_AT_END                 | <a name="mutendex1"></a> expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position | <a name="mutendex1"></a> |
-| [*unexleng*](#unexleng2)  | feature  | yes   | UNEXPECTED_LENGTH               | <a name="unexleng1"></a> length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 | 
-| [*cdsstopn*](#cdsstopn2)  | feature  | yes   | CDS_HAS_STOP_CODON              | <a name="cdsstopn1"></a> in-frame stop codon exists 5' of stop position predicted by homology to reference | 
-| [*cdsstopp*](#cdsstopp2)  | feature  | yes   | CDS_HAS_STOP_CODON              | <a name="cdsstopp1"></a> stop codon in protein-based alignment |
-| [*fsthicft*](#fsthicft2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_HIGH_CONF   | <a name="fsthicft1"></a> high confidence possible frameshift in CDS (frame not restored before end) (not reported if `--glsearch`|
-| [*fsthicfi*](#fsthicfi2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_HIGH_CONF   | <a name="fsthicfi1"></a> high confidence possible frameshift in CDS (frame restored before end) (not reported if `--glsearch`)|
-| [*fstukcf3*](#fstukcft2)  | feature  | yes   | POSSIBLE_FRAMESHIFT             | <a name="fstukcft1"></a> possible frameshift in CDS (frame not restored before end) (only reported if `--glsearch`) |
-| [*fstukcfi*](#fstukcfi2)  | feature  | yes   | POSSIBLE_FRAMESHIFT             | <a name="fstukcfi1"></a> possible frameshift in CDS (frame restored before end) (only reported if `--glsearch`) |
-| [*mutspst5*](#mutspst52)  | feature  | yes   | MUTATION_AT_SPLICE_SITE         | <a name="mutspst51"></a> expected splice site at 5' end of intron (GT) could not be identified (only reported for CDS with `canon_splice_sites` set to 1 in `.minfo` file) | <a name="mutspst51"></a> |
-| [*mutspst3*](#mutspst32)  | feature  | yes   | MUTATION_AT_SPLICE_SITE         | <a name="mutspst31"></a> expected splice site at 3' end of intron (AG) could not be identified (only reported for CDS with `canon_splice_sites` set to 1 in `.minfo` file) | <a name="mutspst31"></a> |
-| [*peptrans*](#peptrans2)  | feature  | yes   | PEPTIDE_TRANSLATION_PROBLEM     | <a name="peptrans1"></a> mat_peptide may not be translated because its parent CDS has a problem |
-| [*pepadjcy*](#pepadjcy2)  | feature  | yes   | PEPTIDE_ADJACENCY_PROBLEM       | <a name="pepadjcy1"></a> predictions of two mat_peptides expected to be adjacent are not adjacent |
-| [*indfantp*](#indfantp2)  | feature  | no    | INDEFINITE_ANNOTATION           | <a name="indfantp1"></a> protein-based search identifies CDS not identified in nucleotide-based search |
-| [*indfantn*](#indfantn2)  | feature  | no    | INDEFINITE_ANNOTATION           | <a name="indfantn1"></a> nucleotide-based search identifies CDS not identified in protein-based search | 
-| [*indf5gap*](#indf5gap2)  | feature  | yes   | INDEFINITE_ANNOTATION_START     | <a name="indf5gap1"></a> alignment to homology model is a gap at 5' boundary |
-| [*indf5lcn*](#indf5lcn2)  | feature  | yes   | INDEFINITE_ANNOTATION_START     | <a name="indf5lcn1"></a> alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS |
-| [*indf5plg*](#indf5plg2)  | feature  | yes   | INDEFINITE_ANNOTATION_START     | <a name="indf5plg1"></a> protein-based alignment extends past nucleotide-based alignment at 5' end | 
-| [*indf5pst*](#indf5pst2)  | feature  | yes   | INDEFINITE_ANNOTATION_START     | <a name="indf5pst1"></a> protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint | 
-| [*indf3gap*](#indf3gap2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3gap1"></a> alignment to homology model is a gap at 3' boundary | 
-| [*indf3lcn*](#indf3lcn2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3lcn1"></a> alignment to homology model has low confidence at 3' boundary for feature that does not match a CDS | 
-| [*indf3plg*](#indf3plg2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3plg1"></a> protein-based alignment extends past nucleotide-based alignment at 3' end | 
-| [*indf3pst*](#indf3pst2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3pst1"></a> protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint | 
-| [*indfstrp*](#indfstrp2)  | feature  | no    | INDEFINITE_STRAND               | <a name="indfstrp1"></a> strand mismatch between protein-based and nucleotide-based predictions | 
-| [*insertnp*](#insertnp2)  | feature  | no    | INSERTION_OF_NT                 | <a name="insertnp1"></a> too large of an insertion in protein-based alignment | 
-| [*deletinp*](#deletinp2)  | feature  | yes   | DELETION_OF_NT                  | <a name="deletinp1"></a> too large of a deletion in protein-based alignment | 
-| [*deletinf*](#deletinf2)  | feature  | no    | DELETION_OF_FEATURE_SECTION     | <a name="deletinf1"></a> internal deletion of a complete section in a multi-section feature with other section(s) annotated |
-| [*lowsim5n*](#lowsim5n2)  | feature  | yes   | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5n1"></a> region overlapping annotated feature that does not match a CDS at 5' end of sequence lacks significant similarity |
-| [*lowsim5l*](#lowsim5l2)  | feature  | no    | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5l1"></a> long region overlapping annotated feature that does not match a CDS at 5' end of sequence lacks significant similarity |
-| [*lowsim3n*](#lowsim3n2)  | feature  | yes   | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3n1"></a> region overlapping annotated feature that does not match a CDS at 3' end of sequence lacks significant similarity | 
-| [*lowsim3l*](#lowsim3l2)  | feature  | no    | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3l1"></a> long region overlapping annotated feature that does not match a CDS at 3' end of sequence lacks significant similarity | 
-| [*lowsimin*](#lowsimin2)  | feature  | yes   | LOW_FEATURE_SIMILARITY          | <a name="lowsimin1"></a> region overlapping annotated feature that does not match a CDS lacks significant similarity  |
-| [*lowsimil*](#lowsimil2)  | feature  | no    | LOW_FEATURE_SIMILARITY          | <a name="lowsimil1"></a> long region overlapping annotated feature that does not match a CDS lacks significant similarity  |
-| [*lowsimil*](#lowsimil2)  | feature  | no    | LOW_FEATURE_SIMILARITY          | <a name="lowsimil1"></a> long region overlapping annotated feature that does not match a CDS lacks significant similarity  |
+| alert code | type  | causes `misc_feature`, not failure (if in modelinfo file) |short description/error name | long description | exception key (in modelinfo file) | exception value type |
+|------------|-------|-----------------------------------------------------------|-----------------------------|------------------|-----------------------------------|----------------------|
+| [*incsbgrp*](#incsbgrp2)  | sequence | never | INCORRECT_SPECIFIED_SUBGROUP    | <a name="incsbgrp1"></a> score difference too large between best overall model and best specified subgroup model |  - | - |
+| [*incgroup*](#incgroup2)  | sequence | never | INCORRECT_SPECIFIED_GROUP       | <a name="incgroup1"></a> score difference too large between best overall model and best specified group model | - | - |
+| [*lowcovrg*](#lowcovrg2)  | sequence | never | LOW_COVERAGE                    | <a name="lowcovrg1"></a> low sequence fraction with significant similarity to homology model | - | - |
+| [*dupregin*](#dupregin2)  | sequence | never | DUPLICATE_REGIONS               | <a name="dupregin1"></a> similarity to a model region occurs more than once | `dupregion_exc` | coords-only |
+| [*discontn*](#discontn2)  | sequence | never | DISCONTINUOUS_SIMILARITY        | <a name="discontn1"></a> not all hits are in the same order in the sequence and the homology model | - | - |
+| [*indfstrn*](#indfstrn2)  | sequence | never | INDEFINITE_STRAND               | <a name="indfstrn1"></a> significant similarity detected on both strands | `indfstr_exc` | coords-only |
+| [*lowsim5s*](#lowsim5s2)  | sequence | never | LOW_SIMILARITY_START            | <a name="lowsim5s1"></a> significant similarity not detected at 5' end of the sequence | `lowsim_exc` | coords-only |
+| [*lowsim3s*](#lowsim3s2)  | sequence | never | LOW_SIMILARITY_END              | <a name="lowsim3s1"></a> significant similarity not detected at 3' end of the sequence | `lowsim_exc` | coords-only |
+| [*lowsimis*](#lowsimis2)  | sequence | never | LOW_SIMILARITY                  | <a name="lowsimis1"></a> internal region without significant similarity | `lowsim_exc` | coords-only |
+| [*extrant5*](#extrant52)  | sequence | never | EXTRA_SEQUENCE_START            | <a name="extrant51"></a> extra sequence detected 5' of expected sequence start | - | - |
+| [*extrant3*](#extrant32)  | sequence | never | EXTRA_SEQUENCE_END              | <a name="extrant31"></a> extra sequence detected 3' of expected sequence end | - | - |
+| [*nmiscftr*](#nmiscftr2)  | sequence | never | TOO_MANY_MISC_FEATURES          | <a name="nmiscftr1"></a> too many features reported as misc_features | - | - |
+| [*deletins*](#deletins2)  | sequence | never | DELETION_OF_FEATURE             | <a name="deletins1"></a> internal deletion of a complete feature | - | - |
+| [*mutstart*](#mutstart2)  | feature  | yes   | MUTATION_AT_START               | <a name="mutstart1"></a> expected start codon could not be identified |  - | - |
+| [*mutendcd*](#mutendcd2)  | feature  | yes   | MUTATION_AT_END                 | <a name="mutendcd1"></a> expected stop codon could not be identified, predicted CDS stop by homology is invalid |  - | - |
+| [*mutendns*](#mutendns2)  | feature  | yes   | MUTATION_AT_END                 | <a name="mutendns1"></a> expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon |  - | - |
+| [*mutendex*](#mutendex2)  | feature  | yes   | MUTATION_AT_END                 | <a name="mutendex1"></a> expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position | - | - |
+| [*unexleng*](#unexleng2)  | feature  | yes   | UNEXPECTED_LENGTH               | <a name="unexleng1"></a> length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 |  - | - |
+| [*cdsstopn*](#cdsstopn2)  | feature  | yes   | CDS_HAS_STOP_CODON              | <a name="cdsstopn1"></a> in-frame stop codon exists 5' of stop position predicted by homology to reference |  - | - |
+| [*cdsstopp*](#cdsstopp2)  | feature  | yes   | CDS_HAS_STOP_CODON              | <a name="cdsstopp1"></a> stop codon in protein-based alignment | - | - |
+| [*fsthicft*](#fsthicft2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_HIGH_CONF   | <a name="fsthicft1"></a> high confidence possible frameshift in CDS (frame not restored before end) (not reported if `--glsearch`| `fst_exc` | coords-only |
+| [*fsthicfi*](#fsthicfi2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_HIGH_CONF   | <a name="fsthicfi1"></a> high confidence possible frameshift in CDS (frame restored before end) (not reported if `--glsearch`)| `fst_exc` | coords-only |
+| [*fstukcf3*](#fstukcft2)  | feature  | yes   | POSSIBLE_FRAMESHIFT             | <a name="fstukcft1"></a> possible frameshift in CDS (frame not restored before end) (only reported if `--glsearch`) | `fst_exc` | coords-only |
+| [*fstukcfi*](#fstukcfi2)  | feature  | yes   | POSSIBLE_FRAMESHIFT             | <a name="fstukcfi1"></a> possible frameshift in CDS (frame restored before end) (only reported if `--glsearch`) | `fst_exc` | coords-only |
+| [*mutspst5*](#mutspst52)  | feature  | yes   | MUTATION_AT_SPLICE_SITE         | <a name="mutspst51"></a> expected splice site at 5' end of intron (GT) could not be identified (only reported for CDS with `canon_splice_sites` set to 1 in `.minfo` file) | - | - |
+| [*mutspst3*](#mutspst32)  | feature  | yes   | MUTATION_AT_SPLICE_SITE         | <a name="mutspst31"></a> expected splice site at 3' end of intron (AG) could not be identified (only reported for CDS with `canon_splice_sites` set to 1 in `.minfo` file) | - | - |
+| [*peptrans*](#peptrans2)  | feature  | yes   | PEPTIDE_TRANSLATION_PROBLEM     | <a name="peptrans1"></a> mat_peptide may not be translated because its parent CDS has a problem | - | - |
+| [*pepadjcy*](#pepadjcy2)  | feature  | yes   | PEPTIDE_ADJACENCY_PROBLEM       | <a name="pepadjcy1"></a> predictions of two mat_peptides expected to be adjacent are not adjacent | - | - |
+| [*indfantp*](#indfantp2)  | feature  | no    | INDEFINITE_ANNOTATION           | <a name="indfantp1"></a> protein-based search identifies CDS not identified in nucleotide-based search | - | - |
+| [*indfantn*](#indfantn2)  | feature  | no    | INDEFINITE_ANNOTATION           | <a name="indfantn1"></a> nucleotide-based search identifies CDS not identified in protein-based search |  - | - |
+| [*indf5gap*](#indf5gap2)  | feature  | yes   | INDEFINITE_ANNOTATION_START     | <a name="indf5gap1"></a> alignment to homology model is a gap at 5' boundary | - | - |
+| [*indf5lcn*](#indf5lcn2)  | feature  | yes   | INDEFINITE_ANNOTATION_START     | <a name="indf5lcn1"></a> alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS | - | - |
+| [*indf5plg*](#indf5plg2)  | feature  | yes   | INDEFINITE_ANNOTATION_START     | <a name="indf5plg1"></a> protein-based alignment extends past nucleotide-based alignment at 5' end |  - | - |
+| [*indf5pst*](#indf5pst2)  | feature  | yes   | INDEFINITE_ANNOTATION_START     | <a name="indf5pst1"></a> protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint |  - | - |
+| [*indf3gap*](#indf3gap2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3gap1"></a> alignment to homology model is a gap at 3' boundary |  - | - |
+| [*indf3lcn*](#indf3lcn2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3lcn1"></a> alignment to homology model has low confidence at 3' boundary for feature that does not match a CDS |  - | - |
+| [*indf3plg*](#indf3plg2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3plg1"></a> protein-based alignment extends past nucleotide-based alignment at 3' end |  - | - |
+| [*indf3pst*](#indf3pst2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3pst1"></a> protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint |  - | - |
+| [*indfstrp*](#indfstrp2)  | feature  | no    | INDEFINITE_STRAND               | <a name="indfstrp1"></a> strand mismatch between protein-based and nucleotide-based predictions | `indfstr_exc` | coords-only |
+| [*insertnp*](#insertnp2)  | feature  | no    | INSERTION_OF_NT                 | <a name="insertnp1"></a> too large of an insertion in protein-based alignment | `insertn_exc` | coords-value |
+| [*deletinp*](#deletinp2)  | feature  | yes   | DELETION_OF_NT                  | <a name="deletinp1"></a> too large of a deletion in protein-based alignment |   `deletin_exc` | coords-value |
+| [*deletinf*](#deletinf2)  | feature  | no    | DELETION_OF_FEATURE_SECTION     | <a name="deletinf1"></a> internal deletion of a complete section in a multi-section feature with other section(s) annotated | - | - |
+| [*lowsim5n*](#lowsim5n2)  | feature  | yes   | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5n1"></a> region overlapping annotated feature that does not match a CDS at 5' end of sequence lacks significant similarity | `lowsim_exc` | coords-only |
+| [*lowsim5l*](#lowsim5l2)  | feature  | no    | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5l1"></a> long region overlapping annotated feature that does not match a CDS at 5' end of sequence lacks significant similarity | `lowsim_exc` | coords-only |
+| [*lowsim3n*](#lowsim3n2)  | feature  | yes   | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3n1"></a> region overlapping annotated feature that does not match a CDS at 3' end of sequence lacks significant similarity | `lowsim_exc` | coords-only |
+| [*lowsim3l*](#lowsim3l2)  | feature  | no    | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3l1"></a> long region overlapping annotated feature that does not match a CDS at 3' end of sequence lacks significant similarity | `lowsim_exc` | coords-only |
+| [*lowsimin*](#lowsimin2)  | feature  | yes   | LOW_FEATURE_SIMILARITY          | <a name="lowsimin1"></a> region overlapping annotated feature that does not match a CDS lacks significant similarity  | `lowsim_exc` | coords-only |
+| [*lowsimil*](#lowsimil2)  | feature  | no    | LOW_FEATURE_SIMILARITY          | <a name="lowsimil1"></a> long region overlapping annotated feature that does not match a CDS lacks significant similarity  | `lowsim_exc` | coords-only |
+| [*lowsimil*](#lowsimil2)  | feature  | no    | LOW_FEATURE_SIMILARITY          | <a name="lowsimil1"></a> long region overlapping annotated feature that does not match a CDS lacks significant similarity  | `lowsim_exc` | coords-only |
 
 #### Description of alerts that are *non-fatal* by default <a name="nonfatal1"></a>
-| alert code | type  | causes `misc_feature`, not failure (if in modelinfo file) |short description/error name | long description |
-|------------|-------|-----------------------------------------------------------|-----------------------------|------------------|
-| [*qstsbgrp*](#qstsbgrp2)  | sequence | never | QUESTIONABLE_SPECIFIED_SUBGROUP | <a name="qstsbgrp1"></a> best overall model is not from specified subgroup  |
-| [*qstgroup*](#qstgroup2)  | sequence | never | QUESTIONABLE_SPECIFIED_GROUP    | <a name="qstgroup1"></a> best overall model is not from specified group  |
-| [*ambgnt5s*](#ambgnt5s2)  | sequence | never | AMBIGUITY_AT_START              | <a name="ambgnt5s1"></a> first nucleotide of the sequence is an ambiguous nucleotide |
-| [*ambgnt3s*](#ambgnt3s2)  | sequence | never | AMBIGUITY_AT_END                | <a name="ambgnt3s2"></a> final nucleotide of the sequence is an ambiguous nucleotide |
-| [*indfclas*](#indfclas2)  | sequence | never | INDEFINITE_CLASSIFICATION       | <a name="indfclas1"></a> low score difference between best overall model and second best model (not in best model's subgroup)  |
-| [*lowscore*](#lowscore2)  | sequence | never | LOW_SCORE                       | <a name="lowscore1"></a> score to homology model below low threshold |
-| [*biasdseq*](#biasdseq2)  | sequence | never | BIASED_SEQUENCE                 | <a name="biasdseq1"></a> high fraction of score attributed to biased sequence composition  |
-| [*unjoinbl*](#unjoinbl2)  | sequence | never | UNJOINABLE_SUBSEQ_ALIGNMENTS    | <a name="unjoinbl1"></a> inconsistent alignment of overlapping region between ungapped seed and flanking region |
-| [*deletina*](#deletina2)  | sequence | never | DELETION_OF_FEATURE             | <a name="deletina1"></a> allowed internal deletion of a complete feature (feature with `is_deletable` flag set to `1` in `.minfo` file) |
-| [*ambgntrp*](#ambgntrp2)  | sequence | never | N_RICH_REGION_NOT_REPLACED      | <a name="ambgntrp1"></a> N-rich region of unexpected length not replaced during N replacement region (only possibly reported if `-r`) |
-| [*fstlocft*](#fstlocft2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_LOW_CONF    | <a name="fstlocft1"></a> low confidence possible frameshift in CDS (frame not restored before end) (not reported if `--glsearch`)|
-| [*fstlocfi*](#fstlocfi2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_LOW_CONF    | <a name="fstlocfi1"></a> low confidence possible frameshift in CDS (frame restored before end) (not reported if `--glsearch`)|
-| [*indf5lcc*](#indf5lcc2)  | feature  | yes   | INDEFINITE_ANNOTATION_START     | <a name="indf5lcc1"></a> alignment to homology model has low confidence at 5' boundary for feature that is or matches a CDS |
-| [*indf3lcc*](#indf3lcc2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3lcc1"></a> alignment to homology model has low confidence at 3' boundary for feature that is or matches a CDS | 
-| [*insertnn*](#insertnn2)  | feature  | no    | INSERTION_OF_NT                 | <a name="insertnn1"></a> too large of an insertion in nucleotide-based alignment of CDS feature | 
-| [*deletinn*](#deletinn2)  | feature  | yes   | DELETION_OF_NT                  | <a name="deletinn1"></a> too large of a deletion in nucleotide-based alignment of CDS feature | 
-| [*lowsim5c*](#lowsim5c2)  | feature  | no    | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5c1"></a> region overlapping annotated feature that is or matches a CDS at 5' end of sequence lacks significant similarity |
-| [*lowsim3c*](#lowsim3c2)  | feature  | no    | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3c1"></a> region overlapping annotated feature that is or matches a CDS at 3' end of sequence lacks significant similarity | 
-| [*lowsimic*](#lowsimic2)  | feature  | no    | LOW_FEATURE_SIMILARITY          | <a name="lowsimic1"></a> region overlapping annotated feature that is or matches a CDS lacks significant similarity  |
-| [*ambgnt5f*](#ambgnt5f2)  | feature  | no    | AMBIGUITY_AT_FEATURE_START      | <a name="ambgnt5f1"></a> first nucleotide of non-CDS feature is an ambiguous nucleotide |
-| [*ambgnt3f*](#ambgnt3f2)  | feature  | no    | AMBIGUITY_AT_FEATURE_END        | <a name="ambgnt3f1"></a> final nucleotide of non-CDS feature is an ambiguous nucleotide |
-| [*ambgnt5c*](#ambgnt5c2)  | feature  | no    | AMBIGUITY_AT_CDS_START          | <a name="ambgnt5c1"></a> first nucleotide of CDS is an ambiguous nucleotide | 
-| [*ambgnt3c*](#ambgnt3c2)  | feature  | no    | AMBIGUITY_AT_CDS_END            | <a name="ambgnt3c1"></a> final nucleotide of CDS is an ambiguous nucleotide | 
-| [*ambgcd5c*](#ambgcd5c2)  | feature  | no    | AMBIGUITY_IN_START_CODON        | <a name="ambgcd5c1"></a> 5' complete CDS starts with canonical nt but includes ambiguous nt in its start codon |
-| [*ambgcd3c*](#ambgcd3c2)  | feature  | no    | AMBIGUITY_IN_STOP_CODON         | <a name="ambgcd3c1"></a> 3' complete CDS ends with canonical nt but includes ambiguous nt in its stop codon |
+| alert code | type  | causes `misc_feature`, not failure (if in modelinfo file) |short description/error name | long description | exception key (in modelinfo file) | exception value type |
+|------------|-------|-----------------------------------------------------------|-----------------------------|------------------|-----------------------------------|----------------------|
+| [*qstsbgrp*](#qstsbgrp2)  | sequence | never | QUESTIONABLE_SPECIFIED_SUBGROUP | <a name="qstsbgrp1"></a> best overall model is not from specified subgroup  | - | - |
+| [*qstgroup*](#qstgroup2)  | sequence | never | QUESTIONABLE_SPECIFIED_GROUP    | <a name="qstgroup1"></a> best overall model is not from specified group  | - | - |
+| [*ambgnt5s*](#ambgnt5s2)  | sequence | never | AMBIGUITY_AT_START              | <a name="ambgnt5s1"></a> first nucleotide of the sequence is an ambiguous nucleotide | - | - |
+| [*ambgnt3s*](#ambgnt3s2)  | sequence | never | AMBIGUITY_AT_END                | <a name="ambgnt3s2"></a> final nucleotide of the sequence is an ambiguous nucleotide | - | - |
+| [*indfclas*](#indfclas2)  | sequence | never | INDEFINITE_CLASSIFICATION       | <a name="indfclas1"></a> low score difference between best overall model and second best model (not in best model's subgroup)  | - | - |
+| [*lowscore*](#lowscore2)  | sequence | never | LOW_SCORE                       | <a name="lowscore1"></a> score to homology model below low threshold | - | - |
+| [*biasdseq*](#biasdseq2)  | sequence | never | BIASED_SEQUENCE                 | <a name="biasdseq1"></a> high fraction of score attributed to biased sequence composition  | - | - |
+| [*unjoinbl*](#unjoinbl2)  | sequence | never | UNJOINABLE_SUBSEQ_ALIGNMENTS    | <a name="unjoinbl1"></a> inconsistent alignment of overlapping region between ungapped seed and flanking region | - | - |
+| [*deletina*](#deletina2)  | sequence | never | DELETION_OF_FEATURE             | <a name="deletina1"></a> allowed internal deletion of a complete feature (feature with `is_deletable` flag set to `1` in `.minfo` file) | - | - |
+| [*ambgntrp*](#ambgntrp2)  | sequence | never | N_RICH_REGION_NOT_REPLACED      | <a name="ambgntrp1"></a> N-rich region of unexpected length not replaced during N replacement region (only possibly reported if `-r`) | - | - |
+| [*fstlocft*](#fstlocft2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_LOW_CONF    | <a name="fstlocft1"></a> low confidence possible frameshift in CDS (frame not restored before end) (not reported if `--glsearch`)| `fst_exc` | coords-only |
+| [*fstlocfi*](#fstlocfi2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_LOW_CONF    | <a name="fstlocfi1"></a> low confidence possible frameshift in CDS (frame restored before end) (not reported if `--glsearch`)| `fst_exc` | coords-only |
+| [*indf5lcc*](#indf5lcc2)  | feature  | yes   | INDEFINITE_ANNOTATION_START     | <a name="indf5lcc1"></a> alignment to homology model has low confidence at 5' boundary for feature that is or matches a CDS | - | - |
+| [*indf3lcc*](#indf3lcc2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3lcc1"></a> alignment to homology model has low confidence at 3' boundary for feature that is or matches a CDS |  - | - |
+| [*insertnn*](#insertnn2)  | feature  | no    | INSERTION_OF_NT                 | <a name="insertnn1"></a> too large of an insertion in nucleotide-based alignment of CDS feature | `insertn_exc` | coords-value |
+| [*deletinn*](#deletinn2)  | feature  | yes   | DELETION_OF_NT                  | <a name="deletinn1"></a> too large of a deletion in nucleotide-based alignment of CDS feature | `deletin_exc` | coords-value |
+| [*lowsim5c*](#lowsim5c2)  | feature  | no    | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5c1"></a> region overlapping annotated feature that is or matches a CDS at 5' end of sequence lacks significant similarity | `lowsim_exc` | coords-only |
+| [*lowsim3c*](#lowsim3c2)  | feature  | no    | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3c1"></a> region overlapping annotated feature that is or matches a CDS at 3' end of sequence lacks significant similarity | `lowsim_exc` | coords-only |
+| [*lowsimic*](#lowsimic2)  | feature  | no    | LOW_FEATURE_SIMILARITY          | <a name="lowsimic1"></a> region overlapping annotated feature that is or matches a CDS lacks significant similarity  |  `lowsim_exc` | coords-only |
+| [*ambgnt5f*](#ambgnt5f2)  | feature  | no    | AMBIGUITY_AT_FEATURE_START      | <a name="ambgnt5f1"></a> first nucleotide of non-CDS feature is an ambiguous nucleotide | - | - |
+| [*ambgnt3f*](#ambgnt3f2)  | feature  | no    | AMBIGUITY_AT_FEATURE_END        | <a name="ambgnt3f1"></a> final nucleotide of non-CDS feature is an ambiguous nucleotide | - | - |
+| [*ambgnt5c*](#ambgnt5c2)  | feature  | no    | AMBIGUITY_AT_CDS_START          | <a name="ambgnt5c1"></a> first nucleotide of CDS is an ambiguous nucleotide |  - | - |
+| [*ambgnt3c*](#ambgnt3c2)  | feature  | no    | AMBIGUITY_AT_CDS_END            | <a name="ambgnt3c1"></a> final nucleotide of CDS is an ambiguous nucleotide |  - | - |
+| [*ambgcd5c*](#ambgcd5c2)  | feature  | no    | AMBIGUITY_IN_START_CODON        | <a name="ambgcd5c1"></a> 5' complete CDS starts with canonical nt but includes ambiguous nt in its start codon | - | - |
+| [*ambgcd3c*](#ambgcd3c2)  | feature  | no    | AMBIGUITY_IN_STOP_CODON         | <a name="ambgcd3c1"></a> 3' complete CDS ends with canonical nt but includes ambiguous nt in its stop codon | - | - |
 
 ### Additional information on `v-annotate.pl` alerts <a name="alerts2"></a> 
 
