@@ -554,52 +554,6 @@ specific features* you can do that by modifying the `modelinfo` input
 file as explained [below](#mnf).
 
 ---
-## <a name="exampleparallel"></a>Example of using the `-p` option to parallelize `v-annotate.pl`
-
-The most time-consuming stages of `v-annotate.pl` (classification,
-coverage determination and alignment) can be parallelized on a cluster
-by splitting up the input sequence file randomly into multiple files,
-and running each as a separate job. This is most beneficial for large
-input sequence files. Parallel mode is invoked with the `-p` option.
-By default, `v-annotate.pl` will consult the file
-`$VADRSCRIPTSDIR/vadr.qsubinfo` to read the command prefix and suffix
-for submitting jobs to the cluster.  This file is set up to use Univa
-Grid Engine (UGE 8.5.5) and specific flags used on the NCBI system,
-but you can either modify this file to work with your own cluster or
-create a new file `<s>` and use the option `-q <s>` to read that file.
-The `$VADRSCRIPTSDIR/vadr.qsubinfo` has comments at the top that
-explain the format of the file. Email eric.nawrocki@nih.gov for help.
-
-To repeat the above `v-annotate.pl` run in parallel mode, use this command: 
-
-```
-v-annotate.pl -p $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-parallel-noro.9
-```
-
-The output will look very similar to the run without `-p`, but with additional lines of 
-output explaining that jobs have been submitted and are running on the compute farm:
-
-```
-# Submitting 1 cmscan classification job(s) to the farm                               ... 
-# Waiting a maximum of 500 minutes for all farm jobs to finish                        ... 
-#	   0 of    1 jobs finished (0.2 minutes spent waiting)
-#	   0 of    1 jobs finished (0.5 minutes spent waiting)
-#	   0 of    1 jobs finished (0.8 minutes spent waiting)
-#	   0 of    1 jobs finished (1.0 minutes spent waiting)
-#	   1 of    1 jobs finished (1.2 minutes spent waiting)
-# done. [   75.7 seconds]
-# Submitting 1 cmsearch coverage determination job(s) (NC_001959: 1 seqs) to the farm ... 
-# Waiting a maximum of 500 minutes for all farm jobs to finish                        ... 
-#	   1 of    1 jobs finished (0.2 minutes spent waiting)
-# done. [   15.2 seconds]
-```
-
-Usage of `-p` will not affect the output of `v-annotate.pl` other than
-these lines about the status of jobs, but it can make processing of
-large sequence files significantly faster depending on how busy the
-cluster is.
-
----
 ## `v-annotate.pl` command-line options<a name="options"></a>
 
 To get a list of command-line options, execute:
@@ -1463,6 +1417,24 @@ To repeat the above `v-annotate.pl` run in the [example usage section](#exampleu
 
 ```
 v-annotate.pl -p $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-parallel-noro.9
+```
+
+The output will look very similar to the run without `-p`, but with additional lines of 
+output explaining that jobs have been submitted and are running on the compute farm:
+
+```
+# Submitting 1 cmscan classification job(s) to the farm                               ... 
+# Waiting a maximum of 500 minutes for all farm jobs to finish                        ... 
+#	   0 of    1 jobs finished (0.2 minutes spent waiting)
+#	   0 of    1 jobs finished (0.5 minutes spent waiting)
+#	   0 of    1 jobs finished (0.8 minutes spent waiting)
+#	   0 of    1 jobs finished (1.0 minutes spent waiting)
+#	   1 of    1 jobs finished (1.2 minutes spent waiting)
+# done. [   75.7 seconds]
+# Submitting 1 cmsearch coverage determination job(s) (NC_001959: 1 seqs) to the farm ... 
+# Waiting a maximum of 500 minutes for all farm jobs to finish                        ... 
+#	   1 of    1 jobs finished (0.2 minutes spent waiting)
+# done. [   15.2 seconds]
 ```
 
 Usage of `-p` will not affect the output of `v-annotate.pl` other than
