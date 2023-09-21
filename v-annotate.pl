@@ -7232,7 +7232,12 @@ sub add_protein_validation_alerts {
   my @deletin_sgm_exc_AH  = (); # 1D array: per feature, 2D hash: key is coords segment, value is maximum allowed delete for that segment
   my @insertn_posn_exc_AH = (); # 1D array: per feature, 2D hash: key is model position, value is maximum allowed insert for that position
   my @deletin_posn_exc_AH = (); # 1D array: per feature, 2D hash: key is model position, value is maximum allowed delete for that position
-  vdr_CoordsToSegments($mdl_info_HR->{$alt_info_HHR->{"indfstrp"}{"exc_key"}}, \@indfstrp_exc_A, $FH_HR);
+  if(! opt_Get("--ignore_exc", $opt_HHR)) { 
+    if((defined $alt_info_HHR->{"indfstrp"}{"exc_key"}) && 
+       (defined $mdl_info_HR->{$alt_info_HHR->{"indfstrp"}{"exc_key"}})) { 
+      vdr_CoordsToSegments($mdl_info_HR->{$alt_info_HHR->{"indfstrp"}{"exc_key"}}, \@indfstrp_exc_A, $FH_HR);
+    }
+  }
   if(! $do_pv_hmmer) { 
     for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       %{$insertn_sgm_exc_AH[$ftr_idx]}  = ();
@@ -7415,23 +7420,21 @@ sub add_protein_validation_alerts {
                   # check for indfstrp: strand mismatch failure
                   if($n_strand ne $p_strand) { 
                     my $exempted_region = 0; # set to '1' if an exception exempts the indfstrp alert
+                    my $exc_coords = undef;
                     # first calculate model coords, this is calc'ed same way regardless of value of $p_blastx_feature_flag
                     $alt_mcoords = "mdl:";
                     if((defined $p_hstart) && (defined $p_hstop)) { 
                       # always create in + strand first, vdr_CoordsProteinRelativeToAbsolute requires it
-                      my $tmp_alt_mcoords = vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, vdr_CoordsSegmentCreate($p_hstart, $p_hstop, "+", $FH_HR), $FH_HR);
-                      # always check for exceptions in + strand
-                      foreach my $exc_coords (@indfstrp_exc_A) { 
-                        if(vdr_CoordsCheckIfSpans($exc_coords, $tmp_alt_mcoords, $FH_HR)) { 
+                      my $tmp_pos_alt_mcoords = vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, vdr_CoordsSegmentCreate($p_hstart, $p_hstop, "+", $FH_HR), $FH_HR);
+                      my $tmp_neg_alt_mcoords = vdr_CoordsReverseComplement($tmp_pos_alt_mcoords, 0, $FH_HR); # 0: don't do carrots
+                      # always check for exceptions in + and - strand
+                      foreach $exc_coords (@indfstrp_exc_A) { 
+                        if((vdr_CoordsCheckIfSpans($exc_coords, $tmp_pos_alt_mcoords, $FH_HR)) || 
+                           (vdr_CoordsCheckIfSpans($exc_coords, $tmp_neg_alt_mcoords, $FH_HR))) { 
                           $exempted_region = 1;
                         }
                       }
-                      if($p_strand eq "+") { # just append
-                        $alt_mcoords .= $tmp_alt_mcoords . ";";
-                      }
-                      else { # append rev comp
-                        $alt_mcoords .= vdr_CoordsReverseComplement($tmp_alt_mcoords, 0, $FH_HR) . ";"; # 0: don't do carrots
-                      }
+                      $alt_mcoords .= (($p_strand eq "+") ? $tmp_pos_alt_mcoords : $tmp_neg_alt_mcoords) . ";";
                     }
                     else { 
                       $alt_mcoords .= "VADRNULL;";
@@ -7538,7 +7541,6 @@ sub add_protein_validation_alerts {
                                                                                                         vdr_CoordsSinglePositionSegmentCreate($p_ins_spos_A[$ins_idx], "+", $FH_HR),
                                                                                                         $FH_HR), $FH_HR);
                         my $local_xmaxins = defined ($insertn_posn_exc_AH[$ftr_idx]{$nt_ins_spos}) ? $insertn_posn_exc_AH[$ftr_idx]{$nt_ins_spos} : $xmaxins;
-                        printf("HEYA local_xmaxins: $local_xmaxins for position p_ins_spos_A[$ins_idx]: %d nt_ins_spos: $nt_ins_spos\n", $p_ins_spos_A[$ins_idx]);
                         if($p_ins_len_A[$ins_idx] > $local_xmaxins) { 
                           if(defined $alt_str_HH{$ftr_results_prefix}{"insertnp"}) { $alt_str_HH{$ftr_results_prefix}{"insertnp"} .= ":VADRSEP:"; } # we are adding another instance
                           else                               { $alt_str_HH{$ftr_results_prefix}{"insertnp"}  = ""; } # initialize
@@ -7639,9 +7641,9 @@ sub add_protein_validation_alerts {
               my %nalt_H       = ();
               my %nalt_fatal_H = ();
               foreach my $ftr_results_prefix ("p_", "pl_", "pc_") { 
+                $nalt_H{$ftr_results_prefix} = 0;
+                $nalt_fatal_H{$ftr_results_prefix} = 0;
                 if(defined $alt_str_HH{$ftr_results_prefix}) { 
-                  $nalt_H{$ftr_results_prefix} = 0;
-                  $nalt_fatal_H{$ftr_results_prefix} = 0;
                   foreach $alt_code (sort keys %{$alt_str_HH{$ftr_results_prefix}}) { 
                     my @alt_str_A = split(":VADRSEP:", $alt_str_HH{$ftr_results_prefix}{$alt_code});
                     my $nalt = scalar(@alt_str_A);
