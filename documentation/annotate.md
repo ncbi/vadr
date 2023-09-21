@@ -1285,10 +1285,10 @@ info file. In this case, `dupregin_exc` is the *exception key* and
 exception to match the strand of the alert, and for negative strand,
 the start position is greater than the stop position. To exclude
 positions 100 to 37 on the negative strand the exception value would
-be `100..37:-". If you are able to have `v-annotate.pl` output an
+be `"100..37:-"`. If you are able to have `v-annotate.pl` output an
 an alert that you want to make an exception for using a test
-sequence, you can check the `mdl coords` field of the [`.alt` output
-file](formats.md#alt) to determine the relevant model coordinates for
+sequence, you can check the `mdl coords` field of the [`.alt` output file](formats.md#alt)
+to determine the relevant model coordinates for
 the exception value. 
 
 The table below lists all alert codes for which exceptions are allowed
