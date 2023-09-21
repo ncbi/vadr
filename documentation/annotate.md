@@ -1332,18 +1332,18 @@ exceptions in that region. For example, a `indfstr_exc`
 exception will prevent reporting of both *indfstrn* and *indfstrp* in
 the region specified.
 
-There are two types of alert `exception value types`, differentiated by the required format
+There are two types of alert 'exception value types', differentiated by the required format
 of the value string in the model info file:
 
-1. `coords-only` exception keys have value strings that are [VADR
+1. 'coords-only' exception keys have value strings that are [VADR
 coordinate (`coords`) strings](formats.md#coords). Our previous
-example of `dupregin` exception is an example of a `coords-only`
+example of *dupregin* exception is an example of a 'coords-only'
 exception. If you want to allow exceptions for multiple regions, they 
 be separated by commas, for example to additionally exclude
 positions `181` to `333` the string to add would be
 `dupregin_exc:"37..100:+,181..333:+"`.
 
-2. `coords-value` exception keys have value strings that are [VADR
+2. 'coords-value' exception keys have value strings that are [VADR
 coordinate (`coords`) strings](formats.md#coords) appended with
 `:<d>`, where `<d>` is a number relevant to the alert. For example, to
 increase the maximum allowed insertion length without a `insertnn` or
