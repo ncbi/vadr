@@ -1281,38 +1281,50 @@ the repeat region to be reported. To ignore (and not report) any
 `100` on the top (`+`) strand, add the string
 `dupregin_exc:"37..100:+"` to the relevant `MODEL` line of the model
 info file. In this case, `dupregin_exc` is the *exception key* and
-`"37..100:+"` is the *exception value*.
+`"37..100:+"` is the *exception value*. You'll want the strand of the
+exception to match the strand of the alert, and for negative strand,
+the start position is greater than the stop position. To exclude
+positions 100 to 37 on the negative strand the exception value would
+be `100..37:-". If you are able to have `v-annotate.pl` output an
+an alert that you want to make an exception for using a test
+sequence, you can check the `mdl coords` field of the [`.alt` output
+file](formats.md#alt) to determine the relevant model coordinates for
+the exception value. 
 
 The table below lists all alert codes for which exceptions are allowed
-along with their specific exception keys and value types:
+along with their specific exception keys and value types, and whether
+they pertain to a specific feature and should be added to the
+corresponding feature line (lines starting with
+`FEATURE`) in the model info file or are not specific to a feature and
+should be added to the model line (line starting with `MODEL`).:
 
-| alert code   | short description              | exception key   | exception value type | 
-|--------------|--------------------------------|-----------------|----------------------|
-| *dupregin*   | DUPLICATE_REGIONS              | `dupregin_exc`  | coords-only          | 
-| *indfstrn*   | INDEFINITE_STRAND              | `indfstr_exc`   | coords-only          | 
-| *indfstrp*   | INDEFINITE_STRAND              | `indfstr_exc`   | coords-only          | 
-| *insertnp*   | INSERTION_OF_NT                | `insertn_exc`   | coords-value         | 
-| *insertnn*   | INSERTION_OF_NT                | `insertn_exc`   | coords-value         | 
-| *deletinn*   | DELETION_OF_NT                 | `deletin_exc`   | coords-value         | 
-| *deletinp*   | DELETION_OF_NT                 | `deletin_exc`   | coords-value         | 
-| *lowsim5s*   | LOW_SIMILARITY_START           | `lowsim_exc`    | coords-only          | 
-| *lowsim3s*   | LOW_SIMILARITY_END             | `lowsim_exc`    | coords-only          | 
-| *lowsimis*   | LOW_SIMILARITY                 | `lowsim_exc`    | coords-only          | 
-| *lowsim5n*   | LOW_FEATURE_SIMILARITY_START   | `lowsim_exc`    | coords-only          | 
-| *lowsim5l*   | LOW_FEATURE_SIMILARITY_START   | `lowsim_exc`    | coords-only          | 
-| *lowsim3n*   | LOW_FEATURE_SIMILARITY_END     | `lowsim_exc`    | coords-only          | 
-| *lowsim3l*   | LOW_FEATURE_SIMILARITY_END     | `lowsim_exc`    | coords-only          | 
-| *lowsimin*   | LOW_FEATURE_SIMILARITY         | `lowsim_exc`    | coords-only          | 
-| *lowsimil*   | LOW_FEATURE_SIMILARITY         | `lowsim_exc`    | coords-only          | 
-| *lowsim5c*   | LOW_FEATURE_SIMILARITY_START   | `lowsim_exc`    | coords-only          | 
-| *lowsim3c*   | LOW_FEATURE_SIMILARITY_END     | `lowsim_exc`    | coords-only          | 
-| *lowsimic*   | LOW_FEATURE_SIMILARITY         | `lowsim_exc`    | coords-only          | 
-| *fsthicft*   | POSSIBLE_FRAMESHIFT_HIGH_CONF  | `fst_exc`       | coords-only          |
-| *fsthicfi*   | POSSIBLE_FRAMESHIFT_HIGH_CONF  | `fst_exc`       | coords-only          | 
-| *fstukcft*   | POSSIBLE_FRAMESHIFT            | `fst_exc`       | coords-only          | 
-| *fstukcfi*   | POSSIBLE_FRAMESHIFT            | `fst_exc`       | coords-only          | 
-| *fstlocft*   | POSSIBLE_FRAMESHIFT_LOW_CONF   | `fst_exc`       | coords-only          | 
-| *fstlocfi*   | POSSIBLE_FRAMESHIFT_LOW_CONF   | `fst_exc`       | coords-only          | 
+| alert code   | short description              | exception key   | exception value type | model info file line type |
+|--------------|--------------------------------|-----------------|----------------------|---------------------------
+| *dupregin*   | DUPLICATE_REGIONS              | `dupregin_exc`  | coords-only          | model |
+| *indfstrn*   | INDEFINITE_STRAND              | `indfstr_exc`   | coords-only          | model | 
+| *indfstrp*   | INDEFINITE_STRAND              | `indfstr_exc`   | coords-only          | model | 
+| *insertnp*   | INSERTION_OF_NT                | `insertn_exc`   | coords-value         | feature (CDS)| 
+| *insertnn*   | INSERTION_OF_NT                | `insertn_exc`   | coords-value         | feature (CDS)| 
+| *deletinn*   | DELETION_OF_NT                 | `deletin_exc`   | coords-value         | feature (CDS)| 
+| *deletinp*   | DELETION_OF_NT                 | `deletin_exc`   | coords-value         | feature (CDS)| 
+| *lowsim5s*   | LOW_SIMILARITY_START           | `lowsim_exc`    | coords-only          | model | 
+| *lowsim3s*   | LOW_SIMILARITY_END             | `lowsim_exc`    | coords-only          | model |
+| *lowsimis*   | LOW_SIMILARITY                 | `lowsim_exc`    | coords-only          | model |
+| *lowsim5n*   | LOW_FEATURE_SIMILARITY_START   | `lowsim_exc`    | coords-only          | model | 
+| *lowsim5l*   | LOW_FEATURE_SIMILARITY_START   | `lowsim_exc`    | coords-only          | model |
+| *lowsim3n*   | LOW_FEATURE_SIMILARITY_END     | `lowsim_exc`    | coords-only          | model |
+| *lowsim3l*   | LOW_FEATURE_SIMILARITY_END     | `lowsim_exc`    | coords-only          | model |
+| *lowsimin*   | LOW_FEATURE_SIMILARITY         | `lowsim_exc`    | coords-only          | model |
+| *lowsimil*   | LOW_FEATURE_SIMILARITY         | `lowsim_exc`    | coords-only          | model |
+| *lowsim5c*   | LOW_FEATURE_SIMILARITY_START   | `lowsim_exc`    | coords-only          | model |
+| *lowsim3c*   | LOW_FEATURE_SIMILARITY_END     | `lowsim_exc`    | coords-only          | model |
+| *lowsimic*   | LOW_FEATURE_SIMILARITY         | `lowsim_exc`    | coords-only          | model |
+| *fsthicft*   | POSSIBLE_FRAMESHIFT_HIGH_CONF  | `fst_exc`       | coords-only          | feature (CDS)|
+| *fsthicfi*   | POSSIBLE_FRAMESHIFT_HIGH_CONF  | `fst_exc`       | coords-only          | feature (CDS)|
+| *fstukcft*   | POSSIBLE_FRAMESHIFT            | `fst_exc`       | coords-only          | feature (CDS)|
+| *fstukcfi*   | POSSIBLE_FRAMESHIFT            | `fst_exc`       | coords-only          | feature (CDS)|
+| *fstlocft*   | POSSIBLE_FRAMESHIFT_LOW_CONF   | `fst_exc`       | coords-only          | feature (CDS)|
+| *fstlocfi*   | POSSIBLE_FRAMESHIFT_LOW_CONF   | `fst_exc`       | coords-only          | feature (CDS)|
 
 If you specify a given exception key and value in the model info file,
 it will mean that all alerts with that specific key will have
