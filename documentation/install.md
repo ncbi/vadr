@@ -372,9 +372,13 @@ and it is recommended to use the `-s` and `--glsearch` options with `v-annotate.
 ---
 ## Further information
 
-* [`v-annotate.pl` example usage and command-line options](annotate.md#top)
 * [`v-build.pl` example usage and command-line options](build.md#top)
-* [VADR output formats](formats.md#top)
+* [`v-annotate.pl` example usage, command-line options and alert information](annotate.md#top)
+* [Explanations and examples of `v-annotate.pl` detailed alert and error messages](alerts.md#top)
+* [VADR output file formats](formats.md#top)
+* [Available VADR model files (github wiki)](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files)
+* [SARS-CoV-2 annotation (github wiki)](https://github.com/ncbi/vadr/wiki/Coronavirus-annotation)
+* [Development notes and instructions (github wiki)](https://github.com/ncbi/vadr/wiki/Development-notes-and-instructions)
 
 ---
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
