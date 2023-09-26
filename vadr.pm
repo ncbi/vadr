@@ -5900,7 +5900,7 @@ sub vdr_CmalignCheckStdOutput {
     # job did NOT finish successfully, check for mx overflow error
     my $error_line = `grep ^Error $stdout_file | tail -n 1`;
     if($error_line =~ m/\r$/) { chop $error_line; } # remove ^M if it exists
-    if($error_line =~ /Error: .+ alignment mxes need (\d+\.\d+)/) { 
+    if($error_line =~ /Error: .+ mxes need (\d+\.\d+)/) { 
       if(defined $ret_mxsize_R) { 
         $$ret_mxsize_R = $1;
       }
