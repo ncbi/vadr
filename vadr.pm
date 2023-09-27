@@ -7039,8 +7039,6 @@ sub vdr_BackwardsCompatibilityExceptions {
 
   my ($mdl_info_HR, $ftr_info_AHR, $alt_info_HHR, $FH_HR) = @_;
   
-  printf("HEYA in $sub_name\n");
-  
   if(! defined $mdl_info_HR->{"length"}) { 
     ofile_FAIL("ERROR in $sub_name, model length undefined", 1, $FH_HR);
   }
