@@ -11,7 +11,7 @@ ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similar
 ERROR: LOW_SIMILARITY_END: (*sequence*) significant similarity not detected at 3' end of the sequence [low similarity region of length 2856]; seq-coords:1285..4140:+; mdl-coords:-; mdl:NC_001959;
 ERROR: LOW_SIMILARITY_START: (*sequence*) significant similarity not detected at 5' end of the sequence [low similarity region of length 235]; seq-coords:1..235:+; mdl-coords:-; mdl:NC_001959;
 ERROR: LOW_SIMILARITY: (*sequence*) internal region without significant similarity [low similarity region of length 803]; seq-coords:371..1173:+; mdl-coords:-; mdl:NC_001959;
-ERROR: UNEXPECTED_DIVERGENCE: (*sequence*) sequence is too divergent to confidently assign nucleotide-based annotation [required matrix size: 26.12 Mb]; seq-coords:-; mdl-coords:-; mdl:NC_001959;
+ERROR: UNEXPECTED_DIVERGENCE: (*sequence*) sequence is too divergent to confidently assign nucleotide-based annotation [required matrix size: 26.1 Mb]; seq-coords:-; mdl-coords:-; mdl:NC_001959;
 ERROR: INDEFINITE_ANNOTATION: (CDS:nonstructural polyprotein) protein-based search identifies CDS not identified in nucleotide-based search [raw_score:2064]; seq-coords:5..1687:+; mdl-coords:3692..5371:+; mdl:NC_001959;
 ERROR: INDEFINITE_ANNOTATION: (CDS:VP1) protein-based search identifies CDS not identified in nucleotide-based search [raw_score:1138]; seq-coords:1674..3284:+; mdl-coords:5358..6926:+; mdl:NC_001959;
 ERROR: INDEFINITE_ANNOTATION: (CDS:VP2) protein-based search identifies CDS not identified in nucleotide-based search [raw_score:299]; seq-coords:3341..4051:+; mdl-coords:6995..7582:+; mdl:NC_001959;
@@ -28,7 +28,7 @@ ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similar
 ERROR: LOW_SIMILARITY_END: (*sequence*) significant similarity not detected at 3' end of the sequence [low similarity region of length 2856]; seq-coords:1285..4140:+; mdl-coords:-; mdl:NC_001959;
 ERROR: LOW_SIMILARITY_START: (*sequence*) significant similarity not detected at 5' end of the sequence [low similarity region of length 235]; seq-coords:1..235:+; mdl-coords:-; mdl:NC_001959;
 ERROR: LOW_SIMILARITY: (*sequence*) internal region without significant similarity [low similarity region of length 803]; seq-coords:371..1173:+; mdl-coords:-; mdl:NC_001959;
-ERROR: UNEXPECTED_DIVERGENCE: (*sequence*) sequence is too divergent to confidently assign nucleotide-based annotation [required matrix size: 26.12 Mb]; seq-coords:-; mdl-coords:-; mdl:NC_001959;
+ERROR: UNEXPECTED_DIVERGENCE: (*sequence*) sequence is too divergent to confidently assign nucleotide-based annotation [required matrix size: 26.1 Mb]; seq-coords:-; mdl-coords:-; mdl:NC_001959;
 ERROR: INDEFINITE_ANNOTATION: (CDS:nonstructural polyprotein) protein-based search identifies CDS not identified in nucleotide-based search [raw_score:2064]; seq-coords:5..1687:+; mdl-coords:3692..5371:+; mdl:NC_001959;
 ERROR: INDEFINITE_ANNOTATION: (CDS:VP1) protein-based search identifies CDS not identified in nucleotide-based search [raw_score:1138]; seq-coords:1674..3284:+; mdl-coords:5358..6926:+; mdl:NC_001959;
 ERROR: INDEFINITE_ANNOTATION: (CDS:VP2) protein-based search identifies CDS not identified in nucleotide-based search [raw_score:299]; seq-coords:3341..4051:+; mdl-coords:6995..7582:+; mdl:NC_001959;

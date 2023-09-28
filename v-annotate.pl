@@ -4983,7 +4983,7 @@ sub add_frameshift_alerts_for_one_sequence {
       }
       if((defined $alt_info_HHR->{"fstukcft"}{"exc_key"}) && 
          (defined $ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"fstukcft"}{"exc_key"}})) { 
-        vdr_CoordsToSegments($ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"fstukcft"}{"exc_key"}}, \%{$fst_exc_AA[$ftr_idx]}, $FH_HR);
+        vdr_CoordsToSegments($ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"fstukcft"}{"exc_key"}}, \@{$fst_exc_AA[$ftr_idx]}, $FH_HR);
         # all $alt_info_HH{"fst*"} should be the same, so any one could be passed in line above
       }    
     }
