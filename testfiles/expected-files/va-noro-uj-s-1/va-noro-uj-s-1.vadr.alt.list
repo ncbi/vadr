@@ -1,5 +1,5 @@
 #sequence	model	feature-type	feature-name	error	seq-coords	mdl-coords	error-description
-NC_001959/1-5000,5230-7654	NC_001959	-	*sequence*	UNEXPECTED_DIVERGENCE	-	-	sequence is too divergent to confidently assign nucleotide-based annotation [required matrix size: 1.81 Mb]
+NC_001959/1-5000,5230-7654	NC_001959	-	*sequence*	UNEXPECTED_DIVERGENCE	-	-	sequence is too divergent to confidently assign nucleotide-based annotation [required matrix size: 1.8 Mb]
 NC_001959/1-5000,5230-7654	NC_001959	CDS	nonstructural polyprotein	INDEFINITE_ANNOTATION	5..4999:+	5..4999:+	protein-based search identifies CDS not identified in nucleotide-based search [raw_score:9003]
 NC_001959/1-5000,5230-7654	NC_001959	CDS	VP1	INDEFINITE_ANNOTATION	5129..6718:+	5358..6947:+	protein-based search identifies CDS not identified in nucleotide-based search [raw_score:2789]
 NC_001959/1-5000,5230-7654	NC_001959	CDS	VP2	INDEFINITE_ANNOTATION	6721..7356:+	6950..7585:+	protein-based search identifies CDS not identified in nucleotide-based search [raw_score:1096]

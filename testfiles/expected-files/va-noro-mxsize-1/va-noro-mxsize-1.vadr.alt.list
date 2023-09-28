@@ -1,7 +1,7 @@
 #sequence	model	feature-type	feature-name	error	seq-coords	mdl-coords	error-description
 gi|924919779|gb|KR052021.1|	NC_001959	-	*sequence*	LOW_COVERAGE	1..3:+,3661..4140:+	-	low sequence fraction with significant similarity to homology model [0.883<0.900]
 gi|924919779|gb|KR052021.1|	NC_001959	-	*sequence*	LOW_SIMILARITY_END	3661..4140:+	-	significant similarity not detected at 3' end of the sequence [low similarity region of length 480]
-gi|924919779|gb|KR052021.1|	NC_001959	-	*sequence*	UNEXPECTED_DIVERGENCE	-	-	sequence is too divergent to confidently assign nucleotide-based annotation [required matrix size: 26.12 Mb]
+gi|924919779|gb|KR052021.1|	NC_001959	-	*sequence*	UNEXPECTED_DIVERGENCE	-	-	sequence is too divergent to confidently assign nucleotide-based annotation [required matrix size: 26.1 Mb]
 gi|924919779|gb|KR052021.1|	NC_001959	CDS	nonstructural polyprotein	INDEFINITE_ANNOTATION	5..1687:+	3692..5371:+	protein-based search identifies CDS not identified in nucleotide-based search [raw_score:2064]
 gi|924919779|gb|KR052021.1|	NC_001959	CDS	VP1	INDEFINITE_ANNOTATION	1674..3284:+	5358..6926:+	protein-based search identifies CDS not identified in nucleotide-based search [raw_score:1138]
 gi|924919779|gb|KR052021.1|	NC_001959	CDS	VP2	INDEFINITE_ANNOTATION	3341..4051:+	6995..7582:+	protein-based search identifies CDS not identified in nucleotide-based search [raw_score:299]
