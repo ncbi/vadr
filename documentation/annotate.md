@@ -689,6 +689,10 @@ User's Guide manual page for `cmalign` (section 8 of http://eddylab.org/infernal
 | `--nosub`           | use alternative alignment strategy for truncated sequences (removes the `cmalign --sub --notrunc` options), default is use sub-CM alignment strategy with `cmalign --sub --notrunc` |
 | `--noglocal`        | run in local mode instead of glocal mode (removes the `cmalign -g` option), default is to use glocal mode with `cmalign -g` |
 | `--cmindi`          | force cmalign to align one sequence at a time, mainly useful for debugging |
+| `--noflank`         | do not use flank* options to improve alignments at 5' and 3' ends |
+| `--flanktoins <x>`  | set CM transition probabilities to `ROOT_IL` and `ROOT_IR` that insert before first and after final reference position to `<x>`, default `<x>` is 0.1 |
+| `--flankselfins <x>`| set CM self-transition probabilities in `ROOT_IL` and `ROOT_IR` that insert before first and after final reference position to `<x>`, default `<x>` is 0.8 |
+
 ---
 
 ### `v-annotate.pl` options for controlling glsearch alignment stage as alternative to cmalign

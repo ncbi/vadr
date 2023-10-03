@@ -300,13 +300,16 @@ opt_Add("--xlonescore",  "integer",  80,        $g,   undef,"--pv_skip,--pv_hmme
 opt_Add("--hlonescore",  "integer",  10,        $g,"--pv_hmmer","--pv_skip",        "indfantp/INDEFINITE_ANNOTATION min score for a hmmer hit not supported by CM analysis is <n>",     "indfantp/INDEFINITE_ANNOTATION min score for a hmmer hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling cmalign alignment stage";
-#        option               type default group  requires incompat   preamble-output                                                                help-output    
-opt_Add("--mxsize",     "integer", 16000,     $g,    undef,"--glsearch", "set max allowed memory for cmalign to <n> Mb",                                 "set max allowed memory for cmalign to <n> Mb", \%opt_HH, \@opt_order_A);
-opt_Add("--tau",        "real",    1E-3,      $g,    undef,"--glsearch", "set the initial tau value for cmalign to <x>",                                 "set the initial tau value for cmalign to <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--nofixedtau", "boolean", 0,         $g,    undef,"--glsearch", "do not fix the tau value when running cmalign, allow it to increase if nec",   "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
-opt_Add("--nosub",      "boolean", 0,         $g,    undef,"--glsearch", "use alternative alignment strategy for truncated sequences",                   "use alternative alignment strategy for truncated sequences", \%opt_HH, \@opt_order_A);
-opt_Add("--noglocal",   "boolean", 0,         $g,"--nosub","--glsearch", "do not run cmalign in glocal mode (run in local mode)",                        "do not run cmalign in glocal mode (run in local mode)", \%opt_HH, \@opt_order_A);
-opt_Add("--cmindi",     "boolean", 0,         $g,    undef, "--nkb,--glsearch", "force cmalign to align one seq at a time",                              "force cmalign to align on seq at a time", \%opt_HH, \@opt_order_A);
+#        option               type   default group  requires incompat   preamble-output                                                                help-output    
+opt_Add("--mxsize",       "integer", 16000,     $g,    undef,"--glsearch", "set max allowed memory for cmalign to <n> Mb",                                 "set max allowed memory for cmalign to <n> Mb", \%opt_HH, \@opt_order_A);
+opt_Add("--tau",          "real",    1E-3,      $g,    undef,"--glsearch", "set the initial tau value for cmalign to <x>",                                 "set the initial tau value for cmalign to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--nofixedtau",   "boolean", 0,         $g,    undef,"--glsearch", "do not fix the tau value when running cmalign, allow it to increase if nec",   "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
+opt_Add("--nosub",        "boolean", 0,         $g,    undef,"--glsearch", "use alternative alignment strategy for truncated sequences",                   "use alternative alignment strategy for truncated sequences", \%opt_HH, \@opt_order_A);
+opt_Add("--noglocal",     "boolean", 0,         $g,"--nosub","--glsearch", "do not run cmalign in glocal mode (run in local mode)",                        "do not run cmalign in glocal mode (run in local mode)", \%opt_HH, \@opt_order_A);
+opt_Add("--cmindi",       "boolean", 0,         $g,    undef, "--nkb,--glsearch", "force cmalign to align one seq at a time",                              "force cmalign to align on seq at a time", \%opt_HH, \@opt_order_A);
+opt_Add("--noflank",      "boolean", 0,         $g,    undef, undef,       "do not use --flank* options to improve alns at ends",                          "do not use --flank* options to improve alns at ends", \%opt_HH, \@opt_order_A);
+opt_Add("--flanktoins",   "real",    0.1,       $g,    undef, "--noflank", "set transition probs to ROOT_IL/IR for cmalign to <x>",                        "set transition probs to ROOT_IL/IR for cmalign to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--flankselfins", "real",    0.8,       $g,    undef, "--noflank", "set self-transit probs in ROOT_IL/IR for cmalign to <x>",                      "set self-transit probs in ROOT_IL/IR for cmalign to <x>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling glsearch alignment stage as alternative to cmalign";
 #        option               type default group  requires incompat   preamble-output                                                                help-output    
@@ -511,12 +514,15 @@ my $options_okay =
                 'xlonescore=s'  => \$GetOptions_H{"--xlonescore"},
                 'hlonescore=s'  => \$GetOptions_H{"--hlonescore"},
 # options for controlling cmalign alignment stage 
-                'mxsize=s'      => \$GetOptions_H{"--mxsize"},
-                'tau=s'         => \$GetOptions_H{"--tau"},
-                'nofixedtau'    => \$GetOptions_H{"--nofixedtau"},
-                'nosub'         => \$GetOptions_H{"--nosub"},
-                'noglocal'      => \$GetOptions_H{"--noglocal"},
-                'cmindi'        => \$GetOptions_H{"--cmindi"},
+                'mxsize=s'       => \$GetOptions_H{"--mxsize"},
+                'tau=s'          => \$GetOptions_H{"--tau"},
+                'nofixedtau'     => \$GetOptions_H{"--nofixedtau"},
+                'nosub'          => \$GetOptions_H{"--nosub"},
+                'noglocal'       => \$GetOptions_H{"--noglocal"},
+                'cmindi'         => \$GetOptions_H{"--cmindi"},
+                'noflank'        => \$GetOptions_H{"--noflank"}, 
+                'flanktoins=s'   => \$GetOptions_H{"--flanktoins"}, 
+                'flankselfins=s' => \$GetOptions_H{"--flankselfins"}, 
 # options for controlling glsearch alignment stage 
                 'glsearch'       => \$GetOptions_H{"--glsearch"},
                 'gls_match=s'    => \$GetOptions_H{"--gls_match"},
@@ -4052,6 +4058,13 @@ sub cmalign_or_glsearch_run {
     }
     if(! opt_Get("--nofixedtau", $opt_HHR)) { 
       $opts .= " --fixedtau"; 
+    }
+    if(! opt_Get("--nofixedtau", $opt_HHR)) { 
+      $opts .= " --fixedtau"; 
+    }
+    if(! opt_Get("--noflank", $opt_HHR)) { 
+      $opts .= " --flanktoins "   . opt__Get("--flanktoins", $opt_HHR); 
+      $opts .= " --flankselfins " . opt__Get("--flankselfins", $opt_HHR); 
     }
     if(defined $mdl_name) { 
       $cmd = $execs_HR->{"cmfetch"} . " $mdl_file $mdl_name | " . $execs_HR->{"cmalign"} . " $opts - $seq_file > $stdout_file 2>&1";
