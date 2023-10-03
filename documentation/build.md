@@ -335,6 +335,7 @@ User's Guide manual page for `cmbuild` (section 8 of http://eddylab.org/infernal
 | `--cmere` | set CM relative entropy target bits to position to `<x>` (sets the `cmbuild --ere <x>` option), default is to use default `cmbuild` value |
 | `--cmeset` | set CM effective sequence number to '<x>` (sets the `cmbuild --eset <x>` option), default is to use default `cmbuild` value | 
 | `--cmemaxseq` | set CM maximum allowed effective sequence # for CM to `<x>` (sets the `cmbuild --emaxseq <x>` option) | 
+| `--cmnoh3pri` | do not use `--noh3pri` option with `cmbuild`, to allow CM to use prior from HMMER3 for zero basepair models |
 | `--cminfile` | read `cmbuild` options from an input file `<s>`, the contents of the file (after removing newlines) will be supplied directly to `cmbuild` as an options string (possibly with more than one option separated by whitespace) |
 
 ### `v-build.pl` options for skipping stages<a name="options-skip"></a>
