@@ -891,7 +891,7 @@ sub vdr_FeatureInfoValidateAlternativeFeatureSet {
   }
 
   if($fail_str ne "") { 
-    ofile_FAIL("ERROR in $sub_name, some is_deletable values are invalid or don't make sense:\n$fail_str\n", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, some alternative_ftr_set values are invalid or don't make sense:\n$fail_str\n", 1, $FH_HR);
   }
 
   return $ret_val;
@@ -7059,7 +7059,6 @@ sub vdr_BackwardsCompatibilityExceptions {
     # and update indfstrn exc-key: indfstrn_exc --> indfstr_exc
     if($exc_key eq "indfstrn_exc") { 
       $new_key = $alt_info_HHR->{"indfstrn"}{"exc_key"};
-      printf("HEYA replacing $exc_key " . $mdl_info_HR->{$exc_key} . " with $new_key " . $mdl_info_HR->{$exc_key} . "\n");
       $mdl_info_HR->{$new_key} = $mdl_info_HR->{$exc_key};
       delete($mdl_info_HR->{$exc_key});
     }
@@ -7112,13 +7111,11 @@ sub vdr_BackwardsCompatibilityExceptions {
         if(! defined $new_key) { 
           ofile_FAIL("ERROR, in $sub_name, trying to update old exception key $exc_key, but unable to determine new key", 1, $FH_HR);
         }
-        printf("HEYA replacing $exc_key " . $ftr_info_AHR->[$ftr_idx]{$exc_key} . " (exc_key: $exc_key) with " . $new_value . " (exc_key: $new_key)\n");
         $ftr_info_AHR->[$ftr_idx]{$new_key} = $new_value;
         delete($ftr_info_AHR->[$ftr_idx]{$exc_key});
       }
       if($exc_key eq "frameshift_exc") { 
         $new_key = $alt_info_HHR->{"fstukcfi"}{"exc_key"};
-        printf("HEYA replacing $exc_key " . $ftr_info_AHR->[$ftr_idx]{$exc_key} . " with " . $ftr_info_AHR->[$ftr_idx]{$exc_key} . "\n");
         $ftr_info_AHR->[$ftr_idx]{$new_key} = $ftr_info_AHR->[$ftr_idx]{$exc_key};
         delete($ftr_info_AHR->[$ftr_idx]{$exc_key});
       }
