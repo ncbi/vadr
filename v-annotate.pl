@@ -4059,12 +4059,9 @@ sub cmalign_or_glsearch_run {
     if(! opt_Get("--nofixedtau", $opt_HHR)) { 
       $opts .= " --fixedtau"; 
     }
-    if(! opt_Get("--nofixedtau", $opt_HHR)) { 
-      $opts .= " --fixedtau"; 
-    }
     if(! opt_Get("--noflank", $opt_HHR)) { 
-      $opts .= " --flanktoins "   . opt__Get("--flanktoins", $opt_HHR); 
-      $opts .= " --flankselfins " . opt__Get("--flankselfins", $opt_HHR); 
+      $opts .= " --flanktoins "   . opt_Get("--flanktoins", $opt_HHR); 
+      $opts .= " --flankselfins " . opt_Get("--flankselfins", $opt_HHR); 
     }
     if(defined $mdl_name) { 
       $cmd = $execs_HR->{"cmfetch"} . " $mdl_file $mdl_name | " . $execs_HR->{"cmalign"} . " $opts - $seq_file > $stdout_file 2>&1";
