@@ -12,6 +12,7 @@
   * [options for additional output files](#options-output)
   * [additional expert options](#options-expert)
 * [Building a VADR model library](#library)
+* [Practical tutorial: building a VADR RSV model library](#rsv)
 * [How the VADR 1.0 model library was constructed](#1.0library)
   * [Norovirus models](#1.0library-noro)
   * [Dengue virus models](#1.0library-dengue)
@@ -255,7 +256,7 @@ The first category of options are the *basic* options:
 | `--ftfetch2` | use `efetch` program (must be in your `PATH`) to fetch feature table with `efetch -format gbc | xml2tbl` instead of default method of fetching from an `eutils` URL | 
 | `--gb` | fetch and parse a GenBank-format file from GenBank instead of a feature table | 
 | `--ingb <s>` | read the GenBank-format file in `<s>` instead of a feature table file (requires `--gb`)| 
-| `--addminfo <s>` | add arbitrary feature info in file `<s>` to output `.minfo` file, see an example [here](#1.0library-noro") | 
+| `--addminfo <s>` | add arbitrary feature info in file `<s>` to output `.minfo` file, see an example [here](#1.0library-noro) | 
 | `--forcelong` | *use at your own risk*; allow long models > 25Kb in length; by default `v-build.pl` will fail for any model more than 25Kb (25,000 nucleotides) because `v-build.pl` will be very slow and the memory requirements of `v-annotate.pl` will be prohibitively large
 | `--keep` | keep additional output files that are normally removed |
 
@@ -264,7 +265,7 @@ The first category of options are the *basic* options:
 By default, only `CDS`, `gene` and `mat_peptide` feature types read from the GenBank feature table file
 will be stored in the output `.minfo` file. This default set can be changed using the following three
 command line options. For an example of using the `--fadd` option, see the construction of the dengue virus
-RefSeq models for the VADR 1.0 model library [here](#1.0library-dengue").
+RefSeq models for the VADR 1.0 model library [here](#1.0library-dengue).
 
 | ......option...... | explanation | 
 |--------|-------------| 
@@ -281,11 +282,11 @@ stored. This default set can be changed using the following five
 command line options. 
 For an example of using the `--qadd` and `--qftradd` options, see
 the construction of the dengue virus RefSeq models for the VADR 1.0
-model library [here](#1.0library-dengue").
+model library [here](#1.0library-dengue).
 
 | .......option....... | explanation | 
 |--------|-------------| 
-| `--qall`   | specify that all qualifiers (except those in `<s> from `--qskip <s>`) be added to the `.minfo` output file |
+| `--qall`   | specify that all qualifiers (except those in `<s>` from `--qskip <s>`) be added to the `.minfo` output file |
 | `--qadd <s>`  | add qualifiers listed in `<s>` to the default set, where `<s>` is a comma-separated string with each qualifier separated by a comma with no whitespace |
 | `--qftradd <s>`  | specify that the qualifiers listed in `<s2>` from `qadd <s2>` only apply for feature types in the string `<s>`, where `<s>` is a comma-separated string with each qualifier separated by a comma with no whitespace |
 | `--qskip <s>`  | do not store information for qualifiers listed in `<s>`, where `<s>` is a comma-separated string with each qualifier separated by a comma with no whitespace; `<s>` may contain qualifiers from the default set, or from other qualifiers (if `--qall` also used) |
@@ -363,6 +364,106 @@ User's Guide manual page for `cmbuild` (section 8 of http://eddylab.org/infernal
 
 ---
 ## Building a VADR model library<a name="library"></a>
+
+Follow these steps to build a VADR model library:
+
+1. Run `v-build.pl` multiple (`N>1`) times for different accessions.
+If your model is larger than 30Kb, or you know that you will use the
+`-s` and `--glsearch` options with `v-annotate.pl` as is recommended
+for coronavirus annotation
+(https://github.com/ncbi/vadr/wiki/Coronavirus-annotation), you should
+also use the `--skipbuild` option with `v-build.pl`. If you do, no CM
+files will be created so you can skip steps 4 and 8 below and ignore
+any other steps involving a `.cm` file.
+
+2. Create a new directory call it `my-vadr-model-dir`, for example.
+
+3. Concatenate all resulting `N` `.vadr.minfo` files into a single
+file, call it `my.vadr.minfo`, and move it to the
+`my-vadr-model-dir` directory.
+
+4. Concatenate all resulting `N` `.vadr.cm` files into a single file,
+call it `my.vadr.cm`, for example, and move it to the
+`my-vadr-model-dir` directory.
+
+5. Concatenate all resulting `N` `.vadr.hmm` files into a single file,
+call it `my.vadr.hmm`, for example, and move it to the
+`my-vadr-model-dir` directory.
+
+6. Concatenate all resulting `N` `.vadr.fa` files into a single file,
+call it `my.vadr.fa`, for example, and move it to the
+`my-vadr-model-dir` directory, and then create a BLAST nucleotide 
+database from it with the command:
+```
+$VADRBLASTDIR/makeblastdb -dbtype nucl -in my-vadr-model-dir/my.vadr.fa
+```
+
+7. Create an Easel index `.ssi` file for the `.vadr.fa` file you created and
+moved in step 6 with the command: 
+```
+$VADREASELDIR/esl-sfetch --index my-vadr-model-dir/my.vadr.fa
+```
+
+8. Move all resulting BLAST protein DB files (`.vadr.protein.fa`,
+`.vadr.protein.fa.p{hr,in,sq,db,ot,tf,to}`) from all `N` runs into the 
+`my-vadr-model-dir` directory.
+
+9. Run `cmpress` on the `my.vadr.cm` file created in step 4 like this:
+
+```
+$VADRINFERNALDIR/cmpress my-vadr-model-dir/my.vadr.cm
+```
+
+10. Run `hmmpress` on the `my.vadr.hmm` file created in step 5 like this:
+
+```
+$VADRHMMERDIR/hmmpress my-vadr-model-dir/my.vadr.hmm
+```
+
+You can then use this library with `v-annotate.pl` as follows:
+```
+v-annotate.pl --mdir my-vadr-model-dir --mkey my.vadr <fasta-file>
+<output directory>
+```
+
+Or substitute the full paths to `my-vadr-model-dir` if it is not a
+subdirectory of the current directory. Optionally, you can supply the
+paths to each of the relevant files or directories, possibly if they
+are in different directories or are not consistently named, using the `-m`,
+`-a`, `-i`, `-n`, and `-x` options as listed
+[here](annotate.md#options-modelfiles), with a command like:
+```
+v-annotate.pl -m my-vadr-model-dir/my.vadr.cm -a my-vadr-model-dir/my.vadr.hmm -i my-vadr-model-dir/my.vadr.minfo -n
+my-vadr-model-dir/my.vadr.fa -x my-vadr-model-dir <fasta-file> <output directory>
+```
+
+***If you used `--skipbuild` with `v-build.pl`, you will also have
+to use the `-s` and `--glsearch` options with `v-annotate.pl`.***
+
+If you ever move `.cm`, `.hmm`, or BLAST `.fa` files into new
+directories, make sure you also move the corresponding index files 
+(.cm.*, `.hmm.*`, `.fa.*`) along with them.
+
+---
+## Practical tutorial: Building a VADR RSV model library<a name="rsv"></a>
+
+The `v-build.pl` program will create a model from a single INSDC
+accession and include CDS, gene and mature peptide features. However,
+often using a model built from a single accession is not general
+enough to allow all sequences from a viral species to pass. For
+example, some other sequences may include an extended CDS that has a
+different stop codon position from the sequence the model was built
+from. It is possible to make VADR models more general but it requires
+some manual effort. Below I outline some steps I took when building a
+general VADR RSV model library.
+
+1. Determine good reference sequence(s)
+
+There are two RSV subtypes, RSV-A and RSV-B, so the first step I took
+was to determine a good reference sequence for each subtype. There
+are 
+
+
 
 Follow these steps to build a VADR model library:
 
