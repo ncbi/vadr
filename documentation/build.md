@@ -502,7 +502,7 @@ $ cat NC_038235/*.vadr.fa >> rsv-models/rsv.fa
 $ cat NC_038235/*.vadr.protein.hmm >> rsv-models/rsv.hmm
 
 # copy the blastdb files:
-$ cp NC_001781/*.vadr.protein.fa rsv-models/
+$ cp NC_001781/*.vadr.protein.fa* rsv-models/
 $ cp NC_038235/*.vadr.protein.fa* rsv-models/
 
 # prepare the library files:
@@ -576,22 +576,53 @@ but not too many that your manual analysis will take too long. For
 RSV, I chose to use 500 randomly chosen nearly full length sequences
 for model improvement.
 
-To download 500 randomly chosen RSV sequences of length
-14460 or greater, from the RSV list page you
-reached in step 1, use the "Sequence Length" filter to set a minimum
-of 14460 and then click the "Download" button, then select
-"Nucleotide" under "Sequence data (FASTA format)", then "Download a
-randomized subset of all records" then enter "500", click "Next" and 
-"Use Default" for the FASTA definition line, then finally click "Download". This should download a file
-called something like "sequences_20231006_7993457.fasta". 
+To download 500 randomly chosen RSV sequences of length 14460 or
+greater, from the RSV list page you reached in step 1, use the
+"Sequence Length" filter to set a minimum of 14460 and then click the
+"Download" button, then select "Nucleotide" under "Sequence data
+(FASTA format)", then "Download a randomized subset of all records"
+then enter "500", click "Next" and "Use Default" for the FASTA
+definition line, then finally click "Download". This should download a
+file called something like "sequences_20231010_2146812.fasta".
+(You can find the accession list for the 500 randomly selected
+sequences I used in
+[vadr/documentation/build-files/rsv.r500.list](build-files/rsv.r500.list).
 
 4. Use `v-annotate.pl` to validate and annotate test set sequences and
 analyze results
 
-The next step is to use our new models HERE HERE HERE 
+The next step is to use our new models to annotate our set of 500
+training sequences. The RSV genome is about 15Kb, putting on the
+larger end of what VADR can be used to annotate. The memory and speed
+requirements for `v-annotate.pl` don't scale very well, and annotation
+of RSV can require up to 64Gb of RAM. VADR is used for SARS-CoV-2
+(30Kb genome) with significantly lower memory requirements, but it
+utilizes heuristics that take advantage of the extremely high (at the time
+of writing) sequence identity between all SARS-CoV-2 genomes. I don't
+recommend using those heuristics with viral sequences with expected
+pairwise sequence similarity of less than 95%. RSV similarity is about
+x%.
+
+To use v-annotate.pl on our set of 500 sequences, we would execute:
+
+```
+$ v-annotate.pl --mdir rsv-models --mkey rsv sequences_20231010_2146812.fasta va-r500
+```
+
+Importantly, this command will take about 1 minute per sequence, so roughly
+8 hours to complete. You can parallelize it if you have a lot of RAM
+and multiple CPUs using the `--split` and `--cpu` options
+as described [here](annotate.md#options-split).
+
+From my set of training sequences 
+
+Next, we want to analyze the results. Ideally we would 
+
 
 4. Potentially choose alternative representative sequences
 
+
+   
 5. Rerun `v-annotate.pl` on test set (if models were updated)
 
 6. Iterative refine models and rerun test set
