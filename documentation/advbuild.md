@@ -12,7 +12,9 @@ from. It is possible to make VADR models more general but it requires
 some manual effort. Below I outline some steps I took when building a
 general VADR respiratory syncitial virus (RSV) model library.
 
-1. Determine good reference sequence(s)
+---
+
+### 1. Determine good reference sequence(s)
 
 There are two RSV subtypes, RSV-A and RSV-B, so the first step I took
 was to determine a good reference sequence for each subtype. A good
@@ -27,7 +29,9 @@ list will be RefSeq sequences `NC_038235` (subgroup A) and `NC_001781`
 (subgroup B). You can also filter to only RefSeq sequences using the
 "Sequence type" filter. 
 
-2. Build initial models from reference sequence(s)
+--- 
+
+### 2. Build initial models from reference sequence(s)
 
 Next, use `v-build.pl` to build the two models, specifying the
 `--group` and `--subgroup` options as below:
@@ -67,7 +71,9 @@ $ $VADRHMMERDIR/hmmpress rsv-models/rsv.hmm
 $ $VADRBLASTDIR/makeblastdb -dbtype nucl -in rsv-models/rsv.fa
 ```
 
-3. Construct a test set for testing your initial models
+--- 
+
+### 3. Construct a test set for testing your initial models
 
 INTRODUCE CONCEPT OF IMPROVING/OPTIMIZING MODEL? OR SOME OTHER WORD? INTRODUCE
 CONCEPT OF COMMON FAILURE MODES (or something like this).
@@ -143,8 +149,9 @@ file called something like "sequences_20231010_2146812.fasta".
 sequences I used in
 [vadr/documentation/build-files/rsv.r500.list](build-files/rsv.r500.list).
 
-4. Use `v-annotate.pl` to validate and annotate test set sequences and
-analyze results
+---
+
+### 4. Use `v-annotate.pl` to validate and annotate test set sequences and analyze results
 
 The next step is to use our new models to annotate our set of 500
 training sequences. The RSV genome is about 15Kb, putting on the
@@ -173,14 +180,17 @@ From my set of training sequences
 
 Next, we want to analyze the results. Ideally we would 
 
+---
+### 5. Potentially choose alternative representative sequences
 
-4. Potentially choose alternative representative sequences
+---
+### 6. Rerun `v-annotate.pl` on test set (if models were updated)
 
-5. Rerun `v-annotate.pl` on test set (if models were updated)
+---
+### 7. Iterative refine models and rerun test set
 
-6. Iterative refine models and rerun test set
-
-Methods for updating models to improve performance
+---
+## Methods for updating models to improve performance
 
 1. Add new proteins to blastx database
 
