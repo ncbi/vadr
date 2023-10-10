@@ -99,6 +99,7 @@ See [this page](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files) fo
   * [VADR sequence naming conventions](documentation/formats.md#seqnames)
 * [Available VADR model files (github wiki)](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files)
 * [SARS-CoV-2 annotation (github wiki)](https://github.com/ncbi/vadr/wiki/Coronavirus-annotation)
+* [Rfam-based structural annotation of a viral genome sequence for use with VADR (github wiki)](https://github.com/ncbi/vadr/wiki/Rfam-based-structural-annotation-of-a-viral-genome-sequence)
 * [Development notes and instructions (github wiki)](https://github.com/ncbi/vadr/wiki/Development-notes-and-instructions)
 
 ---
