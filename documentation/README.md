@@ -21,6 +21,7 @@
   * [`toy50` toy model used in examples of alert messages](documentation/alerts.md#toy)
   * [Examples of different alert types and corresponding `.alt` output](documentation/alerts.md#examples)
   * [Posterior probability annotation in VADR output Stockholm alignments](documentation/alerts.md#pp)
+* [Advanced tutorial: building an RSV model library](documentation/advbuild.md#top)
 * [VADR output file formats](documentation/formats.md#top)
   * [VADR output files created by all VADR scripts](documentation/formats.md#generic)
   * [`v-build.pl` output files](documentation/formats.md#build)
