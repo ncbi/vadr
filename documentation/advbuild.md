@@ -14,7 +14,19 @@ general VADR respiratory syncitial virus (RSV) model library.
 
 ---
 
-### 1. Determine good reference sequence(s)
+### 1. Determine good reference sequence(s) to use
+
+The `v-build.pl` program allows you to build a model from a GenBank
+accession, but the resulting model may not be "good enough" for use
+with `v-annotate.pl`. That model may not annotate other sequences well
+enough, or it may "fail" many sequences that you want it to "pass", and
+vice versa. In this part of the tutorial, we will walk through how you
+might pick good reference sequences for the respiratory syncitial
+virus (RSV). 
+
+<details open>
+<summary> Choosing RSV reference sequences </summary>
+<br>
 
 There are two RSV subtypes, RSV-A and RSV-B, so the first step I took
 was to determine a good reference sequence for each subtype. A good
@@ -1012,6 +1024,7 @@ six most common types of fatal alerts:
    * The `M2-2 protein` CDS in `NC_038235` has a start codon that
      differs from many other RSV A sequences by six positions.
 
+</details>
 
 ---
 ### 5. Potentially choose alternative representative sequences
