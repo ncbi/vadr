@@ -58,9 +58,13 @@ the X.
 ---
 
 <details>
-<summary>### [Iteration 1, step 1: build model(s) from initial reference sequence(s)]</summary>
 
-<br>
+<summary>
+
+### Iteration 1, step 1: build model(s) from initial reference sequence(s)
+
+</summary>
+
 ### Determine good reference sequence(s) to use
 
 There are two RSV subtypes, RSV-A and RSV-B, so the first step I took
