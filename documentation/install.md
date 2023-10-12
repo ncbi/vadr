@@ -23,7 +23,7 @@ the corresponding `vadr-install.sh` file for that release/version
 (prior to version 1.0, the name of the installation script was
 `install.sh`, not `vadr-install.sh`):
 
-https://raw.githubusercontent.com/ncbi/vadr/1.0/vadr-install.sh
+https://raw.githubusercontent.com/ncbi/vadr/vadr-1.0/vadr-install.sh
 
 Copy the `vadr-install.sh` file into the directory in which you want
 to install VADR. A good name for that directory is
