@@ -240,6 +240,7 @@ Importantly, this command will take about 1 minute per sequence, so roughly
 and multiple CPUs using the `--split` and `--cpu` options
 as described [here](annotate.md#options-split).
 
+</details>
 
 <details>
 
