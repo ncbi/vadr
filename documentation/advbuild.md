@@ -246,7 +246,7 @@ as described [here](annotate.md#options-split).
 
 <summary>
 
-## Iteration 1, step 3: analyze the results, and identify major and minor sequence characteristics responsible for common failure modes
+## Iteration 1, step 3: analyze the results
 
 </summary>
 
