@@ -57,8 +57,8 @@ the X.
 
 ---
 
-<details open>
-### [Iteration 1, step 1: build model(s) from initial reference sequence(s)]
+<details>
+<summary>### [Iteration 1, step 1: build model(s) from initial reference sequence(s)]</summary>
 
 <br>
 ### Determine good reference sequence(s) to use
