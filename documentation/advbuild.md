@@ -57,23 +57,11 @@ the X.
 
 ---
 
-<i1.1 open>
+<details open>
 ### [Iteration 1, step 1: build model(s) from initial reference sequence(s)]
 
 <br>
 ### Determine good reference sequence(s) to use
-
-The `v-build.pl` program allows you to build a model from a GenBank
-accession, but the resulting model may not be "good enough" for use
-with `v-annotate.pl`. That model may not annotate other sequences well
-enough, or it may "fail" many sequences that you want it to "pass", and
-vice versa. In this part of the tutorial, we will walk through how you
-might pick good reference sequences for the respiratory syncitial
-virus (RSV). 
-
-<details open>
-<summary> Choosing RSV reference sequences </summary>
-<br>
 
 There are two RSV subtypes, RSV-A and RSV-B, so the first step I took
 was to determine a good reference sequence for each subtype. A good
@@ -129,8 +117,7 @@ $ $VADRINFERNALDIR/cmpress rsv-models/rsv.cm
 $ $VADRHMMERDIR/hmmpress rsv-models/rsv.hmm
 $ $VADRBLASTDIR/makeblastdb -dbtype nucl -in rsv-models/rsv.fa
 ```
-Well, you asked for it!
-</i1.1>
+</details>
 
 ### [Iteration 1, step 2: construct a training set and run `v-annotate.pl` on it](#advbuild-files/advbuild-i1.s2.md)
 
