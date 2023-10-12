@@ -747,7 +747,7 @@ later.
 The next most common alert in our training set is:
 ```
 34    insertnp  yes      INSERTION_OF_NT                 feature    205   205  too large of an insertion in protein-based alignment
-``
+```
 
 We can determine which model and features these pertain to with:
 
