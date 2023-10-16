@@ -11,7 +11,7 @@ some manual effort.
 
 A good strategy is to take an iterative approach where you:
 
-1. Build a model(s) from representative and well annotated sequences
+1. Build a model(s) from representative and well annotated sequence(s)
    as a starting point. These may be RefSeq sequences.
 
 2. Construct a training set of randomly chosen existing sequences for
@@ -24,13 +24,13 @@ A good strategy is to take an iterative approach where you:
    them. This will be characteristics not present in the reference
    sequences. Classify these characteristics into major and minor types: 
 
-   Major: these are common to a majority or large fraction of
+   *Major*: these are common to a majority or large fraction of
    sequences but don't exist in the reference sequence. To address
    these, we probably want to pick a new representative sequence(s)
    that includes these characteristics. This means we will return to
    step 1 for another iteration of the three steps.
 
-   Minor: these exist in a smaller fraction of sequences, and
+   *Minor*: these exist in a smaller fraction of sequences, and
    don't exist in the reference sequence. For these characteristics,
    we may be able to update our models without rebuilding them from
    new reference sequences. 
@@ -41,7 +41,7 @@ representative enough that there are no major characteristics in step
 model(s) to tolerate the minor characteristics. 
 
 But if there are one or more major characteristics identified in step
-3, we will want to do an additional iteration of all three steps.  Two
+3, we will want to do an additional iteration of all three steps. Two
 iterations of all three steps are usually enough to build a nearly
 optimal model(s).
 
@@ -97,28 +97,58 @@ following the steps below ([also listed here](#library)).
 
 ```
 # create a new directory
-$ mkdir rsv-models
+$ mkdir rsv-models1
 
 # concatenate .minfo, .cm .fa and .hmm files:
-$ cat NC_001781/*.vadr.minfo > rsv-models/rsv.minfo
-$ cat NC_001781/*.vadr.cm > rsv-models/rsv.cm
-$ cat NC_001781/*.vadr.fa > rsv-models/rsv.fa
-$ cat NC_001781/*.vadr.protein.hmm > rsv-models/rsv.hmm
-$ cat NC_038235/*.vadr.minfo >> rsv-models/rsv.minfo
-$ cat NC_038235/*.vadr.cm >> rsv-models/rsv.cm
-$ cat NC_038235/*.vadr.fa >> rsv-models/rsv.fa
-$ cat NC_038235/*.vadr.protein.hmm >> rsv-models/rsv.hmm
+$ cat NC_038235/*.vadr.minfo > rsv-models1/rsv.minfo
+$ cat NC_038235/*.vadr.cm > rsv-models1/rsv.cm
+$ cat NC_038235/*.vadr.fa > rsv-models1/rsv.fa
+$ cat NC_038235/*.vadr.protein.hmm > rsv-models1/rsv.hmm
+$ cat NC_001781/*.vadr.minfo >> rsv-models1/rsv.minfo
+$ cat NC_001781/*.vadr.cm >> rsv-models1/rsv.cm
+$ cat NC_001781/*.vadr.fa >> rsv-models1/rsv.fa
+$ cat NC_001781/*.vadr.protein.hmm >> rsv-models1/rsv.hmm
 
 # copy the blastdb files:
-$ cp NC_001781/*.vadr.protein.fa* rsv-models/
-$ cp NC_038235/*.vadr.protein.fa* rsv-models/
+$ cp NC_038235/*.vadr.protein.fa* rsv-models1/
+$ cp NC_001781/*.vadr.protein.fa* rsv-models1/
 
 # prepare the library files:
-$ $VADRINFERNALDIR/esl-sfetch --index rsv-models/rsv.fa
-$ $VADRINFERNALDIR/cmpress rsv-models/rsv.cm
-$ $VADRHMMERDIR/hmmpress rsv-models/rsv.hmm
-$ $VADRBLASTDIR/makeblastdb -dbtype nucl -in rsv-models/rsv.fa
+$ $VADRINFERNALDIR/esl-sfetch --index rsv-models1/rsv.fa
+$ $VADRINFERNALDIR/cmpress rsv-models1/rsv.cm
+$ $VADRHMMERDIR/hmmpress rsv-models1/rsv.hmm
+$ $VADRBLASTDIR/makeblastdb -dbtype nucl -in rsv-models1/rsv.fa
 ```
+
+Before we go on, it's a good idea to test the models by using them to
+annotate the reference sequences they were built from. This will
+check that we combined the models correctly, and also the sequences
+should pass, although they are not guaranteed to do so (some reference
+sequences may have special characteristics that cause them to fail
+even the sequences they were built from). For these RSV models,
+both sequences should pass:
+
+```
+$ v-annotate.pl --mdir rsv-models1 --mkey rsv rsv-models1/rsv.fa va-rsv
+```
+
+Eventual output:
+
+```
+#                                  num   num   num
+#idx  model      group  subgroup  seqs  pass  fail
+#---  ---------  -----  --------  ----  ----  ----
+1     NC_001781  RSV    B            1     1     0
+2     NC_038235  RSV    A            1     1     0
+#---  ---------  -----  --------  ----  ----  ----
+-     *all*      -      -            2     2     0
+-     *none*     -      -            0     0     0
+#---  ---------  -----  --------  ----  ----  ----
+#
+# Zero alerts were reported.
+#
+```
+
 </details>
 
 <details>
@@ -128,11 +158,6 @@ $ $VADRBLASTDIR/makeblastdb -dbtype nucl -in rsv-models/rsv.fa
 ## Iteration 1, step 2: construct a training set and run `v-annotate.pl` on it
 
 </summary>
-
-ADD STEP OF RUNNING MODELS AGAINST MODEL SEQUENCES AS A
-SANITY CHECK. I WILL THEN REFER TO THIS IN THE dupregin ALERT SECTION 
-
---- 
 
 ### Construct a training set for testing your initial models
 
@@ -232,7 +257,7 @@ x%.
 To use v-annotate.pl on our set of 500 sequences, we would execute:
 
 ```
-$ v-annotate.pl --mdir rsv-models --mkey rsv sequences_20231010_2146812.fasta va-r500
+$ v-annotate.pl --mdir rsv-models1 --mkey rsv rsv.r500.fasequences_20231010_2146812.fasta va-r500
 ```
 
 Importantly, this command will take about 1 minute per sequence, so roughly
@@ -251,10 +276,10 @@ as described [here](annotate.md#options-split).
 </summary>
 
 Next, we want to analyze the results. From the v-annotate.pl output
-(also saved to the `va-r500/va-r500.vadr.log` file), we can see that
-286 sequences were classified as RSV A (matched best to the
-`NC_038235` model) and 214 as RSV B (matched best to the `NC_001781`
-model). And only 6 out of the 500 total training sequences "pass":
+(also saved to the va-r500/va-r500.vadr.log file), we can see that 286
+sequences were classified as RSV A (matched best to the NC_038235
+model) and 214 as RSV B (matched best to the NC_001781 model). And
+only 6 out of the 500 total training sequences "pass":
 
 ```
 #                                  num   num   num
@@ -280,7 +305,7 @@ The output also contains a summary of reported alerts shows which alerts were mo
 2     fstlocfi  no       POSSIBLE_FRAMESHIFT_LOW_CONF    feature      3     3  low confidence possible frameshift in CDS (frame restored before end)
 3     indf5lcc  no       INDEFINITE_ANNOTATION_START     feature     15    10  alignment to homology model has low confidence at 5' boundary for feature that is or matches a CDS
 4     indf3lcc  no       INDEFINITE_ANNOTATION_END       feature     19    12  alignment to homology model has low confidence at 3' boundary for feature that is or matches a CDS
-5     insertnn  no       INSERTION_OF_NT                 feature    403   344  too large of an insertion in nucleotide-based alignment of CDS feature
+5     insertnn  no       INSERTION_OF_NT                 feature    404   345  too large of an insertion in nucleotide-based alignment of CDS feature
 6     lowsim5c  no       LOW_FEATURE_SIMILARITY_START    feature      2     2  region overlapping annotated feature that is or matches a CDS at 5' end of sequence lacks significant similarity
 7     lowsim3c  no       LOW_FEATURE_SIMILARITY_END      feature      2     2  region overlapping annotated feature that is or matches a CDS at 3' end of sequence lacks significant similarity
 8     lowsimic  no       LOW_FEATURE_SIMILARITY          feature     98    45  region overlapping annotated feature that is or matches a CDS lacks significant similarity
@@ -292,15 +317,15 @@ The output also contains a summary of reported alerts shows which alerts were mo
 14    ambgcd3c  no       AMBIGUITY_IN_STOP_CODON         feature      1     1  3' complete CDS ends with canonical nt but includes ambiguous nt in its stop codon
 #---  --------  -------  -----------------------------  --------  -----  ----  -----------
 15    lowcovrg  yes      LOW_COVERAGE                   sequence     13    13  low sequence fraction with significant similarity to homology model
-16    dupregin  yes      DUPLICATE_REGIONS              sequence    343   343  similarity to a model region occurs more than once
+16    dupregin  yes      DUPLICATE_REGIONS              sequence    344   344  similarity to a model region occurs more than once
 17    deletins  yes      DELETION_OF_FEATURE            sequence      2     1  internal deletion of a complete feature
 18    mutstart  yes      MUTATION_AT_START               feature    261   260  expected start codon could not be identified
 19    mutendcd  yes      MUTATION_AT_END                 feature      8     8  expected stop codon could not be identified, predicted CDS stop by homology is invalid
 20    mutendns  yes      MUTATION_AT_END                 feature      2     2  expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
 21    mutendex  yes      MUTATION_AT_END                 feature      5     5  expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position
 22    unexleng  yes      UNEXPECTED_LENGTH               feature     19    17  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3
-23    cdsstopn  yes      CDS_HAS_STOP_CODON              feature    418   401  in-frame stop codon exists 5' of stop position predicted by homology to reference
-24    cdsstopp  yes      CDS_HAS_STOP_CODON              feature    163   163  stop codon in protein-based alignment
+23    cdsstopn  yes      CDS_HAS_STOP_CODON              feature    419   402  in-frame stop codon exists 5' of stop position predicted by homology to reference
+24    cdsstopp  yes      CDS_HAS_STOP_CODON              feature    164   164  stop codon in protein-based alignment
 25    fsthicft  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF   feature     14    14  high confidence possible frameshift in CDS (frame not restored before end)
 26    fsthicfi  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF   feature      1     1  high confidence possible frameshift in CDS (frame restored before end)
 27    indfantn  yes      INDEFINITE_ANNOTATION           feature      5     3  nucleotide-based search identifies CDS not identified in protein-based search
@@ -309,7 +334,7 @@ The output also contains a summary of reported alerts shows which alerts were mo
 30    indf5pst  yes      INDEFINITE_ANNOTATION_START     feature     36    32  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint
 31    indf3gap  yes      INDEFINITE_ANNOTATION_END       feature     37    36  alignment to homology model is a gap at 3' boundary
 32    indf3lcn  yes      INDEFINITE_ANNOTATION_END       feature   1057   320  alignment to homology model has low confidence at 3' boundary for feature that does not match a CDS
-33    indf3pst  yes      INDEFINITE_ANNOTATION_END       feature    217   202  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
+33    indf3pst  yes      INDEFINITE_ANNOTATION_END       feature    218   203  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
 34    insertnp  yes      INSERTION_OF_NT                 feature    205   205  too large of an insertion in protein-based alignment
 35    lowsim5n  yes      LOW_FEATURE_SIMILARITY_START    feature      1     1  region overlapping annotated feature that does not match a CDS at 5' end of sequence lacks significant similarity
 36    lowsim5l  yes      LOW_FEATURE_SIMILARITY_START    feature      2     2  long region overlapping annotated feature that does not match a CDS at 5' end of sequence lacks significant similarity
@@ -317,6 +342,7 @@ The output also contains a summary of reported alerts shows which alerts were mo
 38    lowsim3l  yes      LOW_FEATURE_SIMILARITY_END      feature      1     1  long region overlapping annotated feature that does not match a CDS at 3' end of sequence lacks significant similarity
 39    lowsimin  yes      LOW_FEATURE_SIMILARITY          feature     14    14  region overlapping annotated feature that does not match a CDS lacks significant similarity
 40    lowsimil  yes      LOW_FEATURE_SIMILARITY          feature     91    31  long region overlapping annotated feature that does not match a CDS lacks significant similarity
+#---  --------  -------  -----------------------------  --------  -----  ----  -----------
 ```
 
 At this point, we need to determine if these results suggest that our
@@ -335,18 +361,17 @@ commonly reported fatal alerts.  Of the 26 fatal alerts (numbers 15 to
 number of sequences are:
 
 ```
-23    cdsstopn  yes      CDS_HAS_STOP_CODON              feature    418   401  in-frame stop codon exists 5' of stop position predicted by homology to reference
-16    dupregin  yes      DUPLICATE_REGIONS              sequence    343   343  similarity to a model region occurs more than once
+23    cdsstopn  yes      CDS_HAS_STOP_CODON              feature    419   402  in-frame stop codon exists 5' of stop position predicted by homology to reference
+16    dupregin  yes      DUPLICATE_REGIONS              sequence    344   344  similarity to a model region occurs more than once
 32    indf3lcn  yes      INDEFINITE_ANNOTATION_END       feature   1057   320  alignment to homology model has low confidence at 3' boundary for feature that does not match a CDS
 18    mutstart  yes      MUTATION_AT_START               feature    261   260  expected start codon could not be identified
 34    insertnp  yes      INSERTION_OF_NT                 feature    205   205  too large of an insertion in protein-based alignment
-33    indf3pst  yes      INDEFINITE_ANNOTATION_END       feature    217   202  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
+33    indf3pst  yes      INDEFINITE_ANNOTATION_END       feature    218   203  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
 ```
 
 Information on the individual alert instances can be found in the
 `.alt` and `.alt.list` files. We'll go through each of these top six
 most common alerts in detail next.
-
 
 ### Investigating common `cdsstopn` alerts
 
@@ -357,7 +382,7 @@ first 10 lines that contain `cdsstopn`:
 ADD LINK TO alerts.md cdsstopn example
 
 ```
-$ grep cdsstopn va-sequences_20231010_2146812.vadr.alt
+<[(tutorial-20231006)]> grep cdsstopn va-rsv.r500/va-rsv.r500.vadr.alt
 1.5.3   OR143220.1  NC_038235  CDS   attachment_glycoprotein   14  cdsstopn  yes   CDS_HAS_STOP_CODON                      5615..5617:+      3              5579..5581:+      3  in-frame stop codon exists 5' of stop position predicted by homology to reference [TGA, shifted S:3,M:3]
 2.4.1   KX655635.1  NC_038235  CDS   attachment_glycoprotein   14  cdsstopn  yes   CDS_HAS_STOP_CODON                      5500..5502:+      3              5579..5581:+      3  in-frame stop codon exists 5' of stop position predicted by homology to reference [TGA, shifted S:3,M:3]
 4.5.3   OR287871.1  NC_038235  CDS   attachment_glycoprotein   14  cdsstopn  yes   CDS_HAS_STOP_CODON                      5551..5553:+      3              5579..5581:+      3  in-frame stop codon exists 5' of stop position predicted by homology to reference [TGA, shifted S:3,M:3]
@@ -385,9 +410,9 @@ pair occurs in the full list using the `grep`, `awk`, `sort` and
 `uniq` command line utilities:
 
 ```
-$ grep cdsstopn va-r500/va-r500.vadr.alt | awk '{ printf ("%s %s %s\n", $3, $5, $12); }' | sort | uniq -c | sort -rnk 1
+$ grep cdsstopn va-rsv.r500/va-rsv.r500.vadr.alt | awk '{ printf ("%s %s %s\n", $3, $5, $12); }' | sort | uniq -c | sort -rnk 1
     213 NC_038235 attachment_glycoprotein 5579..5581:+
-    153 NC_001781 attachment_glycoprotein 5566..5568:+
+    154 NC_001781 attachment_glycoprotein 5566..5568:+
      15 NC_038235 attachment_glycoprotein 5576..5578:+
      15 NC_001781 attachment_glycoprotein 5575..5577:+
       3 NC_038235 phosphoprotein 2459..2461:+
@@ -419,7 +444,7 @@ glycoprotein` CDS can be determined by the stop coordinate for that
 CDS in the `rsv.minfo` file:
 
 ```
-$ grep NC\_038235 rsv-models/rsv.minfo | grep attachment
+$ grep NC\_038235 rsv-models1/rsv.minfo | grep attachment
 FEATURE NC_038235 type:"CDS" coords:"4688..5584:+" parent_idx_str:"GBNULL" gene:"G" product:"attachment glycoprotein"
 ```
 So the most common position for the stop is actually 3 positions
@@ -433,7 +458,7 @@ positions upstream of the attachment glycoprotein CDS stop codon in
 `NC_001781`:
 
 ```
-$ grep NC\_001781 rsv-models/rsv.minfo | grep attachment
+$ grep NC\_001781 rsv-models1/rsv.minfo | grep attachment
 FEATURE NC_001781 type:"CDS" coords:"4690..5589:+" parent_idx_str:"GBNULL" gene:"G" product:"attachment glycoprotein"
 ```
 
@@ -450,12 +475,12 @@ The second most common fatal alert is the `dupregin` alert that occurs
 when `similarity to a model region occurs more than once`. 
 
 ```
-16    dupregin  yes      DUPLICATE_REGIONS              sequence    343   343  similarity to a model region occurs more than once
+16    dupregin  yes      DUPLICATE_REGIONS              sequence    344   344  similarity to a model region occurs more than once
 ```
 
 We can use `grep` to look at some examples of the `dupregin` alert:
 ```
-$ grep dupregin va-r500/va-r500.vadr.alt | awk '{ printf ("%s %s %s\n", $3, $5, $12); }' | sort | uniq -c | sort -rnk 1
+$ grep dupregin va-rsv.r500/va-rsv.r500.vadr.alt 
 1.1.1   OR143220.1  NC_038235  -     -                          -  dupregin  yes   DUPLICATE_REGIONS            5502..15225:+,2..5501:+  15224  5466..15199:+,31..5537:+  15241  similarity to a model region occurs more than once [5466..5537:+ (len 72>=20) hits 1 (8569.8 bits) and 2 (4779.2 bits)]
 4.1.1   OR287871.1  NC_038235  -     -                          -  dupregin  yes   DUPLICATE_REGIONS            5438..14973:+,1..5437:+  14973  5466..15003:+,93..5537:+  14983  similarity to a model region occurs more than once [5466..5537:+ (len 72>=20) hits 1 (8198.7 bits) and 2 (4724.2 bits)]
 5.1.1   OM857265.1  NC_038235  -     -                          -  dupregin  yes   DUPLICATE_REGIONS            5434..14961:+,1..5433:+  14961  5466..14995:+,99..5537:+  14969  similarity to a model region occurs more than once [5466..5537:+ (len 72>=20) hits 1 (8465.0 bits) and 2 (4737.7 bits)]
@@ -485,9 +510,9 @@ Let's again use `grep`, `awk`, `sort` and `uniq` to group the
 instances of these alerts together:
 
 ```
-<[(tutorial-20231006)]> grep dupregin va-sequences_20231010_2146812/va-sequences_20231010_2146812.vadr.alt | awk '{ printf ("%s %s %s\n", $3, $5, $23); }' | sort | uniq -c | sort -rnk 1
+$ grep dupregin va-rsv.r500/va-rsv.r500.vadr.alt | awk '{ printf ("%s %s %s\n", $3, $5, $23); }' | sort | uniq -c | sort -rnk 1
     167 NC_001781 - [5410..5469:+
-    158 NC_038235 - [5466..5537:+
+    159 NC_038235 - [5466..5537:+
       4 NC_001781 - [5411..5469:+
       3 NC_001781 - [5409..5468:+
       2 NC_038235 - [5466..5536:+
@@ -500,7 +525,7 @@ instances of these alerts together:
       1 NC_001781 - [5414..5469:+
 ```
 
-About 55% (158/286) or RSV A and 80% (167/214) of RSV B sequences have
+About 56% (159/286) or RSV A and 80% (167/214) of RSV B sequences have
 one of two duplicated regions. To get a better idea of this
 duplicatedd region, we can select an example of one RSV A sequence and
 one RSV B sequence that contain this alert, and run it back through
@@ -508,24 +533,24 @@ one RSV B sequence that contain this alert, and run it back through
 
 ```
 # prepare the sequence file for the esl-sfetch program 
-$ esl-sfetch --index rsv.r500.fa
+$ $VADREASELDIR/esl-sfetch --index rsv.r500.fa
 
 # pick a sequence with a dupregin alert that contains the strings we are interested it
-$ grep dupregin va-sequences_20231010_2146812/va-sequences_20231010_2146812.vadr.alt | grep 5410..5469 | awk '{ print $2 }' | esl-selectn 1 - > ex1.list
-$ grep dupregin va-sequences_20231010_2146812/va-sequences_20231010_2146812.vadr.alt | grep 5466..5537 | awk '{ print $2 }' | esl-selectn 1 - > ex2.list
+$ grep dupregin va-rsv.r500/va-rsv.r500.vadr.alt | grep 5410..5469 | awk '{ print $2 }' | esl-selectn 1 - > ex1.list
+$ grep dupregin va-rsv.r500/va-rsv.r500.vadr.alt | grep 5466..5537 | awk '{ print $2 }' | esl-selectn 1 - > ex2.list
 $ cat ex1.list 
 MZ516003.1
 $ cat ex2.list
 ON237248.1
 
 # fetch the sequences:
-$ esl-sfetch -f rsv.r500.fa ex1.list > ex1.fa
-$ esl-sfetch -f rsv.r500.fa ex2.list > ex2.fa
+$ $VADREASELDIR/esl-sfetch -f rsv.r500.fa ex1.list > ex1.fa
+$ $VADREASELDIR/esl-sfetch -f rsv.r500.fa ex2.list > ex2.fa
 
 # run v-annotate.pl on these sequences with 
 # the --out_stk option to save the output alignments
-$ v-annotate.pl --out_stk --mdir rsv-models --mkey rsv ex1.fa va-ex1
-$ v-annotate.pl --out_stk --mdir rsv-models --mkey rsv ex2.fa va-ex2
+$ v-annotate.pl --out_stk --mdir rsv-models1 --mkey rsv ex1.fa va-ex1
+$ v-annotate.pl --out_stk --mdir rsv-models1 --mkey rsv ex2.fa va-ex2
 ```
 
 Let's look at the RSV B sequence first. The
@@ -635,7 +660,7 @@ the model name, feature type (e.g. CDS or gene) and product name
 (fields 3, 4 and 5 in the `.alt` file):
 
 ```
-$ grep indf3lcn va-sequences_20231010_2146812/va-sequences_20231010_2146812.vadr.alt | awk '{ printf ("%s %s %s\n", $3, $4, $5); }' | sort | uniq -c | sort -rnk 1
+$ grep indf3lcn va-rsv.r500/va-rsv.r500.vadr.alt | awk '{ printf ("%s %s %s\n", $3, $4, $5); }' | sort | uniq -c | sort -rnk 1
     265 NC_038235 gene F
     263 NC_038235 gene P
     234 NC_038235 gene N
@@ -661,7 +686,7 @@ and all of them are for `gene` features. We can inspect the `gene`
 features for that model in the `.minfo` file:
 
 ```
-$ grep NC_038235 rsv-models/rsv.minfo
+$ grep NC_038235 rsv-models1/rsv.minfo
 MODEL NC_038235 blastdb:"NC_038235.vadr.protein.fa" cmfile:"NC_038235.vadr.cm" group:"RSV" length:"15222" subgroup:"A"
 FEATURE NC_038235 type:"gene" coords:"45..576:+" parent_idx_str:"GBNULL" gene:"NS1"
 FEATURE NC_038235 type:"CDS" coords:"99..518:+" parent_idx_str:"GBNULL" gene:"NS1" product:"nonstructural protein 1"
@@ -719,13 +744,13 @@ Moving on to the fourth most common fatal alert:
 Which model and features does this pertain to?
 
 ```
-$ grep mutstart va-sequences_20231010_2146812/va-sequences_20231010_2146812.vadr.alt | awk '{ printf ("%s %s %s\n", $3, $5, $12); }' | sort | uniq -c | sort -rnk 1
+$ grep mutstart va-rsv.r500/va-rsv.r500.vadr.alt | awk '{ printf ("%s %s %s\n", $3, $5, $12); }' | sort | uniq -c | sort -rnk 1
     259 NC_038235 M2-2_protein 8159..8161:+
       1 NC_038235 phosphoprotein 2365..2367:+
       1 NC_001781 matrix_protein 3263..3265:+
 ```
 
-All but 2 of the 261 `mutstart` alert instances pertain to the
+All but two of the 261 `mutstart` alert instances pertain to the
 M2-2_protein in `NC_038235`. There were only 286 total RSV A
 sequences, this means more than 90% of them do not have the start
 codon at positions `8159..8161`. To investigate what is going on here,
@@ -735,7 +760,7 @@ model.
 
 ```
 # pick 10 random sequences with the mutstart alert
-$ grep mutstart va-sequences_20231010_2146812/va-sequences_20231010_2146812.vadr.alt | grep 8159..8161 | awk '{ print $2 }' | esl-selectn 10 - > ex3.list
+$ grep mutstart va-rsv.r500/va-rsv.r500.vadr.alt | grep 8159..8161 | awk '{ print $2 }' | esl-selectn 10 - > ex3.list
 $ cat ex3.list
 MN536997.1
 KJ627263.1
@@ -749,11 +774,11 @@ OR143202.1
 KJ627322.1
 
 # fetch the sequences:
-$ esl-sfetch -f rsv.r500.fa ex3.list > ex3.fa
+$ $VADREASELDIR/esl-sfetch -f rsv.r500.fa ex3.list > ex3.fa
 
 # run v-annotate.pl on these sequences with 
 # the --out_stk option to save the output alignments
-$ v-annotate.pl --out_stk --mdir rsv-models --mkey rsv ex3.fa va-ex3
+$ v-annotate.pl --out_stk --mdir rsv-models1 --mkey rsv ex3.fa va-ex3
 ```
 
 Below is an excerpt of the resulting alignment in
@@ -806,7 +831,7 @@ The next most common alert in our training set is:
 We can determine which model and features these pertain to with:
 
 ```
-$ grep insertnp va-sequences_20231010_2146812/va-sequences_20231010_2146812.vadr.alt | awk '{ printf ("%s %s %s\n", $3, $5, $12); }' | sort | uniq -c | sort -rnk 1
+$ grep insertnp va-rsv.r500/va-rsv.r500.vadr.alt | awk '{ printf ("%s %s %s\n", $3, $5, $12); }' | sort | uniq -c | sort -rnk 1
     147 NC_001781 attachment_glycoprotein 5442..5442:+
      14 NC_038235 attachment_glycoprotein 5509..5509:+
       9 NC_001781 attachment_glycoprotein 5460..5460:+
@@ -848,16 +873,16 @@ your input to a single sequence):
 
 ```
 # pick a sequence with the insertnp alert:
-$ grep insertnp va-sequences_20231010_2146812/va-sequences_20231010_2146812.vadr.alt | grep 5442 | awk '{ print $2 }' | esl-selectn 1 - > ex4.list
+$ grep insertnp va-rsv.r500/va-rsv.r500.vadr.alt | grep 5442 | awk '{ print $2 }' | esl-selectn 1 - > ex4.list
 $ cat ex4.list
 MH760706.1
 
 # fetch the sequence
-$ esl-sfetch -f rsv.r500.fa ex4.list > ex4.fa
+$ $VADREASELDIR/esl-sfetch -f rsv.r500.fa ex4.list > ex4.fa
 
 # run v-annotate.pl on these sequences with 
 # the --keep option to save all output files
-$ v-annotate.pl --keep --mdir rsv-models --mkey rsv ex4.fa va-ex4
+$ v-annotate.pl --keep --mdir rsv-models1 --mkey rsv ex4.fa va-ex4
 ```
 
 The relevant `blastx` output will be in the file
@@ -938,8 +963,8 @@ The sixth and final common alert that we will look at is:
 To learn more about the model and features for this alert:
 
 ```
-$ grep indf3pst va-sequences_20231010_2146812/va-sequences_20231010_2146812.vadr.alt | awk '{ printf ("%s %s\n", $3, $5); }' | sort | uniq -c | sort -rnk 1
-    181 NC_038235 attachment_glycoprotein
+$ grep indf3pst va-rsv.r500/va-rsv.r500.vadr.alt | awk '{ printf ("%s %s\n", $3, $5); }' | sort | uniq -c | sort -rnk 1
+    182 NC_038235 attachment_glycoprotein
      12 NC_001781 attachment_glycoprotein
       9 NC_038235 polymerase_protein
       7 NC_001781 polymerase_protein
@@ -977,11 +1002,11 @@ $ cat ex5.list
 MH181932.1
 
 # fetch the sequence
-$ esl-sfetch -f rsv.r500.fa ex5.list > ex5.fa
+$ $VADREASELDIR/esl-sfetch -f rsv.r500.fa ex5.list > ex5.fa
 
 # run v-annotate.pl on these sequences with 
 # the --keep option to save all output files
-$ v-annotate.pl --keep --mdir rsv-models --mkey rsv ex5.fa va-ex5
+$ v-annotate.pl --keep --mdir rsv-models1 --mkey rsv ex5.fa va-ex5
 ```
 
 Again, consult the `.tbl` file to determine attachment glycoprotein
@@ -1046,64 +1071,979 @@ the `alert detail` in the `alt` file is `120`:
 <[(va-ex5)]> grep indf3pst va-ex5.vadr.alt
 1.5.3  MH181932.1  NC_038235  CDS   attachment_glycoprotein   14  indf3pst  yes   INDEFINITE_ANNOTATION_END             5486..5605:+    120              5584..5584:+      1  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [120>8, valid stop codon in nucleotide-based prediction]
 ```
-
 --- 
 
-### Lessons from investigating common alerts in our training set
+### <a name="majorchar"></a>Lessons from investigating common alerts in our training set
 
-To summarize what we've learned from manually investigating the top
-six most common types of fatal alerts: 
+We've learned that both `NC_038235` and `NC_001781` are lacking
+several major characteristics that are (by definition) present in the
+majority of RSV A and RSV B sequences, respectively. These include:
 
-   * The attachment glyoprotein CDS stop codon position in both
-     `NC_038235` and `NC_001781` is downstream of the most common stop codon
-     position in our RSV A training sequences, by 3 nt (`NC_038235`)
-     or 21 nt (`NC_001781`).
+ * attachment glycoprotein stop codon at reference coordinates
+   `5579..5581` in RSV A and `5566..5568` in RSV B.
 
-   * The `NC_001781` attachment glyoprotein CDS stop codon at
-     positions `5587..5589` is 21 nucleotides downstream of the
-     most common stop codon position in our RSV B training sequences.
+ * duplicated region in attachment glycoprotein near reference
+   reference positions `5466..5537` in RSV A and `5410..5469` in RSV
+   B. 
 
-   * There is a duplicated region in many RSV A and B sequences in the
-     attachment glycoprotein that is not present in the `NC_038235`
-     and `NC_001781` reference sequences. This duplicated region leads
-     to several types of VADR alerts including `dupregin`, `insertnp`
-     and `indf3pst`.
+ * M2-2 protein start codon at reference positions `8165..8167`
 
-   * `NC_038235` and `NC_001781` both have `gene` positional
-     boundaries that differ from the CDS. Some of the `gene`
-     boundaries lead to low alignment confidence related alerts in
-     VADR. Typically for viral GenBank submissions based on VADR, the
-     gene and CDS boundaries are kept consistent.
+And further we've observed that:
 
-   * The `M2-2 protein` CDS in `NC_038235` has a start codon that
-     differs from many other RSV A sequences by six positions.
+  * `NC_038235` and `NC_001781` both have `gene` positional
+    boundaries that differ from the CDS. Some of the `gene`
+    boundaries lead to low alignment confidence related alerts in
+    VADR. Typically for viral GenBank submissions based on VADR, the
+    gene and CDS boundaries are kept consistent.
 
-### 5. Potentially choose alternative representative sequences
+At this point, because we've found at least one major characteristic
+present in the majority of the sequences but lacking in the reference
+model for both models, we will start a new iteration of our model
+building strategy, by first choosing representative sequences that
+contain these major characteristics and building new models from them.
 
 </details>
 
 ---
 
----
-### 6. Rerun `v-annotate.pl` on test set (if models were updated)
+<summary>
+
+## Iteration 2, step 1: build model(s) from new reference sequence(s)
+
+</summary>
+
+## Choosing new representative sequences
+
+We will choose a new representative from our random set of 500
+training sequences. Of course, it is possible, and probably even
+likely, that there is a 'better' representative that is not in our
+training set, but using a sequence from our training set of 500 is
+probably good enough. First we need to identify the subset of our 500
+sequences that contain the three major characteristics we identified
+in iteration 1, summarized [above](#majorchar). We'll do this
+separately for RSV A and RSV B:
+
+```
+# fetch out the sequences with the early stop codon (cdsstopn) at 5579..5581:
+$ grep NC_038235 va-rsv.r500/va-rsv.r500.vadr.alt | grep cdsstopn | grep 5579..5581 | awk '{ print $2 }' | wc -l
+213
+$ grep NC_038235 va-rsv.r500/va-rsv.r500.vadr.alt | grep cdsstopn | grep 5579..5581 | awk '{ print $2 }' | sort > 213.list 
+
+# fetch out the sequences with the dupregin at 5466..5537:
+$ grep NC_038235 va-rsv.r500/va-rsv.r500.vadr.alt | grep dupregin | grep 5466..5537 | awk '{ print $2 }' | wc -l
+159
+$ grep NC_038235 va-rsv.r500/va-rsv.r500.vadr.alt | grep dupregin | grep 5466..5537 | awk '{ print $2 }' | sort > 158.list
+
+# use the unix 'comm' command to get the subset of seqs common to both lists
+$ comm -1 -2 213.list 159.list | wc -l
+143
+$ comm -1 -2 213.list 159.list > 143.list
+
+# fetch out the sequences with the M2-2 protein start codon at reference positions `8165..8167
+$ grep NC_038235 va-rsv.r500/va-rsv.r500.vadr.alt | grep M2-2 | grep mutstart | grep 8159..8161 | awk '{ print $2 }' | wc -l
+259
+$ grep NC_038235 va-rsv.r500/va-rsv.r500.vadr.alt | grep M2-2 | grep mutstart | grep 8159..8161 | awk '{ print $2 }' | sort > 259.list
+
+# use the unix 'comm' command to get the subset of seqs common to both lists
+$ comm -1 -2 143.list 259.list | wc -l
+140
+$ comm -1 -2 143.list 259.list > 140.list
+
+# fetch the 139 sequences into a new fasta file:
+$ $VADREASELDIR/esl-sfetch -f rsv.r500.fa 139.list > rsvA.139.fa
+```
+And then repeat the same for RSV B, skipping the M2-2 start codon step
+which doesn't apply to RSV B:
+```
+# fetch out the sequences with the early stop codon (cdsstopn) at 5566..5568:
+$ grep NC_001781 va-rsv.r500/va-rsv.r500.vadr.alt | grep cdsstopn | grep 5566..5568 | awk '{ print $2 }' | wc -l
+154
+$ grep NC_001781 va-rsv.r500/va-rsv.r500.vadr.alt | grep cdsstopn | grep 5566..5568 | awk '{ print $2 }' | sort > 153.list
+
+# fetch out the sequences with the dupregin at 5410..5469
+$ grep NC_001781 va-rsv.r500/va-rsv.r500.vadr.alt | grep dupregin | grep 5410..5469 | awk '{ print $2 }' | wc -l
+167
+$ grep NC_001781 va-rsv.r500/va-rsv.r500.vadr.alt | grep dupregin | grep 5410..5469 | awk '{ print $2 }' | sort > 167.list
+
+# use the unix 'comm' command to get the subset of seqs common to both lists
+$ comm -1 -2 153.list 167.list | wc -l
+129
+$ comm -1 -2 153.list 167.list > 129.list
+
+# fetch the 129 sequences into a new fasta file:
+$ $VADREASELDIR/esl-sfetch -f rsv.r500.fa 129.list > rsvB.129.fa
+```
+
+It is important that our reference sequences do not have too many
+ambiguous nucleotides as make the models less specific. (Indeed we may
+want our models to be less specific and more general in some areas of
+the genome that are less highly conserved, but including ambiguous
+nucleotides from a single reference sequence is not the best way to do
+this. We'll revisit this topic briefly at the end of the tutorial.) 
+
+Because we have many candidates, we can afford to remove sequences
+with 1 or more ambiguous nucleotides. We can list all such sequences
+using the `count-ambigs.pl` *miniscript* included with VADR:
+
+```
+$ perl $VADRSCRIPTSDIR/miniscripts/count-ambigs.pl rsvA.140.fa
+KJ672441.1     0 15173 0.0000
+KJ672451.1     0 15173 0.0000
+KJ672457.1     0 15172 0.0000
+KU839631.1     0 15172 0.0000
+KU950492.1     0 15233 0.0000
+KU950506.1     0 15202 0.0000
+KU950524.1     0 15233 0.0000
+KU950596.1     0 15228 0.0000
+KU950627.1     0 15228 0.0000
+KU950639.1     0 15232 0.0000
+KU950666.1     0 15061 0.0000
+..snip..
+```
+
+The second field is the number of ambiguous nucleotides in each
+sequence. We can fetch out all lines that have 1 or more in this field
+with: 
+
+```
+$ perl $VADRSCRIPTSDIR/miniscripts/count-ambigs.pl rsvA.140.fa | awk '{ printf("%s %s\n", $1, $2); }' | grep -v " 0" 
+LC530050.1 1
+MG813982.1 46
+MN078121.1 7
+MN535098.1 217
+MN536995.1 1238
+MN536996.1 65
+..snip..
+```
+
+And to only save the sequences with 0 ambiguous nucleotides:
+```
+$ perl $VADRSCRIPTSDIR/miniscripts/count-ambigs.pl rsvA.140.fa | awk '{ printf("%s %s\n", $1, $2); }' | grep " 0" | wc -l 
+90
+$ perl $VADRSCRIPTSDIR/miniscripts/count-ambigs.pl rsvA.140.fa | awk '{ printf("%s %s\n", $1, $2); }' | grep " 0" > rsvA.90.list
+$ $VADREASELDIR/esl-sfetch -f rsv.r500.fa rsvA.90.list > rsvA.90.fa
+```
+
+Repeating for RSV B:
+```
+$ perl $VADRSCRIPTSDIR/miniscripts/count-ambigs.pl rsvB.129.fa | awk '{ printf("%s %s\n", $1, $2); }' | grep " 0" | wc -l
+113
+$ perl $VADRSCRIPTSDIR/miniscripts/count-ambigs.pl rsvB.129.fa | awk '{ printf("%s %s\n", $1, $2); }' | grep " 0" > rsvB.113.list
+$ $VADREASELDIR/esl-sfetch -f rsv.r500.fa rsvB.113.list > rsvB.113.fa
+```
+
+We will choose our reference sequences from these candidate sets using
+two criteria: 
+* similarity to other candidate sequences
+* length
+
+We want a sequence that is representative and one way to do that is to
+pick the sequence with a high average percent identity to all other
+candidates based on an alignment. We can use `v-annotate.pl` to
+generate multiple alignments of all candidates:
+
+```
+$ v-annotate.pl --out_stk --mdir rsv-models1 --mkey rsv rsvA.89.fa va-rsvA.89
+$ v-annotate.pl --out_stk --mdir rsv-models1 --mkey rsv rsvB.112.fa va-rsvB.112
+```
+
+When these commands are completed the alignment will be in 
+`va-rsvA.89/va-rsv.89.vadr.NC_038235.align.stk` and
+`va-rsvB.112/va-rsv.112.vadr.NC_001781.align.stk`.
+
+We can use the `esl-alipid` program that is installed with VADR to
+determine the alignment percent identity between all pairs of
+sequences. The `esl-alipid-per-seq-stats.pl` script can then be
+used to output the average pairwise identities for each sequence,
+which we can use to select a new representative:
+
+```
+# compute the pairwise ids with esl-alipid:
+$ $VADREASELDIR/esl-alipid va-rsvA.90/va-rsvA.90.vadr.NC_038235.align.stk > rsvA.90.alipid
+$ head rsvA.90.alipid 
+# seqname1 seqname2 %id nid denomid %match nmatch denommatch
+KJ672441.1 KJ672451.1  99.29  15066  15173  99.03  15099  15247
+KJ672441.1 KJ672457.1  99.12  15038  15172  99.04  15099  15246
+KJ672441.1 KU839631.1  99.19  15049  15172  99.05  15100  15245
+KJ672441.1 KU950492.1  99.27  15062  15173  98.65  15100  15306
+KJ672441.1 KU950506.1  99.03  15026  15173  98.74  15091  15284
+KJ672441.1 KU950524.1  99.28  15064  15173  98.64  15099  15307
+KJ672441.1 KU950596.1  99.22  15055  15173  98.66  15098  15303
+KJ672441.1 KU950627.1  99.24  15057  15173  98.67  15099  15302
+KJ672441.1 KU950639.1  99.19  15050  15173  98.66  15100  15305
+
+# compute the per-seq average percent id 
+$ perl $VADRSCRIPTSDIR/miniscripts/esl-alipid-per-seq-stats.pl rsvA.90.alipid > rsvA.90.alipid.perseq
+$ head rsvA.90.alipid.perseq 
+#seq        avgpid  minpidseq   minpid  maxpidseq   maxpid
+KJ672441.1  98.818  OQ941773.1  95.040  KJ672451.1  99.290
+KJ672451.1  98.860  OQ941773.1  94.920  KU950680.1  99.840
+KJ672457.1  98.794  OQ941773.1  95.380  OR466347.1  99.680
+KU839631.1  98.824  OQ941773.1  95.420  KU950639.1  99.950
+KU950492.1  98.853  OQ941773.1  94.950  KY982516.1  99.700
+KU950506.1  98.771  OQ941773.1  95.370  KY654518.1  99.630
+KU950524.1  98.890  OQ941773.1  94.910  KU950627.1  99.660
+KU950596.1  98.823  OQ941773.1  94.860  KU950627.1  99.990
+KU950627.1  98.827  OQ941773.1  94.860  KU950596.1  99.990
+
+# sort by average percent id:
+$ grep -v ^\# rsvA.90.alipid.perseq | sort -rnk 2 | head > rsvA.top10.alipid.perseq
+$ cat rsvA.top10.alipid.perseq 
+KY654518.1  98.950  OQ941773.1  95.480  KU950639.1  99.670
+KY982516.1  98.922  OQ941773.1  95.000  KU950492.1  99.700
+KU950524.1  98.890  OQ941773.1  94.910  KU950627.1  99.660
+KX655644.1  98.871  OQ941773.1  94.930  MH181953.1  99.780
+KU950680.1  98.869  OQ941773.1  94.910  KJ672451.1  99.840
+KJ672451.1  98.860  OQ941773.1  94.920  KU950680.1  99.840
+KU950639.1  98.856  OQ941773.1  95.430  KU839631.1  99.950
+KU950492.1  98.853  OQ941773.1  94.950  KY982516.1  99.700
+KU950627.1  98.827  OQ941773.1  94.860  KU950596.1  99.990
+KU839631.1  98.824  OQ941773.1  95.420  KU950639.1  99.950
+```
+
+And for RSV B:
+
+```
+# compute the pairwise ids with esl-alipid:
+$ $VADREASELDIR/esl-alipid va-rsvB.113/va-rsvB.113.vadr.NC_001781.align.stk > rsvB.113.alipid
+
+# compute the per-seq average percent id 
+$ perl $VADRSCRIPTSDIR/miniscripts/esl-alipid-per-seq-stats.pl rsvB.113.alipid > rsvB.113.alipid.perseq
+
+# sort by average percent id:
+$ grep -v ^\# rsvB.113.alipid.perseq | sort -rnk 2 | head > rsvB.top10.alipid.perseq
+$ cat rsvB.top10.alipid.perseq
+ON237084.1  98.927  ON237101.1  97.950  MH760654.1  99.800
+ON237174.1  98.902  ON237101.1  97.870  ON237173.1  99.930
+MH760699.1  98.887  ON237101.1  97.860  ON237174.1  99.680
+MH760654.1  98.875  ON237101.1  97.900  ON237084.1  99.800
+ON237177.1  98.873  ON237101.1  97.850  ON237174.1  99.930
+ON237173.1  98.873  ON237101.1  97.840  ON237174.1  99.930
+OR496332.1  98.857  ON237101.1  97.770  MZ516105.1  99.760
+MZ516105.1  98.851  ON237101.1  97.760  OR496332.1  99.760
+MW160818.1  98.849  ON237101.1  97.740  OR496332.1  99.660
+MH760707.1  98.837  ON237101.1  97.860  MH760706.1  99.850
+```
+
+The sequences with the highest average percent identities are good
+candidates. The final criterion is the length, we don't want the
+sequence to be too short. In this case, we know that the
+NC_038235 and NC_001781 models are considered "full length" as
+indicated in their GenBank annotation:
+
+[NC_038235](https://www.ncbi.nlm.nih.gov/nuccore/NC_038235)
+```
+COMMENT     REVIEWED REFSEQ: This record has been curated by NCBI staff. The
+            reference sequence is identical to M74568.
+            COMPLETENESS: full length.
+```
+
+[NC_001781](https://www.ncbi.nlm.nih.gov/nuccore/NC_001781) RefSeq
+```
+COMMENT     REVIEWED REFSEQ: This record has been curated by NCBI staff. The
+            reference sequence is identical to AF013254.
+            COMPLETENESS: full length.
+
+```
+
+So our new representatives should align end to end with their
+respective model RefSeqs. We can determine those that do by inspecting
+the alignments. To make viewing the alignments easier, we can pull out
+only the top 10 candidates from each using the `esl-alimanip` program
+that is installed with VADR:
+
+```
+$ cat rsvA.top10.alipid.perseq | awk '{ print $1 }' > rsvA.top10.list
+$ $VADREASELDIR/esl-alimanip --seq-k rsvA.top10.list va-rsvA.90/va-rsvA.90.vadr.NC_038235.align.stk > rsvA.top10.stk
+
+$ cat rsvB.top10.alipid.perseq | awk '{ print $1 }' > rsvB.top10.list
+$ $VADREASELDIR/esl-alimanip --seq-k rsvB.top10.list va-rsvB.113/va-rsvB.113.vadr.NC_001781.align.stk > rsvB.top10.stk
+```
+
+Sequences that align to the full length of the reference model will
+have zero terminal gaps at reference (nongap positions in the `#=GC
+RF` lines). Taking a look at the 5' end of the `rsvA.top10.stk` alignment:
+
+```
+KJ672451.1         ----------------------------------------------------------------------CACTTAAATTTAACTCCT
+#=GR KJ672451.1 PP ......................................................................******************
+KU839631.1         ----------------------------------------------------------------------CACTTAAATTTAACTCCT
+#=GR KU839631.1 PP ......................................................................******************
+KU950492.1         ---------------------AAACTTGCGTAAACCAAAAAAATGGGGCAAATAAGAATTTGATAAGTACCACTTAAATCTAACTCCT
+#=GR KU950492.1 PP .....................*******************************************************************
+KU950524.1         ---------------------AAACTTGCGTAAACCAAAAAAATGGGGCAAATAAGAATTTGATAAGTACCACTTAAATTTAACTCCT
+#=GR KU950524.1 PP .....................*******************************************************************
+KU950627.1         --------------------------TGCGTAAACCAAAAAAATGGGGCAAATAAGAATTTGATAAGTACCACTTAAATTTAACTCCT
+#=GR KU950627.1 PP ..........................**************************************************************
+KU950639.1         ---------------------AAACTTGCGTAAACCAAAAAAATGGGGCAAATAAGAATTTGATAAGTACCACTTAAATTTAACTCCT
+#=GR KU950639.1 PP .....................*******************************************************************
+KU950680.1         -----------------------------GTAAACCAAAAAAATGGGGCAAATAAGAATTTGATAAGTACCACTTAAATTTAACTCCT
+#=GR KU950680.1 PP .............................***********************************************************
+KX655644.1         -----------------------------------CAAAAAAATGGGGCAAATAAGAATTTGATAAGTACCACTTAAATTTAACTCCT
+#=GR KX655644.1 PP ...................................*****************************************************
+KY654518.1         ACGCGAAAAAATGCGTACAACAAACTTGCGTAAACCAAAAAAATGGGGCAAATAAGAATTTGATAAGTACCACTTAAATTTAACTCCT
+#=GR KY654518.1 PP ****************************************************************************************
+KY982516.1         -----------------------------------CAAAAAAATGGGGCAAATAAGAATTTGATAAGTACCACTTAAATTTAACTCCT
+#=GR KY982516.1 PP ...................................*****************************************************
+#=GC SS_cons       ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#=GC RF            ACGCGAAAAAATGCGTACAACAAACTTGCATAAACCAAAAAAATGGGGCAAATAAGAATTTGATAAGTACCACTTAAATTTAACTCCC
+```
+
+Only one sequence `KY654518.1` extends to the 5' end of the reference
+model. Fortunately, it also extends to the 3' end as well:
+
+```
+KJ672451.1         TTATATGTATATTAACTAAATT-----------------------------------
+#=GR KJ672451.1 PP **********************...................................
+KU839631.1         TTATATGTATATTAACTAAATT-----------------------------------
+#=GR KU839631.1 PP **********************...................................
+KU950492.1         TTATATGTATATTAACTAAATTACGAGATATTA------------------------
+#=GR KU950492.1 PP *********************************........................
+KU950524.1         TTATATGTATATTAACTAAATTACGAGATATTA------------------------
+#=GR KU950524.1 PP *********************************........................
+KU950627.1         TTATATGTATATTAACTAAATTACGAGATATTA------------------------
+#=GR KU950627.1 PP *********************************........................
+KU950639.1         TTATATGTATATTAACTAAATTACGAGATATTA------------------------
+#=GR KU950639.1 PP *********************************........................
+KU950680.1         TTATATGTATATTAACTAAATTACGAGATATTA------------------------
+#=GR KU950680.1 PP *********************************........................
+KX655644.1         TTATATGTATATTAACTAAATTACGAGATATTA------------------------
+#=GR KX655644.1 PP *********************************........................
+KY654518.1         TTATATGTATATTAACTAAATTACGAGATATTAGTTTTTGACACTTTT-TTTCTCGT
+#=GR KY654518.1 PP ************************************************.********
+KY982516.1         TTATATGTATATTAACTAAATTACGAGATATTA------------------------
+#=GR KY982516.1 PP *********************************........................
+#=GC SS_cons       ::::::::::::::::::::::::::::::::::::::::::::::::.::::::::
+#=GC RF            TTATATGTGTATTAACTAAATTACGAGATATTAGTTTTTGACACTTTT.TTTCTCGT
+//
+```
+
+So `KY654518.1` will be our new RSV A reference sequence. Repeat the
+drill for the `rsvB.top10.stk` alignment:
+
+```
+MH760654.1         ----------------------------------------------------------------------------------------
+#=GR MH760654.1 PP ........................................................................................
+MH760699.1         ----------------------------------------------------------------------------------------
+#=GR MH760699.1 PP ........................................................................................
+MH760707.1         ----------------------------------------------------------------------------------------
+#=GR MH760707.1 PP ........................................................................................
+MW160818.1         -------------------------TTGCATACTCGAAAA-AAATGGGGCAAATAAGAATTTGATAAGTGCTATTTAAGTCTAACCTT
+#=GR MW160818.1 PP .........................***************.***********************************************
+MZ516105.1         ACGCGAAAAAATGCGTACTACAAACTTGCACACTCGGAAA-AAATGGGGCAAATAAGAATTTGATGAGTGCTATTTAAGTCTAACCTT
+#=GR MZ516105.1 PP ****************************************.***********************************************
+ON237084.1         ---------------------------------------------GGGGCAAATAAGAATTTGATAAGTGCTATTTAAGTCTAACCTT
+#=GR ON237084.1 PP .............................................*******************************************
+ON237173.1         --------------------------------------------TGGGGCAAATAAGAATTTGATAAGTGCTATTTAAGTCTAACCTT
+#=GR ON237173.1 PP ............................................********************************************
+ON237174.1         --------------------------------------------TGGGGCAAATAAGAATTTGATAAGTGCTATTTAAGTCTAACCTT
+#=GR ON237174.1 PP ............................................********************************************
+ON237177.1         ------------------------------------------AATGGGGCAAATAAGAATTTGATAAGTGCTATTTAAGTCTAACCTT
+#=GR ON237177.1 PP ..........................................**********************************************
+OR496332.1         ----------------------------------------------GGGCAAATAAGAATTTGATGAGTGCTATTTAAGTCTAACCTT
+#=GR OR496332.1 PP ..............................................******************************************
+#=GC SS_cons       ::::::::::::::::::::::::::::::::::::::::.:::::::::::::::::::::::::::::::::::::::::::::::
+#=GC RF            ACGCGAAAAAATGCGTACTACAAACTTGCACATTCGGAAA.AAATGGGGCAAATAAGAATTTGATAAGTGCTATTTAAGTCTAACCTT
+```
+
+Again, only 1 candidate `MZ516105.1`, which fortunately also extends
+to the 3' end position as well. (Note that there is one gap at the end
+of `MZ516105.1` but this is to a gap in the `RF` annotation. The
+sequence does extend to the final nongap position of the `RF`
+annotation.)
+
+```
+MH760654.1         -----------------------------------------------------------------------------
+#=GR MH760654.1 PP .............................................................................
+MH760699.1         -----------------------------------------------------------------------------
+#=GR MH760699.1 PP .............................................................................
+MH760707.1         -----------------------------------------------------------------------------
+#=GR MH760707.1 PP .............................................................................
+MW160818.1         GTCTAAAACTAACAATCACACATGTGCATTTGCAACACA--------------------------------------
+#=GR MW160818.1 PP ***************************************......................................
+MZ516105.1         GTCTAAAACTAACAATCACACATGTGCATTTACAACACAACGAGACATTAGTTTTTGACACTTTT-TTTC--TCGT-
+#=GR MZ516105.1 PP *****************************************************************.****..****.
+ON237084.1         GTCTAAAACTAACAATCACACATGTGCATTTACAACACAACGAGACATTA---------------------------
+#=GR ON237084.1 PP **************************************************...........................
+ON237173.1         GTCTAAAACTAACAATCACACATGTGCATTTACAACACAACGAGACATTA---------------------------
+#=GR ON237173.1 PP **************************************************...........................
+ON237174.1         GTCTAAAACTAACAATCACACATGTGCATTTACAACACAACGAGACATTA---------------------------
+#=GR ON237174.1 PP **************************************************...........................
+ON237177.1         GTCTAAAACTAACAATCACACATGTGCATTTACAACACAACGAGACATTA---------------------------
+#=GR ON237177.1 PP **************************************************...........................
+OR496332.1         GTCTAAAACTAACAATCACACATGTGCATTTAC--------------------------------------------
+#=GR OR496332.1 PP *********************************............................................
+#=GC SS_cons       :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::.::::..::::.
+#=GC RF            GTCTAAAACTAACAATGATACATGTGCATTTACAACACAACGAGACATTAGTTTTTGACACTTTT.TTTC..TCGT.
+//
+```
+
+### Build new models from new reference sequence(s)
+
+To build our new models, we run `v-build.pl`:
+
+```
+$ v-build.pl --group RSV --subgroup A KY654518 KY654510
+$ v-build.pl --group RSV --subgroup B MZ516105 MZ516105 
+```
+
+These models will take up to an hour to build.
+When they're finished, we can combine them as before:
+
+```
+# create a new directory
+$ mkdir rsv-models2
+
+# concatenate .minfo, .cm .fa and .hmm files:
+$ cat KY654518/*.vadr.minfo > rsv-models2/rsv.minfo
+$ cat KY654518/*.vadr.cm > rsv-models2/rsv.cm
+$ cat KY654518/*.vadr.fa > rsv-models2/rsv.fa
+$ cat KY654518/*.vadr.protein.hmm > rsv-models2/rsv.hmm
+$ cat MZ516105/*.vadr.minfo >> rsv-models2/rsv.minfo
+$ cat MZ516105/*.vadr.cm >> rsv-models2/rsv.cm
+$ cat MZ516105/*.vadr.fa >> rsv-models2/rsv.fa
+$ cat MZ516105/*.vadr.protein.hmm >> rsv-models2/rsv.hmm
+
+# copy the blastdb files:
+$ cp KY654518/*.vadr.protein.fa* rsv-models2/
+$ cp MZ516105/*.vadr.protein.fa* rsv-models2/
+
+# prepare the library files:
+$ $VADRINFERNALDIR/esl-sfetch --index rsv-models2/rsv.fa
+$ $VADRINFERNALDIR/cmpress rsv-models2/rsv.cm
+$ $VADRHMMERDIR/hmmpress rsv-models2/rsv.hmm
+$ $VADRBLASTDIR/makeblastdb -dbtype nucl -in rsv-models2/rsv.fa
+```
+
+As in iteration 1, it's a good idea to run `v-annotate.pl` with the new models against the two model
+sequences as a sanity check. For these two RSV models, both sequences
+should pass:
+
+```
+$ v-annotate.pl --mdir rsv-models2 --mkey rsv rsv-models2/rsv.fa va-rsv2
+```
+
+```
+# Summary of classified sequences:
+#
+#                                 num   num   num
+#idx  model     group  subgroup  seqs  pass  fail
+#---  --------  -----  --------  ----  ----  ----
+1     KY654518  RSV    A            1     1     0
+2     MZ516105  RSV    B            1     1     0
+#---  --------  -----  --------  ----  ----  ----
+-     *all*     -      -            2     2     0
+-     *none*    -      -            0     0     0
+#---  --------  -----  --------  ----  ----  ----
+#
+# Zero alerts were reported.
+#
+```
+
+</details>
+
+<details>
+
+<summary>
+
+## Iteration 2, step 2: run `v-annotate.pl` on our existing training set
+
+</summary>
+
+We can reuse the training set from iteration 1 here in the second
+iteration. We could create a different training set but if our
+original training set was sufficiently large and truly random, then we
+probably don't need to. One upside of keeping the same training set is
+that it makes differences between results with our new models and
+results with our original models in iteration 1 easier to understand
+and interpret.
+
+We can repeat the `v-annotate.pl` command from iteration 1, but this
+time we will use the `--out_stk` option to save multiple alignments
+for reasons that will become clear below:
+
+```
+$ v-annotate.pl --out_stk --mdir rsv-models2 --mkey rsv rsv.r500fa va2-r500
+```
+
+This time, from the `v-annotate.pl` output we can tell that many more
+sequences passed than in iteration 1, when only 6 of 500 passed:
+
+```
+# Summary of classified sequences:
+#
+#                                 num   num   num
+#idx  model     group  subgroup  seqs  pass  fail
+#---  --------  -----  --------  ----  ----  ----
+1     KY654518  RSV    A          286   135   151
+2     MZ516105  RSV    B          214   132    82
+#---  --------  -----  --------  ----  ----  ----
+-     *all*     -      -          500   267   233
+-     *none*    -      -            0     0     0
+#---  --------  -----  --------  ----  ----  ----
+```
+
+But there are still 233 sequences that do not pass. We know from
+iteration 1 that we don't expect any of the fatal alerts remaining in
+these 233 sequences to exist in a majority of sequences, but there
+still may be some alerts that are somewhat common and exist in a
+significant number of sequences. Many of these alerts may correspond to real
+biological variability in RSV sequences that we'd rather not cause a
+sequence to fail, and they may be addressable by modifying the model
+without changing the underlying reference sequences like we did at the
+end of iteration 1. There are several ways we can address these
+situations, including:
+
+1. *Add a new protein to the blastx protein library for a model to
+   account for protein sequence variability.* This
+   can help remove unnecessary alerts related to the protein validation stage, most
+   commonly: `indfpst5` and `indfpst3`.
+
+2. *Add **alternative features** to the model info file, along with
+   corresponding proteins to the blastx protein library.* Some CDS may
+   have multiple positions, with respect to the reference model, for the
+   start and/or stop codon. We can deal with this by adding all of the
+   acceptable alternatives as features to the model info file, and
+   `v-annotate.pl` will attempt to annotate each of them and report
+   annotation for the single alternative that yields the fewest fatal
+   alerts. 
+
+3. *Add an alert *exception* to the model info file.* For some alerts,
+   exceptions can be added that prevent the reporting of alerts in
+   specific model regions. For example, an exception can be added to
+   prevent the reporting of a `dupregin` alert due to an expected
+   repetitive region. 
+
+4. *Rebuild the covariance model from a new input alignment.* We can
+   still use the same reference sequence and coordinates, but by
+   buildng a new model from an alignment with multiple sequences,
+   certain alerts that caused by sequence differences with the
+   reference model can be prevented.
+
+5. *Specify features as non-essential*. By adding a a
+   `misc_not_failure` flag to a feature in a feature info file, we can
+   make it so that many types of fatal alerts do not cause a sequence
+   to fail, but instead cause the associated feature to be annotated
+   as a `misc_feature` in the output. 
+
+6. *Specify command-line options when running `v-annotate.pl` to make
+   some alerts fatal or non-fatal*. For some viruses, certain fatal alerts
+   may be so common that they are expected for many sequences, yet we
+   don't want them to cause a sequence to fail. We can make those
+   alerts non-fatal using the command-line option `alt_pass`.
+
+I will walk you through examples of some of these strategies. First, we
+need to identify the minority characteristics that we would like to
+address through model modification. Once again we can start by looking
+at the most common types of reported alerts:
+
+
+Here are the counts for all of the fatal alerts, from the
+`va2-rsv.r500/va2-rsv.r500.vadr.alc` file:
+
+```
+#     alert     causes   short                               per    num   num  long       
+#idx  code      failure  description                        type  cases  seqs  description
+#---  --------  -------  -----------------------------  --------  -----  ----  -----------
+16    lowcovrg  yes      LOW_COVERAGE                   sequence     13    13  low sequence fraction with significant similarity to homology model
+17    lowsimis  yes      LOW_SIMILARITY                 sequence      3     3  internal region without significant similarity
+18    mutstart  yes      MUTATION_AT_START               feature      6     6  expected start codon could not be identified
+19    mutendcd  yes      MUTATION_AT_END                 feature    114   110  expected stop codon could not be identified, predicted CDS stop by homology is invalid
+20    mutendns  yes      MUTATION_AT_END                 feature      2     2  expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
+21    mutendex  yes      MUTATION_AT_END                 feature    110   109  expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position
+22    unexleng  yes      UNEXPECTED_LENGTH               feature     16    15  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3
+23    cdsstopn  yes      CDS_HAS_STOP_CODON              feature     36    35  in-frame stop codon exists 5' of stop position predicted by homology to reference
+24    cdsstopp  yes      CDS_HAS_STOP_CODON              feature      3     3  stop codon in protein-based alignment
+25    fsthicft  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF   feature     12    12  high confidence possible frameshift in CDS (frame not restored before end)
+26    fsthicfi  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF   feature      1     1  high confidence possible frameshift in CDS (frame restored before end)
+27    indfantn  yes      INDEFINITE_ANNOTATION           feature      5     3  nucleotide-based search identifies CDS not identified in protein-based search
+28    indf5gap  yes      INDEFINITE_ANNOTATION_START     feature      4     2  alignment to homology model is a gap at 5' boundary
+29    indf5pst  yes      INDEFINITE_ANNOTATION_START     feature     25    22  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint
+30    indf3gap  yes      INDEFINITE_ANNOTATION_END       feature      6     3  alignment to homology model is a gap at 3' boundary
+31    indf3pst  yes      INDEFINITE_ANNOTATION_END       feature    132   124  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
+32    deletinp  yes      DELETION_OF_NT                  feature    138   138  too large of a deletion in protein-based alignment
+```
+
+Sorting by number of sequences, there are 9 alerts that occur in more
+than 10 sequence (more than 2\% of sequences):
+
+```
+32    deletinp  yes      DELETION_OF_NT                  feature    138   138  too large of a deletion in protein-based alignment
+31    indf3pst  yes      INDEFINITE_ANNOTATION_END       feature    132   124  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
+19    mutendcd  yes      MUTATION_AT_END                 feature    114   110  expected stop codon could not be identified, predicted CDS stop by homology is invalid
+21    mutendex  yes      MUTATION_AT_END                 feature    110   109  expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position
+23    cdsstopn  yes      CDS_HAS_STOP_CODON              feature     36    35  in-frame stop codon exists 5' of stop position predicted by homology to reference
+29    indf5pst  yes      INDEFINITE_ANNOTATION_START     feature     25    22  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint
+22    unexleng  yes      UNEXPECTED_LENGTH               feature     16    15  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3
+16    lowcovrg  yes      LOW_COVERAGE                   sequence     13    13  low sequence fraction with significant similarity to homology model
+25    fsthicft  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF   feature     12    12  high confidence possible frameshift in CDS (frame not restored before end)
+```
+
+We will investigate each of these types of alerts, starting with
+`deletinp`. As in iteration 1, we can sort all the occurences of this
+alert in the `.alt` file and group them:
+
+```
+$ grep deletinp va2-rsv.r500/va2-rsv.r500.vadr.alt | awk '{ printf ("%s %s %s\n", $3, $5, $12); }' | sort | uniq -c | sort -rnk 1
+     69 KY654518 attachment_glycoprotein 5461..5532:+
+     23 KY654518 attachment_glycoprotein 5509..5574:+
+     20 MZ516105 attachment_glycoprotein 5435..5494:+
+     15 MZ516105 attachment_glycoprotein 5399..5458:+
+      7 KY654518 attachment_glycoprotein 5515..5580:+
+      1 MZ516105 attachment_glycoprotein 5444..5503:+
+      1 MZ516105 attachment_glycoprotein 5390..5440:+
+      1 KY654518 attachment_glycoprotein 5494..5547:+
+      1 KY654518 attachment_glycoprotein 5458..5529:+
+```
+
+The deletions are occuring in the attachment glycoprotein CDS in a
+region that may be familiar - it is close to the duplicate region we
+observed in iteration 1. We attempted to address the `dupregin` alerts
+in iteration 1 by rebuilding our models with new sequences that
+*included* the duplicated region, but now it seems that we are observing the sequences
+that do not have the duplication failing with a `deletinp`
+alert. These are a minority of the sequences but still a significant
+number in each model. 
+
+The `deletinp` alert occurs when there is a region in the best
+'blastx' alignment that includes a deletion that is longer than 9
+amino acids (27 nucleotides). Let's take a look at one example of the
+most common deletion span: `5461..5532:+` to the `KY654518` (RSV A)
+model, by randoming selecting one sequence and rerunning
+`v-annotate.pl` on it with the `--keep` option as we did earlier in
+iteration 1. 
+
+```
+# pick a sequence with the deletinp alert:
+$ grep deletinp va2-rsv.r500/va2-rsv.r500.vadr.alt | grep 5461..5532 | awk '{ print $2 }' | esl-selectn 1 - > ex6.list
+$ cat ex6.list
+KX655676.1
+
+# fetch the sequence
+$ $VADREASELDIR/esl-sfetch -f rsv.r500.fa ex6.list > ex6.fa
+
+# run v-annotate.pl on these sequences with 
+# --keep option to save all output files
+$ $VADRSCRIPTSDIR/v-annotate.pl --keep --mdir rsv-models2 --mkey rsv ex6.fa va-ex6
+```
+
+```
+# Summary of reported alerts:
+#
+#     alert     causes   short               per    num   num  long
+#idx  code      failure  description        type  cases  seqs  description
+#---  --------  -------  --------------  -------  -----  ----  -----------
+1     deletinn  no       DELETION_OF_NT  feature      1     1  too large of a deletion in nucleotide-based alignment of CDS feature
+#---  --------  -------  --------------  -------  -----  ----  -----------
+2     deletinp  yes      DELETION_OF_NT  feature      1     1  too large of a deletion in protein-based alignment
+#---  --------  -------  --------------  -------  -----  ----  -----------
+```
+
+The relevant file is the `blastx` output file
+`va-ex6/va-ex6.vadr.KY654518.blastx.out`, and we are interested in the
+`blastx` alignment for the attachment glycoprotein, which is positions
+`4681..5646:+` as found in the `.minfo` file:
+
+```
+$ grep attachment rsv-models2/rsv.minfo | grep KY654518
+FEATURE KY654518 type:"CDS" coords:"4681..5646:+" parent_idx_str:"GBNULL" gene:"G" product:"attachment glycoprotein"
+```
+
+Here is the relevant alignment from 
+`va-ex6/va-ex6.vadr.KY654518.blastx.out`:
+
+```
+>KY654518.1/4681..5646:+
+Length=321
+
+ Score = 545 bits (1404),  Expect = 6e-180, Method: Compositional matrix adjust.
+ Identities = 287/321 (89%), Positives = 291/321 (91%), Gaps = 24/321 (7%)
+ Frame = +1
+
+Query  4609  MSKTKDQRTAKTLERTWDTLNHLLFISSCLYKLNLKSIAQITLSILAMIISTSLIIAAII  4788
+             MSKTKDQRTAKTLERTWDTLNHLLFISSCLYKLNLKSIAQITLSILAMIISTSLIIAAII
+Sbjct  1     MSKTKDQRTAKTLERTWDTLNHLLFISSCLYKLNLKSIAQITLSILAMIISTSLIIAAII  60
+
+Query  4789  FIASANHKVTLTTAIIQDATNQIKNTTPTYLTQNPQLGISFTNLSGTTSKSTTILASTTP  4968
+             FIASANHKVTLTTAIIQDATNQIKNTTPTYLTQNPQLGISF+NLSGTTS+STTILASTTP
+Sbjct  61    FIASANHKVTLTTAIIQDATNQIKNTTPTYLTQNPQLGISFSNLSGTTSQSTTILASTTP  120
+
+Query  4969  SAESTPQSTTVKIKNTTTTQIQPSKPTTKQRQNKPQNKPNNDFHFEVFNFVPCSICSNNP  5148
+             SAESTPQSTTVKIKNTTTTQI PSKPTTKQRQNKPQNKPNNDFHFEVFNFVPCSICSNNP
+Sbjct  121   SAESTPQSTTVKIKNTTTTQILPSKPTTKQRQNKPQNKPNNDFHFEVFNFVPCSICSNNP  180
+
+Query  5149  TCWAICKRIPNKKPGKKTTTKPTKKPTIKTTKKDPKPQTTKPKEVLTTKPTEKPTIDTTK  5328
+             TCWAICKRIPNKKPGKKTTTKPTKKPT+KTTKKDPKPQTTKPKEVLTTKPT KPTI+TTK
+Sbjct  181   TCWAICKRIPNKKPGKKTTTKPTKKPTLKTTKKDPKPQTTKPKEVLTTKPTGKPTINTTK  240
+
+Query  5329  TNIRTTPLTSNTTGNPEHTS------------------------QEETLHSTTSEGNLSP  5436
+             TNIRTT LTSNT GNPEHTS                        QEETLHSTTSEG LSP
+Sbjct  241   TNIRTTLLTSNTKGNPEHTSQEETLHSTTSEGYLSPSQVYTTSGQEETLHSTTSEGYLSP  300
+
+Query  5437  SQVYTTSEYLSQSPSSSNTTK  5499
+             SQVYTTSEYLSQS SSSNTTK
+Sbjct  301   SQVYTTSEYLSQSLSSSNTTK  321
+```
+
+Note the 24 amino acid deletion in the query with respect to the
+subject. This indicates that sequence `KX655676.1` has a 72nt deletion
+relative to the reference sequence `KY654318.1`. The `blastx` library
+created by `v-build.pl` only has a single protein sequence for the
+attachment glycoprotein, the translation of the `KY654318.1` CDS from
+positions `4681..5646:+`. But we can add additional proteins that will
+then be used as additional subjects in the `blastx` protein validation
+stage. 
+
+One option for such a sequence would be to use the attachment
+glycoprotein from `KX655676.1`, which would certainly fix the issue
+for at least itself. A more well-principled way to find a better
+sequence would be to identify a more representative sequence out of
+those that include this deletion in our training set. (A yet more
+well-principled way would be to inspect all existing RSV A sequences
+instead of just those in our training set, but this would require
+significantly more effort for a presumably small improvement over the
+alternative of restricting possibilities to only our training set.)
+
+We can extract the candidate sequences from the alignment that was
+output from `v-annotate.pl` (due to the use of the `--out_stk`
+option). We are interested in a representative example of the CDS with
+the `deletinp` alert for the `KY654318` model, so it makes sense to
+use a sequence with the most common deletion of reference positions
+`5461..5532:+`. To get a list of the sequences and extract the relevant alignment subset: 
+
+```
+# get a list of the 69 candidates
+$ cat va2-rsv.r500/va2-rsv.r500.vadr.alt | grep deletinp | grep KY654518 | grep attachment_glycoprotein | grep 5461..5532 | awk '{ printf("%s\n", $2); }' > ex7.list
+
+# extract the 69 aligned sequences from the alignment:
+$ $VADREASELDIR/esl-alimanip --seq-k ex7.list va2-rsv.r500/va2-rsv.r500.vadr.KY654518.align.stk > ex7.stk 
+
+# extract the attachment glycoprotein region:
+esl-alimask -t --t-rf ex7.stk 4681..5646 > ex7.ag.stk
+```
+
+Next, as we did in iteration 1 to find new reference sequences, we can
+take the follow steps to identify our reference:
+
+1. Remove all sequences with any ambiguous nucleotides using the
+`count-ambigs.pl` script.
+
+2. use the `esl-alipid` and the `esl-alipid-per-seq-stats.pl` script
+   to find the sequence out of the candidates that has the highest average
+   percent identity to all other candidate sequences.
+
+```
+# convert to fasta 
+# $ $VADREASELDIR/esl-reformat fasta ex7.ag.stk > ex7.ag.fa
+# remove any sequences with ambiguous nucleotides
+# $ perl $VADRSCRIPTSDIR/miniscripts/count-ambigs.pl ex7.ag.fa | awk '{ printf("%s %s\n", $1, $2); }' | grep " 0" | awk '{ printf("%s\n", $1); }' > ex7.60.list
+# $ $VADREASELDIR/esl-alimanip --seq-k ex7.60.list ex7.ag.stk > ex7.ag.60.stk
+
+# determine pairwise percent identity
+$ $VADREASELDIR/esl-alipid ex7.ag.60.stk > ex7.ag.60.alipid
+
+# calculate average percent identity
+$ perl $VADRSCRIPTSDIR/miniscripts/esl-alipid-per-seq-stats.pl ex7.ag.60.alipid > ex7.ag.60.alipid.perseq
+
+# list top candidates
+$ grep -v ^\# ex7.ag.alipid.perseq | sort -rnk 2 | head
+KX510193.1  96.631  KF826854.1  91.390  KJ627315.1  99.890
+KJ627315.1  96.593  KF826854.1  91.500  KX510193.1  99.890
+KX510189.1  96.541  KF826854.1  91.280  KX510193.1  99.890
+KJ627320.1  96.521  KF826854.1  91.280  KX510193.1  99.890
+OK649655.1  96.400  KF826854.1  91.280  KX510193.1  99.660
+KX510264.1  96.357  KF826854.1  91.050  KX510250.1  100.000
+KX510250.1  96.357  KF826854.1  91.050  KX510264.1  100.000
+KX510230.1  96.357  KF826854.1  91.050  KX510250.1  100.000
+KX510195.1  96.357  KF826854.1  91.050  KX510250.1  100.000
+KX510148.1  96.357  KF826854.1  91.050  KX510250.1  100.000
+```
+
+We will use the `KX510193.1` attachment glycoprotein sequence, which
+has the highest average nucleotide percent identity with all other
+candidates. (We could have used a protein alignment for this step,
+especially since we are trying to optimize blastx alignments, but the
+nucleotide based approach we've taken here should be a good proxy for
+the protein-based approach.)
+
+To actually add the new sequence to our blastx library, we will use
+the `build-add-to-blast-db.pl` script. To determine how to use that
+script, execute it with the `-h` option and no other command-line arguments:
+
+```
+$ perl $VADRSCRIPTSDIR/miniscripts/build-add-to-blast-db.pl -h
+# build-add-to-blast-db.pl :: add a single protein to a VADR blastx protein database
+# VADR 1.6 (Nov 2023)
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# date:    Mon Oct 16 15:23:37 2023
+#
+Usage: build-add-to-blast-db.pl [-options]
+	<path to .minfo file>
+	<path to blast db dir>
+	<model name>
+	<nt-accn-to-add>
+	<nt-coords-to-add>
+	<model-CDS-feature-coords>
+	<name for output directory>
+
+basic options:
+  -f         : force; if dir <output directory> exists, overwrite it
+  -v         : be verbose; output commands to stdout as they're run
+  --ttbl <n> : use NCBI translation table <n> to translate CDS [1]
+  --keep     : do not remove intermediate files, keep them all on disk
+```
+
+This script takes seven command-line arguments, we already know all of
+them except for one: `<nt-coords-to-add>`. These are the nucleotide
+coordinates of the attachment glycoprotein CDS in the `KY510193.1`
+sequence. We can find these in the `.ftr` or `.tbl` output files from
+`v-annotate.pl`:
+
+```
+$ head -n 2 va2-rsv.r500/va2-rsv.r500.vadr.ftr 
+#      seq           seq                  ftr   ftr                         ftr  ftr  par                                                                                                 seq          model  ftr   
+#idx   name          len  p/f   model     type  name                        len  idx  idx  str  n_from   n_to  n_instp  trc  5'N  3'N  p_from   p_to  p_instp   p_sc  nsa  nsn         coords         coords  alerts
+$ grep KX510193 va2-rsv.r500/va2-rsv.r500.vadr.ftr | grep attachment
+286.14  KX510193.1  14701  FAIL  KY654518  CDS   attachment_glycoprotein     894   14   -1    +    4409   5302        -  no     0    0    4409   5299        -   1420    1    0   4409..5302:+   4681..5646:+  DELETION_OF_NT(deletinn),DELETION_OF_NT(deletinp)
+```
+
+The relevant field is the `seq coords` field, so the relevant value is
+`4409..5302:+`.
+
+So all of the relevant values for all arguments are:
+
+|--------------------------|-------------------------|
+| `<path to .minfo file>`  | `rsv-models2/rsv.minfo` | 
+| `<path to blast db dir>` | `rsv-models2/`          |
+| `<model name>`           | `KY654518`              | 
+| `<nt-accn-to-add>`       | `KX510193`              |
+| `nt-coords-to-add>`      | `4409..5302:+`          |
+| `<model-CDS-feature-coords> | `4681..5646:+`       | 
+| <name for output directory> | `vb-ex7`             | 
+
+To add the protein:
+```
+$ perl $VADRSCRIPTSDIR/miniscripts/build-add-to-blast-db.pl \
+rsv-models2/rsv.minfo \
+rsv-models2 \
+KY654518 \
+KX510193 \
+4409..5302:+ \
+4681..5646:+ \
+vb-ex7
+```
+
+The script will output the steps it takes:
+```
+# input model info file:                      rsv-models2/rsv.minfo
+# input blast db path:                        rsv-models2
+# input model name:                           KY654518
+# nucleotide accession to add:                KX510193
+# nt coords of CDS to add:                    4409..5302:+
+# CDS feature coords this CDS should map to:  4681..5646:+
+# output directory:                           vb-ex7
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Parsing input model info file                      ... done. [    0.0 seconds]
+# Fetching the CDS source sequence                   ... done. [    4.2 seconds]
+# Translating CDS                                    ... done. [    0.0 seconds]
+# Adding to BLAST DB                                 ... done. [    0.2 seconds]
+#
+# Output printed to screen saved in:                           vb-ex7.vadr.log
+# List of executed commands saved in:                          vb-ex7.vadr.cmd
+# List and description of all output files saved in:           vb-ex7.vadr.filelist
+# fasta file with source sequence (KX510193) saved in:         vb-ex7.vadr.source.fa
+# fasta file with CDS from KX510193 saved in:                  vb-ex7.vadr.cds.fa
+# fasta file with translated protein from KX510193 saved in:   vb-ex7.vadr.prot.fa
+#
+# All output files created in the current working directory
+#
+# Elapsed time:  00:00:04.53
+#                hh:mm:ss
+# 
+[ok]
+```
+
+We can verify the new protein was added by examining the protein
+database fasta file using the `esl-seqstat` program with the `-a`
+option which lists each sequence and its length:
+
+```
+$ esl-seqstat -a rsv-models2/KY654518.vadr.protein.fa
+= KY654518.1/1140..2315:+        391 
+= KY654518.1/2347..3072:+        241 
+= KY654518.1/3255..4025:+        256 
+= KY654518.1/4295..4489:+         64 
+= KY654518.1/4681..5646:+        321 
+= KY654518.1/5726..7450:+        574 
+= KY654518.1/628..1002:+         124 
+= KY654518.1/7669..8253:+        194 
+= KY654518.1/8228..8494:+         88 
+= KY654518.1/8561..15058:+      2165 
+= KY654518.1/99..518:+           139 
+= KX510193.1:4409..5302:+/4681..5646:+      297 
+Format:              FASTA
+Alphabet type:       amino
+Number of sequences: 12
+Total # residues:    4854
+Smallest:            64
+Largest:             2165
+Average length:      404.5
+```
+
+This file includes all the protein sequences for the
+model. `v-annotate.pl` uses the coordinates at the end of each name to
+determine which sequence pertains to which protein, by matching those
+coordinates up with the coordinates read for each CDS feature in the
+model info file. Note that now there are two sequences that end with
+`4681..5646:+`: the sequence `KY654518.1/4681..5646:+`, which is the
+original translated CDS from `KY654518.1` and
+`KX510193.1:4409..5302:+/4681..5646:+` which is the sequence we just
+added. 
+
+We can then perform a sanity check to make sure that this added
+sequence has the intended effect. Let's run `v-annotate.pl` on our
+`ex6.fa` sequence. It should now pass. 
+
+```
+$ $VADRSCRIPTSDIR/v-annotate.pl --keep --mdir rsv-models2 --mkey rsv ex6.fa va-ex6
+```
+
+```
+# Summary of classified sequences:
+#
+#                                 num   num   num
+#idx  model     group  subgroup  seqs  pass  fail
+#---  --------  -----  --------  ----  ----  ----
+1     KY654518  RSV    A            1     1     0
+#---  --------  -----  --------  ----  ----  ----
+-     *all*     -      -            1     1     0
+-     *none*    -      -            0     0     0
+#---  --------  -----  --------  ----  ----  ----
+#
+# Summary of reported alerts:
+#
+#     alert     causes   short               per    num   num  long
+#idx  code      failure  description        type  cases  seqs  description
+#---  --------  -------  --------------  -------  -----  ----  -----------
+1     deletinn  no       DELETION_OF_NT  feature      1     1  too large of a deletion in nucleotide-based alignment of CDS feature
+#---  --------  -------  --------------  -------  -----  ----  -----------
+```
+
+The sequence now passes. We still have a `deletinn` alert letting us
+know that there is still a long deletion in the nucleotide-based alignment, but this is
+a non-fatal alert. The `deletinp` alert is now gone.
 
 ---
-### 7. Iterative refine models and rerun test set
+TOADD: 
+- add limitations/criticisms/alternatives to this approach:
+  * the way we select training seqs, they may be very redundant, could
+    weight them somehow would be better
+  * experts may have a favorite reference sequence, they should use
+    that
+- what about multiple models? If we have many minor characteristics
+   and only some groups have some chracteristics, it may be better to
+   make multiple models
 
----
-## Methods for updating models to improve performance
 
-1. Add new proteins to blastx database
-
-2. Add alternative features to model info file
-
-3. Add alert exceptions 
-
-4. Build new reference alignments and rebuild CM file
-
-5. Use command-line options to `v-annotate.pl` to make some alerts
-fatal or not fatal.
-
----
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
 
