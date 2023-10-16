@@ -1106,6 +1106,8 @@ contain these major characteristics and building new models from them.
 
 ---
 
+<details>
+
 <summary>
 
 ## Iteration 2, step 1: build model(s) from new reference sequence(s)
@@ -1565,6 +1567,15 @@ for reasons that will become clear below:
 ```
 $ v-annotate.pl --out_stk --mdir rsv-models2 --mkey rsv rsv.r500fa va2-r500
 ```
+</details>
+
+<details>
+
+<summary>
+
+## Iteration 1, step 3: analyze the results
+
+</summary>
 
 This time, from the `v-annotate.pl` output we can tell that many more
 sequences passed than in iteration 1, when only 6 of 500 passed:
@@ -1912,6 +1923,7 @@ The relevant field is the `seq coords` field, so the relevant value is
 
 So all of the relevant values for all arguments are:
 
+| command-line argument    | value |
 |--------------------------|-------------------------|
 | `<path to .minfo file>`  | `rsv-models2/rsv.minfo` | 
 | `<path to blast db dir>` | `rsv-models2/`          |
