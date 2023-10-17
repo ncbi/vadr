@@ -1573,7 +1573,7 @@ $ v-annotate.pl --out_stk --mdir rsv-models2 --mkey rsv rsv.r500fa va2-r500
 
 <summary>
 
-## Iteration 1, step 3: analyze the results
+## Iteration 2, step 3: analyze the results and update the models accordingly
 
 </summary>
 
@@ -1608,7 +1608,7 @@ situations, including:
 1. *Add a new protein to the blastx protein library for a model to
    account for protein sequence variability.* This
    can help remove unnecessary alerts related to the protein validation stage, most
-   commonly: `indfpst5` and `indfpst3`.
+   commonly: `indfpst5`, `indfpst3`, `insertnp` and `deletinp`.
 
 2. *Add **alternative features** to the model info file, along with
    corresponding proteins to the blastx protein library.* Some CDS may
@@ -2042,9 +2042,249 @@ $ $VADRSCRIPTSDIR/v-annotate.pl --keep --mdir rsv-models2 --mkey rsv ex6.fa va-e
 ```
 
 The sequence now passes. We still have a `deletinn` alert letting us
-know that there is still a long deletion in the nucleotide-based alignment, but this is
-a non-fatal alert. The `deletinp` alert is now gone.
+know that there is still a long deletion in the nucleotide-based
+alignment, but this is a non-fatal alert. The `deletinp` alert is now
+gone.
 
+At this point, we could continue to address the `deletinp` instances,
+probably first for the 35 `MZ516105` alerts. To do that, we would
+repeat the above procedure to find a suitable representative sequence
+to add to the protein blast library. After that, the next step would
+be to rerun all of the sequences that failed due to `deletinp` alerts
+with the updated models. If a significant number of sequences still
+fail due to `deletinp` alerts at that stage, then we could repeat the
+process again. 
+
+For the purposes of this tutorial, we will move on to the next most
+common alert `indf3pst` to provide a slightly different example of
+updating a model.
+
+
+Let's take a look at one example of this alert:
+```
+$ cat va2-rsv.r500/*alt | head -n 3
+#        seq                   ftr   ftr                      ftr  alert           alert                                     seq   seq             mdl   mdl  alert 
+#idx     name        model     type  name                     idx  code      fail  description                            coords   len          coords   len  detail
+#------  ----------  --------  ----  -----------------------  ---  --------  ----  -----------------------------  --------------  ----  --------------  ----  ------
+$ cat va2-rsv.r500/*alt | grep indf3pst | head -n 1
+3.1.4    KY674983.1  MZ516105  CDS   attachment_glycoprotein   14  indf3pst  yes   INDEFINITE_ANNOTATION_END        5513..5518:+     6    5620..5620:+     1  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [6>5, no valid stop codon in nucleotide-based prediction]
+
+```
+
+This alert occurs if the "protein-based alignment does not extend
+close enough to nucleotide-based alignment 3' endpoint". A relevant
+field is field 26, which explains how far the protein-based endpoint
+and nucleotide based endpoint is. In this case it is 6 nucleotides
+which exceeds the maximum allowed without an alert: `6>5`.
+
+When grouping instances of this alert we should output this value as
+well. Any instances for the same feature and the same distance may be
+able to be addressed with the same model modification:
+
+```
+$ grep indf3pst va2-rsv.r500/va2-rsv.r500.vadr.alt | awk '{ printf ("%s %s %s %s\n", $3, $5, $12, $26); }' | sort | uniq -c | sort -rnk 1
+     49 MZ516105 attachment_glycoprotein 5620..5620:+ [6>5,
+     25 KY654518 attachment_glycoprotein 5646..5646:+ [6>5,
+     15 KY654518 attachment_glycoprotein 5646..5646:+ [9>8,
+     10 KY654518 attachment_glycoprotein 5646..5646:+ [45>5,
+      7 KY654518 attachment_glycoprotein 5646..5646:+ [45>8,
+      1 MZ516105 small_hydrophobic_protein 4498..4498:+ [132>120,
+      1 MZ516105 polymerase 15060..15060:+ [25>5]
+      1 MZ516105 polymerase 15060..15060:+ [24>5,
+      1 MZ516105 polymerase 15060..15060:+ [2316>5,
+      1 MZ516105 polymerase 15060..15060:+ [22>5]
+      1 MZ516105 polymerase 15060..15060:+ [2078>5,
+..snip..
+```
+
+It turns out the example we looked at about in `attachment
+glycoprotein` for model `MZ516105` with a difference of 6 nucleotides
+is the most common one. Let's investigate one of those sequences further:
+
+```
+$ grep indf3pst va2-rsv.r500/va2-rsv.r500.vadr.alt | grep MZ516105 | grep 5620 | awk '{ print $2 }' | esl-selectn 1 - > ex8.list
+$ cat ex8.list
+OR326763.1
+
+# re-run v-annotate.pl on:
+$ $VADRSCRIPTSDIR/v-annotate.pl --keep --mdir rsv-models2 --mkey rsv ex8.fa va-ex8
+```
+# Summary of reported alerts:
+#
+#     alert     causes   short                          per    num   num  long
+#idx  code      failure  description                   type  cases  seqs  description
+#---  --------  -------  -------------------------  -------  -----  ----  -----------
+1     mutendcd  yes      MUTATION_AT_END            feature      1     1  expected stop codon could not be identified, predicted CDS stop by homology is invalid
+2     mutendex  yes      MUTATION_AT_END            feature      1     1  expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position
+3     indf3pst  yes      INDEFINITE_ANNOTATION_END  feature      1     1  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
+#---  --------  -------  -------------------------  -------  -----  ----  -----------
+```
+
+In this case, we find that this sequence not only has the common
+`indf3pst` alert, but also `mutendcd` and `mutendex` alerts that occur
+when the expected stop codon is missing, and the closest stop codon
+occurs downstream of the expected position. This suggests that perhaps
+many of those 49 sequences with this same alert also have these
+alerts. To test that we can run `v-annotate.pl` on all 49 of them, or
+if we want to save time, on a subset of 10:
+
+```
+$ grep indf3pst va2-rsv.r500/va2-rsv.r500.vadr.alt | grep MZ516105 | grep 5620 | awk '{ print $2 }' | esl-selectn 10 - > ex8.10.list
+$ $VADRSCRIPTSDIR/v-annotate.pl --keep --mdir rsv-models2 --mkey rsv ex8.10.fa va-ex8.10
+```
+
+After this finishes, we can see that these three alerts do tend to
+co-occur by looking at the `.alc` file:
+```
+$ cat *alc
+#     alert     causes   short                          per    num   num  long       
+#idx  code      failure  description                   type  cases  seqs  description
+#---  --------  -------  -------------------------  -------  -----  ----  -----------
+1     deletinn  no       DELETION_OF_NT             feature      3     3  too large of a deletion in nucleotide-based alignment of CDS feature
+#---  --------  -------  -------------------------  -------  -----  ----  -----------
+2     mutendcd  yes      MUTATION_AT_END            feature     10    10  expected stop codon could not be identified, predicted CDS stop by homology is invalid
+3     mutendex  yes      MUTATION_AT_END            feature     10    10  expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position
+4     indf3pst  yes      INDEFINITE_ANNOTATION_END  feature     10    10  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
+5     deletinp  yes      DELETION_OF_NT             feature      3     3  too large of a deletion in protein-based alignment
+#---  --------  -------  -------------------------  -------  -----  ----  -----------
+```
+
+Let's go back to our single example `OR326763.1`, and look at details
+on the alerts in the `.alt` file:
+```
+<[(tutorial-20231006)]> cat va-ex8/va-ex8.vadr.alt
+#      seq                   ftr   ftr                      ftr  alert           alert                               seq  seq           mdl  mdl  alert 
+#idx   name        model     type  name                     idx  code      fail  description                      coords  len        coords  len  detail
+#----  ----------  --------  ----  -----------------------  ---  --------  ----  -------------------------  ------------  ---  ------------  ---  ------
+1.1.1  OR326763.1  MZ516105  CDS   attachment_glycoprotein   14  mutendcd  yes   MUTATION_AT_END            5569..5571:+    3  5618..5620:+    3  expected stop codon could not be identified, predicted CDS stop by homology is invalid [CAA]
+1.1.2  OR326763.1  MZ516105  CDS   attachment_glycoprotein   14  mutendex  yes   MUTATION_AT_END            5590..5592:+    3  5639..5641:+    3  expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [TAG]
+1.1.3  OR326763.1  MZ516105  CDS   attachment_glycoprotein   14  indf3pst  yes   INDEFINITE_ANNOTATION_END  5566..5571:+    6  5620..5620:+    1  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [6>5, no valid stop codon in nucleotide-based prediction]
+```
+
+For `mutendcd` and `mutendex` the alert detail field explains that in
+this sequence there is a `CAG` at the expected stop codon position of `5618..5620`,
+and the first in-frame stop codon `TAG` occurs 21 nucleotides
+downstream at reference positions `5639..5641`.
+We can see this in the `va-ex8/va-ex8.vadr.MZ516105.align.stk` alignment:
+
+
+```
+                                    vvv                  vvv    
+OR326763.1         CCATATCAAATTCCACCCAAATACTCCAGTCATATGCTTAGTTATTTAAAAACTACATC
+#=GR OR326763.1 PP ***********************************************************
+#=GC SS_cons       :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#=GC RF            CCACATCAAATTCTATCTAAAGACTCCAGTCATATGCTTAGTTATTTAAAAACTACATC
+#=GC RFCOLX....    00000000000000000000000000000000000000000000000000000000000
+#=GC RFCOL.X...    55555555555555555555555555555555555555555555555555555555555
+#=GC RFCOL..X..    66666666666666666666666666666666666666666666666666666666666
+#=GC RFCOL...X.    00000000011111111112222222222333333333344444444445555555555
+#=GC RFCOL....X    12345678901234567890123456789012345678901234567890123456789
+                   *** ********* * * ***** ***********************************
+```
+
+I've added `vvv` characters indicating the expected stop codon
+position and also the existing stop codon 9 nucleotides
+downstream. I've also added `*` characters at the bottom of the
+alignment at positions where the sequence and reference model are
+identical. Note that the end of the CDS has the highest number of
+mismatches, which explains the `indf3pst` alert for this CDS.
+
+Because this is such a common characteristic of RSV B sequences, we'd
+like our model to allow for it and not report any fatal alerts when it
+occurs. To do this, we can modify our model by adding an **alternative
+feature** for the attachment glycoprotein CDS. 
+
+To do this we will need to manually edit the model info file
+`rsv-models2/rsv.minfo` in a text editor. We want to make an
+alternative stop position for the attachment glycoprotein CDS. To do
+this we will add an additional CDS feature to the model info
+file. Currently the two lines pertaining to the CDS and associated gene feature are:
+
+```
+FEATURE MZ516105 type:"gene" coords:"4688..5620:+" parent_idx_str:"GBNULL" gene:"G"
+FEATURE MZ516105 type:"CDS" coords:"4688..5620:+" parent_idx_str:"GBNULL" gene:"G" product:"attachment glycoprotein"
+```
+
+To create an alternative CDS feature that starts at the same position
+`4688` but ends at position `5641` we will add the line:
+
+```
+FEATURE MZ516105 type:"CDS" coords:"4688..5641:+" parent_idx_str:"GBNULL" gene:"G" product:"attachment glycoprotein" alternative_ftr_set="attachment(cds)"
+```
+
+Note the different stop codon *and* the new key/value pair:
+`alternative_ftr_set="attachment(cds)"`. We also need to update the
+first line above to include this field. This will inform
+`v-annotate.pl` that these two CDS are members of the same alternative
+feature set, and only 1 of them should be annotated in the output
+`.tbl` file. `v-annotate.pl` will select the CDS that has fewer fatal
+alerts and annotate that one. If they have the same number of fatal
+alerts, the one that occurs first in the model info file will be
+annotated. 
+
+We also want to add a new `gene` feature line that will be coupled
+with the new `CDS` feature line (same coordinates) so that the correct
+gene coordinates will be annotated based on which CDS is annotated. 
+
+```
+FEATURE MZ516105 type:"gene" coords:"4688..5641:+" parent_idx_str:"GBNULL" gene:"G" alternative_ftr_set="attachment(gene)" alternative_ftr_set_subn="attachment(cds)"
+```
+
+For the `gene` line we need to add another new key/value pair
+indicating 
+
+
+
+
+The twTake a 
+
+
+First, let's take a look at the blastx output for our `ex8` sequence
+`KU316117.1` in the `va-ex8/va-ex8.vadr.MZ516105.blastx.out` file: 
+
+```
+>MZ516105.1/4688..5620:+
+Length=310
+
+ Score = 372 bits (956),  Expect = 8e-120, Method: Compositional matrix adjust.
+ Identities = 258/311 (83%), Positives = 263/311 (85%), Gaps = 22/311 (7%)
+ Frame = +1
+
+Query  4618  MSKNKNQRTARTLEKTWDTLNHLIVISSCLYRLNLKSIAQIALSVLAMIISTSLIIAAII  4797
+             MSKNKNQRTARTLEKTWDTLNHLIVISSCLY+LNLKSIAQIALSVLAMIISTSLIIAAII
+Sbjct  1     MSKNKNQRTARTLEKTWDTLNHLIVISSCLYKLNLKSIAQIALSVLAMIISTSLIIAAII  60
+
+Query  4798  FIISANHKVTLTTVTVSTIKNHTEKNITTYLTQVSPERVSPSKQPTTTSPIHTNSVTISP  4977
+             FIISANHKVTLTTVTV TIKNHTEKNITTYLTQVSPERVSPSKQPT T PIHTNS TISP
+Sbjct  61    FIISANHKVTLTTVTVQTIKNHTEKNITTYLTQVSPERVSPSKQPTATPPIHTNSATISP  120
+
+Query  4978  NTKSETHHTTAQTKGRTTTPTQTNKPSTKPRPKIPPKKPKDDYHFEVFNFVPCSICGNNQ  5157
+             NTKSETHHTT QTKG  +TPTQ NKPSTKPRPK      KDDYHFEVFNFVPCSICGNNQ
+Sbjct  121   NTKSETHHTTTQTKGTISTPTQNNKPSTKPRPKN--PPKKDDYHFEVFNFVPCSICGNNQ  178
+
+Query  5158  LCKSICKTIPSNKPKKKPTIKPTNKPTTKTTNKRDPKTSAKALRKETTTDPTKEPTLKT-  5334
+             LCKSICKTIPSNKPKKKPT KPTNKP TKTTNKRDPKT AK  +KETT + TK+PT KT 
+Sbjct  179   LCKSICKTIPSNKPKKKPTTKPTNKPPTKTTNKRDPKTLAKTPKKETTINLTKKPTPKTT  238
+
+Query  5335  -------------------TERDTSTSWSTVLDTTTSDHTVQQQSLHSTTLENTPNSTQT  5457
+                                TERDTSTS ST LDTTTS HT QQQSLHST  ENTPNSTQT
+Sbjct  239   ERDTSTPQSTVLDITTSKHTERDTSTSQSTALDTTTSKHTTQQQSLHSTIPENTPNSTQT  298
+
+Query  5458  PTASEPSTSNS  5490
+             PTASEPSTSNS
+Sbjct  299   PTASEPSTSNS  309
+```
+
+The attachment glycoprotein reference sequence from `MZ516105.1` is
+length 311 (as listed in the `Identities` field in the `blastx`
+output) and the alignment extends to 309, 2 amino acids before the end
+(6 nt). 
+
+To investigate the `mutendcd` and 
+
+
+
+KY674983.1
 ---
 TOADD: 
 - add limitations/criticisms/alternatives to this approach:
