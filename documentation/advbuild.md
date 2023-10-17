@@ -1830,7 +1830,7 @@ $ cat va2-rsv.r500/va2-rsv.r500.vadr.alt | grep deletinp | grep KY654518 | grep 
 $ $VADREASELDIR/esl-alimanip --seq-k ex7.list va2-rsv.r500/va2-rsv.r500.vadr.KY654518.align.stk > ex7.stk 
 
 # extract the attachment glycoprotein region:
-esl-alimask -t --t-rf ex7.stk 4681..5646 > ex7.ag.stk
+$ esl-alimask -t --t-rf ex7.stk 4681..5646 > ex7.ag.stk
 ```
 
 Next, as we did in iteration 1 to find new reference sequences, we can
@@ -2194,11 +2194,20 @@ like our model to allow for it and not report any fatal alerts when it
 occurs. To do this, we can modify our model by adding an **alternative
 feature** for the attachment glycoprotein CDS. 
 
-To do this we will need to manually edit the model info file
-`rsv-models2/rsv.minfo` in a text editor. We want to make an
-alternative stop position for the attachment glycoprotein CDS. To do
-this we will add an additional CDS feature to the model info
-file. Currently the two lines pertaining to the CDS and associated gene feature are:
+Adding an alternative feature for a CDS requires two steps:
+
+Step 1. Manually edit the model info file
+`rsv-models2/rsv.minfo` in a text editor. 
+
+Step 2. Add one (or more) protein sequences to the blastx protein
+     library that correspond to the alternative CDS feature, like we
+     did to address the common `deletinp` alerts above.
+
+In step 1, we want to make an alternative stop position for the
+attachment glycoprotein CDS. To do this we will add an additional CDS
+feature to the model info file. Currently the two lines pertaining to
+the CDS and associated gene feature are:
+
 
 ```
 FEATURE MZ516105 type:"gene" coords:"4688..5620:+" parent_idx_str:"GBNULL" gene:"G"
@@ -2209,7 +2218,7 @@ To create an alternative CDS feature that starts at the same position
 `4688` but ends at position `5641` we will add the line:
 
 ```
-FEATURE MZ516105 type:"CDS" coords:"4688..5641:+" parent_idx_str:"GBNULL" gene:"G" product:"attachment glycoprotein" alternative_ftr_set="attachment(cds)"
+FEATURE MZ516105 type:"CDS" coords:"4688..5641:+" parent_idx_str:"GBNULL" gene:"G" product:"attachment glycoprotein" alternative_ftr_set:"attachment(cds)"
 ```
 
 Note the different stop codon *and* the new key/value pair:
@@ -2227,64 +2236,101 @@ with the new `CDS` feature line (same coordinates) so that the correct
 gene coordinates will be annotated based on which CDS is annotated. 
 
 ```
-FEATURE MZ516105 type:"gene" coords:"4688..5641:+" parent_idx_str:"GBNULL" gene:"G" alternative_ftr_set="attachment(gene)" alternative_ftr_set_subn="attachment(cds)"
+FEATURE MZ516105 type:"gene" coords:"4688..5641:+" parent_idx_str:"GBNULL" gene:"G" alternative_ftr_set="attachment(gene)" alternative_ftr_set_subn:"attachment(cds).1"
 ```
 
-For the `gene` line we need to add another new key/value pair
-indicating 
+This new `gene` feature line includes 
+`alternative_ftr_set="attachment(gene)"` (it is important that this is
+different from the CDS feature set name), and an additional key/value
+pair: `alternative_ftr_set_subn="attachment(CDS).2"`. This means that
+this `gene` should only be annotated if the second feature in the
+`alternative_ftr_set="attachment(CDS)"` group is annotated. 
 
-
-
-
-The twTake a 
-
-
-First, let's take a look at the blastx output for our `ex8` sequence
-`KU316117.1` in the `va-ex8/va-ex8.vadr.MZ516105.blastx.out` file: 
+Additionally, we need to update the two original lines for the
+features at positions `4688..5620:+` by adding `alternative_ftr_set`
+key/values to them as well. The four new lines should be: 
 
 ```
->MZ516105.1/4688..5620:+
-Length=310
-
- Score = 372 bits (956),  Expect = 8e-120, Method: Compositional matrix adjust.
- Identities = 258/311 (83%), Positives = 263/311 (85%), Gaps = 22/311 (7%)
- Frame = +1
-
-Query  4618  MSKNKNQRTARTLEKTWDTLNHLIVISSCLYRLNLKSIAQIALSVLAMIISTSLIIAAII  4797
-             MSKNKNQRTARTLEKTWDTLNHLIVISSCLY+LNLKSIAQIALSVLAMIISTSLIIAAII
-Sbjct  1     MSKNKNQRTARTLEKTWDTLNHLIVISSCLYKLNLKSIAQIALSVLAMIISTSLIIAAII  60
-
-Query  4798  FIISANHKVTLTTVTVSTIKNHTEKNITTYLTQVSPERVSPSKQPTTTSPIHTNSVTISP  4977
-             FIISANHKVTLTTVTV TIKNHTEKNITTYLTQVSPERVSPSKQPT T PIHTNS TISP
-Sbjct  61    FIISANHKVTLTTVTVQTIKNHTEKNITTYLTQVSPERVSPSKQPTATPPIHTNSATISP  120
-
-Query  4978  NTKSETHHTTAQTKGRTTTPTQTNKPSTKPRPKIPPKKPKDDYHFEVFNFVPCSICGNNQ  5157
-             NTKSETHHTT QTKG  +TPTQ NKPSTKPRPK      KDDYHFEVFNFVPCSICGNNQ
-Sbjct  121   NTKSETHHTTTQTKGTISTPTQNNKPSTKPRPKN--PPKKDDYHFEVFNFVPCSICGNNQ  178
-
-Query  5158  LCKSICKTIPSNKPKKKPTIKPTNKPTTKTTNKRDPKTSAKALRKETTTDPTKEPTLKT-  5334
-             LCKSICKTIPSNKPKKKPT KPTNKP TKTTNKRDPKT AK  +KETT + TK+PT KT 
-Sbjct  179   LCKSICKTIPSNKPKKKPTTKPTNKPPTKTTNKRDPKTLAKTPKKETTINLTKKPTPKTT  238
-
-Query  5335  -------------------TERDTSTSWSTVLDTTTSDHTVQQQSLHSTTLENTPNSTQT  5457
-                                TERDTSTS ST LDTTTS HT QQQSLHST  ENTPNSTQT
-Sbjct  239   ERDTSTPQSTVLDITTSKHTERDTSTSQSTALDTTTSKHTTQQQSLHSTIPENTPNSTQT  298
-
-Query  5458  PTASEPSTSNS  5490
-             PTASEPSTSNS
-Sbjct  299   PTASEPSTSNS  309
+FEATURE MZ516105 type:"gene" coords:"4688..5620:+" parent_idx_str:"GBNULL" gene:"G" alternative_ftr_set:"attachment(gene)" alternative_ftr_set_subn:"attachment(cds).1"
+FEATURE MZ516105 type:"gene" coords:"4688..5641:+" parent_idx_str:"GBNULL" gene:"G" alternative_ftr_set:"attachment(gene)" alternative_ftr_set_subn:"attachment(cds).2"
+FEATURE MZ516105 type:"CDS" coords:"4688..5620:+" parent_idx_str:"GBNULL" gene:"G" product:"attachment glycoprotein" alternative_ftr_set:"attachment(cds)"
+FEATURE MZ516105 type:"CDS" coords:"4688..5641:+" parent_idx_str:"GBNULL" gene:"G" product:"attachment glycoprotein" alternative_ftr_set:"attachment(cds)"
 ```
 
-The attachment glycoprotein reference sequence from `MZ516105.1` is
-length 311 (as listed in the `Identities` field in the `blastx`
-output) and the alignment extends to 309, 2 amino acids before the end
-(6 nt). 
+Note that the order is important because the index in the
+`alternative_ftr_set` values 
+`attachment(cds).1` and `attachment(cds).2` for the two `gene`
+features correspond to specifically to the first and second CDS features
+that have the `alternative_ftr_set` value `attachment(cds)`.
 
-To investigate the `mutendcd` and 
+Now we can move onto step 2, adding a protein to the blastx protein
+library. As we did above when addressing the common `deletinp` alert,
+we want to find a representative sequence out of the CDS that stop at
+position `5641`. I repeated the steps detailed above using the set of 
+41 sequences that end at this position as candidates and ended up
+choosing `OK654726.1` as the representative. I then added it to the
+blastx library using the `build-add-to-blast-db.pl` script. The steps
+are shown below (and discussed in more detail for the `deletinp`
+alert example above). One difference here is that we need to make sure
+that we include the stop position in `OK654726.1` that aligns to the
+new stop position at reference position `5641` which differs from what
+is reported in the `.ftr` file. We may need to consult the alignment
+of `OK654726.1` to determine this (after maybe rerunning
+`v-annotate.pl`). 
 
+```
+# determine number of sequences that have attachment glycoprotein ended at 5641 
+$ grep 5641 va2-rsv.r500/*alt | grep MZ516105 | grep mutendex | wc -l
 
+# fetch out 41 sequences and extract only the attachment glycoprotein alignment
+$ $VADREASELDIR/esl-alimanip --seq-k ex8.41.list va2-rsv.r500/va2-rsv.r500.vadr.MZ516105.align.stk > ex8.41.stk 
+$ esl-alimask -t --t-rf ex8.41.stk 4688..5641 > ex8.41.ag.stk
 
-KY674983.1
+# convert to fasta and remove any seqs with ambiguous nts
+$ $VADREASELDIR/esl-reformat fasta ex8.41.ag.stk > ex8.41.ag.fa
+$ perl $VADRSCRIPTSDIR/miniscripts/count-ambigs.pl ex8.41.ag.fa | awk '{ printf("%s %s\n", $1, $2); }' | grep " 0" | awk '{ printf("%s\n", $1); }' > ex8.40.list
+$ $VADREASELDIR/esl-alimanip --seq-k ex8.40.list ex8.41.ag.stk > ex8.40.stk
+
+# determine average percent id and choose representative
+$ $VADREASELDIR/esl-alipid ex8.40.stk > ex8.40.alipid
+$ perl $VADRSCRIPTSDIR/miniscripts/esl-alipid-per-seq-stats.pl ex8.40.alipid > ex8.40.alipid.perseq
+$ grep -v ^\# ex8.40.alipid.perseq | sort -rnk 2 | head
+OK649726.1  97.727  MG642027.1  92.780  OK649687.1  99.480
+
+# add representative to blastx db
+$ perl $VADRSCRIPTSDIR/miniscripts/build-add-to-blast-db.pl  \
+rsv-models2/rsv.minfo \
+rsv-models2 \
+MZ516105 \
+OK649726 \
+4680..5633:+ \
+4688..5641:+ \
+vb-ex8
+```
+
+As a sanity check, we can rerun `v-annotate.pl` on our `ex8` sequence
+`OR326763.1`, it should now pass:
+
+```
+$ $VADRSCRIPTSDIR/v-annotate.pl --keep --mdir rsv-models2 --mkey rsv ex8.fa va-ex8.2
+```
+
+```
+# Summary of classified sequences:
+#
+#                                 num   num   num
+#idx  model     group  subgroup  seqs  pass  fail
+#---  --------  -----  --------  ----  ----  ----
+1     MZ516105  RSV    B            1     1     0
+#---  --------  -----  --------  ----  ----  ----
+-     *all*     -      -            1     1     0
+-     *none*    -      -            0     0     0
+#---  --------  -----  --------  ----  ----  ----
+#
+# Zero alerts were reported.
+
+```
+
 ---
 TOADD: 
 - add limitations/criticisms/alternatives to this approach:
