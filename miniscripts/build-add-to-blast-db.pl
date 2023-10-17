@@ -278,6 +278,15 @@ if(opt_IsUsed("--ttbl", \%opt_HH)) {
 my $translate_cmd = $execs_H{"esl-translate"} . " $c_opt -M -l $exp_prot_len --watson $cds_fa_file > $tmp_translate_fa_file";
 utl_RunCommand($translate_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
 
+# we should have some output
+my $ret_val = utl_FileValidateExistsAndNonEmpty($tmp_translate_fa_file, "esl-translate output", "build-add-to-blast-db.pl", 0, $FH_HR);
+if($ret_val == -1) { 
+  ofile_FAIL("ERROR, $tmp_translate_fa_file empty, esl-translate failed, are you sure nt coords $in_nt_cds_coords for $in_nt_accn are correct (encode a valid CDS)?", 1, $FH_HR);
+}
+elsif($ret_val != 1) { 
+  ofile_FAIL("ERROR, problem translating $in_nt_cds_coords for $in_nt_accn", 1, $FH_HR);
+}
+
 # go through the output fasta file and rewrite the seq name
 my $seqname_seen = 0;
 open(IN,       $tmp_translate_fa_file) || ofile_FileOpenFailure($tmp_translate_fa_file, "main", $!, "reading", $FH_HR);
