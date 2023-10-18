@@ -940,7 +940,7 @@ sub vdr_FeatureInfoValidateAndConvertAlternativeFeatureSetSubstitution {
       $fail_str .= "ftr_idx: $ftr_idx, undefined\n"; 
     }
     elsif($subn_val ne "") { 
-      if($subn_val =~ /^(\s+)\.(\d+)$/) { # e.g. "attachment(cds).2"
+      if($subn_val =~ /^(\S+)\.(\d+)$/) { # e.g. "attachment(cds).2"
         my ($set, $set_idx) = ($1, $2);
         # make sure $set is not the set that this ftr belongs to
         if((defined $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set"}) && 
@@ -957,7 +957,6 @@ sub vdr_FeatureInfoValidateAndConvertAlternativeFeatureSetSubstitution {
               $cur_set_idx++;
               if($cur_set_idx == $set_idx) { 
                 # rewrite value
-                printf("HEYA updated ftr_info_AHR->[ftr_idx:$ftr_idx][alternative_ftr_set_subn] from %s to %s\n", $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set_subn"}, $ftr_idx2);
                 $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set_subn"} = $ftr_idx2;
                 $found_flag = 1;
               }
