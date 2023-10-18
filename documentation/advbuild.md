@@ -2333,8 +2333,82 @@ $ $VADRSCRIPTSDIR/v-annotate.pl --keep --mdir rsv-models2 --mkey rsv ex8.fa va-e
 
 ```
 
+And we can verify that the `attachment glycoprotein` CDS was annotated
+using the alternative stop ending at `5641` in the `.ftr` file:
+
+```
+$ grep 5641 va-ex8.2/va-ex8.2.vadr.ftr
+1.13  OR326763.1  15191  PASS  MZ516105  gene  G                           954   14   -1    +    4639   5592        -  no     0    0       -     -        -      -    1    0   4639..5592:+   4688..5641:+  -     
+1.14  OR326763.1  15191  PASS  MZ516105  CDS   attachment_glycoprotein     954   16   -1    +    4639   5592        -  no     0    0    4639  5589        -   1537    1    0   4639..5592:+   4688..5641:+  -     
+```
+
+The 5641 stop codon was the most common alternative to the 5620 stop
+codon in `MZ516105`, but it wasn't the only alternative. Looking again
+at the list of remaining examples of other `mutendex` failures (by
+removing any that include `5641` with `grep -v`:
+
+```
+$ cat va2-rsv.r500/va2-rsv.r500.vadr.alt | grep mutendex | grep -v 5641 | awk '{ printf("%s %s %s\n", $3, $5, $12); }' | sort | uniq -c | sort -rnk 1
+     49 KY654518 attachment_glycoprotein 5647..5649:+
+     15 MZ516105 attachment_glycoprotein 5627..5629:+
+      3 KY654518 large_polymerase 15059..15061:+
+      1 KY654518 nonstructural_protein_2 1048..1050:+
+      1 KY654518 M2-1_protein 8492..8494:+
+```
+
+The most common alternative now is for the `KY654518` model ending at
+position `5649`, which is 3 nucleotide downstream of the expected stop
+at `5646`:
+
+```
+$ grep attachment rsv-models2/rsv.minfo | grep KY654518
+FEATURE KY654518 type:"CDS" coords:"4681..5646:+" parent_idx_str:"GBNULL" gene:"G" product:"attachment glycoprotein"
+```
+
+To address this we repeat the drill we just did for the 5641 endpoint
+for the `MZ516105` model, and add an alternative feature by adding to
+and modifying existing lines in the model info file, and then adding a
+representative protein for the coordinates `4681..5649:+` to the
+`KY654518` model blastx library.
+
+After that, we want to address the `MZ516105` stop codon ending at
+`5629` that occurs in `15` of our training sequences, following the
+same steps.
+
+When that is completed it looks like the most common example of
+`mutendex` would be for the `large polymerase` at positions
+`15059..15061:+` for 3 sequences. At this stage I would stop and move
+onto other types of alerts, because with only 3 sequences it is not as
+obvious that this is a legitimate type of variability that we want our
+models to allow. There is probably lower hanging fruit that we can
+address. At this stage I would probably rerun all 500 of the training
+sequences using the updated models.
+
+TODO: update models for other stop codons above, then rerun all 500.
+
 ---
 TOADD: 
+model update examples in iteration 2 
+- DONE blastx protein library 
+- DONE alternative feature
+- DOABLE alert exception - deletin
+- DOABLE? rebuild model - add deletion, would need alignment based
+  problem to fix this
+- ? misc_not_failure - don't have real world RSV example, use
+  attachment glycoprotein
+- DOABLE? alt_pass - pitch as last resort, don't have real world RSV example
+- also add example where you investigate and it turns out the failure
+  is legit and you shouldn't do anything about it
+
+
+- list all changes made for RSV in actual model building (and make
+  updated RSV model at same time), can I add (rough) number of sequences
+  allowed to pass with each modification (?) 
+  * all proteins added to blastx
+  * all alternative features
+  * exceptions
+  * model update
+
 - add limitations/criticisms/alternatives to this approach:
   * the way we select training seqs, they may be very redundant, could
     weight them somehow would be better
@@ -2344,6 +2418,9 @@ TOADD:
    and only some groups have some chracteristics, it may be better to
    make multiple models
 
-
+- add info about searching literature to determine if, for example,
+  attachment glycoprotein has different possible stop codons? Or a big
+  deletion (I think I may have already done that)? 
+ 
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
 
