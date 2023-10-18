@@ -2109,6 +2109,8 @@ OR326763.1
 # re-run v-annotate.pl on:
 $ $VADRSCRIPTSDIR/v-annotate.pl --keep --mdir rsv-models2 --mkey rsv ex8.fa va-ex8
 ```
+
+```
 # Summary of reported alerts:
 #
 #     alert     causes   short                          per    num   num  long
