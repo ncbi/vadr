@@ -2,14 +2,14 @@
 
 The `v-build.pl` program will create a model from a single INSDC
 accession and include CDS, gene and mature peptide features. However,
-often using a model built from a single accession is not general
-enough to allow most high quality sequences from a viral species to pass. For
+a model built from a single accession is often not general enough to
+allow most high quality sequences for a viral species to pass. For
 example, some other sequences may include an extended CDS that has a
 different stop codon position from the sequence the model was built
-from.  It is possible to make VADR models more general but it requires
-some manual effort. 
-
-A good strategy is to take an iterative approach where you:
+from, and these sequences will fail due to fatal alerts related to the
+different stop codon. It is possible to make VADR models more general
+but it requires some manual effort. A good strategy for building and
+refining a model library is:
 
 1. Build a model(s) from representative and well annotated sequence(s)
    as a starting point. These may be RefSeq sequences.
@@ -21,64 +21,55 @@ A good strategy is to take an iterative approach where you:
 
 3. Analyze the results by looking for common failure modes, and
    investigate the sequence characteristics that are responsible for
-   them. This will be characteristics not present in the reference
-   sequences. Classify these characteristics into major and minor types: 
+   them. These will be characteristics not present in the reference
+   sequences that are present in some or many of the training
+   sequences. Update the model to accomodate these failure modes.
 
-   *Major*: these are common to a majority or large fraction of
-   sequences but don't exist in the reference sequence. To address
-   these, we probably want to pick a new representative sequence(s)
-   that includes these characteristics. This means we will return to
-   step 1 for another iteration of the three steps.
+If in step 3 there are one or more characteristics found that occur in
+the majority of training sequences, it makes sense to pick a new
+reference sequence that includes those characteristics and rebuild our
+models. We can then rerun `v-annotate.pl` and pick up with analyzing
+the results in step 3 again. 
 
-   *Minor*: these exist in a smaller fraction of sequences, and
-   don't exist in the reference sequence. For these characteristics,
-   we may be able to update our models without rebuilding them from
-   new reference sequences. 
+Next, we want to investigate characteristics that cause failures in a
+minority of sequences. For any that are deemed to be allowable, due to
+valid biological variability (not due to sequencing errors or other
+artifacts) we want to update our models to allow them. There are
+several strategies/methods for how we can do that.
 
-If the initial sequences chosen in the first iteration turn out to
-representative enough that there are no major characteristics in step
-3, then we can likely stop at the end of iteration 1 and update the
-model(s) to tolerate the minor characteristics. 
+In this tutorial, we will follow these three steps in building an RSV
+library. This tutorial is long and detailed and can be followed along
+step by step by rerunning the commands locally, just by reading, or
+just for reference for specific examples of analyzing results and
+updating VADR models.
 
-But if there are one or more major characteristics identified in step
-3, we will want to do an additional iteration of all three steps. Two
-iterations of all three steps are usually enough to build a nearly
-optimal model(s).
-
-This tutorial will walk you through the approach that I took
-when building RSV models, using two iterations of the approach
-outlined above. The tutorial is long and detailed, and not all of it
-may be relevant for what you are interested in. For example, if you
-are only interested in fine-tuning existing models to tolerate minor
-characteristics of some viral sequences, you may only want to look at
-the X.
-
-# RSV model building tutorial, divided into six steps:
+# RSV model building tutorial
 
 <details>
 
 <summary>
 
-## Iteration 1, step 1: build model(s) from initial reference sequence(s)
+## Step 1: build model(s) from initial reference sequence(s)
 
 </summary>
 
 ### Determine good reference sequence(s) to use
 
-There are two RSV subtypes, RSV-A and RSV-B, so the first step I took
-was to pick reference sequences for each subtype. A good
-strategy is often to start with a RefSeq sequence if any are
+For viruses with multiple subtypes, genotypes, or serotypes, it makes
+sense to build at least one model for each. There are two RSV
+subtypes, RSV-A and RSV-B, so the first step I took was to pick
+reference sequences for each subtype. 
+
+A good strategy is often to start with a RefSeq sequence if any are
 available. In this case there are two RefSeq sequences which can be
 found on the [NCBI virus
 resource](#https://www.ncbi.nlm.nih.gov/labs/virus/vssi/#/), by
 selecting the "Search by virus" button and entering "RSV". The top
 suggestion will be "Human orthopneumovirus (taxid 11250)", which is a
-another name for RSV. At the time of writing, the top two sequences listed in the resulting
-list will be RefSeq sequences `NC_038235` (subgroup A) and `NC_001781`
-(subgroup B). You can also filter to only RefSeq sequences using the
-"Sequence type" filter. 
-
---- 
+another name for RSV. At the time of writing, the top two sequences
+listed in the resulting list will be RefSeq sequences `NC_038235`
+(subgroup A) and `NC_001781` (subgroup B). You can also filter to only
+RefSeq sequences using the "Sequence type" filter.
 
 ### Build initial models from reference sequence(s)
 
@@ -155,104 +146,90 @@ Eventual output:
 
 <summary>
 
-## Iteration 1, step 2: construct a training set and run `v-annotate.pl` on it
+## Step 2A: construct a training set and run `v-annotate.pl` on it
 
 </summary>
-
-### Construct a training set for testing your initial models
-
-INTRODUCE CONCEPT OF IMPROVING/OPTIMIZING MODEL? OR SOME OTHER WORD? INTRODUCE
-CONCEPT OF COMMON FAILURE MODES (or something like this).
-
-MAKE A NOTE ABOUT HOW MAKING A LESS BIASED TRAINING SET (x num seqs
-per year or something) WOULD BE BETTER.
 
 When evaluating a VADR model it is critical to look at how it performs
 when used with `v-annotate.pl` on example sequences. Ideally, you
 would know what the expected result is (pass or fail status, and
-specific alerts you expect to be or not be reported). For example, if
-you have a set of high quality sequences that have been expertly
-validated and annotated, you could use this as a positive control -
-`v-annotate.pl` should pass all of those sequences and give annotation
-matching what is expected. Also, you could intentionally introduce
-sequencing errors (insertions, deletions, rearrangments) into high
-quality sequences, and checking to see if `v-annotate.pl` detects
-those problems and reports them. 
+specific alerts you expect to be or not be reported). 
 
-Often times however, the most readily available set of sequences is
-simply INSDC sequences of the viral species you are modelling. In this
-case, I often take the strategy of selecting a random subset of nearly
-full length sequences, evaluating them with `v-annotate.pl` and
-manually analyzing the results with this set of training
-sequences. While many of these sequences will be high quality and so
-are expected to pass, some may have problems with them such as early
-stop codons that are either bonafide (biologically real) or the result
-of sequencing error or some other artifact. In either case,
-`v-annotate.pl` ideally will detect the unusual features and report
-them as alerts. For some of these situations, such as an early stop
-codon (relative to the reference model) that exists in a significantly
-large subset of sequences at a particular position, we may want
-`v-annotate.pl` to allow the early stop and not report an alert. For
-these cases we will want to modify our model as explained in the
-subsequent steps.
+For example, if you have a set of high quality sequences that have
+been expertly validated and annotated, you could use this as a
+positive control: `v-annotate.pl` should pass all of those sequences
+and give annotation matching what is expected.
 
-The decision to use only full length sequences is debatable, as by
-doing it I am assuming that the sequence diversity represented by all
+Additionally, you could intentionally introduce sequencing errors
+(insertions, deletions, rearrangments) into high quality sequences,
+and checking to see if `v-annotate.pl` detects those problems and
+reports them.
+
+Often times, however, the most readily available set of sequences is
+simply INSDC sequences of the viral species you are modelling. Many of
+these will be of high quality without any sequencing errors,
+misassemblies or other artifacts, but some may have those types of errors.
+
+For this tutorial, we will take the strategy of selecting a random subset
+of nearly full length sequences, evaluating them with `v-annotate.pl`
+and manually analyzing the results as a way of evaluating our models.
+
+(The decision to use only full length sequences is debatable, as by
+doing it we are assuming that the sequence diversity represented by all
 sequences, including partial sequences, is well represented by only
 the full length sequences. In other words, if we optimize the
 models for only full length sequences, they may perform poorly on
 existing partial length sequences that are sufficiently divergent from
-all full length sequences. Ideally, you would test on a set of full
-length and partial sequences. Alternatively, you could optimize on
-full length sequences first, and then as a sanity check, test the
-performance of the resulting models on a random subset of partial
-sequences to see if any new unexpected failure modes exist.
+all full length sequences. Two alternatives you might consider are:
+allowing partial sequences in your training set (although this
+somewhat complicates the analysis of the results), and optimizing
+models on full length sequences first, and then testing on partial
+sequences to see if any new failure modes occur.)
 
-There are several ways to select a random subset of sequences of a
-viral species. One way is to use the NCBI virus resource to download
-an accession list of all available sequences, and then select a random
-subset from that list using command-line tools, such as the
-`esl-selectn` program from Sean Eddy's Easel library that in installed
-as part of Infernal with installation of VADR. 
-
-I usually define nearly full length as 95% the length of the RefSeq
-sequence, or greater. In this case `NC_038235` is 15222 nucleotides
-and `NC_001781` is 15225 nucleotides, so a 95% length cutoff is about
-14460 nucleotides.  At the time of writing there are about 5500 nearly
-full length RSV INSDC sequences by this definition. For our random subset it is important
-to select enough sequences that you should identify any common failure
-modes, to decide if they should be addressed by changing the model,
-but not too many that your manual analysis will take too long. For
-RSV, I chose to use 500 randomly chosen nearly full length sequences
-for model improvement.
+One way to select a random set of training sequences is to use the
+NCBI virus resource. I usually define nearly full length as 95% the
+length of the RefSeq sequence, or greater. In this case `NC_038235` is
+15222 nucleotides and `NC_001781` is 15225 nucleotides, so a 95%
+length cutoff is about 14460 nucleotides.  At the time of writing
+there are about 5500 nearly full length RSV INSDC sequences by this
+definition. For our random subset it is important to select enough
+sequences that you should identify any common failure modes, but not
+too many that your manual analysis will take a prohibitively long
+amount of time (VADR is slow). For RSV, I chose to use 500 randomly
+chosen nearly full length sequences for model improvement.
 
 To download 500 randomly chosen RSV sequences of length 14460 or
-greater, from the RSV list page you reached in step 1, use the
-"Sequence Length" filter to set a minimum of 14460 and then click the
-"Download" button, then select "Nucleotide" under "Sequence data
-(FASTA format)", then "Download a randomized subset of all records"
-then enter "500", click "Next" and "Use Default" for the FASTA
-definition line, then finally click "Download". This should download a
-file called something like "sequences_20231010_2146812.fasta".
+greater: 
+
+1. go to the NCBI virus RSV list page you reached in step 1
+
+2. use the "Sequence Length" filter to set a minimum of 14460 and then
+click the "Download" button 
+
+3. select "Nucleotide" under "Sequence data (FASTA format)"
+
+4. select  "Download a randomized subset of all records",
+enter "500", click "Next" and "Use Default" for the FASTA
+definition line, then finally click "Download". 
+
+This should download a file called something like "sequences_20231010_2146812.fasta".
 (You can find the accession list for the 500 randomly selected
 sequences I used in
 [vadr/documentation/build-files/rsv.r500.list](build-files/rsv.r500.list).
 
 ---
 
-### Run `v-annotate.pl` to validate and annotate sequences in training set
+### Step 2B. Run `v-annotate.pl` to validate and annotate sequences in training set
 
-The next step is to use our new models to annotate our set of 500
-training sequences. The RSV genome is about 15Kb, putting on the
-larger end of what VADR can be used to annotate. The memory and speed
+Next we'll use our new models to annotate our set of 500
+training sequences. The RSV genome is about 15Kb, which is towards the
+larger end of of what VADR can be used to annotate. The memory and speed
 requirements for `v-annotate.pl` don't scale very well, and annotation
-of RSV can require up to 64Gb of RAM. VADR is used for SARS-CoV-2
-(30Kb genome) with significantly lower memory requirements, but it
-utilizes heuristics that take advantage of the extremely high (at the time
-of writing) sequence identity between all SARS-CoV-2 genomes. I don't
-recommend using those heuristics with viral sequences with expected
-pairwise sequence similarity of less than 95%. RSV similarity is about
-x%.
+of RSV can require up to 64Gb of RAM and take about 1 minute per
+sequence. 
+(VADR is used for SARS-CoV-2 (30Kb genome) with significantly lower memory requirements, but it
+utilizes heuristics that work particularly well for SARS-CoV-2. 
+I don't recommend using those heuristics with RSV sequences.)
 
 To use v-annotate.pl on our set of 500 sequences, we would execute:
 
@@ -260,7 +237,7 @@ To use v-annotate.pl on our set of 500 sequences, we would execute:
 $ v-annotate.pl --mdir rsv-models1 --mkey rsv rsv.r500.fasequences_20231010_2146812.fasta va-r500
 ```
 
-Importantly, this command will take about 1 minute per sequence, so roughly
+This will take about 1 minute per sequence, so roughly
 8 hours to complete. You can parallelize it if you have a lot of RAM
 and multiple CPUs using the `--split` and `--cpu` options
 as described [here](annotate.md#options-split).
@@ -271,11 +248,11 @@ as described [here](annotate.md#options-split).
 
 <summary>
 
-## Iteration 1, step 3: analyze the results
+## Step 3: analyze the results and update models
 
 </summary>
 
-Next, we want to analyze the results.  From the v-annotate.pl output (also saved to
+Next, we want to analyze the results. From the `v-annotate.pl` output (also saved to
 the va-r500/va-r500.vadr.log file), we can see that 286 sequences were
 classified as RSV A (matched best to the NC_038235 model) and 214 as
 RSV B (matched best to the NC_001781 model). And only 6 out of the 500
@@ -1141,7 +1118,8 @@ majority of RSV A and RSV B sequences, respectively. These include:
    reference positions `5466..5537` in RSV A and `5410..5469` in RSV
    B. 
 
- * M2-2 protein start codon at reference positions `8165..8167`
+ * M2-2 protein start codon at reference positions `8165..8167` in RSV
+   A. 
 
 And further we've observed that:
 
@@ -1159,13 +1137,11 @@ contain these major characteristics and building new models from them.
 
 </details>
 
-</details>
-
 <details>
 
 <summary>
 
-## Iteration 2, step 1: build model(s) from new reference sequence(s)
+## Rebuild model(s) from new reference sequence(s)
 
 </summary>
 
@@ -1597,43 +1573,20 @@ $ v-annotate.pl --mdir rsv-models2 --mkey rsv rsv-models2/rsv.fa va-rsv2
 #
 ```
 
-</details>
+## Rerun `v-annotate.pl` on our existing training set using new models
 
-<details>
-
-<summary>
-
-## Iteration 2, step 2: run `v-annotate.pl` on our existing training set
-
-</summary>
-
-We can reuse the training set from iteration 1 here in the second
-iteration. We could create a different training set but if our
-original training set was sufficiently large and truly random, then we
-probably don't need to. One upside of keeping the same training set is
-that it makes differences between results with our new models and
-results with our original models in iteration 1 easier to understand
-and interpret.
-
-We can repeat the `v-annotate.pl` command from iteration 1, but this
+We can repeat the `v-annotate.pl` command from step 2, but this
 time we will use the `--out_stk` option to save multiple alignments
 for reasons that will become clear below:
 
 ```
 $ v-annotate.pl --out_stk --mdir rsv-models2 --mkey rsv rsv.r500fa va2-r500
 ```
-</details>
 
-<details>
-
-<summary>
-
-## Iteration 2, step 3: analyze the results and update the models accordingly
-
-</summary>
+## Analyze the results and update the models accordingly
 
 This time, from the `v-annotate.pl` output we can tell that many more
-sequences passed than in iteration 1, when only 6 of 500 passed:
+sequences passed than with the original models, when only 6 of 500 passed:
 
 ```
 # Summary of classified sequences:
@@ -1649,24 +1602,25 @@ sequences passed than in iteration 1, when only 6 of 500 passed:
 #---  --------  -----  --------  ----  ----  ----
 ```
 
-But there are still 233 sequences that do not pass. We know from
-iteration 1 that we don't expect any of the fatal alerts remaining in
-these 233 sequences to exist in a majority of sequences, but there
-still may be some alerts that are somewhat common and exist in a
-significant number of sequences. Many of these alerts may correspond to real
-biological variability in RSV sequences that we'd rather not cause a
-sequence to fail, and they may be addressable by modifying the model
-without changing the underlying reference sequences like we did at the
-end of iteration 1. There are several ways we can address these
-situations, including:
+But there are still 233 sequences that do not pass. As we did
+previously, we can walk through the most common types of alerts. But
+this time, we can update our models so they do not report alerts that 
+are due to valid biological diversity that we want `v-annotate.pl` to
+allow. It makes sense to do that at this stage because we 
+know we are using good representative sequences for our models, based
+on the work we did previously to investigate the alerts present in the
+majority of our sequences. 
 
-1. *Add a new protein to the blastx protein library for a model to
-   account for protein sequence variability.* This
+There are several ways we can update our models to avoid reporting
+alerts for expected biological characteristics, including:
+
+1. **Add a new protein to the blastx protein library for a model to
+   account for protein sequence variability.** This
    can help remove unnecessary alerts related to the protein validation stage, most
    commonly: `indfpst5`, `indfpst3`, `insertnp` and `deletinp`.
 
-2. *Add **alternative features** to the model info file, along with
-   corresponding proteins to the blastx protein library.* Some CDS may
+2. **Add **alternative features** to the model info file, along with
+   corresponding proteins to the blastx protein library.** Some CDS may
    have multiple positions, with respect to the reference model, for the
    start and/or stop codon. We can deal with this by adding all of the
    acceptable alternatives as features to the model info file, and
@@ -1674,35 +1628,36 @@ situations, including:
    annotation for the single alternative that yields the fewest fatal
    alerts. 
 
-3. *Add an alert *exception* to the model info file.* For some alerts,
+3. **Add an alert *exception* to the model info file.** For some alerts,
    exceptions can be added that prevent the reporting of alerts in
    specific model regions. For example, an exception can be added to
    prevent the reporting of a `dupregin` alert due to an expected
    repetitive region. 
 
-4. *Rebuild the covariance model from a new input alignment.* We can
+4. **Rebuild the covariance model from a new input alignment.** We can
    still use the same reference sequence and coordinates, but by
    buildng a new model from an alignment with multiple sequences,
    certain alerts that caused by sequence differences with the
    reference model can be prevented.
 
-5. *Specify features as non-essential*. By adding a a
+5. **Specify features as non-essential**. By adding a a
    `misc_not_failure` flag to a feature in a feature info file, we can
    make it so that many types of fatal alerts do not cause a sequence
    to fail, but instead cause the associated feature to be annotated
    as a `misc_feature` in the output. 
 
-6. *Specify command-line options when running `v-annotate.pl` to make
-   some alerts fatal or non-fatal*. For some viruses, certain fatal alerts
+6. **Specify command-line options when running `v-annotate.pl` to make
+   some alerts fatal or non-fatal**. For some viruses, certain fatal alerts
    may be so common that they are expected for many sequences, yet we
    don't want them to cause a sequence to fail. We can make those
    alerts non-fatal using the command-line option `alt_pass`.
 
-I will walk you through examples of some of these strategies. First, we
-need to identify the minority characteristics that we would like to
-address through model modification. Once again we can start by looking
-at the most common types of reported alerts:
+I will walk you through examples for the first three strategies, and
+elaborate on four through six below.
 
+First, we need to identify the characteristics that we would
+like to address through model modification. Once again we can start by
+looking at the most common types of reported alerts:
 
 Here are the counts for all of the fatal alerts, from the
 `va2-rsv.r500/va2-rsv.r500.vadr.alc` file:
@@ -1745,12 +1700,11 @@ than 10 sequence (more than 2\% of sequences):
 25    fsthicft  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF   feature     12    12  high confidence possible frameshift in CDS (frame not restored before end)
 ```
 
-We will investigate each of these types of alerts, starting with
-`deletinp`. As in iteration 1, we can sort all the occurences of this
-alert in the `.alt` file and group them:
+Let's examine the `deletinp` alerts. As above, we can sort
+all the occurences of this alert in the `.alt` file and group them:
 
 ```
-$ grep deletinp va2-rsv.r500/va2-rsv.r500.vadr.alt | awk '{ printf ("%s %s %s\n", $3, $5, $12); }' | sort | uniq -c | sort -rnk 1
+$ grep deletinp va3-rsv.r500/va3-rsv.r500.vadr.alt | awk '{ printf ("%s %s %s\n", $3, $5, $12); }' | sort | uniq -c | sort -rnk 1
      69 KY654518 attachment_glycoprotein 5461..5532:+
      23 KY654518 attachment_glycoprotein 5509..5574:+
      20 MZ516105 attachment_glycoprotein 5435..5494:+
