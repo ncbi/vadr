@@ -259,7 +259,7 @@ as described [here](annotate.md#options-split).
 
 <summary>
 
-### Identify common fatal alert instances 
+### Identify and investigate common fatal alert instances 
 
 </summary>
 
@@ -360,8 +360,6 @@ number of sequences are:
 Information on the individual alert instances can be found in the
 `.alt` and `.alt.list` files. We'll go through each of these top six
 most common alerts in detail next.
-
-</details>
 
 <details>
 
@@ -1150,11 +1148,13 @@ contain these major characteristics and building new models from them.
 
 </details>
 
+</details>
+
 <details>
 
 <summary>
 
-### Choosing new representative sequences to build new models from
+### Choosing new representative sequences and building new models
 
 </summary>
 
@@ -1522,16 +1522,6 @@ OR496332.1         GTCTAAAACTAACAATCACACATGTGCATTTAC----------------------------
 //
 ```
 
-</details>
-
-<details>
-
-<summary>
-
-### Build new models from new reference sequences
-
-</summary>
-
 To build our new models, we run `v-build.pl`:
 
 ```
@@ -1734,8 +1724,6 @@ than 10 sequence (more than 2\% of sequences):
 16    lowcovrg  yes      LOW_COVERAGE                   sequence     13    13  low sequence fraction with significant similarity to homology model
 25    fsthicft  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF   feature     12    12  high confidence possible frameshift in CDS (frame not restored before end)
 ```
-
-</details>
 
 <details>
 
@@ -2111,7 +2099,6 @@ fail due to `deletinp` alerts at that stage, then we could repeat the
 process again. For the purposes of this tutorial, we will move on to the next most
 common alert `indf3pst` to provide a slightly different example of
 updating a model.
-
 
 </details>
 
