@@ -19,7 +19,7 @@ refining a model library is:
    iteration) and use `v-annotate.pl` to validate and annotate
    the training sequences using your models from step 1.
 
-3. Analyze the results by looking for common failure modes, and
+3. Analyze the results by looking for common failure modes and
    investigate the sequence characteristics that are responsible for
    them. These will be characteristics not present in the reference
    sequences that are present in some or many of the training
@@ -27,21 +27,24 @@ refining a model library is:
 
 If in step 3 there are one or more characteristics found that occur in
 the majority of training sequences, it makes sense to pick a new
-reference sequence that includes those characteristics and rebuild our
-models. We can then rerun `v-annotate.pl` and pick up with analyzing
-the results in step 3 again. 
+reference sequence that includes those characteristics and rebuild the
+models based on those new references. We can then rerun
+`v-annotate.pl` using the new models and pick up with analyzing the results in step 3
+again.
 
-Next, we want to investigate characteristics that cause failures in a
-minority of sequences. For any that are deemed to be allowable, due to
-valid biological variability (not due to sequencing errors or other
-artifacts) we want to update our models to allow them. There are
-several strategies/methods for how we can do that.
+Once all the failure modes occur in a minority of the training
+sequences, we want to investigate each of them and, for those we
+determine we want to allow, address them by
+modifying the existing model (as opposed to rebuilding it from a new
+sequence). There are several strategies/methods for how we can do
+that.
 
 In this tutorial, we will follow these three steps in building an RSV
 library. This tutorial is long and detailed and can be followed along
-step by step by rerunning the commands locally, just by reading, or
-just for reference for specific examples of analyzing results and
-updating VADR models.
+step by step by rerunning the commands locally, just by reading
+through it, or just for reference for specific examples of how to
+analyze `v-annotate.pl` results and update VADR models based on that
+analysis.
 
 # RSV model building tutorial
 
@@ -217,9 +220,15 @@ This should download a file called something like "sequences_20231010_2146812.fa
 sequences I used in
 [vadr/documentation/build-files/rsv.r500.list](build-files/rsv.r500.list).
 
----
+</details>
 
-### Step 2B. Run `v-annotate.pl` to validate and annotate sequences in training set
+<details>
+
+<summary>
+
+## Step 2B. Run `v-annotate.pl` to validate and annotate sequences in training set
+
+</summary>
 
 Next we'll use our new models to annotate our set of 500
 training sequences. The RSV genome is about 15Kb, which is towards the
@@ -249,6 +258,14 @@ as described [here](annotate.md#options-split).
 <summary>
 
 ## Step 3: analyze the results and update models
+
+</summary>
+
+<details>
+
+<summary>
+
+### Identify common fatal alert instances 
 
 </summary>
 
@@ -350,11 +367,13 @@ Information on the individual alert instances can be found in the
 `.alt` and `.alt.list` files. We'll go through each of these top six
 most common alerts in detail next.
 
+</details>
+
 <details>
 
 <summary>
 
-### Investigating common `cdsstopn` alerts
+### Investigate common `cdsstopn` alerts
 
 </summary>
 
@@ -458,7 +477,7 @@ references.
 
 <summary>
 
-### Investigating common `dupregin` alerts
+### Investigate common `dupregin` alerts
 
 </summary>
 
@@ -641,7 +660,7 @@ alert was `indf3lcn`:
 
 <summary>
 
-### Investigating common `indf3lcn` alerts
+### Investigate common `indf3lcn` alerts
 
 </summary>
 
@@ -738,7 +757,7 @@ revisit this issue of differing gene and CDS boundaries.
 
 <summary>
 
-### Investigating common `mutstart` alerts
+### Investigate common `mutstart` alerts
 
 </summary>
 
@@ -834,7 +853,7 @@ later.
 
 <summary>
 
-### Investigating common `insertnp` alerts
+### Investigate common `insertnp` alerts
 
 </summary>
 
@@ -974,7 +993,7 @@ Note the large insertion in the query around position 748 of the CDS.
 
 <summary>
 
-### Investigating common `indf3pst` alerts
+### Investigate common `indf3pst` alerts
 
 </summary>
 
@@ -1103,7 +1122,7 @@ the `alert detail` in the `alt` file is `120`:
 
 <summary>
 
-### <a name="majorchar"></a>Lessons from investigating common alerts in our training set
+### <a name="majorchar"></a>Lessons from investigating common alerts
 
 </summary>
 
@@ -1141,11 +1160,9 @@ contain these major characteristics and building new models from them.
 
 <summary>
 
-## Rebuild model(s) from new reference sequence(s)
+### Choosing new representative sequences to build new models from
 
 </summary>
-
-## Choosing new representative sequences
 
 We will choose a new representative from our random set of 500
 training sequences. Of course, it is possible, and probably even
@@ -1511,7 +1528,15 @@ OR496332.1         GTCTAAAACTAACAATCACACATGTGCATTTAC----------------------------
 //
 ```
 
-### Build new models from new reference sequence(s)
+</details>
+
+<details>
+
+<summary>
+
+### Build new models from new reference sequences
+
+</summary>
 
 To build our new models, we run `v-build.pl`:
 
@@ -1573,7 +1598,15 @@ $ v-annotate.pl --mdir rsv-models2 --mkey rsv rsv-models2/rsv.fa va-rsv2
 #
 ```
 
-## Rerun `v-annotate.pl` on our existing training set using new models
+</details>
+
+<details>
+
+<summary>
+
+### Rerun `v-annotate.pl` on our existing training set using new models
+
+</summary>
 
 We can repeat the `v-annotate.pl` command from step 2, but this
 time we will use the `--out_stk` option to save multiple alignments
@@ -1583,7 +1616,15 @@ for reasons that will become clear below:
 $ v-annotate.pl --out_stk --mdir rsv-models2 --mkey rsv rsv.r500fa va2-r500
 ```
 
-## Analyze the results and update the models accordingly
+</details>
+
+<details>
+
+<summary>
+
+### Analyze the results and update the models accordingly
+
+</summary>
 
 This time, from the `v-annotate.pl` output we can tell that many more
 sequences passed than with the original models, when only 6 of 500 passed:
@@ -1699,6 +1740,16 @@ than 10 sequence (more than 2\% of sequences):
 16    lowcovrg  yes      LOW_COVERAGE                   sequence     13    13  low sequence fraction with significant similarity to homology model
 25    fsthicft  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF   feature     12    12  high confidence possible frameshift in CDS (frame not restored before end)
 ```
+
+</details>
+
+<details>
+
+<summary>
+
+### Adding a protein to model blastx library
+
+</summary>
 
 Let's examine the `deletinp` alerts. As above, we can sort
 all the occurences of this alert in the `.alt` file and group them:
@@ -2063,14 +2114,23 @@ to add to the protein blast library. After that, the next step would
 be to rerun all of the sequences that failed due to `deletinp` alerts
 with the updated models. If a significant number of sequences still
 fail due to `deletinp` alerts at that stage, then we could repeat the
-process again. 
-
-For the purposes of this tutorial, we will move on to the next most
+process again. For the purposes of this tutorial, we will move on to the next most
 common alert `indf3pst` to provide a slightly different example of
 updating a model.
 
 
-Let's take a look at one example of this alert:
+</details>
+
+<details>
+
+<summary>
+
+### Adding an alternative CDS feature with different stop coordinate
+
+</summary>
+
+Let's take a look at one example of the `indf3pst` alert:
+
 ```
 $ cat va2-rsv.r500/*alt | head -n 3
 #        seq                   ftr   ftr                      ftr  alert           alert                                     seq   seq             mdl   mdl  alert 
@@ -2481,6 +2541,16 @@ vb-ex10
 ```
 </details>
 
+</details>
+
+<details>
+
+<summary>
+
+### Allowing an alert exception for specific reference positions
+
+</summary>
+
 When that is completed it looks like the most common example of
 `mutendex` would be for the `large polymerase` at positions
 `15059..15061:+` for 3 sequences. At this stage I would stop and move
@@ -2633,6 +2703,26 @@ This sequence now passes, because the `deletinp` alert was its only
 fatal one. Other sequences may still have other alerts, including
 `indf3pst` alerts, that could be addressed using the strategies
 above. 
+
+</details>
+
+<details>
+
+<summary>
+
+### Additional strategies for model modification (not used for RSV)
+
+</summary>
+
+</details>
+
+<details>
+
+<summary>
+
+### Final summary of model modifications
+
+</details>
 
 ---
 TOADD: 
