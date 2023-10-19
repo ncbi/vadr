@@ -999,7 +999,7 @@ Note the large insertion in the query around position 748 of the CDS.
 
 ### Investigating common `indf3pst` alerts
 
-<\summary>
+</summary>
 
 The sixth and final common alert that we will look at is:
 
