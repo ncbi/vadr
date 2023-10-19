@@ -270,15 +270,16 @@ as described [here](annotate.md#options-split).
 <details>
 
 <summary>
-## Iteration 1, step 3: analyze the results to determine
-characteristics for new reference sequences
+
+## Iteration 1, step 3: analyze the results
+
 </summary>
 
-Next, we want to analyze the results. From the v-annotate.pl output
-(also saved to the va-r500/va-r500.vadr.log file), we can see that 286
-sequences were classified as RSV A (matched best to the NC_038235
-model) and 214 as RSV B (matched best to the NC_001781 model). And
-only 6 out of the 500 total training sequences "pass":
+Next, we want to analyze the results.  From the v-annotate.pl output (also saved to
+the va-r500/va-r500.vadr.log file), we can see that 286 sequences were
+classified as RSV A (matched best to the NC_038235 model) and 214 as
+RSV B (matched best to the NC_001781 model). And only 6 out of the 500
+total training sequences "pass":
 
 ```
 #                                  num   num   num
@@ -372,7 +373,13 @@ Information on the individual alert instances can be found in the
 `.alt` and `.alt.list` files. We'll go through each of these top six
 most common alerts in detail next.
 
+<details>
+
+<summary>
+
 ### Investigating common `cdsstopn` alerts
+
+</summary>
 
 To see all the `cdsstopn` (early stop
 codon) alerts in the `.alt` file, we can use `grep`. Here are the
@@ -468,7 +475,15 @@ it makes sense at this point to look at all of the common failure
 modes before making that decision and potentially looking for new
 references. 
 
+</details>
+
+<details>
+
+<summary>
+
 ### Investigating common `dupregin` alerts
+
+</summary>
 
 The second most common fatal alert is the `dupregin` alert that occurs
 when `similarity to a model region occurs more than once`. 
@@ -643,7 +658,15 @@ characteristics that we want to include, so first we should
 investigate the other common alerts from above. The third most common
 alert was `indf3lcn`:
 
+</details>
+
+<details>
+
+<summary>
+
 ### Investigating common `indf3lcn` alerts
+
+</summary>
 
 ```
 32    indf3lcn  yes      INDEFINITE_ANNOTATION_END       feature   1057   320  alignment to homology model has low confidence at 3' boundary for feature that does not match a CDS
@@ -732,7 +755,15 @@ keep them, and possibly set `indf3lcn` alerts as non-fatal using the
 When we choose our new reference sequences in the next section we will
 revisit this issue of differing gene and CDS boundaries.
 
+</details>
+
+<details>
+
+<summary>
+
 ### Investigating common `mutstart` alerts
+
+</summary>
 
 Moving on to the fourth most common fatal alert:
 
@@ -820,7 +851,15 @@ annotated differently. There is a way to deal with this and allow
 `v-annotate.pl` to pick either start position. We'll come back to this
 later. 
 
+</details>
+
+<details>
+
+<summary>
+
 ### Investigating common `insertnp` alerts
+
+<\summary>
 
 The next most common alert in our training set is:
 ```
@@ -951,7 +990,16 @@ Note the large insertion in the query around position 748 of the CDS.
 
 ---
 
+
+</details>
+
+<details>
+
+<summary>
+
 ### Investigating common `indf3pst` alerts
+
+<\summary>
 
 The sixth and final common alert that we will look at is:
 
@@ -1072,7 +1120,15 @@ the `alert detail` in the `alt` file is `120`:
 ```
 --- 
 
+</details>
+
+<details>
+
+<summary>
+
 ### <a name="majorchar"></a>Lessons from investigating common alerts in our training set
+
+</summary>
 
 We've learned that both `NC_038235` and `NC_001781` are lacking
 several major characteristics that are (by definition) present in the
@@ -1103,7 +1159,7 @@ contain these major characteristics and building new models from them.
 
 </details>
 
----
+</details>
 
 <details>
 
