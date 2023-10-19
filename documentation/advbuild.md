@@ -2377,7 +2377,7 @@ representative protein for the coordinates `4681..5649:+` to the
 <details>
 
 <summary>
-Commands used to address `KY654518` attachment glycoprotein ending at `5649`:
+Click to expand commands used to address `KY654518` attachment glycoprotein ending at `5649`
 </summary>
 
 ```
@@ -2428,9 +2428,7 @@ same steps.
 <details>
 
 <summary>
-
-Commands used to address `MZ516105` attachment glycoprotein ending at `5629`:
-
+Click to expand commands used to address `MZ516105` attachment glycoprotein ending at `5629`
 </summary>
 
 ```
