@@ -253,13 +253,7 @@ as described [here](annotate.md#options-split).
 
 </details>
 
-<details>
-
-<summary>
-
 ## Step 3: analyze the results and update models
-
-</summary>
 
 <details>
 
