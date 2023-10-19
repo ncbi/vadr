@@ -46,6 +46,8 @@ through it, or just for reference for specific examples of how to
 analyze `v-annotate.pl` results and update VADR models based on that
 analysis.
 
+---
+
 <details>
 
 <summary>
@@ -254,6 +256,8 @@ and multiple CPUs using the `--split` and `--cpu` options
 as described [here](annotate.md#options-split).
 
 </details>
+
+---
 
 ## Step 3: analyze the results and update models
 
