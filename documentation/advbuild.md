@@ -859,7 +859,7 @@ later.
 
 ### Investigating common `insertnp` alerts
 
-<\summary>
+</summary>
 
 The next most common alert in our training set is:
 ```
