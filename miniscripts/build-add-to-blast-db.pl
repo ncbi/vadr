@@ -298,8 +298,8 @@ while(my $line = <IN>) {
     if($line =~ /^\>orf\d+\s+source\=\S+\s+coords\=(\d+)\.\.(\d+)\s+length\=\d+\s+frame\=\S+/) { 
       # rename as 'source=NC_039477.1/5..5104:+,coords=1..5097'
       my ($start, $stop) = ($1, $2);
-      if($start != 1)               { ofile_FAIL("ERROR CDS not translated as expected, start is $start but should be 1",           1, $FH_HR); }
-      if($stop  != ($cds_nt_len-3)) { ofile_FAIL("ERROR CDS not translated as expected, stop  is $stop  but should be $cds_nt_len", 1, $FH_HR); }
+      if($start != 1)               { ofile_FAIL("ERROR CDS not translated as expected, start is $start but should be 1", 1, $FH_HR); }
+      if($stop  != ($cds_nt_len-3)) { ofile_FAIL(sprintf("ERROR CDS not translated as expected, stop  is $stop  but should be %d", ($cds_nt_len-3)), 1, $FH_HR); }
       if($seqname_seen == 1) { 
         ofile_FAIL("ERROR more than one sequence exists in $tmp_translate_fa_file", 1, $FH_HR);
       }
