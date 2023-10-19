@@ -2619,8 +2619,14 @@ $ $VADRSCRIPTSDIR/v-annotate.pl --keep --mdir rsv-models2 --mkey rsv ex11.fa va-
 -     *all*     -      -            1     1     0
 -     *none*    -      -            0     0     0
 #---  --------  -----  --------  ----  ----  ----
+#
+# Zero alerts were reported.
 ```
 
+This sequence now passes, because the `deletinp` alert was its only
+fatal one. Other sequences may still have other alerts, including
+`indf3pst` alerts, that could be addressed using the strategies
+above. 
 
 ---
 TOADD: 
