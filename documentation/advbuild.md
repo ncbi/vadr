@@ -2010,7 +2010,8 @@ model info file. Note that now there are two sequences that end with
 `4681..5646:+`: the sequence `KY654518.1/4681..5646:+`, which is the
 original translated CDS from `KY654518.1` and
 `KX510193.1:4409..5302:+/4681..5646:+` which is the sequence we just
-added. 
+added. Both of these sequences are now possible blastx subject
+sequences for the attachment glycoprotein.
 
 We can then perform a sanity check to make sure that this added
 sequence has the intended effect. Let's run `v-annotate.pl` on our
@@ -2186,7 +2187,7 @@ OR326763.1         CCATATCAAATTCCACCCAAATACTCCAGTCATATGCTTAGTTATTTAAAAACTACATC
 ```
 
 I've added `vvv` characters indicating the expected stop codon
-position and also the existing stop codon 9 nucleotides
+position and also the existing stop codon 21 nucleotides
 downstream. I've also added `*` characters at the bottom of the
 alignment at positions where the sequence and reference model are
 identical. Note that the end of the CDS has the highest number of
@@ -2376,9 +2377,7 @@ representative protein for the coordinates `4681..5649:+` to the
 <details>
 
 <summary>
-
 Commands used to address `KY654518` attachment glycoprotein ending at `5649`:
-
 </summary>
 
 ```
