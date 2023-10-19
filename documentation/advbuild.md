@@ -270,9 +270,8 @@ as described [here](annotate.md#options-split).
 <details>
 
 <summary>
-
-## Iteration 1, step 3: analyze the results
-
+## Iteration 1, step 3: analyze the results to determine
+characteristics for new reference sequences
 </summary>
 
 Next, we want to analyze the results. From the v-annotate.pl output
