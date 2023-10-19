@@ -2102,9 +2102,10 @@ glycoprotein` for model `MZ516105` with a difference of 6 nucleotides
 is the most common one. Let's investigate one of those sequences further:
 
 ```
-$ grep indf3pst va2-rsv.r500/va2-rsv.r500.vadr.alt | grep MZ516105 | grep 5620 | awk '{ print $2 }' | esl-selectn 1 - > ex8.list
+$ grep indf3pst va2-rsv.r500/va2-rsv.r500.vadr.alt | grep MZ516105 | grep 5620 | awk '{ print $2 }' | $VADREASELDIR/esl-selectn 1 - > ex8.list
 $ cat ex8.list
 OR326763.1
+$ $VADREASELDIR/esl-sfetch -f rsv.r500.fa ex8.list > ex8.fa
 
 # re-run v-annotate.pl on:
 $ $VADRSCRIPTSDIR/v-annotate.pl --keep --mdir rsv-models2 --mkey rsv ex8.fa va-ex8
@@ -2283,6 +2284,7 @@ of `OK654726.1` to determine this (after maybe rerunning
 ```
 # determine number of sequences that have attachment glycoprotein ended at 5641 
 $ grep 5641 va2-rsv.r500/*alt | grep MZ516105 | grep mutendex | wc -l
+$ grep 5641 va2-rsv.r500/*alt | grep MZ516105 | grep mutendex | awk '{ print $2 }' > ex8.41.list
 
 # fetch out 41 sequences and extract only the attachment glycoprotein alignment
 $ $VADREASELDIR/esl-alimanip --seq-k ex8.41.list va2-rsv.r500/va2-rsv.r500.vadr.MZ516105.align.stk > ex8.41.stk 
@@ -2371,20 +2373,254 @@ and modifying existing lines in the model info file, and then adding a
 representative protein for the coordinates `4681..5649:+` to the
 `KY654518` model blastx library.
 
+<details>
+
+<summary>
+
+Commands used to address `KY654518` attachment glycoprotein ending at `5649`:
+
+</summary>
+
+```
+# manually edit the rsv.minfo file to include the alternative feature
+# by replacing the two lines corresponding to the `KY654518` attachment 
+# glycoprotein with these four lines:
+FEATURE KY654518 type:"gene" coords:"4681..5646:+" parent_idx_str:"GBNULL" gene:"G" alternative_ftr_set:"attachment(gene)" alternative_ftr_set_subn:"attachment(cds).1"
+FEATURE KY654518 type:"gene" coords:"4681..5649:+" parent_idx_str:"GBNULL" gene:"G" alternative_ftr_set:"attachment(gene)" alternative_ftr_set_subn:"attachment(cds).2"
+FEATURE KY654518 type:"CDS" coords:"4681..5646:+" parent_idx_str:"GBNULL" gene:"G" product:"attachment glycoprotein" alternative_ftr_set:"attachment(cds)"
+FEATURE KY654518 type:"CDS" coords:"4681..5649:+" parent_idx_str:"GBNULL" gene:"G" product:"attachment glycoprotein" alternative_ftr_set:"attachment(cds)"
+        
+# find representative protein sequence for the blastx protein library
+# fetch out all sequence names with this stop codon
+$ grep 5647..5649 va2-rsv.r500/*alt | grep KY654518 | grep mutendex | awk '{ print $2 }' > ex9.49.list
+# extract the attachment glycoprotein alignment
+$ $VADREASELDIR/esl-alimanip --seq-k ex9.49.list va2-rsv.r500/va2-rsv.r500.vadr.KY654518.align.stk > ex9.49.stk 
+$ $VADREASELDIR/esl-alimask -t --t-rf ex9.49.stk 4681..5649 > ex9.49.ag.stk
+
+# convert to fasta and remove any seqs with ambiguous nts
+$ $VADREASELDIR/esl-reformat fasta ex8.41.ag.stk > ex8.41.ag.fa
+$ perl $VADRSCRIPTSDIR/miniscripts/count-ambigs.pl ex9.49.ag.fa | awk '{ printf("%s %s\n", $1, $2); }' | grep " 0" | awk '{ printf("%s\n", $1); }' > ex9.47.list
+$ $VADREASELDIR/esl-alimanip --seq-k ex8.40.list ex8.41.ag.stk > ex8.40.stk
+$ $VADREASELDIR/esl-alimanip --seq-k ex9.47.list ex9.49.ag.stk > ex9.47.stk
+
+# determine average percent id and choose representative
+$ $VADREASELDIR/esl-alipid ex9.47.stk > ex9.47.alipid
+$ perl $VADRSCRIPTSDIR/miniscripts/esl-alipid-per-seq-stats.pl ex9.47.alipid > ex9.47.alipid.perseq
+$ grep -v ^\# ex9.47.alipid.perseq | sort -rnk 2 | head
+KJ643564.1  95.374  KU316171.1  89.410  KJ643503.1  100.000
+
+# add representative to blastx db
+$ perl $VADRSCRIPTSDIR/miniscripts/build-add-to-blast-db.pl  \
+rsv-models2/rsv.minfo \
+rsv-models2 \
+KY654518 \
+KJ643564 \
+4672..5568:+ \
+4681..5649:+ \
+vb-ex9
+```
+
+</details>
+
 After that, we want to address the `MZ516105` stop codon ending at
 `5629` that occurs in `15` of our training sequences, following the
 same steps.
 
+<details>
+
+<summary>
+
+Commands used to address `MZ516105` attachment glycoprotein ending at `5629`:
+
+</summary>
+
+```
+# manually edit the rsv.minfo file to include the alternative feature
+# by adding two lines corresponding to the `MZ516105` attachment 
+# glycoprotein to the existing four, resulting in these six:
+FEATURE MZ516105 type:"gene" coords:"4688..5620:+" parent_idx_str:"GBNULL" gene:"G" alternative_ftr_set:"attachment(gene)" alternative_ftr_set_subn:"attachment(cds).1"
+FEATURE MZ516105 type:"gene" coords:"4688..5641:+" parent_idx_str:"GBNULL" gene:"G" alternative_ftr_set:"attachment(gene)" alternative_ftr_set_subn:"attachment(cds).2"
+FEATURE MZ516105 type:"gene" coords:"4688..5629:+" parent_idx_str:"GBNULL" gene:"G" alternative_ftr_set:"attachment(gene)" alternative_ftr_set_subn:"attachment(cds).3"
+FEATURE MZ516105 type:"CDS" coords:"4688..5620:+" parent_idx_str:"GBNULL" gene:"G" product:"attachment glycoprotein" alternative_ftr_set:"attachment(cds)"
+FEATURE MZ516105 type:"CDS" coords:"4688..5641:+" parent_idx_str:"GBNULL" gene:"G" product:"attachment glycoprotein" alternative_ftr_set:"attachment(cds)"
+FEATURE MZ516105 type:"CDS" coords:"4688..5629:+" parent_idx_str:"GBNULL" gene:"G" product:"attachment glycoprotein" alternative_ftr_set:"attachment(cds)"
+
+# find representative protein sequence for the blastx protein library
+# fetch out all sequence names with this stop codon
+$ grep MZ516105 va2-rsv.r500/*alt | grep mutendex | grep attachment | awk '{ printf("%s %s\n", $2, $12); }' | grep 5627..5629 | awk '{ print $1 }' > ex10.15.list
+# extract the attachment glycoprotein alignment
+$ $VADREASELDIR/esl-alimanip --seq-k ex10.15.list va2-rsv.r500/va2-rsv.r500.vadr.MZ516105.align.stk > ex10.15.stk 
+$ $VADREASELDIR/esl-alimask -t --t-rf ex10.15.stk 4688..5629 > ex10.15.ag.stk
+
+# convert to fasta and remove any seqs with ambiguous nts
+$ $VADREASELDIR/esl-reformat fasta ex10.15.ag.stk > ex10.15.ag.fa
+$ perl $VADRSCRIPTSDIR/miniscripts/count-ambigs.pl ex10.15.ag.fa | awk '{ printf("%s %s\n", $1, $2); }' | grep " 0" | awk '{ printf("%s\n", $1); }' > ex10.14.list
+$ $VADREASELDIR/esl-alimanip --seq-k ex10.14.list ex10.15.ag.stk > ex10.14.stk
+
+# determine average percent id and choose representative
+$ $VADREASELDIR/esl-alipid ex10.14.stk > ex10.14.alipid
+$ perl $VADRSCRIPTSDIR/miniscripts/esl-alipid-per-seq-stats.pl ex9.47.alipid > ex9.47.alipid.perseq
+$ grep -v ^\# ex10.14.alipid.perseq | sort -rnk 2 | head
+JX576758.1  96.315  KU316128.1  94.480  KP258713.1  98.200
+
+# add representative to blastx db
+$ perl $VADRSCRIPTSDIR/miniscripts/build-add-to-blast-db.pl \
+rsv-models2/rsv.minfo \
+rsv-models2 \
+MZ516105 \
+JX576758 \
+4690..5637:+ \
+4688..5629:+ \
+vb-ex10
+```
+</details>
+
 When that is completed it looks like the most common example of
 `mutendex` would be for the `large polymerase` at positions
 `15059..15061:+` for 3 sequences. At this stage I would stop and move
-onto other types of alerts, because with only 3 sequences it is not as
-obvious that this is a legitimate type of variability that we want our
-models to allow. There is probably lower hanging fruit that we can
-address. At this stage I would probably rerun all 500 of the training
-sequences using the updated models.
+on to other types of alerts, because with only 3 sequences it is not
+as obvious that this is a legitimate type of variability that we want
+our models to allow. There is probably lower hanging fruit that we can
+address. It makes sense to rerun all 500 of the training sequences
+using the updated models at this point, to make sure that we base the 
+decision on which alert instances to investigate next based on
+performance using the current models.
 
-TODO: update models for other stop codons above, then rerun all 500.
+To rerun the training set:
+```
+v-annotate.pl --out_stk --mdir rsv-models2 --mkey rsv rsv.r500fa va3-r500
+```
+
+Our new results:
+```
+# Summary of classified sequences:
+#
+#                                 num   num   num
+#idx  model     group  subgroup  seqs  pass  fail
+#---  --------  -----  --------  ----  ----  ----
+1     KY654518  RSV    A          286   223    63
+2     MZ516105  RSV    B          214   167    47
+#---  --------  -----  --------  ----  ----  ----
+-     *all*     -      -          500   390   110
+-     *none*    -      -            0     0     0
+#---  --------  -----  --------  ----  ----  ----
+```
+
+Previously only 267 passed, so we've cut the number of failing
+sequences in half with our recent modifications.
+
+What are the most common alerts remaining? Ranking the lines with
+fatal alerts in the 
+`va3-rsv.r500/va2-rsv.r500.vadr.alc` file by number of sequences:
+
+```
+#     alert     causes   short                               per    num   num  long       
+#idx  code      failure  description                        type  cases  seqs  description
+#---  --------  -------  -----------------------------  --------  -----  ----  -----------
+32    indf3pst  yes      INDEFINITE_ANNOTATION_END       feature     58    56  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
+33    deletinp  yes      DELETION_OF_NT                  feature     46    46  too large of a deletion in protein-based alignment
+24    cdsstopn  yes      CDS_HAS_STOP_CODON              feature     36    35  in-frame stop codon exists 5' of stop position predicted by homology to reference
+30    indf5pst  yes      INDEFINITE_ANNOTATION_START     feature     25    22  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint
+23    unexleng  yes      UNEXPECTED_LENGTH               feature     16    15  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3
+16    lowcovrg  yes      LOW_COVERAGE                   sequence     13    13  low sequence fraction with significant similarity to homology model
+26    fsthicft  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF   feature     12    12  high confidence possible frameshift in CDS (frame not restored before end)
+20    mutendcd  yes      MUTATION_AT_END                 feature      8     8  expected stop codon could not be identified, predicted CDS stop by homology is invalid
+19    mutstart  yes      MUTATION_AT_START               feature      6     6  expected start codon could not be identified
+22    mutendex  yes      MUTATION_AT_END                 feature      5     5  expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position
+25    cdsstopp  yes      CDS_HAS_STOP_CODON              feature      4     4  stop codon in protein-based alignment
+17    lowsimis  yes      LOW_SIMILARITY                 sequence      3     3  internal region without significant similarity
+28    indfantn  yes      INDEFINITE_ANNOTATION           feature      5     3  nucleotide-based search identifies CDS not identified in protein-based search
+31    indf3gap  yes      INDEFINITE_ANNOTATION_END       feature      6     3  alignment to homology model is a gap at 3' boundary
+18    ftskipfl  yes      UNREPORTED_FEATURE_PROBLEM     sequence      2     2  only fatal alerts are for feature(s) not output to feature table
+21    mutendns  yes      MUTATION_AT_END                 feature      2     2  expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
+29    indf5gap  yes      INDEFINITE_ANNOTATION_START     feature      4     2  alignment to homology model is a gap at 5' boundary
+27    fsthicfi  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF   feature      1     1  high confidence possible frameshift in CDS (frame restored before end)
+```
+
+The most common alert remaining is `indf3pst` with instances in 56
+sequences followed by `deletinp` with alerts in 46
+sequences. We've seen examples above in how to address each of these
+alerts: by adding sequences to the blastx protein library. That
+strategy is the only method for addressing `indf3pst` alerts, but
+there is an additional way to address `deletinp` alerts, by adding an
+alert exception to the model info file for specific reference model
+regions. 
+
+Let's look further at the 46 remaining `deletinp` alerts. We can use
+the `.ftr` file to determine which 
+
+```
+$ cat va3-rsv.r500/va3-rsv.r500.vadr.alt | grep attachment | grep deletinp | awk '{ printf("%s %s %s\n", $3, $5, $12); }' | sort | uniq -c | sort -rnk 1
+     12 MZ516105 attachment_glycoprotein 5435..5494:+
+      7 KY654518 attachment_glycoprotein 5461..5532:+
+      6 MZ516105 attachment_glycoprotein 5399..5458:+
+      5 MZ516105 attachment_glycoprotein 5447..5506:+
+      4 MZ516105 attachment_glycoprotein 5471..5530:+
+      4 MZ516105 attachment_glycoprotein 5405..5464:+
+      3 MZ516105 attachment_glycoprotein 5372..5407:+
+      2 MZ516105 attachment_glycoprotein 5378..5422:+
+      2 KY654518 attachment_glycoprotein 5515..5580:+
+      1 MZ516105 attachment_glycoprotein 5444..5503:+
+```
+
+Most of the alerts (37/46) are for RSV B sequences (`MZ516105`) and they
+relate to deletions at the reference positions. We can specify a
+`deletinp` alert exception for a specific model coordinate range for
+the start position of the deletion and the maximum length we want to
+allow an exception for. To do that we need to know the
+range of start positions for the deletion exception, and the length we
+want to allow for the deletion (any deletions above this length
+starting within the range of start positions will trigger a `deletinp`
+alert). For `MZ516105` an exception
+ranging from positions 5372..5471 with maximum length of 60
+would span all of the 37 instances
+in our training dataset. 
+
+To add the exception we need to manually modify the
+`rsv-models2/rsv.minfo` file in a text editor by adding the key:value
+pair `deletin_exc:5435..5471:+:60` to the `FEATURE` lines for the attachment
+glycoprotein CDS for the `MZ516105` model. Remember there are
+currently 3 `FEATURE` lines because we have alternative features for
+the attachment glycoprotein. The `deletin_exc` alert pertains to both
+`deletinp` and `deletinn` alerts, so `deletin` non-fatal alerts will
+also be excepted in this region.
+
+Alert exceptions are only possible for a subset of alerts, for the
+list of possible exceptions and more information on how to use them,
+see [here](annotate.md#exceptions).
+
+The 3 relevant lines in the model info file should now be:
+
+```
+FEATURE MZ516105 type:"CDS" coords:"4688..5620:+" parent_idx_str:"GBNULL" gene:"G" product:"attachment glycoprotein" alternative_ftr_set:"attachment(cds)" deletin_exc:"5372..5471:+:60"
+FEATURE MZ516105 type:"CDS" coords:"4688..5641:+" parent_idx_str:"GBNULL" gene:"G" product:"attachment glycoprotein" alternative_ftr_set:"attachment(cds)" deletin_exc:"5372..5471:+:60"
+FEATURE MZ516105 type:"CDS" coords:"4688..5629:+" parent_idx_str:"GBNULL" gene:"G" product:"attachment glycoprotein" alternative_ftr_set:"attachment(cds)" deletin_exc:"5372..5471:+:60"
+```
+
+If we now rerun these 37 sequences the `deletinp` and `deletinn`
+alerts should now be absent. Let's randomly sample one to check:
+
+```
+$ grep deletinp va3-rsv.r500/va3-rsv.r500.vadr.alt | grep MZ516105 | grep attachment | awk '{ print $2 }' | $VADREASELDIR/esl-selectn 1 - > ex11.list
+$ cat ex11.list
+OQ101882.1
+$ $VADREASELDIR/esl-sfetch -f rsv.r500.fa ex11.list > ex11.fa
+$ $VADRSCRIPTSDIR/v-annotate.pl --keep --mdir rsv-models2 --mkey rsv ex11.fa va-ex11
+```
+
+```
+# Summary of classified sequences:
+#
+#                                 num   num   num
+#idx  model     group  subgroup  seqs  pass  fail
+#---  --------  -----  --------  ----  ----  ----
+1     MZ516105  RSV    B            1     1     0
+#---  --------  -----  --------  ----  ----  ----
+-     *all*     -      -            1     1     0
+-     *none*    -      -            0     0     0
+#---  --------  -----  --------  ----  ----  ----
+```
+
 
 ---
 TOADD: 
