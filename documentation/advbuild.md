@@ -46,8 +46,6 @@ through it, or just for reference for specific examples of how to
 analyze `v-annotate.pl` results and update VADR models based on that
 analysis.
 
-# RSV model building tutorial
-
 <details>
 
 <summary>
@@ -145,6 +143,8 @@ Eventual output:
 
 </details>
 
+---
+
 <details>
 
 <summary>
@@ -221,6 +221,8 @@ sequences I used in
 [vadr/documentation/build-files/rsv.r500.list](build-files/rsv.r500.list).
 
 </details>
+
+---
 
 <details>
 
