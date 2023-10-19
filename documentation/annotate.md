@@ -1355,7 +1355,7 @@ increase the maximum allowed insertion length without a `insertnn` or
 `367` or `368` for a CDS feature encoded on the top (`+`) strand from
 the default value of `27` to `36`, add the following string to the
 `FEATURE` line for that CDS feature in the model info file:
-`insertnn_exc:367..368:+:36`. As with `coords-only` keys, to add
+`insertn_exc:367..368:+:36`. As with `coords-only` keys, to add
 multiple position ranges and values, separate with commas.
 
 The alert codes which allow exception ranges can also be viewed by
