@@ -97,7 +97,7 @@ listed in the resulting list will be RefSeq sequences `NC_038235`
 (subgroup A) and `NC_001781` (subgroup B). You can also filter to only
 RefSeq sequences using the "Sequence type" filter.
 
-### <a name="step1-build><\a> Build initial models from reference sequence(s)
+### <a name="step1-build"><\a> Build initial models from reference sequence(s)
 
 Next, use `v-build.pl` to build the two models, specifying the
 `--group` and `--subgroup` options as below:
@@ -168,7 +168,7 @@ Eventual output:
 
 ---
 
-## <a name="step2><\a> Step 2: construct a training set
+## <a name="step2"><\a> Step 2: construct a training set
 
 When evaluating a VADR model it is critical to look at how it performs
 when used with `v-annotate.pl` on example sequences. Ideally, you
@@ -239,7 +239,7 @@ sequences I used in
 
 ---
 
-## <a name="step3><\a> Step 3. Run `v-annotate.pl` to validate and annotate sequences in training set
+## <a name="step3"><\a> Step 3. Run `v-annotate.pl` to validate and annotate sequences in training set
 
 Next we'll use our new models to annotate our set of 500
 training sequences. The RSV genome is about 15Kb, which is towards the
@@ -1096,7 +1096,7 @@ contain these characteristics and building new models from them.
 
 ---
 
-### <a name="step5"></a> (OPTIONAL) Choosing new representative sequences and building new models
+### <a name="step5"></a> Step 5. (OPTIONAL) Choosing new representative sequences and building new models
 
 It is not always necessary to build new models at this point. If all
 of the failure modes above had been in a minority of sequences, then
@@ -2603,27 +2603,56 @@ above.
 
 ### <a name="step6-cm"></a>Rebuilding the CM with additional information
 
+- add deletion? 
+- mention flu stop codon?
+- mention multiple alignments?
+
 ### <a name="step6-miscfeat"></a>Treating a feature as non-essential by allowing it to be a `misc_feature`
 
+For some viruses, some features may be non-essential and so can
+tolerate mutations that disrupt or modify the function, such as early
+stop codons, or frameshifts. For these features, we may want to allow
+alerts to be reported but not be fatal. VADR allows you to specify
+features as non-essential by adding a `misc_not_failure:"1"` key/value
+pair to the relevant `FEATURE` lines in the model info file as
+explained more [here](annotate.md#mnf). Such features will be
+annotated as `misc_feature` if they include a normally fatal alert,
+but the sequence will not fail because of such alerts.
+
+When building RSV models, we could have defined the `attachment
+glycoprotein` CDS, which is responsible for many of the fatal alerts,
+as non-essential. However, this would have meant that it would often
+be annotated as a `misc_feature`. By modifying the model through
+adding proteins to the `blastx` library and the other strategies
+above, we have specifyied the range of possible variability we want to
+allow in `attachment glycoprotein` without reporting an alert for it,
+while still validating and annotating it at as a CDS. Other times
+treating a protein as non-essential is a useful strategy. As of
+Octoboer 2023, VADR-based annotation of SARS-CoV-2 sequences submitted
+to GenBank treats ORF3a, ORF6, ORF7a, ORF7b, ORF8, and ORF10 CDS as
+well as the Coronavirus 3' stem-loop II-like motif (s2m) as
+non-essential using the `misc_not_failure` strategy.
+
 ### <a name="step6-altpass"></a>Making an alert non-fatal using the `--alt_pass` option
+
+For some viruses, specific fatal alerts are so common that we may want
+to make them non-fatal. For example, the mpox genome has several
+repetitive regions that cause `dupregin` and `discontn` alerts for
+nearly all mpox sequences. We could try to define alert exceptions to
+allow the `dupregin` alerts, but there are no exceptions supported for
+`discontn`. Another strategy is to specify that these two alerts be
+considered non-fatal using the `v-annotate.pl` option: `--alt_pass
+dupregin,discontn`. An example of using this option can be found
+[here](annotate.md#examplealtpass).
 
 ### <a name="step6-summary"></a> Final summary of model modifications
 
 ---
 TOADD: 
-model update examples in iteration 2 
-- DONE blastx protein library 
-- DONE alternative feature
-- DOABLE alert exception - deletin
 - DOABLE? rebuild model - add deletion, would need alignment based
   problem to fix this
-- ? misc_not_failure - don't have real world RSV example, use
-  attachment glycoprotein
-- DOABLE? alt_pass - pitch as last resort, don't have real world RSV example
 - also add example where you investigate and it turns out the failure
   is legit and you shouldn't do anything about it
-
-
 - list all changes made for RSV in actual model building (and make
   updated RSV model at same time), can I add (rough) number of sequences
   allowed to pass with each modification (?) 
@@ -2631,7 +2660,6 @@ model update examples in iteration 2
   * all alternative features
   * exceptions
   * model update
-
 - add limitations/criticisms/alternatives to this approach:
   * the way we select training seqs, they may be very redundant, could
     weight them somehow would be better
@@ -2640,10 +2668,10 @@ model update examples in iteration 2
 - what about multiple models? If we have many minor characteristics
    and only some groups have some chracteristics, it may be better to
    make multiple models
-
 - add info about searching literature to determine if, for example,
   attachment glycoprotein has different possible stop codons? Or a big
   deletion (I think I may have already done that)? 
+- proofread and add links
  
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
 
