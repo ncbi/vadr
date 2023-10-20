@@ -11,21 +11,23 @@ different stop codon. It is possible to make VADR models more general
 but it requires some manual effort. A good strategy for building and
 refining a model library is:
 
-1. Build a model(s) from representative and well annotated sequence(s)
-   as a starting point. These may be RefSeq sequences.
+Step 1 Build a model(s) from representative and well annotated
+       sequence(s) as a starting point. These may be RefSeq sequences.
 
-2. Construct a training set of randomly chosen existing sequences for
-   the viral species (or use the same training set from the previous
-   iteration) and use `v-annotate.pl` to validate and annotate
-   the training sequences using your models from step 1.
+Step 2. Construct a training set of randomly chosen existing sequences
+        for the viral species.
 
-3. Analyze the results by looking for common failure modes and
-   investigate the sequence characteristics that are responsible for
-   them. These will be characteristics not present in the reference
-   sequences that are present in some or many of the training
-   sequences. Update the model to accomodate these failure modes.
+Step 3. Use `v-annotate.pl` to validate and annotate the training
+        sequences using your models from step 1.
 
-If in step 3 there are one or more characteristics found that occur in
+Step 4. Analyze the results by looking for common failure modes and
+        investigate the sequence characteristics that are responsible
+        for them. These will be characteristics not present in the
+        reference sequences that are present in some or many of the
+        training sequences. Update the model to accomodate these
+        failure modes.
+
+If in step 4 there are one or more characteristics found that occur in
 the majority of training sequences, it makes sense to pick a new
 reference sequence that includes those characteristics and rebuild the
 models based on those new references. We can then rerun
@@ -48,15 +50,37 @@ analysis.
 
 ---
 
-<details>
+* [Step 1: build model(s) from initial reference sequence(s)](#step1)
+  * [Determine good reference sequence(s)](#step1-refseq)
+  * [Build initial models](#step1-build)
+* [Step 2: construct a training set](#step2)
+* [Step 3: run `v-annotate.pl` on training set](#step3)
+* [Step 4: analyze results to determine if model is sufficient](#step4)
+  * investigate common `dupregin` alerts(#step4-dupregin)
+  * investigate common `indf3lcn` alerts(#step4-indf3lcn)
+  * investigate common `mutstart` alerts(#step4-mutstart)
+  * investigate common `insertnp` alerts(#step4-insertnp)
+  * investigate common `indf3pst` alerts(#step4-indf3pst)
+  * lessons from investigating common alerts(#step4-lessons)
+* [Step 5: (optional) build new models(#step5)
+  * choose new representative sequences(#step5-chooserep)
+  * build new models from new representative sequences(#step5-build)
+choose new representative sequence(s) and build new models (#step5)
+* [Step 6: analyze results and update models](#step6)
+  * strategies for updating models(#step6-strategies)
+  * adding a protein to a model blastx library(#step6-addblastx)
+  * adding *alternative features*(#step6-alternative)
+  * allowing an *alert exception*(#step6-exception)
+  * rebuilding CM with additional information(#step6-cm)
+  * treating a feature as non-essential(#step6-miscfeat)
+  * making an alert non-fatal(#step6-altpass)
+  * summary of model modifications(#step6-summary)
 
-<summary>
+---
 
-## Step 1: build model(s) from initial reference sequence(s)
+## <a name="step1"></a> Step 1: build model(s) from initial reference sequence(s)
 
-</summary>
-
-### Determine good reference sequence(s) to use
+### <a name="step1-refseq"></a> Determine good reference sequence(s) to use
 
 For viruses with multiple subtypes, genotypes, or serotypes, it makes
 sense to build at least one model for each. There are two RSV
@@ -74,7 +98,7 @@ listed in the resulting list will be RefSeq sequences `NC_038235`
 (subgroup A) and `NC_001781` (subgroup B). You can also filter to only
 RefSeq sequences using the "Sequence type" filter.
 
-### Build initial models from reference sequence(s)
+### <a name="step1-build><\a> Build initial models from reference sequence(s)
 
 Next, use `v-build.pl` to build the two models, specifying the
 `--group` and `--subgroup` options as below:
@@ -143,17 +167,9 @@ Eventual output:
 #
 ```
 
-</details>
-
 ---
 
-<details>
-
-<summary>
-
-## Step 2A: construct a training set and run `v-annotate.pl` on it
-
-</summary>
+## <a name="step2><\a> Step 2: construct a training set
 
 When evaluating a VADR model it is critical to look at how it performs
 when used with `v-annotate.pl` on example sequences. Ideally, you
@@ -222,17 +238,9 @@ This should download a file called something like "sequences_20231010_2146812.fa
 sequences I used in
 [vadr/documentation/build-files/rsv.r500.list](build-files/rsv.r500.list).
 
-</details>
-
 ---
 
-<details>
-
-<summary>
-
-## Step 2B. Run `v-annotate.pl` to validate and annotate sequences in training set
-
-</summary>
+## <a name="step3><\a> Step 3. Run `v-annotate.pl` to validate and annotate sequences in training set
 
 Next we'll use our new models to annotate our set of 500
 training sequences. The RSV genome is about 15Kb, which is towards the
@@ -255,19 +263,9 @@ This will take about 1 minute per sequence, so roughly
 and multiple CPUs using the `--split` and `--cpu` options
 as described [here](annotate.md#options-split).
 
-</details>
-
 ---
 
-## Step 3: analyze the results and update models
-
-<details>
-
-<summary>
-
-### Identify and investigate common fatal alert instances 
-
-</summary>
+## <a name="step4"></a> Step 4: analyze the results and update models
 
 Next, we want to analyze the results. From the `v-annotate.pl` output (also saved to
 the va-r500/va-r500.vadr.log file), we can see that 286 sequences were
@@ -367,13 +365,7 @@ Information on the individual alert instances can be found in the
 `.alt` and `.alt.list` files. We'll go through each of these top six
 most common alerts in detail next.
 
-<details>
-
-<summary>
-
 ### Investigate common `cdsstopn` alerts
-
-</summary>
 
 To see all the `cdsstopn` (early stop
 codon) alerts in the `.alt` file, we can use `grep`. Here are the
@@ -469,15 +461,7 @@ it makes sense at this point to look at all of the common failure
 modes before making that decision and potentially looking for new
 references. 
 
-</details>
-
-<details>
-
-<summary>
-
-### Investigate common `dupregin` alerts
-
-</summary>
+### <a name="step4-dupregin"></a> Investigate common `dupregin` alerts
 
 The second most common fatal alert is the `dupregin` alert that occurs
 when `similarity to a model region occurs more than once`. 
@@ -652,15 +636,7 @@ characteristics that we want to include, so first we should
 investigate the other common alerts from above. The third most common
 alert was `indf3lcn`:
 
-</details>
-
-<details>
-
-<summary>
-
-### Investigate common `indf3lcn` alerts
-
-</summary>
+### <a name="step4-indf3lcn"></a> Investigate common `indf3lcn` alerts
 
 ```
 32    indf3lcn  yes      INDEFINITE_ANNOTATION_END       feature   1057   320  alignment to homology model has low confidence at 3' boundary for feature that does not match a CDS
@@ -749,15 +725,7 @@ keep them, and possibly set `indf3lcn` alerts as non-fatal using the
 When we choose our new reference sequences in the next section we will
 revisit this issue of differing gene and CDS boundaries.
 
-</details>
-
-<details>
-
-<summary>
-
-### Investigate common `mutstart` alerts
-
-</summary>
+### <a name="step4-mutstart"></a> Investigate common `mutstart` alerts
 
 Moving on to the fourth most common fatal alert:
 
@@ -845,15 +813,7 @@ annotated differently. There is a way to deal with this and allow
 `v-annotate.pl` to pick either start position. We'll come back to this
 later. 
 
-</details>
-
-<details>
-
-<summary>
-
-### Investigate common `insertnp` alerts
-
-</summary>
+### <a name="step4-insertnp"></a> Investigate common `insertnp` alerts
 
 The next most common alert in our training set is:
 ```
@@ -984,16 +944,7 @@ Note the large insertion in the query around position 748 of the CDS.
 
 ---
 
-
-</details>
-
-<details>
-
-<summary>
-
-### Investigate common `indf3pst` alerts
-
-</summary>
+### <a name="step4-indf3pst"></a>Investigate common `indf3pst` alerts
 
 The sixth and final common alert that we will look at is:
 
@@ -1114,15 +1065,7 @@ the `alert detail` in the `alt` file is `120`:
 ```
 --- 
 
-</details>
-
-<details>
-
-<summary>
-
-### <a name="majorchar"></a>Lessons from investigating common alerts
-
-</summary>
+### <a name="step4-lessons"></a>Lessons from investigating common alerts
 
 We've learned that both `NC_038235` and `NC_001781` are lacking
 several major characteristics that are (by definition) present in the
@@ -1146,23 +1089,23 @@ And further we've observed that:
     VADR. Typically for viral GenBank submissions based on VADR, the
     gene and CDS boundaries are kept consistent.
 
-At this point, because we've found at least one major characteristic
-present in the majority of the sequences but lacking in the reference
+At this point, because we've found at least one characteristic that
+causes failure present in the majority of the sequences but lacking in the reference
 model for both models, we will start a new iteration of our model
 building strategy, by first choosing representative sequences that
-contain these major characteristics and building new models from them.
+contain these characteristics and building new models from them.
 
-</details>
+---
 
-</details>
+### <a name="step5"></a> (OPTIONAL) Choosing new representative sequences and building new models
 
-<details>
+It is not always necessary to build new models at this point. If all
+of the failure modes above had been in a minority of sequences, then
+we could keep going and modify our existing models. However, as
+explained above, in this case we want to choose new representatives
+and build new models.
 
-<summary>
-
-### Choosing new representative sequences and building new models
-
-</summary>
+#### <a name="step5-chooserep"></a> Identifying new representative sequences
 
 We will choose a new representative from our random set of 500
 training sequences. Of course, it is possible, and probably even
@@ -1528,6 +1471,8 @@ OR496332.1         GTCTAAAACTAACAATCACACATGTGCATTTAC----------------------------
 //
 ```
 
+#### <a name="step5-build"></a> Building new models from our new representative sequences
+
 To build our new models, we run `v-build.pl`:
 
 ```
@@ -1563,7 +1508,7 @@ $ $VADRHMMERDIR/hmmpress rsv-models2/rsv.hmm
 $ $VADRBLASTDIR/makeblastdb -dbtype nucl -in rsv-models2/rsv.fa
 ```
 
-As in iteration 1, it's a good idea to run `v-annotate.pl` with the new models against the two model
+As in step 1, it's a good idea to run `v-annotate.pl` with the new models against the two model
 sequences as a sanity check. For these two RSV models, both sequences
 should pass:
 
@@ -1588,15 +1533,7 @@ $ v-annotate.pl --mdir rsv-models2 --mkey rsv rsv-models2/rsv.fa va-rsv2
 #
 ```
 
-</details>
-
-<details>
-
-<summary>
-
 ### Rerun `v-annotate.pl` on our existing training set using new models
-
-</summary>
 
 We can repeat the `v-annotate.pl` command from step 2, but this
 time we will use the `--out_stk` option to save multiple alignments
@@ -1606,15 +1543,9 @@ for reasons that will become clear below:
 $ v-annotate.pl --out_stk --mdir rsv-models2 --mkey rsv rsv.r500fa va2-r500
 ```
 
-</details>
+---
 
-<details>
-
-<summary>
-
-### Analyze the results and update the models accordingly
-
-</summary>
+### <a name="step6"></a> Analyze the results and update the models accordingly
 
 This time, from the `v-annotate.pl` output we can tell that many more
 sequences passed than with the original models, when only 6 of 500 passed:
@@ -1641,6 +1572,8 @@ allow. It makes sense to do that at this stage because we
 know we are using good representative sequences for our models, based
 on the work we did previously to investigate the alerts present in the
 majority of our sequences. 
+
+### <a name="step6-strategies"></a> Strategies for updating models
 
 There are several ways we can update our models to avoid reporting
 alerts for expected biological characteristics, including:
@@ -1731,13 +1664,7 @@ than 10 sequence (more than 2\% of sequences):
 25    fsthicft  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF   feature     12    12  high confidence possible frameshift in CDS (frame not restored before end)
 ```
 
-<details>
-
-<summary>
-
-### Adding a protein to model blastx library
-
-</summary>
+### <a name="step6-addblastx"></a> Adding a protein to model blastx library
 
 Let's examine the `deletinp` alerts. As above, we can sort
 all the occurences of this alert in the `.alt` file and group them:
@@ -2106,15 +2033,7 @@ process again. For the purposes of this tutorial, we will move on to the next mo
 common alert `indf3pst` to provide a slightly different example of
 updating a model.
 
-</details>
-
-<details>
-
-<summary>
-
-### Adding an alternative CDS feature with different stop coordinate
-
-</summary>
+### <a name="step6-alternative"></a>Adding an alternative CDS feature with different stop coordinate
 
 Let's take a look at one example of the `indf3pst` alert:
 
@@ -2528,15 +2447,7 @@ vb-ex10
 ```
 </details>
 
-</details>
-
-<details>
-
-<summary>
-
-### Allowing an alert exception for specific reference positions
-
-</summary>
+### <a name="step6-exception"></a> Allowing an alert exception for specific reference positions
 
 When that is completed it looks like the most common example of
 `mutendex` would be for the `large polymerase` at positions
@@ -2691,25 +2602,13 @@ fatal one. Other sequences may still have other alerts, including
 `indf3pst` alerts, that could be addressed using the strategies
 above. 
 
-</details>
+### <a name="step6-cm"></a>Rebuilding the CM with additional information
 
-<details>
+### <a name="step6-miscfeat"></a>Treating a feature as non-essential by allowing it to be a `misc_feature`
 
-<summary>
+### <a name="step6-altpass"></a>Making an alert non-fatal using the `--alt_pass` option
 
-### Additional strategies for model modification (not used for RSV)
-
-</summary>
-
-</details>
-
-<details>
-
-<summary>
-
-### Final summary of model modifications
-
-</details>
+### <a name="step6-summary"></a> Final summary of model modifications
 
 ---
 TOADD: 
