@@ -65,7 +65,6 @@ analysis.
 * [Step 5: (optional) build new models](#step5)
   * [choose new representative sequences](#step5-chooserep)
   * [build new models from new representative sequences](#step5-build)
-choose new representative sequence(s) and build new models](#step5)
 * [Step 6: analyze results and update models](#step6)
   * [strategies for updating models](#step6-strategies)
   * [adding a protein to a model blastx library](#step6-addblastx)
