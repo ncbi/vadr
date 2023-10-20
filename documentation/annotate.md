@@ -24,7 +24,7 @@
   * [additional expert options](#options-expert)
 * [Basic Information on `v-annotate.pl` alerts](#alerts)
 * [Additional information on `v-annotate.pl` alerts](#alerts2)
-* [Expendable features: allowing sequences to pass despite fatal alerts for specific features](#mnf)
+* [Non-essential features: allowing sequences to pass despite fatal alerts for specific features](#mnf)
 * [Alert *exceptions*: ignoring alerts in specific model position ranges](#exceptions)
 * [Limiting memory usage and multi-threading](#memory)
 * [Alternative parallelization using a cluster](#altparallel)
@@ -952,7 +952,7 @@ An example is included [below](#alerttoggle).
 In the table below, the **type** column reports if each alert pertains to an entire
 `sequence` or a specific annotated `feature` within a sequence. The
 **causes `misc_feature`, not failure (if in modelinfo file)** 
-shows which alerts are not fatal for expendable
+shows which alerts are not fatal for non-essential
 features as described more [below](#mnf). The **exception key** and **exception value type** indicate the key string
 and type for defining exceptions in the model info file as described more [below](#exceptions). These columns will be `-` for any alert for which
 exception ranges are not allowed.
@@ -1156,17 +1156,17 @@ user, this is "-" for alerts that are never omitted from those files.
 
 ---
 
-## <a name="mnf"></a>Expendable features: allowing sequences to pass despite fatal alerts for specific features
+## <a name="mnf"></a>Non-essential features: allowing sequences to pass despite fatal alerts for specific features
 
-It is possible to specify that certain features are *expendable* and so
+It is possible to specify that certain features are *non-essential* and so
 have relaxed requirements. Some alerts that are normally fatal are not
-fatal for expendable features. If any such alerts are reported for an
-expendable feature that feature will be turned into a `misc_feature`
+fatal for non-essential features. If any such alerts are reported for an
+non-essential feature that feature will be turned into a `misc_feature`
 in the output feature table `.pass.tbl` file, but the sequence will
-still pass, as long as it has zero fatal alerts for all non-expendable
+still pass, as long as it has zero fatal alerts for all other (essential)
 features and zero fatal sequence alerts.
 
-The default set of specific alerts that an expendable feature can have
+The default set of specific alerts that an non-essential feature can have
 without failing its sequence are listed with 'yes' in the 'causes
 `misc_feature`, not failure (if in modelinfo file)' column in the
 [tables describing alerts above](#alerts) as well as in the
@@ -1176,7 +1176,7 @@ without failing its sequence are listed with 'yes' in the 'causes
 specify that alert codes in the comma-separated string `<s2>` be
 removed from the set.
 
-Expendable features are specified in the `.modelinfo` file, with a
+Non-Essential features are specified in the `.modelinfo` file, with a
 key/value pair string: `misc_not_feature:"1"` in the `FEATURE` line
 for the corresponding feature.
 
@@ -1186,7 +1186,7 @@ For example, the sequence `JN975492.1` is the one sequence in the
 `cdsstopn`, `cdsstopp`, and `indf3pst` for the `VF1` CDS feature, and
 `indf5pst` fatal alert for the `VP2` CDS as shown
 [above](#altexample). If the `VF1` and `VP2` features were defined
-as expendable using the `misc_not_failure:"1"` key/value pair in the
+as non-essential using the `misc_not_failure:"1"` key/value pair in the
 `.minfo` file as they are in the included example file `vadr.mnf-example.minfo`, then
 the sequence would have passed. 
 
@@ -1202,12 +1202,12 @@ FEATURE NC_008311 type:"CDS" coords:"6681..7307:+" parent_idx_str:"GBNULL" gene:
 ```
 
 Note that in addition to the two CDS features, the two gene features that correspond them also have
-`misc_not_failure:"1"` key/value pairs. When a CDS is made expendable,
+`misc_not_failure:"1"` key/value pairs. When a CDS is made non-essential,
 it often makes sense to make any corresponding gene features
-expendable too. However, gene features are an exception 
+non-essential too. However, gene features are an exception 
 in that they do not get turned into a `misc_feature` if they have
 alerts that are normally fatal, as per GenBank convention, but 
-it is still relevant to mark them as expendable because some alerts 
+it is still relevant to mark them as non-essential because some alerts 
 in them will not cause the sequence to fail.
 
 To rerun the example using this new `.minfo` file, execute:
@@ -1257,7 +1257,7 @@ Note that if only the `VF1` CDS or `VP2` CDS feature lines included
 the `misc_not_failure:"1"` key/value pairs in the modelinfo file, 
 the sequence would have failed.
 
-Two important caveats above expendable features and
+Two important caveats above non-essential features and
 misc_feature-ization:
 
 1. As mentioned above, features with type `gene`, `5'UTR`, `3'UTR` or
@@ -1265,7 +1265,7 @@ misc_feature-ization:
    GenBank convention.
 
 2. `misc_feature`-ization occurs in `.pass.tbl` output files
-   for expendable features as explained above even when the
+   for non-essential features as explained above even when the
    option `--nomisc` is used. (The `--nomisc` option causes
    `misc_feature`s not to be reported in `.fail.tbl` files.)
 
