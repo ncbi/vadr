@@ -831,11 +831,12 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
 
   $start_secs = ofile_OutputProgressPrior("Building CM $cmbuild_str", $progress_w, $log_FH, *STDOUT);
 
-  my $cmbuild_occ_file = $out_root . ".cmbuild.occ";
-  my $cmbuild_cp9occ_file = $out_root . ".cmbuild.cp9occ";
-  my $cmbuild_fp7occ_file = $out_root . ".cmbuild.fp7occ";
+#  my $cmbuild_occ_file = $out_root . ".cmbuild.occ";
+#  my $cmbuild_cp9occ_file = $out_root . ".cmbuild.cp9occ";
+#  my $cmbuild_fp7occ_file = $out_root . ".cmbuild.fp7occ";
 
-  my $cmbuild_opts = "-n $mdl_name --verbose --occfile $cmbuild_occ_file --cp9occfile $cmbuild_cp9occ_file --fp7occfile $cmbuild_fp7occ_file ";
+#  my $cmbuild_opts = "-n $mdl_name --verbose --occfile $cmbuild_occ_file --cp9occfile $cmbuild_cp9occ_file --fp7occfile $cmbuild_fp7occ_file ";
+  my $cmbuild_opts = "-n $mdl_name --verbose ";
   if(opt_IsUsed("--cminfile",  \%opt_HH))   { 
     my @cminfile_A = ();
     utl_FileLinesToArray(opt_Get("--cminfile", \%opt_HH), 1, \@cminfile_A, $FH_HR);
