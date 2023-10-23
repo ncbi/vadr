@@ -1475,7 +1475,7 @@ OR496332.1         GTCTAAAACTAACAATCACACATGTGCATTTAC----------------------------
 To build our new models, we run `v-build.pl`:
 
 ```
-$ v-build.pl --group RSV --subgroup A KY654518 KY654510
+$ v-build.pl --group RSV --subgroup A KY654518 KY654518
 $ v-build.pl --group RSV --subgroup B MZ516105 MZ516105 
 ```
 
@@ -2603,9 +2603,227 @@ above.
 
 ### <a name="step6-cm"></a>Rebuilding the CM with additional information
 
-- add deletion? 
-- mention flu stop codon?
-- mention multiple alignments?
+Another way to update a model is to rebuild the underlying CM from a
+different input alignment. The `v-build.pl` script will build a CM
+from a single-sequence 'alignment', but can also take a multiple
+alignment as input and build a profile model from it. That profile
+will have position specific parameters, meaning that each position
+will have a different probability distribution for each of the four
+nucleotides, and a different probability of insertion and
+deletion. Those parameters are learned from the input alignment. Input
+of a single sequence alignment is a special case where all positions
+have the same probability distributions. Additionally, the
+`v-build.pl` input alignment can have secondary structure annotation,
+and the resulting CM will model the expected secondary structure and
+use it when aligning input sequences. In summary, some reasons to provide an
+alignment to `v-build.pl` are:
+
+1. to increase the sequence diversity the model can handle
+2. to allow the model to put insertions and deletions in 'expected'
+   places (example below)
+3. to add secondary structure to the model so sequences will be
+   aligned based on sequence and structure
+
+As an example, we can build a new CM for our two RSV models that does
+a more consistent job of modelling the deletion in the attachment
+glycoprotein CDS. Below is a doctored version of the alignment in the
+`va3-r500/va3-r500.align.KY654518.align.stk` created in one of the
+steps above, with some sequences removed and truncated to the
+reference positions `5450..5600` (with the command
+`$VADREASELDIR/esl-alimask -t --t-rf va3-rsv.r500/va3-rsv.r500.align.KY654518.align.stk 5450..5600`)
+demonstrate the variability in the placement of the deletion that
+occurs in some sequences that do *not* include the duplicated region
+that caused the *dupregin* alerts when we were testing the original
+RefSeq-based models:
+
+
+```
+OR143220.1         AACACACAAGTCAAGAGGTAACCCTCCACTCAACCACCTCCGAAGGCTATCCAAACCCATCACAAGTCTATACAACATCCGGTCAAGAGGAAACCCTCCACTCAACTACTTCCGAAGACTATCCAAGCCCATCACAAGTCCATACAACATC
+#=GR OR143220.1 PP *******************************************************************************************************************************************************
+KX655635.1         AACACACAAGTCAAGAGGAAACCCTTCACTCAACCACCTCCGAAGGC------------------------------------------------------------------------AATCCAAGCCCATCACAATTCTATACAACATC
+#=GR KX655635.1 PP ************99999999988888887777777766666666555........................................................................555566666777777778888889999999**
+KJ627366.1         AAAACACAAGTCAAAAGGAAACCCTCCACTCAACTACTCCCGAAG------------------------------------------------------------------------GCAATCCAAGCCCTTCACAAGTCTATGCAACATC
+#=GR KJ627366.1 PP ************999999998888888887777776666655555........................................................................5555666666777777788888888899999999
+MK109787.1         AACACACAAGTCAAGAGGAAACCCTCCACTCAACCACCTCCGAAGGCA------------------------------------------------------------------------ACCCAAGCCCATCACAAGTCTATACAACATC
+#=GR MK109787.1 PP *************99999999988888888877777777666666655........................................................................555566777777788888888899999999*
+KJ627665.1         AACACACAAGTCAAGAGGAAACCCTCCATTCAACCTCCTCCGAAGGCAA------------------------------------------------------------------------TACAAGCCCTTCACAAATCTATACAACATC
+#=GR KJ627665.1 PP *************999999999988888888777777766666666555........................................................................555666777777888888899999999***
+MK810782.1         AACTCACAAGTCAAATGGAAACCTTCCACTCAACCTCCTCCGAAGGCAAT------------------------------------------------------------------------CTAAGCCCTTCTCAAGTCTCCACAACATC
+#=GR MK810782.1 PP ************99999988888888877777777666666666665555........................................................................5555566666667777777788999999*
+KJ627688.1         AACACACAAGTCAAGAGGAAACCCTCCATTCAACCTCCTCCGAAGGCAA------------------------------------------------------------------------TACAAGCCCTTCACAAATCTATACAACATC
+#=GR KJ627688.1 PP *************999999999988888888777777766666666555........................................................................555666777777888888899999999***
+ON237257.1         AACACACAAGTCAAGAGGAAACCCTCCACTCAACCACCTCCGAAGGC------------------------------------------------------------------------TATCTAAGCCCATCACAAGTCTATACAACATC
+#=GR ON237257.1 PP ************99999999888888887777777666666665555........................................................................55555666666677777777888888899999
+MG813989.1         AACTCACAAGTCAAATGGAAACCTTCCACTCAACTTCCTCCGAAGGTAATC------------------------------------------------------------------------CAAGCCCTTCTCAAGTCTCCATAACATC
+#=GR MG813989.1 PP ************999999998888888888877777766666666655555........................................................................55556666666777777778889999**
+#=GC SS_cons       :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#=GC RF            AACACACAAGTCAAGAGGAAACCCTCCACTCAACCACCTCCGAAGGCTATCTAAGCCCATCACAAGTCTATACAACATCCGGTCAAGAGGAAACCCTCCACTCAACCACCTCCGAAGGCTATCTAAGCCCATCACAAGTCTATACAACATC
+#=GC RFCOLX....    0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+#=GC RFCOL.X...    5555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555
+#=GC RFCOL..X..    4444444444444444444444444444444444444444444444444455555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555556
+#=GC RFCOL...X.    5555555555666666666677777777778888888888999999999900000000001111111111222222222233333333334444444444555555555566666666667777777777888888888899999999990
+#=GC RFCOL....X    0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
+```
+
+The `cmalign` program's alignment algorithm optimizes the expected
+accuracy of the alignment. The expected accuracy of each aligned
+nucleotide is shown in the `PP` lines of the alignment with `*`
+indicating the highest level of expected accuracy, with `9` the second
+highest level, and `8` the third and so on (as explained more
+[here](alerts.md#pp)). Note that near the deletion is the lowest
+expected accuracy which makes sense, because those nucleotides could
+reasonably be aligned at the opposite end of the deletion because the
+deletion is actually just a lack of a short duplicated region.  The
+issue causing this alignment inconsistentcy is that the CM does not
+have any information about where the deletion should occur because it
+is only based on the one `KY654518` sequence which does not have the
+deletion at all. We can add that information (and only that
+information) to the CM by rebuilding it from an alignment of two
+sequences: the original `KY654518` and a synthetic sequence that is a
+copy of `KY654518` but with the common deletion in the positions we
+want it to go in output alignments.
+
+Because our goal is to make the alignment of this region more
+consistent, it makes sense to find the *average* position span for
+this deletion. If we did this we may find that the region from
+reference positions 5496 to 5567 (72 positions) is the average. We can
+then manually create a two sequence Stockholm alignment file with
+`KY654518` duplicated by starting with the file `va-rsv2/va-rsv2.vadr.KY654518.align.stk`
+that was created with the `v-annotate.pl`
+command: 
+
+```
+$ v-annotate.pl --mdir rsv-models2 --mkey rsv rsv-models2/rsv.fa va-rsv2
+```
+
+We can reformat this to a special type of Stockholm format referred to
+as Pfam in the Easel and Infernal codebases that has only one 
+line per sequence. This will make it easier to duplicate the sequence.
+
+```
+$VADREASELDIR/esl-reformat pfam va-rsv2/va-rsv2.vadr.KY654518.align.stk > KY654518.2.pfam
+```
+
+Next we need to open this file in a text editor, duplicate the
+sequence line that begins with `KY654518.1` and rename the second
+sequence something like `KY654518.1-5496del72`. Then remove the
+sequence in reference positions 5496 to 5567 in this second sequence,
+replacing those nucleotides with `-` characters. After that you can go
+ahead and remove the line that starts with `#=GR KY654518 PP` as that
+is irrelevant for the `cmbuild` step. When that is finished, we can
+reformat it back to interleaved Stockholm format with:
+
+```
+$VADREASELDIR/esl-reformat stockholm KY654518.2.pfam > KY654518.2.stk
+```
+
+A copy of the `KY654518.2.stk` alignment file can be found in
+[`vadr/documentation/advbuild-files/KY654518.2.stk`](advbuild-files/KY654518.2.stk)
+
+The next step is to use this alignment to build a new CM file. We can
+do this using the `cmbuild` program which was called by `v-build.pl`
+when we built the initial model. We'll
+want to use similar command-line options to what `v-build.pl` used,
+which we can find in the `.cmd` output file from `v-build.pl`:
+
+```
+$ grep cmbuild KY654518/KY654518.vadr.cmd
+/usr/local/vadr-install/infernal/binaries/cmbuild -n KY654518 --verbose --noss --noh3pri --Egcmult 1.63645 KY654518/KY654518.vadr.cm KY654518/KY654518.vadr.stk > KY654518/KY654518.vadr.cmbuild
+```
+
+So we'll use the `-n KY654518 --verbose --noss --noh3pri --Egcmult
+1.63645`  options and we'll add one more important one: `--hand` which
+informs `cmbuild` to maintain the existing reference positions in the
+alignment, which correspond to the KY654518 sequence, instead of
+inferring new one. This is extremely important whenever rebuilding a
+CM for a VADR model because the coordinates of all of the features in
+the existing model info file are with respect to the KY654518
+sequence. If the reference positions change, then the model info file
+coordinates would need to be updated correspondingly.
+
+```
+$VADRINFERNALDIR/cmbuild -n KY654518 --verbose --noss --noh3pri --Egcmult 1.63645 --hand KY654518.2.cm KY654518.2.stk
+```
+
+This may take up to an hour to complete. 
+
+The final step is to remake the `rsv.cm` model file by combining our
+new model with the existing `MZ516105` model. We can use the `cmfetch`
+program to help with this:
+
+```
+$ $VADRINFERNALDIR/cmfetch rsv-models2/rsv.cm MZ516105 > new.rsv.cm
+$ cat KY654518.2.cm >> new.rsv.cm
+
+# copy it over our previous model (after saving a copy just in case):
+$ cp rsv-models2/rsv.cm ./old.rsv.cm
+$ cp new.rsv.cm rsv-models2/rsv.cm
+
+# and remember to re-press this new file:
+$ rm rsv-models2/rsv.cm.*
+$ $VADRINFERNALDIR/cmpress rsv-models2/rsv.cm
+```
+
+We can test out our new model on the set of sequences that had the
+jagged alignment above:
+
+```
+$ cat ex13.list
+OR143220.1
+KX655635.1
+KJ627366.1
+MK109787.1
+KJ627665.1
+MK810782.1
+KJ627688.1
+ON237257.1
+MG813989.1
+$ $VADREASELDIR/esl-sfetch -f rsv.r500.fa ex13.list > ex13.fa
+$ v-annotate.pl --out_stk --mdir rsv-models2 --mkey rsv ex13.fa va-ex13
+```
+
+Then if we look at the region of the alignment: 
+
+```
+$ $VADREASELDIR/esl-alimask -t --t-rf va-ex13/va-ex13.vadr.KY654518.align.stk 5450..5600
+```
+
+```
+OR143220.1         AACACACAAGTCAAGAGGTAACCCTCCACTCAACCACCTCCGAAGGCTATCCAAACCCATCACAAGTCTATACAACATCCGGTCAAGAGGAAACCCTCCACTCAACTACTTCCGAAGACTATCCAAGCCCATCACAAGTCCATACAACATC
+#=GR OR143220.1 PP *******************************************************************************************************************************************************
+KX655635.1         AACACACAAGTCAAGAGGAAACCCTTCACTCAACCACCTCCGAAGG------------------------------------------------------------------------CAATCCAAGCCCATCACAATTCTATACAACATC
+#=GR KX655635.1 PP **********************************************........................................................................899******************************
+KJ627366.1         AAAACACAAGTCAAAAGGAAACCCTCCACTCAACTACTCCCGAAGG------------------------------------------------------------------------CAATCCAAGCCCTTCACAAGTCTATGCAACATC
+#=GR KJ627366.1 PP *********************************************9........................................................................899******************************
+MK109787.1         AACACACAAGTCAAGAGGAAACCCTCCACTCAACCACCTCCGAAGG------------------------------------------------------------------------CAACCCAAGCCCATCACAAGTCTATACAACATC
+#=GR MK109787.1 PP **********************************************........................................................................889999***************************
+KJ627665.1         AACACACAAGTCAAGAGGAAACCCTCCATTCAACCTCCTCCGAAGG------------------------------------------------------------------------CAATACAAGCCCTTCACAAATCTATACAACATC
+#=GR KJ627665.1 PP **********************************************........................................................................889999***************************
+MK810782.1         AACTCACAAGTCAAATGGAAACCTTCCACTCAACCTCCTCCGAAGG------------------------------------------------------------------------CAATCTAAGCCCTTCTCAAGTCTCCACAACATC
+#=GR MK810782.1 PP **********************************************........................................................................899******************************
+KJ627688.1         AACACACAAGTCAAGAGGAAACCCTCCATTCAACCTCCTCCGAAGG------------------------------------------------------------------------CAATACAAGCCCTTCACAAATCTATACAACATC
+#=GR KJ627688.1 PP **********************************************........................................................................889999***************************
+ON237257.1         AACACACAAGTCAAGAGGAAACCCTCCACTCAACCACCTCCGAAGG------------------------------------------------------------------------CTATCTAAGCCCATCACAAGTCTATACAACATC
+#=GR ON237257.1 PP **********************************************........................................................................9********************************
+MG813989.1         AACTCACAAGTCAAATGGAAACCTTCCACTCAACTTCCTCCGAAGG------------------------------------------------------------------------TAATCCAAGCCCTTCTCAAGTCTCCATAACATC
+#=GR MG813989.1 PP **********************************************........................................................................77999****************************
+#=GC SS_cons       :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#=GC RF            AACACACAAGTCAAGAGGAAACCCTCCACTCAACCACCTCCGAAGGCTATCTAAGCCCATCACAAGTCTATACAACATCCGGTCAAGAGGAAACCCTCCACTCAACCACCTCCGAAGGCTATCTAAGCCCATCACAAGTCTATACAACATC
+#=GC RFCOLX....    0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+#=GC RFCOL.X...    5555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555
+#=GC RFCOL..X..    4444444444444444444444444444444444444444444444444455555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555556
+#=GC RFCOL...X.    5555555555666666666677777777778888888888999999999900000000001111111111222222222233333333334444444444555555555566666666667777777777888888888899999999990
+#=GC RFCOL....X    0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
+```
+
+The updated model now aligns all the deletions in the same place, and
+with higher expected accuracy values. 
+
+This is just an example of how updating the training alignment and
+rebuilding the model can effect the output alignment. In this case, it
+actually does not change any annotations or pass/fail outcomes for
+these 9 sequences, but there are other situations for other viruses
+where updating the model could have a more significant impact.
 
 ### <a name="step6-miscfeat"></a>Treating a feature as non-essential by allowing it to be a `misc_feature`
 
