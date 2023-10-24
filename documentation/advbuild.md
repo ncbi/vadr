@@ -2881,12 +2881,59 @@ below summarizes most of the additions I made to the original `KY654518` and
 
 | model    | type of modification | feature | detail | 
 |----------|----------------------|---------|--------|
+KY654518 | added blastx protein | attachment glycoprotein (CDS) | `OM857255.1:4629..5591:+/4681..5643:+` |
+KY654518 | added blastx protein | attachment glycoprotein (CDS) | `KU316164.1:4611..5504:+/4681..5646:+` |
+KY654518 | added blastx protein | attachment glycoprotein (CDS) | `AF065254.1:16..909:+/4681..5646:+` |
+KY654518 | added blastx protein | attachment glycoprotein (CDS) | `OK649616.1:4670..5563:+/4681..5646:+` |
+KY654518 | added blastx protein | attachment glycoprotein (CDS) | `hybrid:KY654518.1:4681..4695:+:AF065410.1:1..879:+/4681..5646:+` |
+KY654518 | added blastx protein | attachment glycoprotein (CDS) | `KF826850.1:4675..5568:+/4681..5646:+` |
+KY654518 | added blastx protein | attachment glycoprotein (CDS) | `KU316092.1:4620..5516:+/4681..5646:+` |
+KY654518 | added blastx protein | attachment glycoprotein (CDS) | `NC_038235.1:4688..5584:+/4681..5649:+` | 
+KY654518 | added blastx protein | attachment glycoprotein (CDS) | `MZ515659.1:4681..5649:+/4681..5649:+` |
+KY654518 | added blastx protein | attachment glycoprotein (CDS) | `HQ699266.1:1..897:+/4681..5649:+` |
+KY654518 | added blastx protein | attachment glycoprotein (CDS) | `KJ641590.1:4630..5526:+/4681..5649:+` |
+KY654518 | added blastx protein | attachment glycoprotein (CDS) | `OK649616.1:4670..5566:+/4681..5649:+` |
+KY654518 | added blastx protein | attachment glycoprotein (CDS) | `M17212.1:16..912:+/4681..5649:+` |
+KY654518 | added blastx protein | M2-1(CDS)                     |`OM857351.1:7614..8180:+/7669..8235:+` |
+ | | | | 
 KY654518 | alternative feature  | attachment glycoprotein (CDS+gene) | `4681..5643` | 
-KY654518 | added blastx protein | attachment glycoprotein (CDS+gene) | `NC_038235.1:4688..5584:+/4681..5649:+` | 
-KY654518 | alert exception      | attachment glycoprotein (CDS+gene) | `deletin_exc:5457..5508:+:72 | 
-KY654518 | alert exception      | attachment glycoprotein (CDS+gene) | `deletin_exc:5531..5532:+:72 | 
-
-
+KY654518 | alternative feature  | attachment glycoprotein (CDS+gene) | `4681..5649` | 
+ | | | | 
+KY654518 | alert exception      | attachment glycoprotein (CDS) | `deletin_exc:5457..5508:+:72 | 
+ | | | | 
+KY654518 | rebuilt CM           | full model                         | added KY654518 with 72nt deletion after position `5496` |
+ | | | | 
+MZ516105 | added blastx protein | attachment glycoprotein (CDS) | `MG642047.1:4666..5565:+/4688..5620:+` |
+MZ516105 | added blastx protein | attachment glycoprotein (CDS) | `MG431253.1:4674..5567:+/4688..5620:+` |
+MZ516105 | added blastx protein | attachment glycoprotein (CDS) | `LC474547.1:4663..5595:+/4688..5620:+` |
+MZ516105 | added blastx protein | attachment glycoprotein (CDS) | `MZ962122.1:1..933:+/4688..5620:+` |
+MZ516105 | added blastx protein | attachment glycoprotein (CDS) | `KC297442.1:1..933:+/4688..5620:+` |
+MZ516105 | added blastx protein | attachment glycoprotein (CDS) | `LC311384.1:1..933:+/4688..5620:+` |
+MZ516105 | added blastx protein | attachment glycoprotein (CDS) | `MZ515748.1:4689..5621:+/4688..5620:+` |
+MZ516105 | added blastx protein | attachment glycoprotein (CDS) | `MT040088.1:4679..5572:+/4688..5620:+` |
+MZ516105 | added blastx protein | attachment glycoprotein (CDS) | `KJ627364.1:4618..5550:+/4688..5620:+` |
+MZ516105 | added blastx protein | attachment glycoprotein (CDS) | `MH760718.1:4597..5529:+/4688..5620:+` |
+MZ516105 | added blastx protein | attachment glycoprotein (CDS) | `KP856962.1:4618..5505:+/4688..5629:+` |
+MZ516105 | added blastx protein | attachment glycoprotein (CDS) | `KU950619.1:4663..5604:+/4688..5629:+` |
+MZ516105 | added blastx protein | attachment glycoprotein (CDS) | `KP258745.1:4620..5507:+/4688..5629:+` |
+MZ516105 | added blastx protein | attachment glycoprotein (CDS) | `KU316181.1:4618..5505:+/4688..5629:+` |
+MZ516105 | added blastx protein | attachment glycoprotein (CDS) | `MF185751.1:4640..5527:+/4688..5629:+` |
+MZ516105 | added blastx protein | attachment glycoprotein (CDS) | `KC297470.1:1..882:+/4688..5629:+` |
+MZ516105 | added blastx protein | attachment glycoprotein (CDS) | `KJ627249.1:4618..5565:+/4688..5635:+` |
+MZ516105 | added blastx protein | attachment glycoprotein (CDS) | `KU316144.1:4618..5517:+/4688..5641:+` |
+MZ516105 | added blastx protein | attachment glycoprotein (CDS) | `MN365572.1:4676..5629:+/4688..5641:+` |
+MZ516105 | added blastx protein | attachment glycoprotein (CDS) | `OK649740.1:4675..5574:+/4688..5641:+` |
+MZ516105 | added blastx protein | attachment glycoprotein (CDS) | `NC_001781.1:4690..5589:+/4688..5641:+ ` |
+MZ516105 | added blastx protein | RNA-dependent RNA polymerase (CDS)| `LC474543.1:8538..15017:+/8560..15039:+` |
+ | | | | 
+MZ516105 | alternative feature  | attachment glycoprotein (CDS+gene) | `4688..5629` | 
+MZ516105 | alternative feature  | attachment glycoprotein (CDS+gene) | `4688..5635` | 
+MZ516105 | alternative feature  | RNA-dependent RNA polymerase (CDS)| `8560..15039:+` |
+ | | | | 
+MZ516105 | alert exception      | attachment glycoprotein (CDS) | `deletin_exc:5441..5441:+:60 | 
+MZ516105 | alert exception      | attachment glycoprotein (CDS) | `insertn_exc:5392..5467:+:60 | 
+ | | | | 
+MZ516105 | rebuilt CM           | full model                         | added MZ516105 with 60nt deletion after position `5441` |
 
 ---
 TOADD: 
