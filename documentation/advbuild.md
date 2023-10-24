@@ -1330,7 +1330,7 @@ COMMENT     REVIEWED REFSEQ: This record has been curated by NCBI staff. The
             COMPLETENESS: full length.
 ```
 
-[NC_001781](https://www.ncbi.nlm.nih.gov/nuccore/NC_001781) RefSeq
+[NC_001781](https://www.ncbi.nlm.nih.gov/nuccore/NC_001781)
 ```
 COMMENT     REVIEWED REFSEQ: This record has been curated by NCBI staff. The
             reference sequence is identical to AF013254.
@@ -1904,8 +1904,8 @@ So all of the relevant values for all arguments are:
 | `<model name>`           | `KY654518`              | 
 | `<nt-accn-to-add>`       | `KX510193`              |
 | `nt-coords-to-add>`      | `4409..5302:+`          |
-| `<model-CDS-feature-coords> | `4681..5646:+`       | 
-| <name for output directory> | `vb-ex7`             | 
+| `<model-CDS-feature-coords>` | `4681..5646:+`       | 
+| `<name for output directory>` | `vb-ex7`             | 
 
 To add the protein:
 ```
@@ -2864,7 +2864,29 @@ considered non-fatal using the `v-annotate.pl` option: `--alt_pass
 dupregin,discontn`. An example of using this option can be found
 [here](annotate.md#examplealtpass).
 
-### <a name="step6-summary"></a> Final summary of model modifications
+### <a name="step6-summary"></a> Final summary of RSV model modifications
+
+I followed the six step procedure above when creating the [VADR RSV
+models](https://bitbucket.org/nawrockie/vadr-models-rsv/src/master/)
+which can be used as described
+[here](https://github.com/ncbi/vadr/wiki/RSV-annotation). However, the
+ Those RSV models are based on the `KY654518`
+and `MZ516105` reference sequences, but the exact steps I took when
+creating them are not identical to those listed above (I created this
+tutorial several months after I had finished building the RSV models).
+For example, I added proteins to the blastx databases and alternative
+features to the model info files that are not listed above. The table
+below summarizes most of the additions I made to the original `KY654518` and
+`MZ516105` models that are built by `v-build.pl`:
+
+| model    | type of modification | feature | detail | 
+|----------|----------------------|---------|--------|
+KY654518 | alternative feature  | attachment glycoprotein (CDS+gene) | `4681..5643` | 
+KY654518 | added blastx protein | attachment glycoprotein (CDS+gene) | `NC_038235.1:4688..5584:+/4681..5649:+` | 
+KY654518 | alert exception      | attachment glycoprotein (CDS+gene) | `deletin_exc:5457..5508:+:72 | 
+KY654518 | alert exception      | attachment glycoprotein (CDS+gene) | `deletin_exc:5531..5532:+:72 | 
+
+
 
 ---
 TOADD: 
