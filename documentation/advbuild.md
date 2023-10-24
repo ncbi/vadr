@@ -2624,14 +2624,15 @@ alignment to `v-build.pl` are:
 3. to add secondary structure to the model so sequences will be
    aligned based on sequence and structure
 
-As an example, we can build a new CM for our two RSV models that does
+As an example, we can build a new CM for one of our RSV models that does
 a more consistent job of modelling the deletion in the attachment
 glycoprotein CDS. Below is a doctored version of the alignment in the
 `va3-r500/va3-r500.align.KY654518.align.stk` created in one of the
 steps above, with some sequences removed and truncated to the
 reference positions `5450..5600` (with the command
-`$VADREASELDIR/esl-alimask -t --t-rf va3-rsv.r500/va3-rsv.r500.align.KY654518.align.stk 5450..5600`)
-demonstrate the variability in the placement of the deletion that
+`$VADREASELDIR/esl-alimask -t --t-rf
+va3-rsv.r500/va3-rsv.r500.align.KY654518.align.stk 5450..5600`). 
+This alignment demonstrates the variability in the placement of the deletion that
 occurs in some sequences that do *not* include the duplicated region
 that caused the *dupregin* alerts when we were testing the original
 RefSeq-based models:
@@ -2739,7 +2740,7 @@ inferring new one. This is extremely important whenever rebuilding a
 CM for a VADR model because the coordinates of all of the features in
 the existing model info file are with respect to the KY654518
 sequence. If the reference positions change, then the model info file
-coordinates would need to be updated correspondingly.
+coordinates would need to be updated accordingly.
 
 ```
 $VADRINFERNALDIR/cmbuild -n KY654518 --verbose --noss --noh3pri --Egcmult 1.63645 --hand KY654518.2.cm KY654518.2.stk
@@ -2867,8 +2868,6 @@ dupregin,discontn`. An example of using this option can be found
 
 ---
 TOADD: 
-- DOABLE? rebuild model - add deletion, would need alignment based
-  problem to fix this
 - also add example where you investigate and it turns out the failure
   is legit and you shouldn't do anything about it
 - list all changes made for RSV in actual model building (and make
