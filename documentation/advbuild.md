@@ -3,16 +3,18 @@
 The `v-build.pl` program will create a model from a single INSDC
 accession and include CDS, gene and mature peptide features. However,
 a model built from a single accession is often not general enough to
-allow most high quality sequences for a viral species to pass. For
+allow most high quality sequences for a viral species to *pass*. For
 example, some other sequences may include an extended CDS that has a
 different stop codon position from the sequence the model was built
-from, and these sequences will fail due to fatal alerts related to the
-different stop codon. It is possible to make VADR models more general
-but it requires some manual effort. A good strategy for building and
+from, and these sequences will *fail* due to fatal alerts related to
+the different stop codon. If your goal is too have `v-annotate.pl`
+pass the vast majority of sequences that are error-free (lacking
+misassemblies, sequencing errors and other artifacts), then you may
+want to spend some manual effort One good strategy for building and
 refining a model library is:
 
-Step 1 Build a model(s) from representative and well annotated
-       sequence(s) as a starting point. These may be RefSeq sequences.
+Step 1. Build one or more models from representative and well annotated
+       sequences as a starting point. These may be RefSeq sequences.
 
 Step 2. Construct a training set of randomly chosen existing sequences
         for the viral species.
@@ -22,31 +24,28 @@ Step 3. Use `v-annotate.pl` to validate and annotate the training
 
 Step 4. Analyze the results by looking for common failure modes and
         investigate the sequence characteristics that are responsible
-        for them. These will be characteristics not present in the
-        reference sequences that are present in some or many of the
-        training sequences. Update the model to accomodate these
-        failure modes.
+        for them. Based on this analysis, determine if the models from
+        Step 1 are sufficient.
 
-If in step 4 there are one or more characteristics found that occur in
-the majority of training sequences, it makes sense to pick a new
-reference sequence that includes those characteristics and rebuild the
-models based on those new references. We can then rerun
-`v-annotate.pl` using the new models and pick up with analyzing the results in step 3
-again.
+Step 5. (Potentially) build new models. If in step 4 there are one or
+        more characteristics found that occur in the majority of
+        training sequences, it makes sense to pick a new reference
+        sequence that includes those characteristics and rebuild the
+        models based on those new references, and then rerun
+        `v-annotate.pl` on the training set using the new models.
 
-Once all the failure modes occur in a minority of the training
-sequences, we want to investigate each of them and, for those we
-determine we want to allow, address them by
-modifying the existing model (as opposed to rebuilding it from a new
-sequence). There are several strategies/methods for how we can do
-that.
+Step 6. Analyze results and update models to accomodate existing
+        biological sequence and feature diversity.
 
-In this tutorial, we will follow these three steps in building an RSV
-library. This tutorial is long and detailed and can be followed along
-step by step by rerunning the commands locally, just by reading
-through it, or just for reference for specific examples of how to
-analyze `v-annotate.pl` results and update VADR models based on that
-analysis.
+In this tutorial, we will follow these six steps in building an RSV
+library. This tutorial is long and detailed and can be followed 
+step by step by rerunning the provided commands locally, or just by reading
+through it, or just for reference to specific examples of how to
+analyze `v-annotate.pl` results and update VADR models based on those
+analyses. 
+
+A [discussion of limitations and alternatives to this
+approach](#limit) is included at the end of the tutorial.
 
 ---
 
