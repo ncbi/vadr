@@ -13,41 +13,45 @@ misassemblies, sequencing errors and other artifacts), then you may
 want to spend some manual effort One good strategy for building and
 refining a model library is:
 
-Step 1. Build one or more models from representative and well annotated
-       sequences as a starting point. These may be RefSeq sequences.
+[Step 1. Build one or more models from representative and well annotated
+       sequences as a starting point.](#step1) These may be RefSeq sequences.
 
-Step 2. Construct a training set of randomly chosen existing sequences
-        for the viral species.
+[Step 2. Construct a training set of randomly chosen existing sequences
+        for the viral species.](#step2)
 
-Step 3. Use `v-annotate.pl` to validate and annotate the training
-        sequences using your models from step 1.
+[Step 3. Use `v-annotate.pl` to validate and annotate the training
+        sequences using your models from step 1.](#step3)
 
-Step 4. Analyze the results by looking for common failure modes and
+[Step 4. Analyze the results by looking for common failure modes and
         investigate the sequence characteristics that are responsible
-        for them. Based on this analysis, determine if the models from
+        for them.](#step4) Based on this analysis, determine if the models from
         Step 1 are sufficient.
 
-Step 5. (Potentially) build new models. If in step 4 there are one or
+[Step 5. (Potentially) build new models.](#step5) If in step 4 there are one or
         more characteristics found that occur in the majority of
         training sequences, it makes sense to pick a new reference
         sequence that includes those characteristics and rebuild the
         models based on those new references, and then rerun
         `v-annotate.pl` on the training set using the new models.
 
-Step 6. Analyze results and update models to accomodate existing
-        biological sequence and feature diversity.
+[Step 6. Analyze results and update models to accomodate existing
+        biological sequence and feature diversity.](#step6)
 
 In this tutorial, we will follow these six steps in building an RSV
-library. This tutorial is long and detailed and can be followed 
-step by step by rerunning the provided commands locally, or just by reading
+library using software installed with VADR as well as the [NCBI Virus
+website](https://www.ncbi.nlm.nih.gov/labs/virus/vssi/#/). 
+This tutorial is long and detailed. It can be followed step
+by step by rerunning the provided commands locally, or just by reading
 through it, or just for reference to specific examples of how to
 analyze `v-annotate.pl` results and update VADR models based on those
-analyses. 
+analyses.
 
-A [discussion of limitations and alternatives to this
+[A discussion of limitations and alternatives to this
 approach](#limit) is included at the end of the tutorial.
 
 ---
+
+## <a name="outline"></a>Tutorial outline:
 
 * [Step 1: build model(s) from initial reference sequence(s)](#step1)
   * [Determine good reference sequence(s)](#step1-refseq)
@@ -74,11 +78,11 @@ approach](#limit) is included at the end of the tutorial.
   * [making an alert non-fatal](#step6-altpass)
   * [summary of model modifications](#step6-summary)
 * [Limitations of and alternatives to this approach](#limit)
-  * reference sequence selection(#limit-ref)
-  * training sequence selection(#limit-train)
-  * replacing one model with multiple models(#limit-multiple)
-  * alignment-based models(#limit-align)
-  * incorporating secondary structure(#limit-secondary)
+  * [reference sequence selection](#limit-ref)
+  * [training sequence selection](#limit-train)
+  * [replacing one model with multiple models](#limit-multiple)
+  * [alignment-based models](#limit-align)
+  * [incorporating secondary structure](#limit-secondary)
 
 ---
 
@@ -88,7 +92,7 @@ approach](#limit) is included at the end of the tutorial.
 
 For viruses with multiple subtypes, genotypes, or serotypes, it makes
 sense to build at least one model for each. There are two RSV
-subtypes, RSV-A and RSV-B, so the first step I took was to pick
+subtypes, RSV-A and RSV-B, so the first step is to pick
 reference sequences for each subtype. 
 
 A good strategy is often to start with a RefSeq sequence if any are
@@ -102,7 +106,7 @@ listed in the resulting list will be RefSeq sequences `NC_038235`
 (subgroup A) and `NC_001781` (subgroup B). You can also filter to only
 RefSeq sequences using the "Sequence type" filter.
 
-### <a name="step1-build"><\a> Build initial models from reference sequence(s)
+### <a name="step1-build"></a> Build initial models from reference sequence(s)
 
 Next, use `v-build.pl` to build the two models, specifying the
 `--group` and `--subgroup` options as below:
@@ -115,7 +119,7 @@ $ v-build.pl --group RSV --subgroup B NC_001781 NC_001781
 These commands will take a long time, up to one hour each. 
 
 When they are finished combine the two models into a model library by
-following the steps below ([also listed here](#library)).
+following the steps below ([also listed here](build.md#library)).
 
 ```
 # create a new directory
@@ -142,12 +146,12 @@ $ $VADRHMMERDIR/hmmpress rsv-models1/rsv.hmm
 $ $VADRBLASTDIR/makeblastdb -dbtype nucl -in rsv-models1/rsv.fa
 ```
 
-Before we go on, it's a good idea to test the models by using them to
+At this point, it's a good idea to test the models by using them to
 annotate the reference sequences they were built from. This will
-check that we combined the models correctly, and also the sequences
+check that we combined the models correctly. The sequences
 should pass, although they are not guaranteed to do so (some reference
 sequences may have special characteristics that cause them to fail
-even the sequences they were built from). For these RSV models,
+even using models built from themselves). For these RSV models,
 both sequences should pass:
 
 ```
@@ -170,24 +174,24 @@ Eventual output:
 # Zero alerts were reported.
 #
 ```
-
 ---
 
-## <a name="step2"><\a> Step 2: construct a training set
+## <a name="step2"></a> Step 2: construct a training set
 
-When evaluating a VADR model it is critical to look at how it performs
+When evaluating a VADR model it is critical to examine at how it performs
 when used with `v-annotate.pl` on example sequences. Ideally, you
 would know what the expected result is (pass or fail status, and
-specific alerts you expect to be or not be reported). 
+specific alerts you expect to be or not be reported) for each of the
+example sequences.
 
-For example, if you have a set of high quality sequences that have
+For instance, if you have a set of high quality sequences that have
 been expertly validated and annotated, you could use this as a
-positive control: `v-annotate.pl` should pass all of those sequences
+positive control `v-annotate.pl` should pass all of those sequences
 and give annotation matching what is expected.
 
-Additionally, you could intentionally introduce sequencing errors
-(insertions, deletions, rearrangments) into high quality sequences,
-and checking to see if `v-annotate.pl` detects those problems and
+Alternatively, you could intentionally introduce sequencing errors
+(insertions, deletions, rearrangements) into high quality sequences,
+and check to see if `v-annotate.pl` detects those problems and
 reports them.
 
 Often times, however, the most readily available set of sequences is
@@ -199,7 +203,7 @@ For this tutorial, we will take the strategy of selecting a random subset
 of nearly full length sequences, evaluating them with `v-annotate.pl`
 and manually analyzing the results as a way of evaluating our models.
 
-(The decision to use only full length sequences is debatable, as by
+<a name="step2-length"></a>(The decision to use only full length sequences is debatable, as by
 doing it we are assuming that the sequence diversity represented by all
 sequences, including partial sequences, is well represented by only
 the full length sequences. In other words, if we optimize the
@@ -212,7 +216,7 @@ models on full length sequences first, and then testing on partial
 sequences to see if any new failure modes occur.)
 
 One way to select a random set of training sequences is to use the
-NCBI virus resource. I usually define nearly full length as 95% the
+*NCBI Virus* resource. I usually define nearly full length as 95% the
 length of the RefSeq sequence, or greater. In this case `NC_038235` is
 15222 nucleotides and `NC_001781` is 15225 nucleotides, so a 95%
 length cutoff is about 14460 nucleotides.  At the time of writing
@@ -226,10 +230,10 @@ chosen nearly full length sequences for model improvement.
 To download 500 randomly chosen RSV sequences of length 14460 or
 greater: 
 
-1. go to the NCBI virus RSV list page you reached in step 1
+1. go to the [NCBI Virus RSV list page](https://www.ncbi.nlm.nih.gov/labs/virus/vssi/#/virus?SeqType_s=Nucleotide&VirusLineage_ss=Human%20orthopneumovirus,%20taxid:11250) you reached in step 1
 
 2. use the "Sequence Length" filter to set a minimum of 14460 and then
-click the "Download" button 
+click the "Download" button near the top left of the page
 
 3. select "Nucleotide" under "Sequence data (FASTA format)"
 
@@ -244,7 +248,7 @@ sequences I used in
 
 ---
 
-## <a name="step3"><\a> Step 3. Run `v-annotate.pl` to validate and annotate sequences in training set
+## <a name="step3"></a> Step 3. Run `v-annotate.pl` to validate and annotate sequences in training set
 
 Next we'll use our new models to annotate our set of 500
 training sequences. The RSV genome is about 15Kb, which is towards the
@@ -2725,7 +2729,7 @@ $VADREASELDIR/esl-reformat stockholm KY654518.2.pfam > KY654518.2.stk
 ```
 
 A copy of the `KY654518.2.stk` alignment file can be found in
-[`vadr/documentation/advbuild-files/KY654518.2.stk`](advbuild-files/KY654518.2.stk)
+[`vadr/documentation/build-files/KY654518.2.stk`](build-files/KY654518.2.stk)
 
 The next step is to use this alignment to build a new CM file. We can
 do this using the `cmbuild` program which was called by `v-build.pl`
@@ -2940,7 +2944,8 @@ We could also not restrict our model training to only full length
 sequences, and instead use all sequences, or have two training sets:
 one full length and the other partial length sequences. We could
 follow the procedure above based on full length sequences, and then
-check how the models worked on partial length sequences too.
+check how the models worked on partial length sequences too. This is
+also [briefly discussed above](#step2-length).
 
 ### <a name="limit-multiple"></a> Replacing one model with multiple models
 
