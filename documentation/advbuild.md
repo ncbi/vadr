@@ -74,6 +74,12 @@ analysis.
   * [treating a feature as non-essential](#step6-miscfeat)
   * [making an alert non-fatal](#step6-altpass)
   * [summary of model modifications](#step6-summary)
+* [Limitations of and alternatives to this approach](#limit)
+  * reference sequence selection(#limit-ref)
+  * training sequence selection(#limit-train)
+  * replacing one model with multiple models(#limit-multiple)
+  * alignment-based models(#limit-align)
+  * incorporating secondary structure(#limit-secondary)
 
 ---
 
@@ -1544,7 +1550,7 @@ $ v-annotate.pl --out_stk --mdir rsv-models2 --mkey rsv rsv.r500fa va2-r500
 
 ---
 
-### <a name="step6"></a> Analyze the results and update the models accordingly
+### <a name="step6"></a> Step 6: Analyze the results and update the models accordingly
 
 This time, from the `v-annotate.pl` output we can tell that many more
 sequences passed than with the original models, when only 6 of 500 passed:
@@ -2622,7 +2628,8 @@ alignment to `v-build.pl` are:
 2. to allow the model to put insertions and deletions in 'expected'
    places (example below)
 3. to add secondary structure to the model so sequences will be
-   aligned based on sequence and structure
+   aligned based on sequence and structure (example
+   [here](#https://github.com/ncbi/vadr/wiki/Rfam-based-structural-annotation-of-a-viral-genome-sequence))
 
 As an example, we can build a new CM for one of our RSV models that does
 a more consistent job of modelling the deletion in the attachment
@@ -2895,24 +2902,128 @@ MZ516105 | added alert exceptions (2)      | attachment glycoprotein (CDS) | `de
 MZ516105 | rebuilt CM           | full model                         | added duplicate `MZ516105` sequence with 60nt deletion after position `5441` |
 
 ---
+
+### <a name="limit"></a> Limitations of and alternatives to this approach
+
+The above procedure is one possible strategy for building VADR models
+for RSV. While the strategy is somewhat general, different strategies
+may work better for other viruses. Below I discuss some of the
+limitations of this strategy and ideas for other strategies.
+
+### <a name="limit-ref"></a> Reference sequence selection
+
+Above we started with the RefSeq sequences as the basis for the
+original models, then determined that they were not very
+representative of RSV sequences in the database. Alternatively, if we
+had expert knowledge of good representative sequences, we could have
+started with those. Or we could have tried to find 'centroid'
+sequences that were maximally similar to all RSV sequences to begin
+with. Or, if we had a favorite sequence that was extremely well
+studied and annotated, we might want to start with that. The approach
+above is one that is reasonable if very little is known beforehand
+about the virus being modelled and its sequence diversity, but it
+makes sense to take advantage of any expert knowledge you have when
+picking the initial representative sequences.
+
+### <a name="limit-training"></a> Training sequence selection
+
+The steps above explain how to select a random subset of 500 from all
+existing INSDC full length RSV sequences. Alternatively, we could have
+removed redundancy from the set of candidate sequences first, so that
+our set of 500 was not biased towards those sequences that happened to
+be in the database. For example, if there was a major RSV sequencing
+project in 2019, then there may tend to be more sequences in the
+database of the virus that circulated in 2019 than in other years. We
+could filter our candidate sequences by sequence identity, or by year,
+or by something else, to try and deal with this redundancy.
+
+We could also not restrict our model training to only full length
+sequences, and instead use all sequences, or have two training sets:
+one full length and the other partial length sequences. We could
+follow the procedure above based on full length sequences, and then
+check how the models worked on partial length sequences too.
+
+### <a name="limit-multiple"></a> Replacing one model with multiple models
+
+In the steps outlined above, there are examples of modifying
+single-sequence based models to be more general. An alternative would
+be to add one or more new models built from new sequences that would
+allow sequences with divergent features to pass. This can work
+especially well if you are using one model for a set of sequences that
+can be easily separated into two well-separeated clusters based on
+sequence identity (or on an inferred evolutionary tree). In that
+situation, one model per cluster may be the best approach. One word of
+caution though, when you expand the number of models, you may increase
+the number of common but innocuous alerts returned by `v-annotate.pl`,
+each of which you will have to deal with through some kind of model
+modification. In other words, adding models can lead to more work
+manually tweaking those models. 
+
+### <a name="limit-align"></a> Alignment-based models
+
+If you're familiar with [Infernal](http://eddylab.org/infernal/), the
+software package that VADR uses to build a statistical model of a
+virus, you may be confused as to why this advanced tutorial on model
+building focuses on building single-sequence models, because Infernal
+is typically used to build profile models from multiple sequence
+alignments. Profiles have advantages over single-sequence-based
+methods because they include position-specific information about the
+expected nucleotide distribution and probability of insertions and
+deletions at each position, whereas single sequence based models treat
+all positions identically. I provided one [example above](#step6-cm)
+of rebuilding a CM from multiple sequences, but even that example is
+only to deal with a single deletion.
+
+As an alternative to the above approach, you could add a step prior to
+running `v-build.pl` for the first time of creating a multiple
+sequence alignment of a representative set of sequences. The level of impact
+this will have on performance versus single-sequence based models will
+largely be based on how similar all of the sequences being annotated
+are to the model. If they are highly similar, it won't make a huge
+difference, but if there is a lot of sequence variability it will make
+more of a difference.
+
+In my experience, building CMs from multiple alignments for well
+conserved viruses like RSV, does not significantly improve the
+performance of `v-annotate.pl`. This is likely because all the
+sequences are so similar that the position specific parameters are not
+necessary to get the correct alignment. Multiple-sequence based VADR models
+are used for one type of sequences at GenBank - the Cytochrome C
+Oxidase 1 (COX1)
+mitochondrial protein coding gene, which exhibits significantly more
+sequence variability than any of the viruses VADR is used for. The
+VADR library of COX1 models includes 78 profile models built from
+multiple alignments, 20 of which included more than 100 aligned
+sequences. 
+
+### <a name="limit-secondary"></a> Incorporating secondary structure
+
+Again, if you're familiar with
+[Infernal](http://eddylab.org/infernal/), you may be confused as to
+why there is no step at the beginning of the procedure above to add
+predicted (or known) secondary structure to the CM to take advantage
+of during validation and annotation. We could certainly add such a
+step to create an alignment file annotated with secondary structure of
+any hits found using Infernal and the Rfam database. There's a
+separate documentation page on how to do that (on the VADR GitHub
+wiki)
+[here](#https://github.com/ncbi/vadr/wiki/Rfam-based-structural-annotation-of-a-viral-genome-sequence).
+It turns out there are actually zero Rfam hits (as of release 14.9) in
+the RSV RefSeq sequences. That fact, along with my desire from
+increasing the length of this already very long tutorial, led to leave
+out that step above. That said, if you have the interest, please do
+try that additional step, which can be done before building the
+initial model, or after you've spent time refining it.
+
+There are at least two reasons you may want to try this: 
+adding secondary structure could improve the alignment accuracy, and
+it will allow you to enrich your annotations by adding some structural
+RNA features that are commonly absent from GenBank annotation.
+
+---
 TOADD: 
 - also add example where you investigate and it turns out the failure
   is legit and you shouldn't do anything about it
-- list all changes made for RSV in actual model building (and make
-  updated RSV model at same time), can I add (rough) number of sequences
-  allowed to pass with each modification (?) 
-  * all proteins added to blastx
-  * all alternative features
-  * exceptions
-  * model update
-- add limitations/criticisms/alternatives to this approach:
-  * the way we select training seqs, they may be very redundant, could
-    weight them somehow would be better
-  * experts may have a favorite reference sequence, they should use
-    that
-- what about multiple models? If we have many minor characteristics
-   and only some groups have some chracteristics, it may be better to
-   make multiple models
 - add info about searching literature to determine if, for example,
   attachment glycoprotein has different possible stop codons? Or a big
   deletion (I think I may have already done that)? 
