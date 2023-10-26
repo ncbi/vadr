@@ -1111,36 +1111,36 @@ $ grep indf3pst va-ex5.vadr.alt
 ### <a name="step4-lessons"></a>Lessons from investigating common alerts
 
 We've learned that both `NC_038235` and `NC_001781` are lacking
-several major characteristics that are (by definition) present in the
-majority of RSV A and RSV B sequences, respectively. These include:
+several important characteristics that are present in the
+majority of RSV A and RSV B sequences. These include:
 
  * attachment glycoprotein stop codon at reference coordinates
    `5579..5581` in RSV A and `5566..5568` in RSV B.
 
  * duplicated region in attachment glycoprotein near reference
-   reference positions `5466..5537` in RSV A and `5410..5469` in RSV
-   B. 
+   positions `5466..5537` in RSV A and `5410..5469` in RSV B.
 
  * M2-2 protein start codon at reference positions `8165..8167` in RSV
    A. 
 
 And further we've observed that:
 
-  * `NC_038235` and `NC_001781` both have `gene` positional
-    boundaries that differ from the CDS. Some of the `gene`
-    boundaries lead to low alignment confidence related alerts in
-    VADR. Typically for viral GenBank submissions based on VADR, the
-    gene and CDS boundaries are kept consistent.
+  * `NC_038235` and `NC_001781` both have gene positional boundaries
+    that differ from the corresponding CDS boundaries. `v-annotate.pl`
+    commonly reports low alignment confidence related alerts
+    (e.g. `indf3lcn`) for the gene boundaries. Typically for viral
+    GenBank submissions based on VADR, the gene and CDS boundaries are
+    kept consistent.
 
-At this point, because we've found at least one characteristic that
-causes failure present in the majority of the sequences but lacking in the reference
-model for both models, we will start a new iteration of our model
-building strategy, by first choosing representative sequences that
-contain these characteristics and building new models from them.
+At this point, because we've found, for both models, at least one
+characteristic that causes fatal alert(s) and is present in the
+majority of the sequences but lacking in the reference sequence, we
+will identify new, more representative sequences from which to build a
+new set of models. 
 
 ---
 
-### <a name="step5"></a> Step 5. (OPTIONAL) Choosing new representative sequences and building new models
+### <a name="step5"></a> Step 5. (Potentially) choose new representative sequences and build new models
 
 It is not always necessary to build new models at this point. If all
 of the failure modes above had been in a minority of sequences, then
