@@ -66,7 +66,7 @@ approach](#limit) is included at the end of the tutorial.
   * [investigate common `insertnp` alerts](#step4-insertnp)
   * [investigate common `indf3pst` alerts](#step4-indf3pst)
   * [lessons from investigating common alerts](#step4-lessons)
-* [Step 5: (optional) build new models](#step5)
+* [Step 5: (potentially) build new models](#step5)
   * [choose new representative sequences](#step5-chooserep)
   * [build new models from new representative sequences](#step5-build)
   * [rerun `v-annotate.pl` on training set using new models](#step5-rerun)
@@ -1570,7 +1570,7 @@ sequences as a sanity check. For these two RSV models, both sequences
 should pass:
 
 ```
-$ v-annotate.pl --mdir rsv-models2 --mkey rsv rsv-models2/rsv.fa va-rsv2
+$ v-annotate.pl --out_stk --mdir rsv-models2 --mkey rsv rsv-models2/rsv.fa va-rsv2
 ```
 
 ```
@@ -1651,7 +1651,7 @@ alerts for expected biological characteristics, including:
    acceptable alternatives as separate features to the model info
    file. `v-annotate.pl` will attempt to annotate each of the
    alternatives and report annotation for the single alternative that
-   yields the fewest fatal alerts. [There is an example of this
+   yields the fewest fatal alerts. There is an example of this
    strategy detailed [below](#step6-alternative).
 
 3. **Add an alert *exception* to the model info file.** For some alert
@@ -2412,7 +2412,7 @@ $ grep 5641 va-ex8.2/va-ex8.2.vadr.ftr
 1.14  OR326763.1  15191  PASS  MZ516105  CDS   attachment_glycoprotein     954   16   -1    +    4639   5592        -  no     0    0    4639  5589        -   1537    1    0   4639..5592:+   4688..5641:+  -     
 ```
 
-The 5641 stop codon was the most common alternative to the 5620 stop
+The 5641 stop codon was the most common alternative to the `5620` stop
 codon in `MZ516105`, but it wasn't the only alternative. Looking again
 at the list of remaining examples of other `mutendex` failures (by
 removing any that include `5641` with `grep -v`:
@@ -2435,7 +2435,7 @@ $ grep attachment rsv-models2/rsv.minfo | grep KY654518
 FEATURE KY654518 type:"CDS" coords:"4681..5646:+" parent_idx_str:"GBNULL" gene:"G" product:"attachment glycoprotein"
 ```
 
-To address this we repeat the drill we just did for the 5641 endpoint
+To address this we can repeat the drill we just did for the `5641` endpoint
 for the `MZ516105` model, and add an alternative feature by adding to
 and modifying existing lines in the model info file, and then adding a
 representative protein for the coordinates `4681..5649:+` to the
@@ -2464,15 +2464,14 @@ $ $VADREASELDIR/esl-alimanip --seq-k ex9.49.list va2-rsv.r500/va2-rsv.r500.vadr.
 $ $VADREASELDIR/esl-alimask -t --t-rf ex9.49.stk 4681..5649 > ex9.49.ag.stk
 
 # convert to fasta and remove any seqs with ambiguous nts
-$ $VADREASELDIR/esl-reformat fasta ex8.41.ag.stk > ex8.41.ag.fa
+$ $VADREASELDIR/esl-reformat fasta ex9.49.ag.stk > ex9.49.ag.fa
 $ perl $VADRSCRIPTSDIR/miniscripts/count-ambigs.pl ex9.49.ag.fa | awk '{ printf("%s %s\n", $1, $2); }' | grep " 0" | awk '{ printf("%s\n", $1); }' > ex9.47.list
-$ $VADREASELDIR/esl-alimanip --seq-k ex8.40.list ex8.41.ag.stk > ex8.40.stk
 $ $VADREASELDIR/esl-alimanip --seq-k ex9.47.list ex9.49.ag.stk > ex9.47.stk
 
 # determine average percent id and choose representative
 $ $VADREASELDIR/esl-alipid ex9.47.stk > ex9.47.alipid
 $ perl $VADRSCRIPTSDIR/miniscripts/esl-alipid-per-seq-stats.pl ex9.47.alipid > ex9.47.alipid.perseq
-$ grep -v ^\# ex9.47.alipid.perseq | sort -rnk 2 | head
+$ grep -v ^\# ex9.47.alipid.perseq | sort -rnk 2 | head -n 1
 KJ643564.1  95.374  KU316171.1  89.410  KJ643503.1  100.000
 
 # add representative to blastx db
@@ -2489,7 +2488,7 @@ vb-ex9
 </details>
 
 After that, we want to address the `MZ516105` stop codon ending at
-`5629` that occurs in `15` of our training sequences, following the
+`5629` that occurs in 15 of our training sequences, following the
 same steps.
 
 <details>
@@ -2523,8 +2522,8 @@ $ $VADREASELDIR/esl-alimanip --seq-k ex10.14.list ex10.15.ag.stk > ex10.14.stk
 
 # determine average percent id and choose representative
 $ $VADREASELDIR/esl-alipid ex10.14.stk > ex10.14.alipid
-$ perl $VADRSCRIPTSDIR/miniscripts/esl-alipid-per-seq-stats.pl ex9.47.alipid > ex9.47.alipid.perseq
-$ grep -v ^\# ex10.14.alipid.perseq | sort -rnk 2 | head
+$ perl $VADRSCRIPTSDIR/miniscripts/esl-alipid-per-seq-stats.pl ex10.14.alipid > ex10.14.alipid.perseq
+$ grep -v ^\# ex10.14.alipid.perseq | sort -rnk 2 | head -n 1
 JX576758.1  96.315  KU316128.1  94.480  KP258713.1  98.200
 
 # add representative to blastx db
@@ -2550,7 +2549,7 @@ our models to allow. There is probably lower hanging fruit that we can
 address. It makes sense to rerun all 500 of the training sequences
 using the updated models at this point, to make sure that we base the 
 decision on which alert instances to investigate next based on
-performance using the current models.
+performance using the current (updated) models.
 
 To rerun the training set:
 ```
@@ -2572,7 +2571,7 @@ Our new results:
 #---  --------  -----  --------  ----  ----  ----
 ```
 
-Previously only 267 passed, so we've cut the number of failing
+Previously 233 sequences failed, so we've cut the number of failing
 sequences in half with our recent modifications.
 
 What are the most common alerts remaining? Ranking the lines with
@@ -2604,16 +2603,17 @@ fatal alerts in the
 ```
 
 The most common alert remaining is `indf3pst` with instances in 56
-sequences followed by `deletinp` with alerts in 46
-sequences. We've seen examples above in how to address each of these
+sequences followed by `deletinp` in 46
+sequences. We've seen examples above on how to address each of these
 alerts: by adding sequences to the blastx protein library. That
 strategy is the only method for addressing `indf3pst` alerts, but
 there is an additional way to address `deletinp` alerts, by adding an
 alert exception to the model info file for specific reference model
-regions. 
+regions. Instead of including another example of adding a protein to
+the blastx library here, let's try specifying an alert exception.
 
-Let's look further at the 46 remaining `deletinp` alerts. We can use
-the `.ftr` file to determine which 
+Looking further at the 46 remaining `deletinp` alerts, we can use
+the `.ftr` file to determine which regions are commonly deleted.
 
 ```
 $ cat va3-rsv.r500/va3-rsv.r500.vadr.alt | grep attachment | grep deletinp | awk '{ printf("%s %s %s\n", $3, $5, $12); }' | sort | uniq -c | sort -rnk 1
@@ -2630,7 +2630,7 @@ $ cat va3-rsv.r500/va3-rsv.r500.vadr.alt | grep attachment | grep deletinp | awk
 ```
 
 Most of the alerts (37/46) are for RSV B sequences (`MZ516105`) and they
-relate to deletions at the reference positions. We can specify a
+relate to deletions at the reference positions `5372..5530`. We can specify a
 `deletinp` alert exception for a specific model coordinate range for
 the start position of the deletion and the maximum length we want to
 allow an exception for. To do that we need to know the
@@ -2644,10 +2644,11 @@ in our training dataset.
 
 To add the exception we need to manually modify the
 `rsv-models2/rsv.minfo` file in a text editor by adding the key:value
-pair `deletin_exc:5435..5471:+:60` to the `FEATURE` lines for the attachment
-glycoprotein CDS for the `MZ516105` model. Remember there are
-currently 3 `FEATURE` lines because we have alternative features for
-the attachment glycoprotein. The `deletin_exc` alert pertains to both
+pair `deletin_exc:5435..5471:+:60` to the `FEATURE` lines for the
+attachment glycoprotein CDS for the `MZ516105` model. Remember there
+are currently three `FEATURE` lines because we have alternative
+features for the attachment glycoprotein and we should add the
+exception to all three. The `deletin_exc` alert pertains to both
 `deletinp` and `deletinn` alerts, so `deletin` non-fatal alerts will
 also be excepted in this region.
 
@@ -2691,25 +2692,25 @@ $ v-annotate.pl --keep --mdir rsv-models2 --mkey rsv ex11.fa va-ex11
 
 This sequence now passes, because the `deletinp` alert was its only
 fatal one. Other sequences may still have other alerts, including
-`indf3pst` alerts, that could be addressed using the strategies
+`indf3pst` alerts, which could be addressed using the other strategies
 above. 
 
 ### <a name="step6-cm"></a>Rebuilding the CM with additional information
 
-Another way to update a model is to rebuild the underlying CM from a
-different input alignment. The `v-build.pl` script will build a CM
-from a single-sequence 'alignment', but can also take a multiple
-alignment as input and build a profile model from it. That profile
-will have position specific parameters, meaning that each position
-will have a different probability distribution for each of the four
-nucleotides, and a different probability of insertion and
+Another way to update a model is to rebuild the underlying CM using a
+different input alignment. The `v-build.pl` script will by default
+build a CM from a single-sequence 'alignment', but can also take a
+multiple alignment as input and build a profile model from it. That
+profile will have position specific parameters, meaning that each
+position will have a different probability distribution for each of
+the four nucleotides, and a different probability of insertion and
 deletion. Those parameters are learned from the input alignment. Input
 of a single sequence alignment is a special case where all positions
 have the same probability distributions. Additionally, the
 `v-build.pl` input alignment can have secondary structure annotation,
 and the resulting CM will model the expected secondary structure and
-use it when aligning input sequences. In summary, some reasons to provide an
-alignment to `v-build.pl` are:
+use it when aligning input sequences. In summary, some reasons to
+provide an alignment to `v-build.pl` are:
 
 1. to increase the sequence diversity the model can handle
 2. to allow the model to put insertions and deletions in 'expected'
@@ -2718,18 +2719,20 @@ alignment to `v-build.pl` are:
    aligned based on sequence and structure (example
    [here](#https://github.com/ncbi/vadr/wiki/Rfam-based-structural-annotation-of-a-viral-genome-sequence))
 
-As an example, we can build a new CM for one of our RSV models that does
-a more consistent job of modelling the deletion in the attachment
-glycoprotein CDS. Below is a doctored version of the alignment in the
-`va3-r500/va3-r500.align.KY654518.align.stk` created in one of the
-steps above, with some sequences removed and truncated to the
-reference positions `5450..5600` (with the command
+As an example, we can build a new CM for one of our RSV models that
+does a more consistent job of modelling the deletion in the attachment
+glycoprotein CDS. (I'm including this example not because it will
+address any common fatal alert instances, but just to provide an
+example of rebuilding the CM.)  Below is a doctored version of the
+alignment in `va3-r500/va3-r500.align.KY654518.align.stk` created
+in one of the steps above, with some sequences removed and truncated
+to the reference positions `5450..5600` (with the command
 `$VADREASELDIR/esl-alimask -t --t-rf
-va3-rsv.r500/va3-rsv.r500.align.KY654518.align.stk 5450..5600`). 
-This alignment demonstrates the variability in the placement of the deletion that
-occurs in some sequences that do *not* include the duplicated region
-that caused the *dupregin* alerts when we were testing the original
-RefSeq-based models:
+va3-rsv.r500/va3-rsv.r500.align.KY654518.align.stk 5450..5600`).  This
+alignment demonstrates the variability in the placement of the
+deletion that occurs in some sequences that do *not* include the
+duplicated region that caused the *dupregin* alerts when we were
+testing the original RefSeq-based models:
 
 
 ```
@@ -2766,47 +2769,49 @@ nucleotide is shown in the `PP` lines of the alignment with `*`
 indicating the highest level of expected accuracy, with `9` the second
 highest level, and `8` the third and so on (as explained more
 [here](alerts.md#pp)). Note that near the deletion is the lowest
-expected accuracy which makes sense, because those nucleotides could
-reasonably be aligned at the opposite end of the deletion because the
+expected accuracy. This makes sense, because those nucleotides could
+reasonably be aligned at the opposite end of the deletion because this
 deletion is actually just a lack of a short duplicated region.  The
-issue causing this alignment inconsistentcy is that the CM does not
-have any information about where the deletion should occur because it
-is only based on the one `KY654518` sequence which does not have the
-deletion at all. We can add that information (and only that
-information) to the CM by rebuilding it from an alignment of two
-sequences: the original `KY654518` and a synthetic sequence that is a
-copy of `KY654518` but with the common deletion in the positions we
-want it to go in output alignments.
+issue responsible for this alignment inconsistency is that the CM does
+not have any information about where the deletion should occur,
+because it is only based on the one `KY654518` sequence which does not
+have the deletion at all. We can add information about where the
+deletion should occur (and only that information) to the CM by
+rebuilding it from an alignment of two sequences: the original
+`KY654518` and a synthetic sequence that is a copy of `KY654518` but
+with the common deletion in the specific positions we want it to be
+placed in output `v-annotate.pl` alignments.
 
 Because our goal is to make the alignment of this region more
 consistent, it makes sense to find the *average* position span for
-this deletion. If we did this we may find that the region from
-reference positions 5496 to 5567 (72 positions) is the average. We can
-then manually create a two sequence Stockholm alignment file with
-`KY654518` duplicated by starting with the file `va-rsv2/va-rsv2.vadr.KY654518.align.stk`
-that was created with the `v-annotate.pl`
-command: 
+this deletion. We may find that the region from reference positions
+5496 to 5567 (72 positions) is the average. We can manually
+create a two sequence Stockholm alignment file with `KY654518`
+duplicated by starting with the file
+`va-rsv2/va-rsv2.vadr.KY654518.align.stk` that was created with the
+`v-annotate.pl` command:
 
 ```
-$ v-annotate.pl --mdir rsv-models2 --mkey rsv rsv-models2/rsv.fa va-rsv2
+$ v-annotate.pl --out_stk --mdir rsv-models2 --mkey rsv rsv-models2/rsv.fa va-rsv2
 ```
 
 We can reformat this to a special type of Stockholm format referred to
-as Pfam in the Easel and Infernal codebases that has only one 
-line per sequence. This will make it easier to duplicate the sequence.
+as Pfam in the Easel and Infernal codebases/documentation that has
+only one line per sequence (as opposed to the standard interleaved
+Stockholm format). This will make it easier to duplicate the sequence.
 
 ```
 $VADREASELDIR/esl-reformat pfam va-rsv2/va-rsv2.vadr.KY654518.align.stk > KY654518.2.pfam
 ```
 
 Next we need to open this file in a text editor, duplicate the
-sequence line that begins with `KY654518.1` and rename the second
-sequence something like `KY654518.1-5496del72`. Then remove the
-sequence in reference positions 5496 to 5567 in this second sequence,
-replacing those nucleotides with `-` characters. After that you can go
-ahead and remove the line that starts with `#=GR KY654518 PP` as that
-is irrelevant for the `cmbuild` step. When that is finished, we can
-reformat it back to interleaved Stockholm format with:
+sequence line that begins with `KY654518` and rename the second
+sequence something like `KY654518-5496del72`. Then remove the
+sequence in reference positions `5496` to `5567` in this second sequence,
+replacing those nucleotides with `-` characters. After that you can 
+and remove the line that starts with `#=GR KY654518 PP` as that
+is irrelevant for the `cmbuild` step. When you are finished, save the
+file, and then reformat it back to interleaved Stockholm format with:
 
 ```
 $VADREASELDIR/esl-reformat stockholm KY654518.2.pfam > KY654518.2.stk
@@ -2830,12 +2835,13 @@ So we'll use the `-n KY654518 --verbose --noss --noh3pri --Egcmult
 1.63645`  options and we'll add one more important one: `--hand` which
 informs `cmbuild` to maintain the existing reference positions in the
 alignment, which correspond to the `KY654518` sequence, instead of
-inferring new one. This is extremely important whenever rebuilding a
+inferring new ones. This is extremely important whenever rebuilding a
 CM for a VADR model because the coordinates of all of the features in
 the existing model info file are with respect to the `KY654518`
 sequence. If the reference positions change, then the model info file
 coordinates would need to be updated accordingly.
 
+So the `cmbuild` command is:
 ```
 $VADRINFERNALDIR/cmbuild -n KY654518 --verbose --noss --noh3pri --Egcmult 1.63645 --hand KY654518.2.cm KY654518.2.stk
 ```
@@ -2847,6 +2853,7 @@ new model with the existing `MZ516105` model. We can use the `cmfetch`
 program to help with this:
 
 ```
+# create a temporary CM file `new.rsv.cm`
 $ $VADRINFERNALDIR/cmfetch rsv-models2/rsv.cm MZ516105 > new.rsv.cm
 $ cat KY654518.2.cm >> new.rsv.cm
 
@@ -2877,7 +2884,7 @@ $ $VADREASELDIR/esl-sfetch -f rsv.r500.fa ex13.list > ex13.fa
 $ v-annotate.pl --out_stk --mdir rsv-models2 --mkey rsv ex13.fa va-ex13
 ```
 
-Then if we look at the region of the alignment: 
+Then if we look at the relevant region of the alignment: 
 
 ```
 $ $VADREASELDIR/esl-alimask -t --t-rf va-ex13/va-ex13.vadr.KY654518.align.stk 5450..5600
@@ -2932,28 +2939,29 @@ explained more [here](annotate.md#mnf). Such features will be
 annotated as `misc_feature` if they include a normally fatal alert,
 but the sequence will not fail because of such alerts.
 
-When building RSV models, we could have defined the `attachment
-glycoprotein` CDS, which is responsible for many of the fatal alerts,
+When building RSV models, we could have defined the attachment
+glycoprotein CDS, which is responsible for many of the fatal alerts,
 as non-essential. However, this would have meant that it would often
 be annotated as a `misc_feature`. By modifying the model through
-adding proteins to the `blastx` library and the other strategies
-above, we have specifyied the range of possible variability we want to
-allow in `attachment glycoprotein` without reporting an alert for it,
-while still validating and annotating it at as a CDS. Other times
-treating a protein as non-essential is a useful strategy. As of
-Octoboer 2023, VADR-based annotation of SARS-CoV-2 sequences submitted
+adding proteins to the blastx library as well as the other strategies
+above, we have specified the range of possible variability we want to
+allow in the attachment glycoprotein CDS without reporting an alert for it,
+while still validating and annotating it at as a CDS. For other
+viruses, treating some features as non-essential can be a useful
+strategy. Since August 2021, at least up until the time of writing (October
+2023), VADR-based annotation of SARS-CoV-2 sequences submitted
 to GenBank treats ORF3a, ORF6, ORF7a, ORF7b, ORF8, and ORF10 CDS as
 well as the Coronavirus 3' stem-loop II-like motif (s2m) as
-non-essential using the `misc_not_failure` strategy.
+non-essential using this `misc_not_failure` strategy.
 
 ### <a name="step6-altpass"></a>Making an alert non-fatal using the `--alt_pass` option
 
 For some viruses, specific fatal alerts are so common that we may want
-to make them non-fatal. For example, the mpox genome has several
+to make them non-fatal. For example, the Mpox genome has several
 repetitive regions that cause `dupregin` and `discontn` alerts for
 nearly all mpox sequences. We could try to define alert exceptions to
 allow the `dupregin` alerts, but there are no exceptions supported for
-`discontn`. Another strategy is to specify that these two alerts be
+`discontn`. An alternative strategy is to specify that these two alerts be
 considered non-fatal using the `v-annotate.pl` option: `--alt_pass
 dupregin,discontn`. An example of using this option can be found
 [here](annotate.md#examplealtpass).
@@ -2961,24 +2969,25 @@ dupregin,discontn`. An example of using this option can be found
 ### <a name="step6-summary"></a> Final summary of RSV model modifications
 
 I followed the six step procedure above when creating the [VADR RSV
-models](https://bitbucket.org/nawrockie/vadr-models-rsv/src/master/)
-which can be used as described
-[here](https://github.com/ncbi/vadr/wiki/RSV-annotation). Those
-RSV models are based on the `KY654518`
-and `MZ516105` reference sequences, but the exact steps I took when
-creating them are not identical to those listed above (I created this
-tutorial several months after I had finished building the RSV models).
-For example, I added proteins to the blastx databases and alternative
-features to the model info files that are not listed above. The table
-below summarizes most of the additions I made to the original `KY654518` and
-`MZ516105` models that are built by `v-build.pl`:
+models](https://bitbucket.org/nawrockie/vadr-models-rsv/src/master/),
+which can be used with `v-annotate.pl` to validate and annotate RSV
+sequences as described
+[here](https://github.com/ncbi/vadr/wiki/RSV-annotation). Those RSV
+models are based on the `KY654518` and `MZ516105` reference sequences,
+but the exact steps I took when creating them are not identical to
+those listed above (I created this tutorial several months after I had
+finished building the RSV models).  For example, I added proteins to
+the blastx databases and alternative features to the model info files
+that are not listed above. The table below summarizes most of the
+additions I made to the original `KY654518` and `MZ516105` models that
+are built by `v-build.pl`:
 
 | model    | type of modification | feature | detail | 
 ----------|---------------------- |---------|--------|
-`KY654518`  | added proteins to blastx library (13) | attachment glycoprotein (CDS) | `OM857255.1:4629..5591:+/4681..5643:+`, `KU316164.1:4611..5504:+/4681..5646:+`,  `AF065254.1:16..909:+/4681..5646:+`, `OK649616.1:4670..5563:+/4681..5646:+`, `hybrid:KY654518.1:4681..4695:+:AF065410.1:1..879:+/4681..5646:+`, `KF826850.1:4675..5568:+/4681..5646:+`, `KU316092.1:4620..5516:+/4681..5646:+`, `NC_038235.1:4688..5584:+/4681..5649:+`, `MZ515659.1:4681..5649:+/4681..5649:+`, `HQ699266.1:1..897:+/4681..5649:+`, `KJ641590.1:4630..5526:+/4681..5649:+`, `OK649616.1:4670..5566:+/4681..5649:+`, `M17212.1:16..912:+/4681..5649:+` |
-`KY654518` | added protein to blastx library (1) | M2-1(CDS) | `OM857351.1:7614..8180:+/7669..8235:+`
-`KY654518` | added alternative features (2)  | attachment glycoprotein (CDS + gene) | `4681..5643:+`, `4681..5649:+` | 
-`KY654518` | added alert exception (1)     | attachment glycoprotein (CDS) | `deletin_exc:5457..5508:+:72` | 
+`KY654518`  | added proteins to blastx library (13) | attachment glycoprotein (CDS) | proteins added (name format source accession:source coordinates/model coordinates): `OM857255.1:4629..5591:+/4681..5643:+`, `KU316164.1:4611..5504:+/4681..5646:+`,  `AF065254.1:16..909:+/4681..5646:+`, `OK649616.1:4670..5563:+/4681..5646:+`, `hybrid:KY654518.1:4681..4695:+:AF065410.1:1..879:+/4681..5646:+`, `KF826850.1:4675..5568:+/4681..5646:+`, `KU316092.1:4620..5516:+/4681..5646:+`, `NC_038235.1:4688..5584:+/4681..5649:+`, `MZ515659.1:4681..5649:+/4681..5649:+`, `HQ699266.1:1..897:+/4681..5649:+`, `KJ641590.1:4630..5526:+/4681..5649:+`, `OK649616.1:4670..5566:+/4681..5649:+`, `M17212.1:16..912:+/4681..5649:+` |
+`KY654518` | added protein to blastx library (1) | M2-1(CDS) | proteins added: `OM857351.1:7614..8180:+/7669..8235:+`
+`KY654518` | added alternative features (2)  | attachment glycoprotein (CDS + gene) | alternative feature coordinates: `4681..5643:+`, `4681..5649:+` | 
+`KY654518` | added alert exception (1)     | attachment glycoprotein (CDS) | key/value pair added to model info file: `deletin_exc:5457..5508:+:72` | 
 `KY654518` | rebuilt CM           | full model                    | added duplicate `KY654518` sequence with 72nt deletion after position `5496` |
 | | | | 
 `MZ516105` | added proteins to blastx library (21) | attachment glycoprotein (CDS) | `MG642047.1:4666..5565:+/4688..5620:+`, `MG431253.1:4674..5567:+/4688..5620:+`,  `LC474547.1:4663..5595:+/4688..5620:+`, `MZ962122.1:1..933:+/4688..5620:+`, `KC297442.1:1..933:+/4688..5620:+`, `LC311384.1:1..933:+/4688..5620:+`, `MZ515748.1:4689..5621:+/4688..5620:+`, `MT040088.1:4679..5572:+/4688..5620:+`, `KJ627364.1:4618..5550:+/4688..5620:+`, `MH760718.1:4597..5529:+/4688..5620:+`, `KP856962.1:4618..5505:+/4688..5629:+`, `KU950619.1:4663..5604:+/4688..5629:+`, `KP258745.1:4620..5507:+/4688..5629:+`, `KU316181.1:4618..5505:+/4688..5629:+`, `MF185751.1:4640..5527:+/4688..5629:+`, `KC297470.1:1..882:+/4688..5629:+`, `KJ627249.1:4618..5565:+/4688..5635:+`, `KU316144.1:4618..5517:+/4688..5641:+`, `MN365572.1:4676..5629:+/4688..5641:+`, `OK649740.1:4675..5574:+/4688..5641:+`, `NC_001781.1:4690..5589:+/4688..5641:+` |
