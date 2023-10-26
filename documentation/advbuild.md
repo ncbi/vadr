@@ -69,6 +69,7 @@ approach](#limit) is included at the end of the tutorial.
 * [Step 5: (optional) build new models](#step5)
   * [choose new representative sequences](#step5-chooserep)
   * [build new models from new representative sequences](#step5-build)
+  * [rerun `v-annotate.pl` on training set using new models](#step5-rerun)
 * [Step 6: analyze results and update models](#step6)
   * [strategies for updating models](#step6-strategies)
   * [adding a protein to a model blastx library](#step6-addblastx)
@@ -1144,20 +1145,21 @@ new set of models.
 
 It is not always necessary to build new models at this point. If all
 of the failure modes above had been in a minority of sequences, then
-we could keep going and modify our existing models. However, as
-explained above, in this case we want to choose new representatives
-and build new models.
+it may have made more sense to stick with our RefSeq-based models and
+simply modified them (as described below) to address the failure modes
+we wanted to eliminate. But in this case, as explained above, we want
+to choose new representatives and build new models.
 
 #### <a name="step5-chooserep"></a> Identifying new representative sequences
 
 We will choose a new representative from our random set of 500
 training sequences. Of course, it is possible, and probably even
-likely, that there is a 'better' representative that is not in our
-training set, but using a sequence from our training set of 500 is
-probably good enough. First we need to identify the subset of our 500
-sequences that contain the three major characteristics we identified
-in iteration 1, summarized [above](#majorchar). We'll do this
-separately for RSV A and RSV B:
+likely, that there exists a 'better' representative sequence that is
+not in our training set, but using the most representative sequence
+from our training set of 500 is probably good enough. First we need to
+identify the subset of our 500 sequences that contain the three major
+characteristics we've already identified, summarized
+[above](#step4-lessons). We'll do this separately for RSV A and RSV B:
 
 ```
 # fetch out the sequences with the early stop codon (cdsstopn) at 5579..5581:
@@ -1168,7 +1170,7 @@ $ grep NC_038235 va-rsv.r500/va-rsv.r500.vadr.alt | grep cdsstopn | grep 5579..5
 # fetch out the sequences with the dupregin at 5466..5537:
 $ grep NC_038235 va-rsv.r500/va-rsv.r500.vadr.alt | grep dupregin | grep 5466..5537 | awk '{ print $2 }' | wc -l
 159
-$ grep NC_038235 va-rsv.r500/va-rsv.r500.vadr.alt | grep dupregin | grep 5466..5537 | awk '{ print $2 }' | sort > 158.list
+$ grep NC_038235 va-rsv.r500/va-rsv.r500.vadr.alt | grep dupregin | grep 5466..5537 | awk '{ print $2 }' | sort > 159.list
 
 # use the unix 'comm' command to get the subset of seqs common to both lists
 $ comm -1 -2 213.list 159.list | wc -l
@@ -1185,8 +1187,8 @@ $ comm -1 -2 143.list 259.list | wc -l
 140
 $ comm -1 -2 143.list 259.list > 140.list
 
-# fetch the 139 sequences into a new fasta file:
-$ $VADREASELDIR/esl-sfetch -f rsv.r500.fa 139.list > rsvA.139.fa
+# fetch the 140 sequences into a new fasta file:
+$ $VADREASELDIR/esl-sfetch -f rsv.r500.fa 140.list > rsvA.140.fa
 ```
 And then repeat the same for RSV B, skipping the M2-2 start codon step
 which doesn't apply to RSV B:
@@ -1194,7 +1196,7 @@ which doesn't apply to RSV B:
 # fetch out the sequences with the early stop codon (cdsstopn) at 5566..5568:
 $ grep NC_001781 va-rsv.r500/va-rsv.r500.vadr.alt | grep cdsstopn | grep 5566..5568 | awk '{ print $2 }' | wc -l
 154
-$ grep NC_001781 va-rsv.r500/va-rsv.r500.vadr.alt | grep cdsstopn | grep 5566..5568 | awk '{ print $2 }' | sort > 153.list
+$ grep NC_001781 va-rsv.r500/va-rsv.r500.vadr.alt | grep cdsstopn | grep 5566..5568 | awk '{ print $2 }' | sort > 154.list
 
 # fetch out the sequences with the dupregin at 5410..5469
 $ grep NC_001781 va-rsv.r500/va-rsv.r500.vadr.alt | grep dupregin | grep 5410..5469 | awk '{ print $2 }' | wc -l
@@ -1202,27 +1204,29 @@ $ grep NC_001781 va-rsv.r500/va-rsv.r500.vadr.alt | grep dupregin | grep 5410..5
 $ grep NC_001781 va-rsv.r500/va-rsv.r500.vadr.alt | grep dupregin | grep 5410..5469 | awk '{ print $2 }' | sort > 167.list
 
 # use the unix 'comm' command to get the subset of seqs common to both lists
-$ comm -1 -2 153.list 167.list | wc -l
+$ comm -1 -2 154.list 167.list | wc -l
 129
-$ comm -1 -2 153.list 167.list > 129.list
+$ comm -1 -2 154.list 167.list > 129.list
 
 # fetch the 129 sequences into a new fasta file:
 $ $VADREASELDIR/esl-sfetch -f rsv.r500.fa 129.list > rsvB.129.fa
 ```
 
-It is important that our reference sequences do not have too many
-ambiguous nucleotides as make the models less specific. (Indeed we may
-want our models to be less specific and more general in some areas of
-the genome that are less highly conserved, but including ambiguous
-nucleotides from a single reference sequence is not the best way to do
-this. We'll revisit this topic briefly at the end of the tutorial.) 
+It is important that the reference sequences we choose do not have too
+many ambiguous nucleotides because they make the models less
+specific. (Indeed we may want our models to be less specific and more
+general in some areas of the genome that are less highly conserved,
+but including ambiguous nucleotides from a single reference sequence
+is not the best way to do this. We'll revisit this topic briefly at
+[the end of the tutorial](#limit-align).)
 
-Because we have many candidates, we can afford to remove sequences
-with 1 or more ambiguous nucleotides. We can list all such sequences
-using the `count-ambigs.pl` *miniscript* included with VADR:
+Because we have many candidates, we may be able to afford to removing
+all sequences with 1 or more ambiguous nucleotides. We can determine
+how many ambiguous characters are in each sequence using the
+`count-ambigs.pl` *miniscript* included with VADR:
 
 ```
-$ perl $VADRSCRIPTSDIR/miniscripts/count-ambigs.pl rsvA.140.fa
+$ perl $VADRSCRIPTSDIR/miniscripts/count-ambigs.pl rsvA.140.fa | head
 KJ672441.1     0 15173 0.0000
 KJ672451.1     0 15173 0.0000
 KJ672457.1     0 15172 0.0000
@@ -1233,8 +1237,6 @@ KU950524.1     0 15233 0.0000
 KU950596.1     0 15228 0.0000
 KU950627.1     0 15228 0.0000
 KU950639.1     0 15232 0.0000
-KU950666.1     0 15061 0.0000
-..snip..
 ```
 
 The second field is the number of ambiguous nucleotides in each
@@ -1242,17 +1244,20 @@ sequence. We can fetch out all lines that have 1 or more in this field
 with: 
 
 ```
-$ perl $VADRSCRIPTSDIR/miniscripts/count-ambigs.pl rsvA.140.fa | awk '{ printf("%s %s\n", $1, $2); }' | grep -v " 0" 
+$ perl $VADRSCRIPTSDIR/miniscripts/count-ambigs.pl rsvA.140.fa | awk '{ printf("%s %s\n", $1, $2); }' | grep -v " 0" | head 
 LC530050.1 1
 MG813982.1 46
 MN078121.1 7
 MN535098.1 217
 MN536995.1 1238
 MN536996.1 65
-..snip..
+MN536997.1 103
+MN536999.1 150
+MZ515551.1 98
+MZ515654.1 2780
 ```
 
-And to only save the sequences with 0 ambiguous nucleotides:
+And so to only save the sequences with 0 ambiguous nucleotides:
 ```
 $ perl $VADRSCRIPTSDIR/miniscripts/count-ambigs.pl rsvA.140.fa | awk '{ printf("%s %s\n", $1, $2); }' | grep " 0" | wc -l 
 90
@@ -1273,10 +1278,10 @@ two criteria:
 * similarity to other candidate sequences
 * length
 
-We want a sequence that is representative and one way to do that is to
-pick the sequence with a high average percent identity to all other
-candidates based on an alignment. We can use `v-annotate.pl` to
-generate multiple alignments of all candidates:
+One way to pick a representative is to pick the sequence with a high
+average percent identity to all other candidates based on an
+alignment. We can use `v-annotate.pl` to generate multiple alignments
+of all candidates:
 
 ```
 $ v-annotate.pl --out_stk --mdir rsv-models1 --mkey rsv rsvA.89.fa va-rsvA.89
@@ -1362,19 +1367,19 @@ MH760707.1  98.837  ON237101.1  97.860  MH760706.1  99.850
 ```
 
 The sequences with the highest average percent identities are good
-candidates. The final criterion is the length, we don't want the
-sequence to be too short. In this case, we know that the
+candidates. The final criterion is the length - we don't want the
+representative sequence to be too short. In this case, we know that the
 `NC_038235` and `NC_001781` models are considered "full length" as
 indicated in their GenBank annotation:
 
-[NC_038235](https://www.ncbi.nlm.nih.gov/nuccore/NC_038235)
+[`NC_038235`](https://www.ncbi.nlm.nih.gov/nuccore/NC_038235)
 ```
 COMMENT     REVIEWED REFSEQ: This record has been curated by NCBI staff. The
             reference sequence is identical to M74568.
             COMPLETENESS: full length.
 ```
 
-[NC_001781](https://www.ncbi.nlm.nih.gov/nuccore/NC_001781)
+[`NC_001781`](https://www.ncbi.nlm.nih.gov/nuccore/NC_001781)
 ```
 COMMENT     REVIEWED REFSEQ: This record has been curated by NCBI staff. The
             reference sequence is identical to AF013254.
@@ -1385,7 +1390,7 @@ COMMENT     REVIEWED REFSEQ: This record has been curated by NCBI staff. The
 So our new representatives should align end to end with their
 respective model RefSeqs. We can determine those that do by inspecting
 the alignments. To make viewing the alignments easier, we can pull out
-only the top 10 candidates from each using the `esl-alimanip` program
+only the top 10 candidates for each subtype using the `esl-alimanip` program
 that is installed with VADR:
 
 ```
@@ -1454,8 +1459,8 @@ KY982516.1         TTATATGTATATTAACTAAATTACGAGATATTA------------------------
 //
 ```
 
-So `KY654518.1` will be our new RSV A reference sequence. Repeat the
-drill for the `rsvB.top10.stk` alignment:
+So `KY654518.1` will be our new RSV A reference sequence. We can
+repeat the drill for the `rsvB.top10.stk` alignment:
 
 ```
 MH760654.1         ----------------------------------------------------------------------------------------
@@ -1513,6 +1518,15 @@ OR496332.1         GTCTAAAACTAACAATCACACATGTGCATTTAC----------------------------
 #=GC RF            GTCTAAAACTAACAATGATACATGTGCATTTACAACACAACGAGACATTAGTTTTTGACACTTTT.TTTC..TCGT.
 //
 ```
+
+The final step is to see if `KY654518` and `MZ516105` satisfy the
+criteria that the corresponding `gene` and `CDS` coordinates are
+identical, unlike in the RefSeqs. Inspecting the GenBank record pages for
+[`KY654518`](https://www.ncbi.nlm.nih.gov/nuccore/KY654518) and 
+[`MZ516105`]((https://www.ncbi.nlm.nih.gov/nuccore/MZ516105) allows us
+to confirm that they do. (If they did not, we could manually modify the `gene`
+feature boundaries in the model info file after running `v-build.pl`
+so that they did.)
 
 #### <a name="step5-build"></a> Building new models from our new representative sequences
 
@@ -1576,11 +1590,12 @@ $ v-annotate.pl --mdir rsv-models2 --mkey rsv rsv-models2/rsv.fa va-rsv2
 #
 ```
 
-### Rerun `v-annotate.pl` on our existing training set using new models
+#### <a name="step5-rerun"></a> Rerun `v-annotate.pl` on our existing training set using new models
 
-We can repeat the `v-annotate.pl` command from step 2, but this
-time we will use the `--out_stk` option to save multiple alignments
-for reasons that will become clear below:
+Next we want to evaluate the performance of our new models. 
+We can repeat the `v-annotate.pl` command from step 2 using our
+new models, but this time we will use the `--out_stk` option to save
+multiple alignments for reasons that will become clear below:
 
 ```
 $ v-annotate.pl --out_stk --mdir rsv-models2 --mkey rsv rsv.r500fa va2-r500
@@ -1591,7 +1606,7 @@ $ v-annotate.pl --out_stk --mdir rsv-models2 --mkey rsv rsv.r500fa va2-r500
 ### <a name="step6"></a> Step 6: Analyze the results and update the models accordingly
 
 This time, from the `v-annotate.pl` output we can tell that many more
-sequences passed than with the original models, when only 6 of 500 passed:
+sequences passed than with the original models, when only 6 out of 500 passed:
 
 ```
 # Summary of classified sequences:
@@ -1608,48 +1623,52 @@ sequences passed than with the original models, when only 6 of 500 passed:
 ```
 
 But there are still 233 sequences that do not pass. As we did
-previously, we can walk through the most common types of alerts. But
-this time, we can update our models so they do not report alerts that 
-are due to valid biological diversity that we want `v-annotate.pl` to
-allow. It makes sense to do that at this stage because we 
-know we are using good representative sequences for our models, based
-on the work we did previously to investigate the alerts present in the
-majority of our sequences. 
+previously, we can walk through the most common types of alerts to
+investigate the reasons for the failures. But this time, we will
+modify our models so that they do not report alerts due to valid
+biological diversity that we want `v-annotate.pl` to allow. It makes
+sense to start modifying the model at this stage (as opposed to
+building yet another model) because we know we are using good
+representative sequences for our models, based on the work we did
+analyzing the results of the initial RefSeq models.
 
-### <a name="step6-strategies"></a> Strategies for updating models
+### <a name="step6-strategies"></a> Strategies for modifying models
 
-There are several ways we can update our models to avoid reporting
+There are several ways we can modify or update our models to avoid reporting
 alerts for expected biological characteristics, including:
 
 1. **Add a new protein to the blastx protein library for a model to
    account for protein sequence variability.** This
    can help remove unnecessary alerts related to the protein validation stage, most
-   commonly: `indfpst5`, `indfpst3`, `insertnp` and `deletinp`.
+   commonly: `indfpst5`, `indfpst3`, `insertnp` and
+   `deletinp`. [There are two examples of this strategy detailed below:
+   [1](#step6-addblastx) and [2](#step6-alternative-blastx).
 
 2. **Add **alternative features** to the model info file, along with
-   corresponding proteins to the blastx protein library.** Some CDS may
-   have multiple positions, with respect to the reference model, for the
-   start and/or stop codon. We can deal with this by adding all of the
-   acceptable alternatives as features to the model info file, and
-   `v-annotate.pl` will attempt to annotate each of them and report
-   annotation for the single alternative that yields the fewest fatal
-   alerts. 
+   corresponding proteins to the blastx protein library.** Some CDS
+   may have multiple start and stop positions, with respect to the
+   reference model.  We can deal with this by adding all of the
+   acceptable alternatives as separate features to the model info
+   file. `v-annotate.pl` will attempt to annotate each of the
+   alternatives and report annotation for the single alternative that
+   yields the fewest fatal alerts. [There is an example of this
+   strategy detailed [below](#step6-alternative).
 
-3. **Add an alert *exception* to the model info file.** For some alerts,
-   exceptions can be added that prevent the reporting of alerts in
-   specific model regions. For example, an exception can be added to
-   prevent the reporting of a `dupregin` alert due to an expected
-   repetitive region. 
+3. **Add an alert *exception* to the model info file.** For some alert
+   types, exceptions can be added that prevent the reporting of alerts
+   in specific model regions. For example, an exception can be added
+   to prevent the reporting of a `dupregin` alert due to an expected
+   repetitive region.
 
 4. **Rebuild the covariance model from a new input alignment.** We can
-   still use the same reference sequence and coordinates, but by
+   still use the same reference sequence and positions, but by
    buildng a new model from an alignment with multiple sequences,
-   certain alerts that caused by sequence differences with the
-   reference model can be prevented.
+   certain alert instances caused by sequence differences with the
+   reference sequence can be prevented.
 
 5. **Specify features as non-essential**. By adding a a
-   `misc_not_failure` flag to a feature in a feature info file, we can
-   make it so that many types of fatal alerts do not cause a sequence
+   `misc_not_failure` flag to a feature in the model info file, we can
+   specify that many types of fatal alerts *not* cause a sequence
    to fail, but instead cause the associated feature to be annotated
    as a `misc_feature` in the output. 
 
@@ -1657,10 +1676,12 @@ alerts for expected biological characteristics, including:
    some alerts fatal or non-fatal**. For some viruses, certain fatal alerts
    may be so common that they are expected for many sequences, yet we
    don't want them to cause a sequence to fail. We can make those
-   alerts non-fatal using the command-line option `alt_pass`.
+   alerts non-fatal using the command-line option
+   `alt_pass`. (Technically, this isn't a modification to the models,
+   but rather a change in how `v-annotate.pl` is run.)
 
-I will walk you through examples for the first three strategies, and
-elaborate on four through six below.
+We will now walk through examples for the first four strategies, and
+elaborate on five and six below.
 
 First, we need to identify the characteristics that we would
 like to address through model modification. Once again we can start by
@@ -1693,7 +1714,7 @@ Here are the counts for all of the fatal alerts, from the
 ```
 
 Sorting by number of sequences, there are 9 alerts that occur in more
-than 10 sequence (more than 2\% of sequences):
+than 10 sequences (more than 2\% of the sequences):
 
 ```
 32    deletinp  yes      DELETION_OF_NT                  feature    138   138  too large of a deletion in protein-based alignment
@@ -1726,21 +1747,20 @@ $ grep deletinp va3-rsv.r500/va3-rsv.r500.vadr.alt | awk '{ printf ("%s %s %s\n"
 ```
 
 The deletions are occuring in the attachment glycoprotein CDS in a
-region that may be familiar - it is close to the duplicate region we
-observed in iteration 1. We attempted to address the `dupregin` alerts
-in iteration 1 by rebuilding our models with new sequences that
-*included* the duplicated region, but now it seems that we are observing the sequences
-that do not have the duplication failing with a `deletinp`
-alert. These are a minority of the sequences but still a significant
-number in each model. 
+region that is close to the duplicate region [we observed in our
+RefSeq model results](#step4-dupregin). We attempted to address those
+`dupregin` alerts by rebuilding our models with new sequences that
+*included* the duplicated region, but now it seems that we are
+observing that sequences that do not have the duplication are failing with
+a `deletinp` alert. These are a minority of the sequences but still a
+significant number in each model.
 
 The `deletinp` alert occurs when there is a region in the best
-'blastx' alignment that includes a deletion that is longer than 9
+blastx alignment that includes a deletion that is longer than 9
 amino acids (27 nucleotides). Let's take a look at one example of the
 most common deletion span: `5461..5532:+` to the `KY654518` (RSV A)
 model, by randoming selecting one sequence and rerunning
-`v-annotate.pl` on it with the `--keep` option as we did earlier in
-iteration 1. 
+`v-annotate.pl` on it with the `--keep` option as we did earlier:
 
 ```
 # pick a sequence with the deletinp alert:
@@ -1751,9 +1771,8 @@ KX655676.1
 # fetch the sequence
 $ $VADREASELDIR/esl-sfetch -f rsv.r500.fa ex6.list > ex6.fa
 
-# run v-annotate.pl on these sequences with 
-# --keep option to save all output files
-$ $VADRSCRIPTSDIR/v-annotate.pl --keep --mdir rsv-models2 --mkey rsv ex6.fa va-ex6
+# run v-annotate.pl on these sequences with --keep option to save all output files
+$ v-annotate.pl --keep --mdir rsv-models2 --mkey rsv ex6.fa va-ex6
 ```
 
 ```
@@ -1768,9 +1787,9 @@ $ $VADRSCRIPTSDIR/v-annotate.pl --keep --mdir rsv-models2 --mkey rsv ex6.fa va-e
 #---  --------  -------  --------------  -------  -----  ----  -----------
 ```
 
-The relevant file is the `blastx` output file
+The relevant file is the blastx output file
 `va-ex6/va-ex6.vadr.KY654518.blastx.out`, and we are interested in the
-`blastx` alignment for the attachment glycoprotein, which is positions
+blastx alignment for the attachment glycoprotein, which is positions
 `4681..5646:+` as found in the `.minfo` file:
 
 ```
@@ -1820,7 +1839,7 @@ relative to the reference sequence `KY654318.1`. The `blastx` library
 created by `v-build.pl` only has a single protein sequence for the
 attachment glycoprotein, the translation of the `KY654318.1` CDS from
 positions `4681..5646:+`. But we can add additional proteins that will
-then be used as additional subjects in the `blastx` protein validation
+then be used as additional subjects in the blastx-based protein validation
 stage. 
 
 One option for such a sequence would be to use the attachment
@@ -1834,11 +1853,12 @@ significantly more effort for a presumably small improvement over the
 alternative of restricting possibilities to only our training set.)
 
 We can extract the candidate sequences from the alignment that was
-output from `v-annotate.pl` (due to the use of the `--out_stk`
-option). We are interested in a representative example of the CDS with
-the `deletinp` alert for the `KY654318` model, so it makes sense to
-use a sequence with the most common deletion of reference positions
-`5461..5532:+`. To get a list of the sequences and extract the relevant alignment subset: 
+output from `v-annotate.pl` (which was only output because we used the
+`--out_stk` option). We are interested in a representative example of
+the CDS with the `deletinp` alert for the `KY654318` model, so it
+makes sense to use a sequence with the most common deletion of
+reference positions `5461..5532:+`. To get a list of qualifying
+sequences and extract the relevant alignment subset:
 
 ```
 # get a list of the 69 candidates
@@ -1846,27 +1866,38 @@ $ cat va2-rsv.r500/va2-rsv.r500.vadr.alt | grep deletinp | grep KY654518 | grep 
 
 # extract the 69 aligned sequences from the alignment:
 $ $VADREASELDIR/esl-alimanip --seq-k ex7.list va2-rsv.r500/va2-rsv.r500.vadr.KY654518.align.stk > ex7.stk 
+```
 
+Now, since we are only interested in finding a representative
+attachment glycoprotein CDS sequence (as opposed to the full
+sequence), we can restrict the sequences to only that CDS using the
+`esl-alimask` program that is installed with VADR:
+
+```
 # extract the attachment glycoprotein region:
 $ $VADREASELDIR/esl-alimask -t --t-rf ex7.stk 4681..5646 > ex7.ag.stk
 ```
 
-Next, as we did in iteration 1 to find new reference sequences, we can
-take the follow steps to identify our reference:
+Next, as we did when looking for new reference sequences above, we can
+take the following steps to identify a good representative attachment
+glycoprotein CDS sequence:
 
 1. Remove all sequences with any ambiguous nucleotides using the
 `count-ambigs.pl` script.
 
-2. use the `esl-alipid` and the `esl-alipid-per-seq-stats.pl` script
-   to find the sequence out of the candidates that has the highest average
+2. use `esl-alipid` and the `esl-alipid-per-seq-stats.pl` script
+   to find the candidate sequence that has the highest average
    percent identity to all other candidate sequences.
 
 ```
 # convert to fasta 
 # $ $VADREASELDIR/esl-reformat fasta ex7.ag.stk > ex7.ag.fa
+
 # remove any sequences with ambiguous nucleotides
-# $ perl $VADRSCRIPTSDIR/miniscripts/count-ambigs.pl ex7.ag.fa | awk '{ printf("%s %s\n", $1, $2); }' | grep " 0" | awk '{ printf("%s\n", $1); }' > ex7.60.list
-# $ $VADREASELDIR/esl-alimanip --seq-k ex7.60.list ex7.ag.stk > ex7.ag.60.stk
+# $ perl $VADRSCRIPTSDIR/miniscripts/count-ambigs.pl ex7.ag.fa | awk '{ printf("%s %s\n", $1, $2); }' | grep " 0" | awk '{ printf("%s\n", $1); }' | wc -l
+60
+$ perl $VADRSCRIPTSDIR/miniscripts/count-ambigs.pl ex7.ag.fa | awk '{ printf("%s %s\n", $1, $2); }' | grep " 0" | awk '{ printf("%s\n", $1); }' > ex7.60.list
+# $VADREASELDIR/esl-alimanip --seq-k ex7.60.list ex7.ag.stk > ex7.ag.60.stk
 
 # determine pairwise percent identity
 $ $VADREASELDIR/esl-alipid ex7.ag.60.stk > ex7.ag.60.alipid
@@ -1875,7 +1906,7 @@ $ $VADREASELDIR/esl-alipid ex7.ag.60.stk > ex7.ag.60.alipid
 $ perl $VADRSCRIPTSDIR/miniscripts/esl-alipid-per-seq-stats.pl ex7.ag.60.alipid > ex7.ag.60.alipid.perseq
 
 # list top candidates
-$ grep -v ^\# ex7.ag.alipid.perseq | sort -rnk 2 | head
+$ grep -v ^\# ex7.ag.60.alipid.perseq | sort -rnk 2 | head
 KX510193.1  96.631  KF826854.1  91.390  KJ627315.1  99.890
 KJ627315.1  96.593  KF826854.1  91.500  KX510193.1  99.890
 KX510189.1  96.541  KF826854.1  91.280  KX510193.1  99.890
@@ -1888,12 +1919,13 @@ KX510195.1  96.357  KF826854.1  91.050  KX510250.1  100.000
 KX510148.1  96.357  KF826854.1  91.050  KX510250.1  100.000
 ```
 
-We will use the `KX510193.1` attachment glycoprotein sequence, which
-has the highest average nucleotide percent identity with all other
-candidates. (We could have used a protein alignment for this step,
-especially since we are trying to optimize blastx alignments, but the
-nucleotide based approach we've taken here should be a good proxy for
-the protein-based approach.)
+We will use the `KX510193.1` attachment glycoprotein CDS sequence,
+which has the highest average nucleotide percent identity with all
+other candidates. (We could have used a protein alignment as the basis
+for selecting a representative in this step, especially since we are
+trying to optimize blastx alignments, but the nucleotide-based
+approach we've taken here should be a good enough proxy for the
+protein-based approach.)
 
 To actually add the new sequence to our blastx library, we will use
 the `build-add-to-blast-db.pl` script. To determine how to use that
@@ -1939,7 +1971,8 @@ $ grep KX510193 va2-rsv.r500/va2-rsv.r500.vadr.ftr | grep attachment
 The relevant field is the `seq coords` field, so the relevant value is
 `4409..5302:+`.
 
-So all of the relevant values for all arguments are:
+So all of the relevant values for the `build-add-to-blast-db.pl`
+script are:
 
 | command-line argument    | value |
 |--------------------------|-------------------------|
@@ -1951,7 +1984,7 @@ So all of the relevant values for all arguments are:
 | `<model-CDS-feature-coords>` | `4681..5646:+`       | 
 | `<name for output directory>` | `vb-ex7`             | 
 
-To add the protein:
+To add the protein to the blastx library:
 ```
 $ perl $VADRSCRIPTSDIR/miniscripts/build-add-to-blast-db.pl \
 rsv-models2/rsv.minfo \
@@ -2029,14 +2062,14 @@ model info file. Note that now there are two sequences that end with
 original translated CDS from `KY654518.1` and
 `KX510193.1:4409..5302:+/4681..5646:+` which is the sequence we just
 added. Both of these sequences are now possible blastx subject
-sequences for the attachment glycoprotein.
+sequences for the attachment glycoprotein CDS.
 
 We can then perform a sanity check to make sure that this added
 sequence has the intended effect. Let's run `v-annotate.pl` on our
 `ex6.fa` sequence. It should now pass. 
 
 ```
-$ $VADRSCRIPTSDIR/v-annotate.pl --keep --mdir rsv-models2 --mkey rsv ex6.fa va-ex6
+$ v-annotate.pl -f --keep --mdir rsv-models2 --mkey rsv ex6.fa va-ex6
 ```
 
 ```
@@ -2066,14 +2099,14 @@ alignment, but this is a non-fatal alert. The `deletinp` alert is now
 gone.
 
 At this point, we could continue to address the `deletinp` instances,
-probably first for the 35 `MZ516105` alerts. To do that, we would
-repeat the above procedure to find a suitable representative sequence
-to add to the protein blast library. After that, the next step would
-be to rerun all of the sequences that failed due to `deletinp` alerts
+probably next for the 35 `MZ516105` alerts. To do that, we would
+repeat the above procedure to find and add a suitable representative sequence
+to add to the protein blast library. After that, we might want to 
+to rerun all of the sequences that failed due to `deletinp` alerts
 with the updated models. If a significant number of sequences still
 fail due to `deletinp` alerts at that stage, then we could repeat the
 process again. For the purposes of this tutorial, we will move on to the next most
-common alert `indf3pst` to provide a slightly different example of
+common alert `indf3pst` to provide a different example of
 updating a model.
 
 ### <a name="step6-alternative"></a>Adding an alternative CDS feature with different stop coordinate
@@ -2092,16 +2125,17 @@ $ cat va2-rsv.r500/*alt | grep indf3pst | head -n 1
 
 This alert occurs if the "protein-based alignment does not extend
 close enough to nucleotide-based alignment 3' endpoint". A relevant
-field is field 26, which explains how far the protein-based endpoint
+field is space-delimited field 26, which is part of the `alert detail`
+column. Field 26 for `indf3pst` alerts lists how far the protein-based endpoint
 and nucleotide based endpoint is. In this case it is 6 nucleotides
 which exceeds the maximum allowed without an alert: `6>5`.
 
-When grouping instances of this alert we should output this value as
-well. Any instances for the same feature and the same distance may be
+When grouping instances of this alert we should output this field 26 value as
+well because any instances of this alert for the same feature *and* the same distance may be
 able to be addressed with the same model modification:
 
 ```
-$ grep indf3pst va2-rsv.r500/va2-rsv.r500.vadr.alt | awk '{ printf ("%s %s %s %s\n", $3, $5, $12, $26); }' | sort | uniq -c | sort -rnk 1
+$ grep indf3pst va2-rsv.r500/va2-rsv.r500.vadr.alt | awk '{ printf ("%s %s %s %s\n", $3, $5, $12, $26); }' | sort | uniq -c | sort -rnk 1 | head
      49 MZ516105 attachment_glycoprotein 5620..5620:+ [6>5,
      25 KY654518 attachment_glycoprotein 5646..5646:+ [6>5,
      15 KY654518 attachment_glycoprotein 5646..5646:+ [9>8,
@@ -2112,13 +2146,12 @@ $ grep indf3pst va2-rsv.r500/va2-rsv.r500.vadr.alt | awk '{ printf ("%s %s %s %s
       1 MZ516105 polymerase 15060..15060:+ [24>5,
       1 MZ516105 polymerase 15060..15060:+ [2316>5,
       1 MZ516105 polymerase 15060..15060:+ [22>5]
-      1 MZ516105 polymerase 15060..15060:+ [2078>5,
-..snip..
 ```
 
-It turns out the example we looked at about in `attachment
-glycoprotein` for model `MZ516105` with a difference of 6 nucleotides
-is the most common one. Let's investigate one of those sequences further:
+It turns out that the example we looked at above in attachment
+glycoprotein for model `MZ516105` with a difference of 6 nucleotides
+is the most common one. Let's investigate one of the sequences with
+that particular alert further:
 
 ```
 $ grep indf3pst va2-rsv.r500/va2-rsv.r500.vadr.alt | grep MZ516105 | grep 5620 | awk '{ print $2 }' | $VADREASELDIR/esl-selectn 1 - > ex8.list
@@ -2127,7 +2160,7 @@ OR326763.1
 $ $VADREASELDIR/esl-sfetch -f rsv.r500.fa ex8.list > ex8.fa
 
 # re-run v-annotate.pl on:
-$ $VADRSCRIPTSDIR/v-annotate.pl --keep --mdir rsv-models2 --mkey rsv ex8.fa va-ex8
+$ v-annotate.pl --keep --mdir rsv-models2 --mkey rsv ex8.fa va-ex8
 ```
 
 ```
@@ -2148,11 +2181,11 @@ when the expected stop codon is missing, and the closest stop codon
 occurs downstream of the expected position. This suggests that perhaps
 many of those 49 sequences with this same alert also have these
 alerts. To test that we can run `v-annotate.pl` on all 49 of them, or
-if we want to save time, on a subset of 10:
+to save some time, on a random subset of 10:
 
 ```
 $ grep indf3pst va2-rsv.r500/va2-rsv.r500.vadr.alt | grep MZ516105 | grep 5620 | awk '{ print $2 }' | $VADREASELDIR/esl-selectn 10 - > ex8.10.list
-$ $VADRSCRIPTSDIR/v-annotate.pl --keep --mdir rsv-models2 --mkey rsv ex8.10.fa va-ex8.10
+$ v-annotate.pl --keep --mdir rsv-models2 --mkey rsv ex8.10.fa va-ex8.10
 ```
 
 After this finishes, we can see that these three alerts do tend to
@@ -2208,8 +2241,10 @@ I've added `vvv` characters indicating the expected stop codon
 position and also the existing stop codon 21 nucleotides
 downstream. I've also added `*` characters at the bottom of the
 alignment at positions where the sequence and reference model are
-identical. Note that the end of the CDS has the highest number of
-mismatches, which explains the `indf3pst` alert for this CDS.
+identical. Note that the final few codons of the CDS before the
+expected stop have the highest number of mismatches, which explains
+the `indf3pst` alert for this CDS - the blastx alignment stopped prior
+to the final few codons.
 
 Because this is such a common characteristic of RSV B sequences, we'd
 like our model to allow for it and not report any fatal alerts when it
@@ -2218,10 +2253,10 @@ feature** for the attachment glycoprotein CDS.
 
 Adding an alternative feature for a CDS requires two steps:
 
-Step 1. Manually edit the model info file
+1. Manually edit the model info file
 `rsv-models2/rsv.minfo` in a text editor. 
 
-Step 2. Add one (or more) protein sequences to the blastx protein
+2. Add one (or more) protein sequences to the blastx protein
      library that correspond to the alternative CDS feature, like we
      did to address the common `deletinp` alerts above.
 
@@ -2243,30 +2278,36 @@ To create an alternative CDS feature that starts at the same position
 FEATURE MZ516105 type:"CDS" coords:"4688..5641:+" parent_idx_str:"GBNULL" gene:"G" product:"attachment glycoprotein" alternative_ftr_set:"attachment(cds)"
 ```
 
-Note the different stop codon *and* the new key/value pair:
+Note the different stop position *and* the new key/value pair:
 `alternative_ftr_set="attachment(cds)"`. We also need to update the
-first line above to include this field. This will inform
+first line above to include this new key/value pair. This will inform
 `v-annotate.pl` that these two CDS are members of the same alternative
-feature set, and only 1 of them should be annotated in the output
-`.tbl` file. `v-annotate.pl` will select the CDS that has fewer fatal
-alerts and annotate that one. If they have the same number of fatal
+feature set, and that only one of them should be annotated in the output
+`.tbl` file. `v-annotate.pl` will select the CDS feature that has fewer fatal
+alerts and annotate only that one. If they have the same number of fatal
 alerts, the one that occurs first in the model info file will be
 annotated. 
 
 We also want to add a new `gene` feature line that will be coupled
 with the new `CDS` feature line (same coordinates) so that the correct
 gene coordinates will be annotated based on which CDS is annotated. 
+(Importantly: we only need to do this because we want the annotated `gene`
+feature to have the same coordinates as the annotated `CDS` feature. If
+this wasn't the case *and* the `gene` boundaries completely spanned the
+`CDS` boundaries (potentially with extra nucleotides for the `gene`), then
+we would **not** need to add a new `gene` feature line.)
 
 ```
 FEATURE MZ516105 type:"gene" coords:"4688..5641:+" parent_idx_str:"GBNULL" gene:"G" alternative_ftr_set="attachment(gene)" alternative_ftr_set_subn:"attachment(cds).1"
 ```
 
-This new `gene` feature line includes 
-`alternative_ftr_set="attachment(gene)"` (it is important that this is
+This new `gene` feature line includes
+`alternative_ftr_set="attachment(gene)"` (it is important that the
+value in quotes ("attachment(gene)") is
 different from the CDS feature set name), and an additional key/value
 pair: `alternative_ftr_set_subn="attachment(CDS).2"`. This means that
 this `gene` should only be annotated if the second feature in the
-`alternative_ftr_set="attachment(CDS)"` group is annotated. 
+`alternative_ftr_set="attachment(CDS)"` group is annotated.
 
 Additionally, we need to update the two original lines for the
 features at positions `4688..5620:+` by adding `alternative_ftr_set`
@@ -2282,27 +2323,29 @@ FEATURE MZ516105 type:"CDS" coords:"4688..5641:+" parent_idx_str:"GBNULL" gene:"
 Note that the order is important because the index in the
 `alternative_ftr_set` values 
 `attachment(cds).1` and `attachment(cds).2` for the two `gene`
-features correspond to specifically to the first and second CDS features
+features correspond specifically to the first and second CDS features
 that have the `alternative_ftr_set` value `attachment(cds)`.
 
-Now we can move onto step 2, adding a protein to the blastx protein
-library. As we did above when addressing the common `deletinp` alert,
-we want to find a representative sequence out of the CDS that stop at
-position `5641`. I repeated the steps detailed above using the set of 
+<a name="step6-alternative-blastx"></a>Now we can move onto step 2,
+adding a protein to the blastx protein library. As we did above when
+addressing the common `deletinp` alert, we want to find a
+representative sequence out of all the CDS sequences that stop at
+position `5641`. I repeated the steps detailed above using the set of
 41 sequences that end at this position as candidates and ended up
 choosing `OK654726.1` as the representative. I then added it to the
 blastx library using the `build-add-to-blast-db.pl` script. The steps
-are shown below (and discussed in more detail for the `deletinp`
-alert example above). One difference here is that we need to make sure
-that we include the stop position in `OK654726.1` that aligns to the
-new stop position at reference position `5641` which differs from what
-is reported in the `.ftr` file. We may need to consult the alignment
-of `OK654726.1` to determine this (after maybe rerunning
-`v-annotate.pl`). 
+are shown below (and discussed in more detail for the `deletinp` alert
+example above). One difference here is that we need to make sure that
+we include the stop position in `OK654726.1` that aligns to the new
+stop position at reference position `5641` which differs from what is
+reported in the `.ftr` file. We may need to consult the alignment of
+`OK654726.1` to determine this (after maybe rerunning
+`v-annotate.pl`).
 
 ```
 # determine number of sequences that have attachment glycoprotein ended at 5641 
 $ grep 5641 va2-rsv.r500/*alt | grep MZ516105 | grep mutendex | wc -l
+41
 $ grep 5641 va2-rsv.r500/*alt | grep MZ516105 | grep mutendex | awk '{ print $2 }' > ex8.41.list
 
 # fetch out 41 sequences and extract only the attachment glycoprotein alignment
@@ -2311,13 +2354,15 @@ $ $VADREASELDIR/esl-alimask -t --t-rf ex8.41.stk 4688..5641 > ex8.41.ag.stk
 
 # convert to fasta and remove any seqs with ambiguous nts
 $ $VADREASELDIR/esl-reformat fasta ex8.41.ag.stk > ex8.41.ag.fa
+$ perl $VADRSCRIPTSDIR/miniscripts/count-ambigs.pl ex8.41.ag.fa | awk '{ printf("%s %s\n", $1, $2); }' | grep " 0" | awk '{ printf("%s\n", $1); }' | wc -l
+40
 $ perl $VADRSCRIPTSDIR/miniscripts/count-ambigs.pl ex8.41.ag.fa | awk '{ printf("%s %s\n", $1, $2); }' | grep " 0" | awk '{ printf("%s\n", $1); }' > ex8.40.list
 $ $VADREASELDIR/esl-alimanip --seq-k ex8.40.list ex8.41.ag.stk > ex8.40.stk
 
 # determine average percent id and choose representative
 $ $VADREASELDIR/esl-alipid ex8.40.stk > ex8.40.alipid
 $ perl $VADRSCRIPTSDIR/miniscripts/esl-alipid-per-seq-stats.pl ex8.40.alipid > ex8.40.alipid.perseq
-$ grep -v ^\# ex8.40.alipid.perseq | sort -rnk 2 | head
+$ grep -v ^\# ex8.40.alipid.perseq | sort -rnk 2 | head -n 1
 OK649726.1  97.727  MG642027.1  92.780  OK649687.1  99.480
 
 # add representative to blastx db
@@ -2335,7 +2380,7 @@ As a sanity check, we can rerun `v-annotate.pl` on our `ex8` sequence
 `OR326763.1`, it should now pass:
 
 ```
-$ $VADRSCRIPTSDIR/v-annotate.pl --keep --mdir rsv-models2 --mkey rsv ex8.fa va-ex8.2
+$ v-annotate.pl --keep --mdir rsv-models2 --mkey rsv ex8.fa va-ex8.2
 ```
 
 ```
@@ -2354,10 +2399,14 @@ $ $VADRSCRIPTSDIR/v-annotate.pl --keep --mdir rsv-models2 --mkey rsv ex8.fa va-e
 
 ```
 
-And we can verify that the `attachment glycoprotein` CDS was annotated
-using the alternative stop ending at `5641` in the `.ftr` file:
+And we can verify that the attachment glycoprotein CDS was annotated
+using the alternative stop ending at `5641` in the `.ftr` file, by looking in the `model coords` column:
 
 ```
+$ head -n 3 va-ex8.2/va-ex8.2.vadr.ftr
+#     seq           seq                  ftr   ftr                         ftr  ftr  par                                                                                                seq          model  ftr   
+#idx  name          len  p/f   model     type  name                        len  idx  idx  str  n_from   n_to  n_instp  trc  5'N  3'N  p_from  p_to  p_instp   p_sc  nsa  nsn         coords         coords  alerts
+#---  ----------  -----  ----  --------  ----  -------------------------  ----  ---  ---  ---  ------  -----  -------  ---  ---  ---  ------  ----  -------  -----  ---  ---  -------------  -------------  ------
 $ grep 5641 va-ex8.2/va-ex8.2.vadr.ftr
 1.13  OR326763.1  15191  PASS  MZ516105  gene  G                           954   14   -1    +    4639   5592        -  no     0    0       -     -        -      -    1    0   4639..5592:+   4688..5641:+  -     
 1.14  OR326763.1  15191  PASS  MZ516105  CDS   attachment_glycoprotein     954   16   -1    +    4639   5592        -  no     0    0    4639  5589        -   1537    1    0   4639..5592:+   4688..5641:+  -     
@@ -2622,7 +2671,7 @@ $ grep deletinp va3-rsv.r500/va3-rsv.r500.vadr.alt | grep MZ516105 | grep attach
 $ cat ex11.list
 OQ101882.1
 $ $VADREASELDIR/esl-sfetch -f rsv.r500.fa ex11.list > ex11.fa
-$ $VADRSCRIPTSDIR/v-annotate.pl --keep --mdir rsv-models2 --mkey rsv ex11.fa va-ex11
+$ v-annotate.pl --keep --mdir rsv-models2 --mkey rsv ex11.fa va-ex11
 ```
 
 ```
