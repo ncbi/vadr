@@ -1,4 +1,4 @@
-#<a name="top"></a> Advanced tutorial: building an RSV model library
+# <a name="top"></a>Advanced tutorial: building an RSV model library
 
 The `v-build.pl` program will create a model from a single INSDC
 accession and include CDS, gene and mature peptide features. However,
