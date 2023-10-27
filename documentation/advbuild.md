@@ -3110,42 +3110,45 @@ protein coding gene, which exhibits significantly more sequence
 variability than any of the viruses VADR is used for. [The VADR
 library of COX1
 models](https://bitbucket.org/nawrockie/vadr-models-cox1) includes 78
-profile models built from multiple alignments, 20 of which included
+profile models built from multiple alignments, 20 of which include
 more than 100 aligned sequences.
 
 ### <a name="limit-secondary"></a> Incorporating secondary structure
 
-Again, if you're familiar with
-[Infernal](http://eddylab.org/infernal/), you may be confused as to
-why there is no step at the beginning of the procedure above to add
-predicted (or known) secondary structure to the CM to take advantage
-of during validation and annotation. We could certainly add such a
+If you're familiar with [Infernal](http://eddylab.org/infernal/), you
+may be confused again as to why there is no step at the beginning of
+the procedure above to add predicted (or known) secondary structure to
+the CM. The main reason CM methods exist is to take advantage of
+conserved RNA secondary structure for RNA sequence analysis. The
+conserved structure information could be taken advantage
+of during sequence validation and annotation. To do this, we could add a
 step to create an alignment file annotated with secondary structure of
-any hits found using Infernal and the Rfam database. There's a
-separate documentation page on how to do that (on the VADR GitHub
-wiki)
-[here](#https://github.com/ncbi/vadr/wiki/Rfam-based-structural-annotation-of-a-viral-genome-sequence).
-It turns out there are actually zero Rfam hits (as of release 14.9) in
-the RSV RefSeq sequences. That fact, along with my desire from
-increasing the length of this already very long tutorial, led to leave
-out that step above. That said, if you have the interest, please do
-try that additional step, which can be done before building the
-initial model, or after you've spent time refining it.
+any hits found in our reference sequence using Infernal and the Rfam
+database of RNA families, which includes hundreds of viral RNA
+families. There is a separate documentation page on how to do that (on
+the VADR GitHub wiki)
+[here](https://github.com/ncbi/vadr/wiki/Rfam-based-structural-annotation-of-a-viral-genome-sequence).
 
-There are at least two reasons you may want to try this: 
-adding secondary structure could improve the alignment accuracy, and
-it will allow you to enrich your annotations by adding some structural
-RNA features that are commonly absent from GenBank annotation.
+For RSV, it turns out there are actually zero Rfam hits (as of release
+14.9) in the RefSeq sequences. For other viruses though, if you have
+the time and interest, please do try to add secondary structure. There
+are at least two reasons you may want to try this: adding secondary
+structure could improve the alignment accuracy, and it will allow you
+to enrich your annotations by adding some structural RNA features that
+are commonly absent from GenBank annotation.  The [dengue virus] and
+[SARS-CoV-2 VADR
+models](https://bitbucket.org/nawrockie/vadr-models-sarscov2) both
+include some secondary structure in their CMs and structural RNA
+features (e.g. `stem_loop`, `ncRNA`).
+
+Once you've created a structure annotated stockholm alignment file,
+you can either use it as input to `v-build.pl` using the `--stk`
+option like in [this example for dengue
+virus](build.md#1.0library-dengue), or you can rebuild the CM later
+using `cmbuild` with the structure annotated alignment as input,
+similar to the [example above](#step6-cm).
 
 ---
-TOADD: 
-- also add example where you investigate and it turns out the failure
-  is legit and you shouldn't do anything about it
-- add info about searching literature to determine if, for example,
-  attachment glycoprotein has different possible stop codons? Or a big
-  deletion (I think I may have already done that)? 
-- proofread and add links
-- decide what to do about M2-2 start position in NC_038235
  
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
 
