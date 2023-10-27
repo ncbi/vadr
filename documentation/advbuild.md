@@ -3060,9 +3060,9 @@ are built by `v-build.pl`:
 ## <a name="limit"></a> Limitations of and alternatives to this approach
 
 The above procedure is one possible strategy for building VADR models
-for RSV. While the strategy is somewhat general, different strategies
+for RSV. While the strategy is somewhat general, different approaches
 may work better for other viruses. Below I discuss some of the
-limitations of this strategy and ideas for other strategies.
+limitations of this strategy and ideas for others.
 
 ---
 
