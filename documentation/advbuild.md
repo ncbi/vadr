@@ -60,6 +60,7 @@ approach](#limit) is included at the end of the tutorial.
 * [Step 2: construct a training set](#step2)
 * [Step 3: run `v-annotate.pl` on training set](#step3)
 * [Step 4: analyze results to determine if model is sufficient](#step4)
+  * [investigate common `cdsstopn` alerts](#step4-cdsstopn)
   * [investigate common `dupregin` alerts](#step4-dupregin)
   * [investigate common `indf3lcn` alerts](#step4-indf3lcn)
   * [investigate common `mutstart` alerts](#step4-mutstart)
@@ -108,7 +109,7 @@ listed in the resulting list will be RefSeq sequences `NC_038235`
 (subgroup A) and `NC_001781` (subgroup B). You can also filter to only
 RefSeq sequences using the "Sequence type" filter.
 
-### <a name="step1-build"></a> Build initial models from reference sequence(s)
+## <a name="step1-build"></a> Build initial models from reference sequence(s)
 
 Next, use `v-build.pl` to build the two models, specifying the
 `--group` and `--subgroup` options as below:
@@ -276,8 +277,6 @@ as described [here](annotate.md#options-split).
 
 ---
 
----
-
 ## <a name="step4"></a> Step 4: analyze the results and update models
 
 Next, we want to analyze the results. From the `v-annotate.pl` output (also saved to
@@ -380,7 +379,7 @@ Information on the individual alert instances can be found in the
 most common alerts in detail next. Documentation on the alerts can be
 found [here](annotate.md#alerts) with additional examples [here](alerts.md#top).
 
-### Investigate common `cdsstopn` alerts
+###<a name="step4-cdsstopn"></a> Investigate common `cdsstopn` alerts
 
 To see all the `cdsstopn` (early stop
 codon) alerts in the `.alt` file, we can use `grep` and `head`. Here are the
@@ -1141,7 +1140,7 @@ new set of models.
 
 ---
 
-### <a name="step5"></a> Step 5. (Potentially) choose new representative sequences and build new models
+## <a name="step5"></a> Step 5. (Potentially) choose new representative sequences and build new models
 
 It is not always necessary to build new models at this point. If all
 of the failure modes above had been in a minority of sequences, then
@@ -1528,7 +1527,7 @@ to confirm that they do. (If they did not, we could manually modify the `gene`
 feature boundaries in the model info file after running `v-build.pl`
 so that they did.)
 
-#### <a name="step5-build"></a> Building new models from our new representative sequences
+### <a name="step5-build"></a> Building new models from our new representative sequences
 
 To build our new models, we run `v-build.pl`:
 
@@ -1590,7 +1589,7 @@ $ v-annotate.pl --out_stk --mdir rsv-models2 --mkey rsv rsv-models2/rsv.fa va-rs
 #
 ```
 
-#### <a name="step5-rerun"></a> Rerun `v-annotate.pl` on our existing training set using new models
+### <a name="step5-rerun"></a> Rerun `v-annotate.pl` on our existing training set using new models
 
 Next we want to evaluate the performance of our new models. 
 We can repeat the `v-annotate.pl` command from step 2 using our
@@ -1603,7 +1602,7 @@ $ v-annotate.pl --out_stk --mdir rsv-models2 --mkey rsv rsv.r500fa va2-r500
 
 ---
 
-### <a name="step6"></a> Step 6: Analyze the results and update the models accordingly
+## <a name="step6"></a> Step 6: Analyze the results and update the models accordingly
 
 This time, from the `v-annotate.pl` output we can tell that many more
 sequences passed than with the original models, when only 6 out of 500 passed:
@@ -2538,11 +2537,11 @@ vb-ex10
 ```
 </details>
 
-#### <a name="step6-m2start"></a> Modeling `NC_038235`'s M2-2 CDS alternative start position with an alternative feature. 
+### <a name="step6-m2start"></a> Modeling `NC_038235`'s M2-2 CDS alternative start position with an alternative feature. 
 Above, when investigating `mutstart` alerts returned using the RefSeq
 models, we determined that `NC_038235` had a start position for M2-2
 that was six nucleotides upstream from the majority of our RSV A
-trainig sequences. When we switched to using a model based on
+training sequences. When we switched to using a model based on
 `KY654518` we began annotating the more common start position at
 position `8228`. But what if we wanted to annotate the earlier start
 position for those sequences that had it? We could do that by adding
@@ -2552,30 +2551,30 @@ beginning with `FEATURE KY654518` in the `rsv-models2/rsv.minfo` file
 that include `M2-2` would be replaced with these four lines:
 
 ```
-FEATURE KY654518 type:"gene" coords:"8222..8494:+" parent_idx_str:"GBNULL" gene:"M2-2" alternative_ftr-set:"M2-2(gene)" alternative_ftr_set_subn:"M2-2(cds).1"
-FEATURE KY654518 type:"gene" coords:"8228..8494:+" parent_idx_str:"GBNULL" gene:"M2-2" alternative_ftr-set:"M2-2(gene)" alternative_ftr_set_subn:"M2-2(cds).2"
-FEATURE KY654518 type:"CDS" coords:"8222..8494:+" parent_idx_str:"GBNULL" gene:"M2-2" product:"M2-2 protein" alternative_ftr-set:"M2-2(cds)"
-FEATURE KY654518 type:"CDS" coords:"8228..8494:+" parent_idx_str:"GBNULL" gene:"M2-2" product:"M2-2 protein" alternative_ftr-set:"M2-2(cds)"
+FEATURE KY654518 type:"gene" coords:"8222..8494:+" parent_idx_str:"GBNULL" gene:"M2-2" alternative_ftr_set:"M2-2(gene)" alternative_ftr_set_subn:"M2-2(cds).1"
+FEATURE KY654518 type:"gene" coords:"8228..8494:+" parent_idx_str:"GBNULL" gene:"M2-2" alternative_ftr_set:"M2-2(gene)" alternative_ftr_set_subn:"M2-2(cds).2"
+FEATURE KY654518 type:"CDS" coords:"8222..8494:+" parent_idx_str:"GBNULL" gene:"M2-2" product:"M2-2 protein" alternative_ftr_set:"M2-2(cds)"
+FEATURE KY654518 type:"CDS" coords:"8228..8494:+" parent_idx_str:"GBNULL" gene:"M2-2" product:"M2-2 protein" alternative_ftr_set:"M2-2(cds)"
 ```
 
 Importantly, the new alternative starting at `8222` needs to go first,
 because `v-annotate.pl` will choose to annotate the alternative which
-has the fewest fatal alerts, and in the case of ties, it will choose
+has the fewest fatal alerts, and in the case of ties it will choose
 the alternative that comes first in the model info file. Because
 `NC_038235` includes a valid start codon beginning at reference
-positions `8222` and `8228` (using `KY654518` as a reference
+positions `8222` **and** `8228` (using `KY654518` as a reference
 coordinate system) as shown in the `RF` line in the [alignment
 above](#step4-mutstart-aln), it's important the `8222` feature comes
 before the `8228` feature in the model info file, so that the `8222` start
-is chosen for `NC_038235`. 
+is chosen when both are valid (e.g. for `NC_038235`). 
 
 We'd also need to add a new protein to the blastx database that
-include the two additional amino acids at the beginning of the longer
+includes the two additional amino acids at the beginning of the longer
 protein. We could add `NC_038235`'s M2-2 protein. After doing that, if
 we ran `v-annotate.pl` on `NC_038235` it should be annotated using the
 earlier start at reference position `8222`.
 
-### <a name="step6-exception"></a> Allowing an alert exception for specific reference positions
+## <a name="step6-exception"></a> Allowing an alert exception for specific reference positions
 
 After addressing the attachment glycoprotein `mutendex` alerts above,
 the next most common `mutendex` alert is for the `large polymerase` at
