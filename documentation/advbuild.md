@@ -109,7 +109,7 @@ listed in the resulting list will be RefSeq sequences `NC_038235`
 (subgroup A) and `NC_001781` (subgroup B). You can also filter to only
 RefSeq sequences using the "Sequence type" filter.
 
-## <a name="step1-build"></a> Build initial models from reference sequence(s)
+### <a name="step1-build"></a> Build initial models from reference sequence(s)
 
 Next, use `v-build.pl` to build the two models, specifying the
 `--group` and `--subgroup` options as below:
@@ -1149,7 +1149,9 @@ simply modified them (as described below) to address the failure modes
 we wanted to eliminate. But in this case, as explained above, we want
 to choose new representatives and build new models.
 
-#### <a name="step5-chooserep"></a> Identifying new representative sequences
+---
+
+### <a name="step5-chooserep"></a> Identifying new representative sequences
 
 We will choose a new representative from our random set of 500
 training sequences. Of course, it is possible, and probably even
@@ -1527,6 +1529,8 @@ to confirm that they do. (If they did not, we could manually modify the `gene`
 feature boundaries in the model info file after running `v-build.pl`
 so that they did.)
 
+---
+
 ### <a name="step5-build"></a> Building new models from our new representative sequences
 
 To build our new models, we run `v-build.pl`:
@@ -1589,6 +1593,8 @@ $ v-annotate.pl --out_stk --mdir rsv-models2 --mkey rsv rsv-models2/rsv.fa va-rs
 #
 ```
 
+---
+
 ### <a name="step5-rerun"></a> Rerun `v-annotate.pl` on our existing training set using new models
 
 Next we want to evaluate the performance of our new models. 
@@ -1630,6 +1636,8 @@ sense to start modifying the model at this stage (as opposed to
 building yet another model) because we know we are using good
 representative sequences for our models, based on the work we did
 analyzing the results of the initial RefSeq models.
+
+---
 
 ### <a name="step6-strategies"></a> Strategies for modifying models
 
@@ -1726,6 +1734,8 @@ than 10 sequences (more than 2\% of the sequences):
 16    lowcovrg  yes      LOW_COVERAGE                   sequence     13    13  low sequence fraction with significant similarity to homology model
 25    fsthicft  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF   feature     12    12  high confidence possible frameshift in CDS (frame not restored before end)
 ```
+
+---
 
 ### <a name="step6-addblastx"></a> Adding a protein to model blastx library
 
@@ -2107,6 +2117,8 @@ fail due to `deletinp` alerts at that stage, then we could repeat the
 process again. For the purposes of this tutorial, we will move on to the next most
 common alert `indf3pst` to provide a different example of
 updating a model.
+
+---
 
 ### <a name="step6-alternative"></a>Adding an alternative CDS feature with different stop coordinate
 
@@ -2537,6 +2549,8 @@ vb-ex10
 ```
 </details>
 
+---
+
 ### <a name="step6-m2start"></a> Modeling `NC_038235`'s M2-2 CDS alternative start position with an alternative feature. 
 Above, when investigating `mutstart` alerts returned using the RefSeq
 models, we determined that `NC_038235` had a start position for M2-2
@@ -2730,6 +2744,8 @@ This sequence now passes, because the `deletinp` alert was its only
 fatal one. Other sequences may still have other alerts, including
 `indf3pst` alerts, which could be addressed using the other strategies
 above. 
+
+---
 
 ### <a name="step6-cm"></a>Rebuilding the CM with additional information
 
@@ -2963,6 +2979,8 @@ actually does not change any annotations or pass/fail outcomes for
 these 9 sequences, but there are other situations for other viruses
 where updating the model could have a more significant impact.
 
+---
+
 ### <a name="step6-miscfeat"></a>Treating a feature as non-essential by allowing it to be a `misc_feature`
 
 For some viruses, some features may be non-essential and so can
@@ -2990,6 +3008,8 @@ to GenBank treats ORF3a, ORF6, ORF7a, ORF7b, ORF8, and ORF10 CDS as
 well as the Coronavirus 3' stem-loop II-like motif (s2m) as
 non-essential using this `misc_not_failure` strategy.
 
+---
+
 ### <a name="step6-altpass"></a>Making an alert non-fatal using the `--alt_pass` option
 
 For some viruses, specific fatal alerts are so common that we may want
@@ -3001,6 +3021,8 @@ allow the `dupregin` alerts, but there are no exceptions supported for
 considered non-fatal using the `v-annotate.pl` option: `--alt_pass
 dupregin,discontn`. An example of using this option can be found
 [here](annotate.md#examplealtpass).
+
+---
 
 ### <a name="step6-summary"></a> Final summary of RSV model modifications
 
@@ -3042,6 +3064,8 @@ for RSV. While the strategy is somewhat general, different strategies
 may work better for other viruses. Below I discuss some of the
 limitations of this strategy and ideas for other strategies.
 
+---
+
 ### <a name="limit-ref"></a> Reference sequence selection
 
 Above we started with the RefSeq sequences as the basis for the
@@ -3056,6 +3080,8 @@ above is one that is reasonable if very little is known beforehand
 about the virus being modelled and its sequence diversity, but it
 makes sense to take advantage of any expert knowledge you have when
 picking the initial representative sequences.
+
+---
 
 ### <a name="limit-training"></a> Training sequence selection
 
@@ -3079,6 +3105,8 @@ sequences. We could follow the procedure above based on full length
 sequences, and then check how the models worked on partial length
 sequences too. This is also [briefly discussed above](#step2-length).
 
+---
+
 ### <a name="limit-multiple"></a> Replacing one model with multiple models
 
 In the steps outlined above, there are examples of modifying
@@ -3095,6 +3123,8 @@ diversity that are returned by `v-annotate.pl`, each of which you will
 have to deal with through some kind of model modification. In other
 words, adding models can lead to more work manually tweaking those
 models.
+
+---
 
 ### <a name="limit-align"></a> Alignment-based models
 
@@ -3148,6 +3178,8 @@ library of COX1
 models](https://bitbucket.org/nawrockie/vadr-models-cox1) includes 78
 profile models built from multiple alignments, 20 of which include
 more than 100 aligned sequences.
+
+---
 
 ### <a name="limit-secondary"></a> Incorporating secondary structure
 
