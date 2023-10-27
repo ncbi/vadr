@@ -3076,34 +3076,33 @@ of rebuilding a CM from multiple sequences, but even that example is
 only to deal with a single deletion, and doesn't introduce any other
 sequence variability into the alignment.
 
-As an alternative to the above approach, you could add a step prior to
-running `v-build.pl` in step 1 of creating a multiple sequence
-alignment of a representative set of sequences. The level of impact
-this will have on performance versus single-sequence based models will
-largely be based on how similar all of the sequences being annotated
-are to the model. If they are highly similar, it won't make a huge
-difference; if there is a lot of sequence variability it will make
-more of a difference.
-
 If you do build a multiple sequence alignment, you'll still want to
 select one of the sequences to be the "reference sequence" to use for
 the reference coordinate system. The coordinates/positions in the
 model info file will correspond to positions in that reference
 sequence. This means a reasonable approach is to first use
 `v-build.pl` using the accession you've selected as the reference
-sequence. Then rebuild the CM using `cmbuild` with the `--hand` option
-as explained in the [example above](#step6-cm) and finally overwrite
-the `v-build.pl` created single sequence CM with your newly created
-one.
+sequence. Then construct your alignment, possibly by running
+`v-annotate.pl` using your initial model and the `--out_stk` option. 
+Then rebuild the CM using `cmbuild` with the `--hand` option
+and your multiple alignment as input as explained in the [example
+above](#step6-cm) and finally overwrite the `v-build.pl` created
+single sequence CM with your newly created one. 
 
-In my experience, building CMs from multiple alignments for well
-conserved viruses like RSV, does not significantly improve the
-performance of `v-annotate.pl`. This is likely because all the
-sequences are so similar that the position specific parameters are not
-necessary to get the correct alignment. Because single sequence models
-perform acceptably well for norovirus, dengue virus and SARS-CoV-2,
-the VADR models used to screen incoming GenBank submissions of those
-virus sequences are all based on single sequences.
+The performance difference between using multiple sequence
+alignment-based models versus versus single sequence-based models will
+largely depend on on how similar all of the sequences being annotated
+are to the single-sequence model. If they are highly similar, it won't
+make a huge difference; if there is a lot of sequence variability it
+will make more of a difference.  In my experience, building CMs from
+multiple alignments for well conserved viruses like RSV, does not
+significantly improve the performance of `v-annotate.pl`. This is
+likely because all the sequences are so similar that the position
+specific parameters are not necessary to get the correct
+alignment. Because single sequence models perform acceptably well for
+norovirus, dengue virus and SARS-CoV-2, the VADR models used to screen
+incoming GenBank submissions of those virus sequences are all based on
+single sequences.
 
 Multiple sequence alignment-based VADR models are used for one type of
 sequences at GenBank - the Cytochrome C Oxidase 1 (COX1) mitochondrial
