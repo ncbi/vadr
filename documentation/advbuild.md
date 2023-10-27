@@ -31,7 +31,7 @@ refining a model library is:
         more characteristics found that occur in the majority of
         training sequences, it makes sense to pick a new reference
         sequence that includes those characteristics and rebuild the
-        models based on those new references, and then rerun
+        models based on those new references. Then you'll want to rerun
         `v-annotate.pl` on the training set using the new models.
 
 [Step 6.](#step6) Analyze results and update models to accomodate existing
@@ -47,7 +47,7 @@ through it, or just for reference to specific examples of how to
 analyze `v-annotate.pl` results and update VADR models based on those
 analyses.
 
-[A discussion of limitations and alternatives to this
+[A discussion of some limitations and alternatives to this
 approach](#limit) is included at the end of the tutorial.
 
 ---
@@ -2984,8 +2984,8 @@ are built by `v-build.pl`:
 
 | model    | type of modification | feature | detail | 
 ----------|---------------------- |---------|--------|
-`KY654518`  | added proteins to blastx library (13) | attachment glycoprotein (CDS) | proteins added (name format `source accession:source coordinates/model coordinates`): `OM857255.1:4629..5591:+/4681..5643:+`, `KU316164.1:4611..5504:+/4681..5646:+`,  `AF065254.1:16..909:+/4681..5646:+`, `OK649616.1:4670..5563:+/4681..5646:+`, `hybrid:KY654518.1:4681..4695:+:AF065410.1:1..879:+/4681..5646:+`, `KF826850.1:4675..5568:+/4681..5646:+`, `KU316092.1:4620..5516:+/4681..5646:+`, `NC_038235.1:4688..5584:+/4681..5649:+`, `MZ515659.1:4681..5649:+/4681..5649:+`, `HQ699266.1:1..897:+/4681..5649:+`, `KJ641590.1:4630..5526:+/4681..5649:+`, `OK649616.1:4670..5566:+/4681..5649:+`, `M17212.1:16..912:+/4681..5649:+` |
-`KY654518` | added protein to blastx library (1) | M2-1(CDS) | proteins added: `OM857351.1:7614..8180:+/7669..8235:+`
+`KY654518`  | added proteins to blastx library (13) | attachment glycoprotein (CDS) | proteins added (name format: `source accession:source coordinates/model coordinates`): `OM857255.1:4629..5591:+/4681..5643:+`, `KU316164.1:4611..5504:+/4681..5646:+`,  `AF065254.1:16..909:+/4681..5646:+`, `OK649616.1:4670..5563:+/4681..5646:+`, `hybrid:KY654518.1:4681..4695:+:AF065410.1:1..879:+/4681..5646:+`, `KF826850.1:4675..5568:+/4681..5646:+`, `KU316092.1:4620..5516:+/4681..5646:+`, `NC_038235.1:4688..5584:+/4681..5649:+`, `MZ515659.1:4681..5649:+/4681..5649:+`, `HQ699266.1:1..897:+/4681..5649:+`, `KJ641590.1:4630..5526:+/4681..5649:+`, `OK649616.1:4670..5566:+/4681..5649:+`, `M17212.1:16..912:+/4681..5649:+` |
+`KY654518` | added protein to blastx library (1) | M2-1(CDS) | protein added: `OM857351.1:7614..8180:+/7669..8235:+`
 `KY654518` | added alternative features (2)  | attachment glycoprotein (CDS + gene) | alternative feature coordinates: `4681..5643:+`, `4681..5649:+` | 
 `KY654518` | added alert exception (1)     | attachment glycoprotein (CDS) | key/value pair added to model info file: `deletin_exc:5457..5508:+:72` | 
 `KY654518` | rebuilt CM           | full model                    | added duplicate `KY654518` sequence with 72nt deletion after position `5496` |
@@ -2999,7 +2999,7 @@ are built by `v-build.pl`:
 
 ---
 
-### <a name="limit"></a> Limitations of and alternatives to this approach
+## <a name="limit"></a> Limitations of and alternatives to this approach
 
 The above procedure is one possible strategy for building VADR models
 for RSV. While the strategy is somewhat general, different strategies
@@ -3024,37 +3024,41 @@ picking the initial representative sequences.
 ### <a name="limit-training"></a> Training sequence selection
 
 The steps above explain how to select a random subset of 500 from all
-existing INSDC full length RSV sequences. Alternatively, we could have
-removed redundancy from the set of candidate sequences first, so that
-our set of 500 was not biased towards those sequences that happened to
-be in the database. For example, if there was a major RSV sequencing
-project in 2019, then there may tend to be more sequences in the
-database of the virus that circulated in 2019 than in other years. We
-could filter our candidate sequences by sequence identity, or by year,
-or by something else, to try and deal with this redundancy.
+existing INSDC full length RSV sequences to use as a training
+set. Alternatively, we could have removed redundancy from the set of
+candidate sequences first, so that our set of 500 was not biased
+towards those sequences that are overrepresented in the database. For
+example, if there was a major RSV sequencing project in 2019 then
+there may tend to be more sequences in the database from the
+particular virus population that circulated in 2019 than of sequences
+from other years. We could filter our candidate sequences by sequence
+identity, or by year, or by something else, to try and deal with this
+redundancy, and then choose a training set by taking a randomly subset
+of that filtered set of candidate sequences.
 
 We could also not restrict our model training to only full length
-sequences, and instead use all sequences, or have two training sets:
-one full length and the other partial length sequences. We could
-follow the procedure above based on full length sequences, and then
-check how the models worked on partial length sequences too. This is
-also [briefly discussed above](#step2-length).
+sequences, and instead use all sequences. Or we could have two
+training sets: one full length and the other partial length
+sequences. We could follow the procedure above based on full length
+sequences, and then check how the models worked on partial length
+sequences too. This is also [briefly discussed above](#step2-length).
 
 ### <a name="limit-multiple"></a> Replacing one model with multiple models
 
 In the steps outlined above, there are examples of modifying
-single-sequence based models to be more general. An alternative would
-be to add one or more new models built from new sequences that would
-allow sequences with divergent features to pass. This can work
-especially well if you are using one model for a set of sequences that
-can be easily separated into two well-separeated clusters based on
-sequence identity (or on an inferred evolutionary tree). In that
-situation, one model per cluster may be the best approach. One word of
-caution though, when you expand the number of models, you may increase
-the number of common but innocuous alerts returned by `v-annotate.pl`,
-each of which you will have to deal with through some kind of model
-modification. In other words, adding models can lead to more work
-manually tweaking those models. 
+single-sequence based models to be more general. An alternative
+strategy would be to add one or more new models built from new
+sequences that would allow sequences with divergent features to
+pass. This can work especially well if you are using one model for a
+set of sequences that can be easily separated into two distinct
+clusters based on sequence identity (or on an inferred evolutionary
+tree). In that situation, one model per cluster may be the best
+approach. Be careful though, when you expand the number of models you
+may increase the number of common alerts due to acceptable sequence
+diversity that are returned by `v-annotate.pl`, each of which you will
+have to deal with through some kind of model modification. In other
+words, adding models can lead to more work manually tweaking those
+models.
 
 ### <a name="limit-align"></a> Alignment-based models
 
@@ -3069,29 +3073,46 @@ expected nucleotide distribution and probability of insertions and
 deletions at each position, whereas single sequence based models treat
 all positions identically. I provided one [example above](#step6-cm)
 of rebuilding a CM from multiple sequences, but even that example is
-only to deal with a single deletion.
+only to deal with a single deletion, and doesn't introduce any other
+sequence variability into the alignment.
 
 As an alternative to the above approach, you could add a step prior to
-running `v-build.pl` for the first time of creating a multiple
-sequence alignment of a representative set of sequences. The level of impact
+running `v-build.pl` in step 1 of creating a multiple sequence
+alignment of a representative set of sequences. The level of impact
 this will have on performance versus single-sequence based models will
 largely be based on how similar all of the sequences being annotated
 are to the model. If they are highly similar, it won't make a huge
-difference, but if there is a lot of sequence variability it will make
+difference; if there is a lot of sequence variability it will make
 more of a difference.
+
+If you do build a multiple sequence alignment, you'll still want to
+select one of the sequences to be the "reference sequence" to use for
+the reference coordinate system. The coordinates/positions in the
+model info file will correspond to positions in that reference
+sequence. This means a reasonable approach is to first use
+`v-build.pl` using the accession you've selected as the reference
+sequence. Then rebuild the CM using `cmbuild` with the `--hand` option
+as explained in the [example above](#step6-cm) and finally overwrite
+the `v-build.pl` created single sequence CM with your newly created
+one.
 
 In my experience, building CMs from multiple alignments for well
 conserved viruses like RSV, does not significantly improve the
 performance of `v-annotate.pl`. This is likely because all the
 sequences are so similar that the position specific parameters are not
-necessary to get the correct alignment. Multiple-sequence based VADR models
-are used for one type of sequences at GenBank - the Cytochrome C
-Oxidase 1 (COX1)
-mitochondrial protein coding gene, which exhibits significantly more
-sequence variability than any of the viruses VADR is used for. The
-VADR library of COX1 models includes 78 profile models built from
-multiple alignments, 20 of which included more than 100 aligned
-sequences. 
+necessary to get the correct alignment. Because single sequence models
+perform acceptably well for norovirus, dengue virus and SARS-CoV-2,
+the VADR models used to screen incoming GenBank submissions of those
+virus sequences are all based on single sequences.
+
+Multiple sequence alignment-based VADR models are used for one type of
+sequences at GenBank - the Cytochrome C Oxidase 1 (COX1) mitochondrial
+protein coding gene, which exhibits significantly more sequence
+variability than any of the viruses VADR is used for. [The VADR
+library of COX1
+models](https://bitbucket.org/nawrockie/vadr-models-cox1) includes 78
+profile models built from multiple alignments, 20 of which included
+more than 100 aligned sequences.
 
 ### <a name="limit-secondary"></a> Incorporating secondary structure
 
