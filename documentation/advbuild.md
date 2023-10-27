@@ -815,8 +815,8 @@ $ $VADREASELDIR/esl-sfetch -f rsv.r500.fa ex3.list > ex3.fa
 $ v-annotate.pl --out_stk --mdir rsv-models1 --mkey rsv ex3.fa va-ex3
 ```
 
-Below is an excerpt of the resulting alignment in
-`va-ex3/va-ex3.vadr_NC_038235.align.stk
+<a name="step4-mutstart-aln"></a> Below is an excerpt of the resulting alignment in
+`va-ex3/va-ex3.vadr_NC_038235.align.stk`
 
 ```
        
@@ -853,8 +853,8 @@ set have the second `ATG` but not the first, we may want our model to
 use that as the start position. If we do that however, then the
 annotated start for the `NC_038325` model will be annotated
 differently. There is a way to deal with this and allow
-`v-annotate.pl` to pick either start position. We'll come back to this
-later.
+`v-annotate.pl` to pick either start position. We'll revisit this
+[below](#step6-m2start). 
 
 ---
 
@@ -2538,18 +2538,55 @@ vb-ex10
 ```
 </details>
 
+#### <a name="step6-m2start"></a> Modeling `NC_038235`'s M2-2 CDS alternative start position with an alternative feature. 
+Above, when investigating `mutstart` alerts returned using the RefSeq
+models, we determined that `NC_038235` had a start position for M2-2
+that was six nucleotides upstream from the majority of our RSV A
+trainig sequences. When we switched to using a model based on
+`KY654518` we began annotating the more common start position at
+position `8228`. But what if we wanted to annotate the earlier start
+position for those sequences that had it? We could do that by adding
+an alternative feature for the M2-2 protein CDS that started six
+nucleotides upstream at position `8222`. The two existing lines
+beginning with `FEATURE KY654518` in the `rsv-models2/rsv.minfo` file
+that include `M2-2` would be replaced with these four lines:
+
+```
+FEATURE KY654518 type:"gene" coords:"8222..8494:+" parent_idx_str:"GBNULL" gene:"M2-2" alternative_ftr-set:"M2-2(gene)" alternative_ftr_set_subn:"M2-2(cds).1"
+FEATURE KY654518 type:"gene" coords:"8228..8494:+" parent_idx_str:"GBNULL" gene:"M2-2" alternative_ftr-set:"M2-2(gene)" alternative_ftr_set_subn:"M2-2(cds).2"
+FEATURE KY654518 type:"CDS" coords:"8222..8494:+" parent_idx_str:"GBNULL" gene:"M2-2" product:"M2-2 protein" alternative_ftr-set:"M2-2(cds)"
+FEATURE KY654518 type:"CDS" coords:"8228..8494:+" parent_idx_str:"GBNULL" gene:"M2-2" product:"M2-2 protein" alternative_ftr-set:"M2-2(cds)"
+```
+
+Importantly, the new alternative starting at `8222` needs to go first,
+because `v-annotate.pl` will choose to annotate the alternative which
+has the fewest fatal alerts, and in the case of ties, it will choose
+the alternative that comes first in the model info file. Because
+`NC_038235` includes a valid start codon beginning at reference
+positions `8222` and `8228` (using `KY654518` as a reference
+coordinate system) as shown in the `RF` line in the [alignment
+above](#step4-mutstart-aln), it's important the `8222` feature comes
+before the `8228` feature in the model info file, so that the `8222` start
+is chosen for `NC_038235`. 
+
+We'd also need to add a new protein to the blastx database that
+include the two additional amino acids at the beginning of the longer
+protein. We could add `NC_038235`'s M2-2 protein. After doing that, if
+we ran `v-annotate.pl` on `NC_038235` it should be annotated using the
+earlier start at reference position `8222`.
+
 ### <a name="step6-exception"></a> Allowing an alert exception for specific reference positions
 
-When that is completed it looks like the most common example of
-`mutendex` would be for the `large polymerase` at positions
-`15059..15061:+` for 3 sequences. At this stage I would stop and move
-on to other types of alerts, because with only 3 sequences it is not
-as obvious that this is a legitimate type of variability that we want
-our models to allow. There is probably lower hanging fruit that we can
-address. It makes sense to rerun all 500 of the training sequences
-using the updated models at this point, to make sure that we base the 
-decision on which alert instances to investigate next based on
-performance using the current (updated) models.
+After addressing the attachment glycoprotein `mutendex` alerts above,
+the next most common `mutendex` alert is for the `large polymerase` at
+positions `15059..15061:+` for 3 sequences. At this stage I would stop
+and move on to other types of alerts, because with only 3 sequences it
+is not as obvious that this is a legitimate type of variability that
+we want our models to allow. There is probably lower hanging fruit
+that we can address. It makes sense to rerun all 500 of the training
+sequences using the updated models at this point, to make sure that we
+base the decision on which alert instances to investigate next based
+on performance using the current (updated) models.
 
 To rerun the training set:
 ```
