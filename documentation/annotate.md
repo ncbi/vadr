@@ -973,7 +973,7 @@ exception ranges are not allowed.
 | [*incsbgrp*](#incsbgrp2)  | sequence | never | INCORRECT_SPECIFIED_SUBGROUP    | <a name="incsbgrp1"></a> score difference too large between best overall model and best specified subgroup model |  - | - |
 | [*incgroup*](#incgroup2)  | sequence | never | INCORRECT_SPECIFIED_GROUP       | <a name="incgroup1"></a> score difference too large between best overall model and best specified group model | - | - |
 | [*lowcovrg*](#lowcovrg2)  | sequence | never | LOW_COVERAGE                    | <a name="lowcovrg1"></a> low sequence fraction with significant similarity to homology model | - | - |
-| [*dupregin*](#dupregin2)  | sequence | never | DUPLICATE_REGIONS               | <a name="dupregin1"></a> similarity to a model region occurs more than once | `dupregion_exc` | coords-only |
+| [*dupregin*](#dupregin2)  | sequence | never | DUPLICATE_REGIONS               | <a name="dupregin1"></a> similarity to a model region occurs more than once | `dupregin_exc` | coords-only |
 | [*discontn*](#discontn2)  | sequence | never | DISCONTINUOUS_SIMILARITY        | <a name="discontn1"></a> not all hits are in the same order in the sequence and the homology model | - | - |
 | [*indfstrn*](#indfstrn2)  | sequence | never | INDEFINITE_STRAND               | <a name="indfstrn1"></a> significant similarity detected on both strands | `indfstr_exc` | coords-only |
 | [*lowsim5s*](#lowsim5s2)  | sequence | never | LOW_SIMILARITY_START            | <a name="lowsim5s1"></a> significant similarity not detected at 5' end of the sequence | `lowsim_exc` | coords-only |
@@ -1289,7 +1289,7 @@ info file. In this case, `dupregin_exc` is the *exception key* and
 exception to match the strand of the alert, and for negative strand,
 the start position is greater than the stop position. To exclude
 positions 100 to 37 on the negative strand the exception value would
-be `"100..37:-"`. If you are able to have `v-annotate.pl` output an
+be `"100..37:-"`. If you are able to have `v-annotate.pl` output
 an alert that you want to make an exception for using a test
 sequence, you can check the `mdl coords` field of the [`.alt` output file](formats.md#alt)
 to determine the relevant model coordinates for
