@@ -7481,7 +7481,8 @@ sub add_protein_validation_alerts {
                       my $abs_p_qcoords = vdr_CoordsRelativeToAbsolute($n_scoords, 
                                                                        vdr_CoordsSegmentCreate($p_qstart, $p_qstop, $n_strand, $FH_HR), 
                                                                        $FH_HR);
-                      ($p_sstart, $p_sstop, undef) = vdr_CoordsSegmentParse($abs_p_qcoords, $FH_HR); 
+                      $p_sstart = vdr_Feature5pMostPosition($abs_p_qcoords, $FH_HR); 
+                      $p_sstop  = vdr_Feature3pMostPosition($abs_p_qcoords, $FH_HR); 
                       $start_diff = $p_qstart - 1;
                       $stop_diff  = $p_qlen - $p_qstop;
                       # printf("p_blastx_feature_flag: $p_blastx_feature_flag, p_qstart: $p_qstart, n_start: $n_start p_qstop: $p_qstop, n_stop: $n_stop, start_diff: $start_diff, stop_diff: $stop_diff\n");
