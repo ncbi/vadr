@@ -7476,10 +7476,14 @@ sub add_protein_validation_alerts {
                     # calcuate $start_diff and $stop_diff, differently depending on if hit
                     # was to the full sequence or a fetched feature (true if $p_blastx_feature_flag == 1)
                     if($p_blastx_feature_flag) { 
-                      $start_diff = $p_qstart - 1; 
+                      # query blast sequence was a fetched feature sequence determine absolute (sequence) nt coords using
+                      # vdr_CoordsRelativeToAbsolute(), this will correctly handle case where we have multiple segments
+                      my $abs_p_qcoords = vdr_CoordsRelativeToAbsolute($n_scoords, 
+                                                                       vdr_CoordsSegmentCreate($p_qstart, $p_qstop, $n_strand, $FH_HR), 
+                                                                       $FH_HR);
+                      ($p_sstart, $p_sstop, undef) = vdr_CoordsSegmentParse($abs_p_qcoords, $FH_HR); 
+                      $start_diff = $p_qstart - 1;
                       $stop_diff  = $p_qlen - $p_qstop;
-                      $p_sstart = ($n_strand eq "+") ? $n_start + $start_diff : $n_start - $start_diff;
-                      $p_sstop  = ($n_strand eq "+") ? $n_stop  - $stop_diff  : $n_stop  + $stop_diff;
                       # printf("p_blastx_feature_flag: $p_blastx_feature_flag, p_qstart: $p_qstart, n_start: $n_start p_qstop: $p_qstop, n_stop: $n_stop, start_diff: $start_diff, stop_diff: $stop_diff\n");
                     }
                     else { 
