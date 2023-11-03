@@ -1,0 +1,81 @@
+>Feature ENTOY200B-REV.cds1.5
+195	20	gene
+			gene	two
+195	177	CDS
+130	84
+34	20
+			product	protein two
+			protein_id	ENTOY200B-REV.cds1.5_1
+198	104	gene
+			gene	one
+198	188	misc_feature
+134	104
+			note	similar to protein one
+
+Additional note(s) to submitter:
+ERROR: MUTATION_AT_SPLICE_SITE: (CDS:protein one) expected splice site at 5' end of intron (GT) could not be identified [GA, intron#1]; seq-coords:187..186:-; mdl-coords:187..186:-; mdl:ENTOY200B-REV;
+>Feature ENTOY200B-REV.cds1.3
+195	20	gene
+			gene	two
+195	177	CDS
+130	84
+34	20
+			product	protein two
+			protein_id	ENTOY200B-REV.cds1.3_1
+198	104	gene
+			gene	one
+198	188	misc_feature
+134	104
+			note	similar to protein one
+
+Additional note(s) to submitter:
+ERROR: MUTATION_AT_SPLICE_SITE: (CDS:protein one) expected splice site at 3' end of intron (AG) could not be identified [AA, intron#1]; seq-coords:136..135:-; mdl-coords:136..135:-; mdl:ENTOY200B-REV;
+>Feature ENTOY200B-REV.cds1.53
+195	20	gene
+			gene	two
+195	177	CDS
+130	84
+34	20
+			product	protein two
+			protein_id	ENTOY200B-REV.cds1.53_1
+198	104	gene
+			gene	one
+198	188	misc_feature
+134	104
+			note	similar to protein one
+
+Additional note(s) to submitter:
+ERROR: MUTATION_AT_SPLICE_SITE: (CDS:protein one) expected splice site at 3' end of intron (AG) could not be identified [AA, intron#1]; seq-coords:136..135:-; mdl-coords:136..135:-; mdl:ENTOY200B-REV;
+ERROR: MUTATION_AT_SPLICE_SITE: (CDS:protein one) expected splice site at 5' end of intron (GT) could not be identified [GA, intron#1]; seq-coords:187..186:-; mdl-coords:187..186:-; mdl:ENTOY200B-REV;
+>Feature ENTOY200B-REV.cds2.i2.3
+195	20	gene
+			gene	two
+195	177	misc_feature
+130	84
+34	20
+			note	similar to protein two
+198	104	gene
+			gene	one
+198	188	CDS
+134	104
+			product	protein one
+			protein_id	ENTOY200B-REV.cds2.i2.3_1
+
+Additional note(s) to submitter:
+ERROR: MUTATION_AT_SPLICE_SITE: (CDS:protein two) expected splice site at 3' end of intron (AG) could not be identified [AA, intron#1]; seq-coords:36..35:-; mdl-coords:36..35:-; mdl:ENTOY200B-REV;
+>Feature ENTOY200B-REV.cds2.i1.3.i2.5
+195	20	gene
+			gene	two
+195	177	misc_feature
+130	84
+34	20
+			note	similar to protein two
+198	104	gene
+			gene	one
+198	188	CDS
+134	104
+			product	protein one
+			protein_id	ENTOY200B-REV.cds2.i1.3.i2.5_1
+
+Additional note(s) to submitter:
+ERROR: MUTATION_AT_SPLICE_SITE: (CDS:protein two) expected splice site at 3' end of intron (AG) could not be identified [AA, intron#1]; seq-coords:36..35:-; mdl-coords:36..35:-; mdl:ENTOY200B-REV;
