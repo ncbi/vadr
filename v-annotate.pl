@@ -7678,7 +7678,9 @@ sub add_protein_validation_alerts {
               $winning_prefix     = "p_";
               my $winning_nalt       = $nalt_H{$winning_prefix};
               my $winning_nalt_fatal = $nalt_fatal_H{$winning_prefix};
-              if(defined $nalt_fatal_H{"pc_"}) { 
+              if((defined $ftr_results_HR->{"pc_qstart"}) && 
+                 (defined $ftr_results_HR->{"pc_qstop"}) && 
+                 (defined $nalt_fatal_H{"pc_"})) { 
                 if(($nalt_fatal_H{"pc_"}  <  $winning_nalt_fatal) || 
                    (($nalt_fatal_H{"pc_"} == $winning_nalt_fatal) && ($nalt_H{"pc_"} < $winning_nalt))) { 
                   $winning_prefix     = "pc_";
@@ -7686,7 +7688,9 @@ sub add_protein_validation_alerts {
                   $winning_nalt_fatal = $nalt_fatal_H{$winning_prefix};
                 }
               }
-              if(defined $nalt_fatal_H{"pl_"}) { 
+              if((defined $ftr_results_HR->{"pl_qstart"}) && 
+                 (defined $ftr_results_HR->{"pl_qstop"}) && 
+                 (defined $nalt_fatal_H{"pl_"})) { 
                 if(($nalt_fatal_H{"pl_"}  <  $winning_nalt_fatal) || 
                    (($nalt_fatal_H{"pl_"} == $winning_nalt_fatal) && ($nalt_H{"pl_"} < $winning_nalt))) { 
                   $winning_prefix     = "pl_";
@@ -7695,10 +7699,13 @@ sub add_protein_validation_alerts {
                 }
               }
             }
-            # if pc_ or pl_ was the winner, overwrite p_ values in ftr_results_HR with pl_ values, so future subroutines use correct values
+            # if pc_ or pl_ was the winner, overwrite p_ values in ftr_results_HR with pc_ or pl_ values, so future subroutines use correct values
             if($winning_prefix ne "p_") { 
               foreach my $alt_key ("qstart", "qstop", "strand", "query", "len", "ins", "del", "trcstop", "score", "hstart", "hstop", "score", "q_ftr_idx", "frame") { 
-                $ftr_results_HR->{"p_" . $alt_key} = $ftr_results_HR->{($winning_prefix . $alt_key)};
+                my $winning_alt_key = $winning_prefix . $alt_key;
+                if(defined $ftr_results_HR->{($winning_prefix . $alt_key)}) { 
+                  $ftr_results_HR->{("p_" . $alt_key)} = $ftr_results_HR->{($winning_prefix . $alt_key)};
+                }
               }
             }
             foreach my $alt_code (sort keys %{$alt_str_HH{$winning_prefix}}) { 
@@ -10203,8 +10210,8 @@ sub output_tabular {
             my $ftr_n_stop   = (defined $ftr_results_HR->{"n_stop"})    ? $ftr_results_HR->{"n_stop"}    : "-";
             my $ftr_n_stop_c = (defined $ftr_results_HR->{"n_stop_c"})  ? $ftr_results_HR->{"n_stop_c"}  : "-";
             if(($ftr_n_stop_c ne "-") && ($ftr_n_stop_c ne "?") && ($ftr_n_stop_c == $ftr_n_stop)) { $ftr_n_stop_c = "-"; }
-            my $ftr_p_qstart  = (defined $ftr_results_HR->{"p_qstart"})   ? $ftr_results_HR->{"p_qstart"}   : "-";
-            my $ftr_p_qstop   = (defined $ftr_results_HR->{"p_qstop"})    ? $ftr_results_HR->{"p_qstop"}    : "-";
+            my $ftr_p_qstart  = (defined $ftr_results_HR->{"p_qstart"})  ? $ftr_results_HR->{"p_qstart"}   : "-";
+            my $ftr_p_qstop   = (defined $ftr_results_HR->{"p_qstop"})   ? $ftr_results_HR->{"p_qstop"}    : "-";
             my $ftr_p_qstop_c = (defined $ftr_results_HR->{"p_trcstop"}) ? $ftr_results_HR->{"p_trcstop"} : "-";
             if($ftr_p_qstop_c ne "-") { 
               $ftr_p_qstop_c =~ s/;.*$//; # keep only first early stop position
