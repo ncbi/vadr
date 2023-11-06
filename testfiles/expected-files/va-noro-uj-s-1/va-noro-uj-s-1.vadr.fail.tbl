@@ -7,7 +7,7 @@
 			note	similar to VP2
 
 Additional note(s) to submitter:
-ERROR: UNEXPECTED_DIVERGENCE: (*sequence*) sequence is too divergent to confidently assign nucleotide-based annotation [required matrix size: 1.8 Mb]; seq-coords:-; mdl-coords:-; mdl:NC_001959;
+ERROR: UNEXPECTED_DIVERGENCE: (*sequence*) sequence is too divergent to confidently assign nucleotide-based annotation [required matrix size: 2.2 Mb]; seq-coords:-; mdl-coords:-; mdl:NC_001959;
 ERROR: INDEFINITE_ANNOTATION: (CDS:nonstructural polyprotein) protein-based search identifies CDS not identified in nucleotide-based search [raw_score:9003]; seq-coords:5..4999:+; mdl-coords:5..4999:+; mdl:NC_001959;
 ERROR: INDEFINITE_ANNOTATION: (CDS:VP1) protein-based search identifies CDS not identified in nucleotide-based search [raw_score:2789]; seq-coords:5129..6718:+; mdl-coords:5358..6947:+; mdl:NC_001959;
 ERROR: INDEFINITE_ANNOTATION: (CDS:VP2) protein-based search identifies CDS not identified in nucleotide-based search [raw_score:1096]; seq-coords:6721..7356:+; mdl-coords:6950..7585:+; mdl:NC_001959;

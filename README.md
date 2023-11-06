@@ -17,14 +17,18 @@ Example usage of `v-annotate.pl` can be found
 or from input multiple sequence alignments, potentially with secondary
 structure annotation. `v-build.pl` stores the RefSeq feature
 annotation in the model, and `v-annotate.pl` maps that annotation
-(e.g. CDS coordinates) onto the sequences it annotates.  VADR includes
-205 prebuilt models of *Flaviviridae* and *Caliciviridae* viral RefSeq
-genomes, created with a process similar to the one described
+(e.g. CDS coordinates) onto the sequences it annotates.  
+
+VADR includes 205 prebuilt models of *Flaviviridae* and
+*Caliciviridae* viral RefSeq genomes, created with a process similar
+to the one described
 [here](documentation/build.md#1.0library). Example usage of
-`v-build.pl` can be found [here](documentation/build.md#top).  To use
-`v-annotate.pl` with viruses other than the default set of 205, see
-['Available VADR models'](#models). For instructions on using VADR for
-SARS-CoV-2 annotation see [this
+`v-build.pl` can be found [here](documentation/build.md#top). An
+advanced tutorial on building VADR models using RSV as an example can
+be found [here](documentation/advbuild.md#top). To use `v-annotate.pl`
+with viruses other than the default set of 205, see ['Available VADR
+models'](#models). For instructions on using VADR for SARS-CoV-2
+annotation see [this
 page](https://github.com/ncbi/vadr/wiki/Coronavirus-annotation).
 
 `v-annotate.pl` identifies unexpected or divergent attributes of the
@@ -85,6 +89,7 @@ See [this page](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files) fo
   * [`v-annotate.pl` command-line options](documentation/annotate.md#options)
   * [Basic Information on `v-annotate.pl` alerts](documentation/annotate.md#alerts)
   * [Additional information on `v-annotate.pl` alerts](documentation/annotate.md#alerts2)
+* [***Advanced tutorial: building an RSV model library***](documentation/advbuild.md#top)
 * [Explanations and examples of `v-annotate.pl` detailed alert and error messages](documentation/alerts.md#top)
   * [Output fields with detailed alert and error messages](documentation/alerts.md#files)
   * [Explanation of sequence and model coordinate fields in `.alt` files](documentation/alerts.md#coords)
@@ -99,6 +104,7 @@ See [this page](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files) fo
   * [VADR sequence naming conventions](documentation/formats.md#seqnames)
 * [Available VADR model files (github wiki)](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files)
 * [SARS-CoV-2 annotation (github wiki)](https://github.com/ncbi/vadr/wiki/Coronavirus-annotation)
+* [Rfam-based structural annotation of a viral genome sequence for use with VADR (github wiki)](https://github.com/ncbi/vadr/wiki/Rfam-based-structural-annotation-of-a-viral-genome-sequence)
 * [Development notes and instructions (github wiki)](https://github.com/ncbi/vadr/wiki/Development-notes-and-instructions)
 
 ---
@@ -134,7 +140,13 @@ See [this page](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files) fo
 
 ---
 ## Reference <a name="reference"></a>
-* The recommended citation for using VADR is:
+
+* The recommended citation for using VADR for SARS-CoV-2 analysis:
+  *Eric P Nawrocki; Faster SARS-CoV-2 sequence validation and
+  *annotation for GenBank using VADR. NAR Genom Bioinform. 2023 Jan
+  *20;5(1)::lqad002. (2023).* https://doi.org/10.1093/nargab/lqad002
+
+* The recommended citation for non-SARS-CoV-2 use of VADR is:
   *Alejandro A Schäffer, Eneida L Hatcher, Linda Yankie, Lara Shonkwiler,
   J Rodney Brister, Ilene Karsch-Mizrachi, Eric P Nawrocki; VADR:
   validation and annotation of virus sequence submissions to

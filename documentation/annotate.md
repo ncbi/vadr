@@ -24,7 +24,7 @@
   * [additional expert options](#options-expert)
 * [Basic Information on `v-annotate.pl` alerts](#alerts)
 * [Additional information on `v-annotate.pl` alerts](#alerts2)
-* [Expendable features: allowing sequences to pass despite fatal alerts for specific features](#mnf)
+* [Non-essential features: allowing sequences to pass despite fatal alerts for specific features](#mnf)
 * [Alert *exceptions*: ignoring alerts in specific model position ranges](#exceptions)
 * [Limiting memory usage and multi-threading](#memory)
 * [Alternative parallelization using a cluster](#altparallel)
@@ -689,6 +689,10 @@ User's Guide manual page for `cmalign` (section 8 of http://eddylab.org/infernal
 | `--nosub`           | use alternative alignment strategy for truncated sequences (removes the `cmalign --sub --notrunc` options), default is use sub-CM alignment strategy with `cmalign --sub --notrunc` |
 | `--noglocal`        | run in local mode instead of glocal mode (removes the `cmalign -g` option), default is to use glocal mode with `cmalign -g` |
 | `--cmindi`          | force cmalign to align one sequence at a time, mainly useful for debugging |
+| `--noflank`         | do not use flank* options to improve alignments at 5' and 3' ends |
+| `--flanktoins <x>`  | set CM transition probabilities to `ROOT_IL` and `ROOT_IR` that insert before first and after final reference position to `<x>`, default `<x>` is 0.1 |
+| `--flankselfins <x>`| set CM self-transition probabilities in `ROOT_IL` and `ROOT_IR` that insert before first and after final reference position to `<x>`, default `<x>` is 0.8 |
+
 ---
 
 ### `v-annotate.pl` options for controlling glsearch alignment stage as alternative to cmalign
@@ -948,7 +952,7 @@ An example is included [below](#alerttoggle).
 In the table below, the **type** column reports if each alert pertains to an entire
 `sequence` or a specific annotated `feature` within a sequence. The
 **causes `misc_feature`, not failure (if in modelinfo file)** 
-shows which alerts are not fatal for expendable
+shows which alerts are not fatal for non-essential
 features as described more [below](#mnf). The **exception key** and **exception value type** indicate the key string
 and type for defining exceptions in the model info file as described more [below](#exceptions). These columns will be `-` for any alert for which
 exception ranges are not allowed.
@@ -969,7 +973,7 @@ exception ranges are not allowed.
 | [*incsbgrp*](#incsbgrp2)  | sequence | never | INCORRECT_SPECIFIED_SUBGROUP    | <a name="incsbgrp1"></a> score difference too large between best overall model and best specified subgroup model |  - | - |
 | [*incgroup*](#incgroup2)  | sequence | never | INCORRECT_SPECIFIED_GROUP       | <a name="incgroup1"></a> score difference too large between best overall model and best specified group model | - | - |
 | [*lowcovrg*](#lowcovrg2)  | sequence | never | LOW_COVERAGE                    | <a name="lowcovrg1"></a> low sequence fraction with significant similarity to homology model | - | - |
-| [*dupregin*](#dupregin2)  | sequence | never | DUPLICATE_REGIONS               | <a name="dupregin1"></a> similarity to a model region occurs more than once | `dupregion_exc` | coords-only |
+| [*dupregin*](#dupregin2)  | sequence | never | DUPLICATE_REGIONS               | <a name="dupregin1"></a> similarity to a model region occurs more than once | `dupregin_exc` | coords-only |
 | [*discontn*](#discontn2)  | sequence | never | DISCONTINUOUS_SIMILARITY        | <a name="discontn1"></a> not all hits are in the same order in the sequence and the homology model | - | - |
 | [*indfstrn*](#indfstrn2)  | sequence | never | INDEFINITE_STRAND               | <a name="indfstrn1"></a> significant similarity detected on both strands | `indfstr_exc` | coords-only |
 | [*lowsim5s*](#lowsim5s2)  | sequence | never | LOW_SIMILARITY_START            | <a name="lowsim5s1"></a> significant similarity not detected at 5' end of the sequence | `lowsim_exc` | coords-only |
@@ -1152,17 +1156,17 @@ user, this is "-" for alerts that are never omitted from those files.
 
 ---
 
-## <a name="mnf"></a>Expendable features: allowing sequences to pass despite fatal alerts for specific features
+## <a name="mnf"></a>Non-essential features: allowing sequences to pass despite fatal alerts for specific features
 
-It is possible to specify that certain features are *expendable* and so
+It is possible to specify that certain features are *non-essential* and so
 have relaxed requirements. Some alerts that are normally fatal are not
-fatal for expendable features. If any such alerts are reported for an
-expendable feature that feature will be turned into a `misc_feature`
+fatal for non-essential features. If any such alerts are reported for an
+non-essential feature that feature will be turned into a `misc_feature`
 in the output feature table `.pass.tbl` file, but the sequence will
-still pass, as long as it has zero fatal alerts for all non-expendable
+still pass, as long as it has zero fatal alerts for all other (essential)
 features and zero fatal sequence alerts.
 
-The default set of specific alerts that an expendable feature can have
+The default set of specific alerts that an non-essential feature can have
 without failing its sequence are listed with 'yes' in the 'causes
 `misc_feature`, not failure (if in modelinfo file)' column in the
 [tables describing alerts above](#alerts) as well as in the
@@ -1172,7 +1176,7 @@ without failing its sequence are listed with 'yes' in the 'causes
 specify that alert codes in the comma-separated string `<s2>` be
 removed from the set.
 
-Expendable features are specified in the `.modelinfo` file, with a
+Non-Essential features are specified in the `.modelinfo` file, with a
 key/value pair string: `misc_not_feature:"1"` in the `FEATURE` line
 for the corresponding feature.
 
@@ -1182,7 +1186,7 @@ For example, the sequence `JN975492.1` is the one sequence in the
 `cdsstopn`, `cdsstopp`, and `indf3pst` for the `VF1` CDS feature, and
 `indf5pst` fatal alert for the `VP2` CDS as shown
 [above](#altexample). If the `VF1` and `VP2` features were defined
-as expendable using the `misc_not_failure:"1"` key/value pair in the
+as non-essential using the `misc_not_failure:"1"` key/value pair in the
 `.minfo` file as they are in the included example file `vadr.mnf-example.minfo`, then
 the sequence would have passed. 
 
@@ -1198,12 +1202,12 @@ FEATURE NC_008311 type:"CDS" coords:"6681..7307:+" parent_idx_str:"GBNULL" gene:
 ```
 
 Note that in addition to the two CDS features, the two gene features that correspond them also have
-`misc_not_failure:"1"` key/value pairs. When a CDS is made expendable,
+`misc_not_failure:"1"` key/value pairs. When a CDS is made non-essential,
 it often makes sense to make any corresponding gene features
-expendable too. However, gene features are an exception 
+non-essential too. However, gene features are an exception 
 in that they do not get turned into a `misc_feature` if they have
 alerts that are normally fatal, as per GenBank convention, but 
-it is still relevant to mark them as expendable because some alerts 
+it is still relevant to mark them as non-essential because some alerts 
 in them will not cause the sequence to fail.
 
 To rerun the example using this new `.minfo` file, execute:
@@ -1253,7 +1257,7 @@ Note that if only the `VF1` CDS or `VP2` CDS feature lines included
 the `misc_not_failure:"1"` key/value pairs in the modelinfo file, 
 the sequence would have failed.
 
-Two important caveats above expendable features and
+Two important caveats above non-essential features and
 misc_feature-ization:
 
 1. As mentioned above, features with type `gene`, `5'UTR`, `3'UTR` or
@@ -1261,7 +1265,7 @@ misc_feature-ization:
    GenBank convention.
 
 2. `misc_feature`-ization occurs in `.pass.tbl` output files
-   for expendable features as explained above even when the
+   for non-essential features as explained above even when the
    option `--nomisc` is used. (The `--nomisc` option causes
    `misc_feature`s not to be reported in `.fail.tbl` files.)
 
@@ -1285,7 +1289,7 @@ info file. In this case, `dupregin_exc` is the *exception key* and
 exception to match the strand of the alert, and for negative strand,
 the start position is greater than the stop position. To exclude
 positions 100 to 37 on the negative strand the exception value would
-be `"100..37:-"`. If you are able to have `v-annotate.pl` output an
+be `"100..37:-"`. If you are able to have `v-annotate.pl` output
 an alert that you want to make an exception for using a test
 sequence, you can check the `mdl coords` field of the [`.alt` output file](formats.md#alt)
 to determine the relevant model coordinates for
@@ -1351,7 +1355,7 @@ increase the maximum allowed insertion length without a `insertnn` or
 `367` or `368` for a CDS feature encoded on the top (`+`) strand from
 the default value of `27` to `36`, add the following string to the
 `FEATURE` line for that CDS feature in the model info file:
-`insertnn_exc:367..368:+:36`. As with `coords-only` keys, to add
+`insertn_exc:367..368:+:36`. As with `coords-only` keys, to add
 multiple position ranges and values, separate with commas.
 
 The alert codes which allow exception ranges can also be viewed by

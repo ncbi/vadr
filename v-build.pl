@@ -136,7 +136,7 @@ opt_Add("--cmp7ml",   "boolean", 0,           $g,   undef, "--skipbuild,--cminfi
 opt_Add("--cmere",    "real",    undef,       $g,   undef, "--skipbuild,--cminfile", "set CM relative entropy target to <x>",                    "set CM relative entropy target to <x>",                    \%opt_HH, \@opt_order_A);
 opt_Add("--cmeset",   "real",    undef,       $g,   undef, "--skipbuild,--cminfile", "set CM eff seq # for CM to <x>",                           "set CM eff seq # for CM to <x>",                           \%opt_HH, \@opt_order_A);
 opt_Add("--cmemaxseq","real",    undef,       $g,   undef, "--skipbuild,--cminfile", "set CM maximum allowed eff seq # for CM to <x>",           "set CM maximum alowed eff seq # for CM to <x>",            \%opt_HH, \@opt_order_A);
-opt_Add("--cmnoprior","boolean", 0,           $g,   undef, "--skipbuild,--cminfile", "do not use --prior vadr.prior with cmbuild",               "do not use --prior vadr.prior with cmbuild",               \%opt_HH, \@opt_order_A);
+opt_Add("--cmnoh3pri","boolean", 0,           $g,   undef, "--skipbuild,--cminfile", "do not use --noh3pri option with cmbuild",                 "do not use --noh3pri option with cmbuild",                 \%opt_HH, \@opt_order_A);
 opt_Add("--cminfile", "string",  undef,       $g,   undef, "--skipbuild",            "read cmbuild options from file <s>, one per line",         "read cmbuild options from file <s>, one per line",         \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for skipping stages";
@@ -195,7 +195,7 @@ my $options_okay =
                 'cmere=s'      => \$GetOptions_H{"--cmere"},
                 'cmeset=s'     => \$GetOptions_H{"--cmeset"},
                 'cmemaxseq=s'  => \$GetOptions_H{"--cmemaxseq"},
-                'cmnoprior'    => \$GetOptions_H{"--cmnoprior"},
+                'cmnoh3pr'     => \$GetOptions_H{"--cmnoh3pri"},
                 'cminfile=s'   => \$GetOptions_H{"--cminfile"},
 # options for skipping stages
                 'skipbuild'    => \$GetOptions_H{"--skipbuild"},
@@ -214,8 +214,8 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-build.pl";
 my $usage         = "Usage: $executable [-options] <accession> <path to output directory to create>\n";
 my $synopsis      = "$executable :: build homology model of a single sequence for feature annotation";
 my $date          = scalar localtime();
-my $version       = "1.5.1";
-my $releasedate   = "Feb 2023";
+my $version       = "1.6dev";
+my $releasedate   = "Oct 2023";
 my $pkgname       = "VADR";
 
 # print help and exit if necessary
@@ -358,15 +358,6 @@ if(defined $addminfo_file) {
   vdr_ModelInfoFileParse($addminfo_file, \@reqd_mdl_keys_A, \@reqd_ftr_keys_A, \@add_mdl_info_AH, \%add_ftr_info_HAH, $FH_HR);
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-}
-
-#########################################
-# Validate we have all the files we need:
-#########################################
-my $prior_file  = $env_vadr_scripts_dir . "/vadr.prior";
-# only check for existence of $prior_file if we need it
-if(! opt_IsUsed("--cmnoprior", \%opt_HH)) { 
-  utl_FileValidateExistsAndNonEmpty($prior_file,  sprintf("prior file: $prior_file (skip with --cmnoprior)"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
 
 ###################################################
@@ -840,11 +831,12 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
 
   $start_secs = ofile_OutputProgressPrior("Building CM $cmbuild_str", $progress_w, $log_FH, *STDOUT);
 
-  my $cmbuild_occ_file = $out_root . ".cmbuild.occ";
-  my $cmbuild_cp9occ_file = $out_root . ".cmbuild.cp9occ";
-  my $cmbuild_fp7occ_file = $out_root . ".cmbuild.fp7occ";
+#  my $cmbuild_occ_file = $out_root . ".cmbuild.occ";
+#  my $cmbuild_cp9occ_file = $out_root . ".cmbuild.cp9occ";
+#  my $cmbuild_fp7occ_file = $out_root . ".cmbuild.fp7occ";
 
-  my $cmbuild_opts = "-n $mdl_name --verbose --occfile $cmbuild_occ_file --cp9occfile $cmbuild_cp9occ_file --fp7occfile $cmbuild_fp7occ_file ";
+#  my $cmbuild_opts = "-n $mdl_name --verbose --occfile $cmbuild_occ_file --cp9occfile $cmbuild_cp9occ_file --fp7occfile $cmbuild_fp7occ_file ";
+  my $cmbuild_opts = "-n $mdl_name --verbose ";
   if(opt_IsUsed("--cminfile",  \%opt_HH))   { 
     my @cminfile_A = ();
     utl_FileLinesToArray(opt_Get("--cminfile", \%opt_HH), 1, \@cminfile_A, $FH_HR);
@@ -860,7 +852,7 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
     if(opt_IsUsed("--cmere",     \%opt_HH))   { $cmbuild_opts .= " --ere "     . opt_Get("--cmere", \%opt_HH); }
     if(opt_IsUsed("--cmeset",    \%opt_HH))   { $cmbuild_opts .= " --eset "    . opt_Get("--cmeset", \%opt_HH); }
     if(opt_IsUsed("--cmemaxseq", \%opt_HH))   { $cmbuild_opts .= " --emaxseq " . opt_Get("--cmemaxseq", \%opt_HH); }
-    if(! opt_IsUsed("--cmnoprior", \%opt_HH)) { $cmbuild_opts .= " --prior $prior_file"; }
+    if(! opt_IsUsed("--cmnoh3pri", \%opt_HH)) { $cmbuild_opts .= " --noh3pri"; }
   }
   # if model is big > 0.5 * 25Kb (maxlen), then use the --Egcmult option
   # this avoids problems and slowness with very large sequence lengths for glocal HMM calibration

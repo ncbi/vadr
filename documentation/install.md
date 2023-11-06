@@ -23,7 +23,7 @@ the corresponding `vadr-install.sh` file for that release/version
 (prior to version 1.0, the name of the installation script was
 `install.sh`, not `vadr-install.sh`):
 
-https://raw.githubusercontent.com/ncbi/vadr/1.0/vadr-install.sh
+https://raw.githubusercontent.com/ncbi/vadr/vadr-1.0/vadr-install.sh
 
 Copy the `vadr-install.sh` file into the directory in which you want
 to install VADR. A good name for that directory is
@@ -146,6 +146,7 @@ export VADRBIOEASELDIR="$VADRINSTALLDIR/Bio-Easel"
 export VADRSEQUIPDIR="$VADRINSTALLDIR/sequip"
 export VADRBLASTDIR="$VADRINSTALLDIR/ncbi-blast/bin"
 export VADRFASTADIR="$VADRINSTALLDIR/fasta/bin"
+export VADRMINIMAP2DIR="$VADRINSTALLDIR/minimap2"
 export PERL5LIB="$VADRSCRIPTSDIR":"$VADRSEQUIPDIR":"$VADRBIOEASELDIR/blib/lib":"$VADRBIOEASELDIR/blib/arch":"$PERL5LIB"
 export PATH="$VADRSCRIPTSDIR":"$PATH"
 
@@ -173,6 +174,7 @@ setenv VADRBIOEASELDIR "$VADRINSTALLDIR/Bio-Easel"
 setenv VADRSEQUIPDIR "$VADRINSTALLDIR/sequip"
 setenv VADRBLASTDIR "$VADRINSTALLDIR/ncbi-blast/bin"
 setenv VADRFASTADIR "$VADRINSTALLDIR/fasta/bin"
+setenv VADRMINIMAP2DIR "$VADRINSTALLDIR/minimap2"
 setenv PERL5LIB "$VADRSCRIPTSDIR":"$VADRSEQUIPDIR":"$VADRBIOEASELDIR/blib/lib":"$VADRBIOEASELDIR/blib/arch":"$PERL5LIB"
 setenv PATH "$VADRSCRIPTSDIR":"$PATH"
 

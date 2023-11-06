@@ -1,0 +1,28 @@
+>Feature ENTOY200B-REV
+195	20	gene
+			gene	two
+195	177	CDS
+130	84
+34	20
+			product	protein two
+			protein_id	ENTOY200B-REV_2
+198	104	gene
+			gene	one
+198	188	CDS
+134	104
+			product	protein one
+			protein_id	ENTOY200B-REV_1
+>Feature ENTOY200B-REV.cds2.i1.5
+195	20	gene
+			gene	two
+195	177	CDS
+130	84
+34	20
+			product	protein two
+			protein_id	ENTOY200B-REV.cds2.i1.5_2
+198	104	gene
+			gene	one
+198	188	CDS
+134	104
+			product	protein one
+			protein_id	ENTOY200B-REV.cds2.i1.5_1

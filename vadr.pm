@@ -71,7 +71,7 @@ require "sqp_utils.pm";
 # vdr_FeatureInfoValidateMiscNotFailure()
 # vdr_FeatureInfoValidateIsDeletable()
 # vdr_FeatureInfoValidateAlternativeFeatureSet()
-# vdr_FeatureInfoValidateAlternativeFeatureSetSubstitution()
+# vdr_FeatureInfoValidateAndConvertAlternativeFeatureSetSubstitution()
 # vdr_FeatureInfoValidateCanonSpliceSites()
 # vdr_FeatureInfoValidateExceptionKeys()
 # vdr_FeatureInfoStartStopStrandArrays()
@@ -891,22 +891,26 @@ sub vdr_FeatureInfoValidateAlternativeFeatureSet {
   }
 
   if($fail_str ne "") { 
-    ofile_FAIL("ERROR in $sub_name, some is_deletable values are invalid or don't make sense:\n$fail_str\n", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, some alternative_ftr_set values are invalid or don't make sense:\n$fail_str\n", 1, $FH_HR);
   }
 
   return $ret_val;
 }
 
 #################################################################
-# Subroutine: vdr_FeatureInfoValidateAlternativeFeatureSetSubstitution
+# Subroutine: vdr_FeatureInfoValidateAndConvertAlternativeFeatureSetSubstitution
 # Incept:     EPN, Fri Oct 15 10:07:54 2021
 # 
 
-# Purpose:    Validate "alternative_ftr_set_subn" values are either "" 
-#             or a valid feature index (other than self idx).
-#             value for "alternative_ftr_set" in more than one
-#             feature.
 
+# Purpose:    Validate "alternative_ftr_set_subn" values are either "",
+#             "<s>.<d1>" or "<d2>" where <s> is a valid
+#             "alternative_ftr_set" for a set other than the set of
+#             the current feature, and "<d1>" is an index 1..n where n
+#             is the size of the set "<s>".  Alternatively, for
+#             backwards compatibility, "<d2>" can be a feature index
+#             <0..nftr-1> as long as it isn't self idx.
+#
 #             Should probably be called after
 #             vdr_FeatureInfoInitializeAlternativeFeatureSetSubstitution() 
 #
@@ -920,8 +924,8 @@ sub vdr_FeatureInfoValidateAlternativeFeatureSet {
 #             if any alternative_ftr_set_subn values are invalid
 #
 #################################################################
-sub vdr_FeatureInfoValidateAlternativeFeatureSetSubstitution {
-  my $sub_name = "vdr_FeatureInfoValidateAlternativeFeatureSetSubstitution";
+sub vdr_FeatureInfoValidateAndConvertAlternativeFeatureSetSubstitution {
+  my $sub_name = "vdr_FeatureInfoValidateAndConvertAlternativeFeatureSetSubstitution";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
   
@@ -931,22 +935,48 @@ sub vdr_FeatureInfoValidateAlternativeFeatureSetSubstitution {
   my $fail_str = ""; # added to if any elements are out of range
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    my $subn_idx = $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set_subn"};
-    if(! defined $subn_idx) { 
+    my $subn_val = $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set_subn"};
+    if(! defined $subn_val) { 
       $fail_str .= "ftr_idx: $ftr_idx, undefined\n"; 
     }
-    elsif($subn_idx ne "") { 
-      if($subn_idx !~ /^\d+$/) { 
-        $fail_str .= "ftr_idx: $ftr_idx, " . $subn_idx . " not an integer\n"; 
+    elsif($subn_val ne "") { 
+      if($subn_val =~ /^(\S+)\.(\d+)$/) { # e.g. "attachment(cds).2"
+        my ($set, $set_idx) = ($1, $2);
+        # make sure $set is not the set that this ftr belongs to
+        if((defined $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set"}) && 
+           ($ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set"} eq $set)) { 
+          $fail_str .= "ftr_idx: $ftr_idx, " . $subn_val . " implies the substitution set is the same as the ftr set ($set) for this feature.\n";
+        }
+        else { 
+          # find the ftr $set.$set_idx corresponds to:
+          my $cur_set_idx = 0;
+          my $found_flag = 0; # set to 1 if we find it
+          for(my $ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
+            if((defined $ftr_info_AHR->[$ftr_idx2]{"alternative_ftr_set"}) && 
+               ($ftr_info_AHR->[$ftr_idx2]{"alternative_ftr_set"} eq $set)) { 
+              $cur_set_idx++;
+              if($cur_set_idx == $set_idx) { 
+                # rewrite value
+                $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set_subn"} = $ftr_idx2;
+                $found_flag = 1;
+              }
+            }
+          }
+          if(! $found_flag) { 
+            $fail_str .= "ftr_idx: $ftr_idx, " . $subn_val . " implies substitution ftr is from alternative_ftr_set $set index $set_idx, but found $cur_set_idx features with that alternative_ftr_set value.\n";
+          }
+        }
       }
-      elsif($subn_idx < 0) { 
-        $fail_str .= "ftr_idx: $ftr_idx, " . $subn_idx . " < 0\n"; 
-      }
-      elsif($subn_idx >= $nftr) { 
-        $fail_str .= "ftr_idx: $ftr_idx, " . $subn_idx . " >= $nftr (num features, should be 0.." . ($nftr-1) . ")\n";
-      }
-      elsif($subn_idx == $ftr_idx) { 
-        $fail_str .= "ftr_idx: $ftr_idx, is its own substitute, this is not allowed\n";
+      elsif($subn_val =~ /^\d+$/) { 
+        if($subn_val < 0) { 
+          $fail_str .= "ftr_idx: $ftr_idx, " . $subn_val . " < 0\n"; 
+        }
+        elsif($subn_val >= $nftr) { 
+          $fail_str .= "ftr_idx: $ftr_idx, " . $subn_val . " >= $nftr (num features, should be 0.." . ($nftr-1) . ")\n";
+        }
+        elsif($subn_val == $ftr_idx) { 
+          $fail_str .= "ftr_idx: $ftr_idx, is its own substitute, this is not allowed\n";
+        }
       }
       # else valid feature index
     }
@@ -7059,7 +7089,6 @@ sub vdr_BackwardsCompatibilityExceptions {
     # and update indfstrn exc-key: indfstrn_exc --> indfstr_exc
     if($exc_key eq "indfstrn_exc") { 
       $new_key = $alt_info_HHR->{"indfstrn"}{"exc_key"};
-      printf("HEYA replacing $exc_key " . $mdl_info_HR->{$exc_key} . " with $new_key " . $mdl_info_HR->{$exc_key} . "\n");
       $mdl_info_HR->{$new_key} = $mdl_info_HR->{$exc_key};
       delete($mdl_info_HR->{$exc_key});
     }
@@ -7112,13 +7141,11 @@ sub vdr_BackwardsCompatibilityExceptions {
         if(! defined $new_key) { 
           ofile_FAIL("ERROR, in $sub_name, trying to update old exception key $exc_key, but unable to determine new key", 1, $FH_HR);
         }
-        printf("HEYA replacing $exc_key " . $ftr_info_AHR->[$ftr_idx]{$exc_key} . " (exc_key: $exc_key) with " . $new_value . " (exc_key: $new_key)\n");
         $ftr_info_AHR->[$ftr_idx]{$new_key} = $new_value;
         delete($ftr_info_AHR->[$ftr_idx]{$exc_key});
       }
       if($exc_key eq "frameshift_exc") { 
         $new_key = $alt_info_HHR->{"fstukcfi"}{"exc_key"};
-        printf("HEYA replacing $exc_key " . $ftr_info_AHR->[$ftr_idx]{$exc_key} . " with " . $ftr_info_AHR->[$ftr_idx]{$exc_key} . "\n");
         $ftr_info_AHR->[$ftr_idx]{$new_key} = $ftr_info_AHR->[$ftr_idx]{$exc_key};
         delete($ftr_info_AHR->[$ftr_idx]{$exc_key});
       }

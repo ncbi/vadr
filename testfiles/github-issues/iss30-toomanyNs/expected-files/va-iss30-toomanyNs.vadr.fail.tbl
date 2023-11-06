@@ -19,9 +19,9 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:p48) mat_peptide may not be tra
 			protein_id	NC_001959-10extraNs-at-end_1
 510	>1050	gene
 			gene	ORF3
-510	>1050	misc_feature
-			note	similar to VP2
+510	>1050	CDS
+			product	VP2
+			protein_id	NC_001959-10extraNs-at-end_2
 
 Additional note(s) to submitter:
 ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.813<0.900]; seq-coords:1053..1294:+; mdl-coords:-; mdl:NC_001959;
-ERROR: UNEXPECTED_LENGTH: (CDS:VP2) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [688]; seq-coords:510..1197:+; mdl-coords:6950..7588:+; mdl:NC_001959;

@@ -300,13 +300,16 @@ opt_Add("--xlonescore",  "integer",  80,        $g,   undef,"--pv_skip,--pv_hmme
 opt_Add("--hlonescore",  "integer",  10,        $g,"--pv_hmmer","--pv_skip",        "indfantp/INDEFINITE_ANNOTATION min score for a hmmer hit not supported by CM analysis is <n>",     "indfantp/INDEFINITE_ANNOTATION min score for a hmmer hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling cmalign alignment stage";
-#        option               type default group  requires incompat   preamble-output                                                                help-output    
-opt_Add("--mxsize",     "integer", 16000,     $g,    undef,"--glsearch", "set max allowed memory for cmalign to <n> Mb",                                 "set max allowed memory for cmalign to <n> Mb", \%opt_HH, \@opt_order_A);
-opt_Add("--tau",        "real",    1E-3,      $g,    undef,"--glsearch", "set the initial tau value for cmalign to <x>",                                 "set the initial tau value for cmalign to <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--nofixedtau", "boolean", 0,         $g,    undef,"--glsearch", "do not fix the tau value when running cmalign, allow it to increase if nec",   "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
-opt_Add("--nosub",      "boolean", 0,         $g,    undef,"--glsearch", "use alternative alignment strategy for truncated sequences",                   "use alternative alignment strategy for truncated sequences", \%opt_HH, \@opt_order_A);
-opt_Add("--noglocal",   "boolean", 0,         $g,"--nosub","--glsearch", "do not run cmalign in glocal mode (run in local mode)",                        "do not run cmalign in glocal mode (run in local mode)", \%opt_HH, \@opt_order_A);
-opt_Add("--cmindi",     "boolean", 0,         $g,    undef, "--nkb,--glsearch", "force cmalign to align one seq at a time",                              "force cmalign to align on seq at a time", \%opt_HH, \@opt_order_A);
+#        option               type   default group  requires incompat   preamble-output                                                                help-output    
+opt_Add("--mxsize",       "integer", 16000,     $g,    undef,"--glsearch", "set max allowed memory for cmalign to <n> Mb",                                 "set max allowed memory for cmalign to <n> Mb", \%opt_HH, \@opt_order_A);
+opt_Add("--tau",          "real",    1E-3,      $g,    undef,"--glsearch", "set the initial tau value for cmalign to <x>",                                 "set the initial tau value for cmalign to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--nofixedtau",   "boolean", 0,         $g,    undef,"--glsearch", "do not fix the tau value when running cmalign, allow it to increase if nec",   "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
+opt_Add("--nosub",        "boolean", 0,         $g,    undef,"--glsearch", "use alternative alignment strategy for truncated sequences",                   "use alternative alignment strategy for truncated sequences", \%opt_HH, \@opt_order_A);
+opt_Add("--noglocal",     "boolean", 0,         $g,"--nosub","--glsearch", "do not run cmalign in glocal mode (run in local mode)",                        "do not run cmalign in glocal mode (run in local mode)", \%opt_HH, \@opt_order_A);
+opt_Add("--cmindi",       "boolean", 0,         $g,    undef, "--nkb,--glsearch", "force cmalign to align one seq at a time",                              "force cmalign to align on seq at a time", \%opt_HH, \@opt_order_A);
+opt_Add("--noflank",      "boolean", 0,         $g,    undef, undef,       "do not use --flank* options to improve alns at ends",                          "do not use --flank* options to improve alns at ends", \%opt_HH, \@opt_order_A);
+opt_Add("--flanktoins",   "real",    0.1,       $g,    undef, "--noflank", "set transition probs to ROOT_IL/IR for cmalign to <x>",                        "set transition probs to ROOT_IL/IR for cmalign to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--flankselfins", "real",    0.8,       $g,    undef, "--noflank", "set self-transit probs in ROOT_IL/IR for cmalign to <x>",                      "set self-transit probs in ROOT_IL/IR for cmalign to <x>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling glsearch alignment stage as alternative to cmalign";
 #        option               type default group  requires incompat   preamble-output                                                                help-output    
@@ -511,12 +514,15 @@ my $options_okay =
                 'xlonescore=s'  => \$GetOptions_H{"--xlonescore"},
                 'hlonescore=s'  => \$GetOptions_H{"--hlonescore"},
 # options for controlling cmalign alignment stage 
-                'mxsize=s'      => \$GetOptions_H{"--mxsize"},
-                'tau=s'         => \$GetOptions_H{"--tau"},
-                'nofixedtau'    => \$GetOptions_H{"--nofixedtau"},
-                'nosub'         => \$GetOptions_H{"--nosub"},
-                'noglocal'      => \$GetOptions_H{"--noglocal"},
-                'cmindi'        => \$GetOptions_H{"--cmindi"},
+                'mxsize=s'       => \$GetOptions_H{"--mxsize"},
+                'tau=s'          => \$GetOptions_H{"--tau"},
+                'nofixedtau'     => \$GetOptions_H{"--nofixedtau"},
+                'nosub'          => \$GetOptions_H{"--nosub"},
+                'noglocal'       => \$GetOptions_H{"--noglocal"},
+                'cmindi'         => \$GetOptions_H{"--cmindi"},
+                'noflank'        => \$GetOptions_H{"--noflank"}, 
+                'flanktoins=s'   => \$GetOptions_H{"--flanktoins"}, 
+                'flankselfins=s' => \$GetOptions_H{"--flankselfins"}, 
 # options for controlling glsearch alignment stage 
                 'glsearch'       => \$GetOptions_H{"--glsearch"},
                 'gls_match=s'    => \$GetOptions_H{"--gls_match"},
@@ -1110,7 +1116,7 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   vdr_FeatureInfoValidateMiscNotFailure(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoValidateIsDeletable(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoValidateAlternativeFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-  vdr_FeatureInfoValidateAlternativeFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  vdr_FeatureInfoValidateAndConvertAlternativeFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoValidateCanonSpliceSites(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_SegmentInfoPopulate(\@{$sgm_info_HAH{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   if(! opt_Get("--ignore_exc", \%opt_HH)) { 
@@ -4053,6 +4059,10 @@ sub cmalign_or_glsearch_run {
     if(! opt_Get("--nofixedtau", $opt_HHR)) { 
       $opts .= " --fixedtau"; 
     }
+    if(! opt_Get("--noflank", $opt_HHR)) { 
+      $opts .= " --flanktoins "   . opt_Get("--flanktoins", $opt_HHR); 
+      $opts .= " --flankselfins " . opt_Get("--flankselfins", $opt_HHR); 
+    }
     if(defined $mdl_name) { 
       $cmd = $execs_HR->{"cmfetch"} . " $mdl_file $mdl_name | " . $execs_HR->{"cmalign"} . " $opts - $seq_file > $stdout_file 2>&1";
     }
@@ -5106,20 +5116,22 @@ sub add_frameshift_alerts_for_one_sequence {
                 $uapos_prv = $uapos;
                 $rfpos_prv = $rfpos;
                 $F_prv     = $F_cur;
-                my $local_rfpos   = ($strand eq "+") ? ($rfpos - $cur_delete_len) : ($rfpos + $cur_delete_len);
-                my $local_nmaxdel = defined ($deletin_posn_exc_AH[$ftr_idx]{$local_rfpos}) ? $deletin_posn_exc_AH[$ftr_idx]{$local_rfpos} : $nmaxdel;
-                if($cur_delete_len > $local_nmaxdel) { 
-                  $alert_scoords = sprintf("seq:%s;", ($strand eq "+") ? 
-                                           vdr_CoordsSegmentCreate($uapos-1, $uapos-1, $strand, $FH_HR) : 
-                                           vdr_CoordsSegmentCreate($uapos+1, $uapos+1, $strand, $FH_HR));
-                  $alert_mcoords = sprintf("mdl:%s;", ($strand eq "+") ? 
-                                           vdr_CoordsSegmentCreate($local_rfpos, $rfpos - 1, $strand, $FH_HR) : 
-                                           vdr_CoordsSegmentCreate($local_rfpos, $rfpos + 1, $strand, $FH_HR));
-                  alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinn", $seq_name, $ftr_idx, 
+                if($cur_delete_len > 0) { 
+                  my $local_rfpos   = ($strand eq "+") ? ($rfpos - $cur_delete_len) : ($rfpos + $cur_delete_len);
+                  my $local_nmaxdel = (defined $deletin_posn_exc_AH[$ftr_idx]{$local_rfpos}) ? $deletin_posn_exc_AH[$ftr_idx]{$local_rfpos} : $nmaxdel;
+                  if($cur_delete_len > $local_nmaxdel) { 
+                    $alert_scoords = sprintf("seq:%s;", ($strand eq "+") ? 
+                                             vdr_CoordsSegmentCreate($uapos-1, $uapos-1, $strand, $FH_HR) : 
+                                             vdr_CoordsSegmentCreate($uapos+1, $uapos+1, $strand, $FH_HR));
+                    $alert_mcoords = sprintf("mdl:%s;", ($strand eq "+") ? 
+                                             vdr_CoordsSegmentCreate($local_rfpos, $rfpos - 1, $strand, $FH_HR) : 
+                                             vdr_CoordsSegmentCreate($local_rfpos, $rfpos + 1, $strand, $FH_HR));
+                    alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinn", $seq_name, $ftr_idx, 
                                              sprintf("%s%s%d>%d", 
                                                      $alert_scoords, $alert_mcoords, $cur_delete_len, $local_nmaxdel), $FH_HR);
+                  }
+                  $cur_delete_len = 0;
                 }
-                $cur_delete_len = 0;
               }
               else { # rf position is a gap, add 'd' GR frame annotation
                 if($strand eq "+") { $gr_frame_str .= "d"; }
@@ -5144,15 +5156,17 @@ sub add_frameshift_alerts_for_one_sequence {
                 }
               }
               # add insertnn alert, if nec
-              my $local_nmaxins = defined ($insertn_posn_exc_AH[$ftr_idx]{$rfpos}) ? $insertn_posn_exc_AH[$ftr_idx]{$rfpos} : $nmaxins;
-              if($rf2ilen_AR->[$rfpos] > $local_nmaxins) { 
-                $alert_scoords = sprintf("seq:%s;", ($strand eq "+") ? 
-                                         vdr_CoordsSegmentCreate($uapos+1, $uapos+1 + $rf2ilen_AR->[$rfpos]-1, $strand, $FH_HR) : 
-                                         vdr_CoordsSegmentCreate($uapos+1 + $rf2ilen_AR->[$rfpos]-1, $uapos+1, $strand, $FH_HR));
-                $alert_mcoords = sprintf("mdl:%s;", vdr_CoordsSegmentCreate($rfpos, $rfpos, $strand, $FH_HR));
-                alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "insertnn", $seq_name, $ftr_idx, 
-                                           sprintf("%s%s%d>%d", 
-                                                   $alert_scoords, $alert_mcoords, $rf2ilen_AR->[$rfpos], $local_nmaxins), $FH_HR);
+              if($rf2ilen_AR->[$rfpos] > 0) { 
+                my $local_nmaxins = (defined $insertn_posn_exc_AH[$ftr_idx]{$rfpos}) ? $insertn_posn_exc_AH[$ftr_idx]{$rfpos} : $nmaxins;
+                if($rf2ilen_AR->[$rfpos] > $local_nmaxins) { 
+                  $alert_scoords = sprintf("seq:%s;", ($strand eq "+") ? 
+                                           vdr_CoordsSegmentCreate($uapos+1, $uapos+1 + $rf2ilen_AR->[$rfpos]-1, $strand, $FH_HR) : 
+                                           vdr_CoordsSegmentCreate($uapos+1 + $rf2ilen_AR->[$rfpos]-1, $uapos+1, $strand, $FH_HR));
+                  $alert_mcoords = sprintf("mdl:%s;", vdr_CoordsSegmentCreate($rfpos, $rfpos, $strand, $FH_HR));
+                  alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "insertnn", $seq_name, $ftr_idx, 
+                                             sprintf("%s%s%d>%d", 
+                                                     $alert_scoords, $alert_mcoords, $rf2ilen_AR->[$rfpos], $local_nmaxins), $FH_HR);
+                }
               }
 
               # increment or decrement rfpos
@@ -5167,7 +5181,7 @@ sub add_frameshift_alerts_for_one_sequence {
             $nsgm++;
             push(@gr_frame_str_A, $gr_frame_str);
             my $local_rfpos   = ($strand eq "+") ? ($rfpos - $cur_delete_len) : ($rfpos + $cur_delete_len);
-            my $local_nmaxdel = defined ($deletin_posn_exc_AH[$ftr_idx]{$local_rfpos}) ? $deletin_posn_exc_AH[$ftr_idx]{$local_rfpos} : $nmaxdel;
+            my $local_nmaxdel = (defined $deletin_posn_exc_AH[$ftr_idx]{$local_rfpos}) ? $deletin_posn_exc_AH[$ftr_idx]{$local_rfpos} : $nmaxdel;
             if($cur_delete_len > $local_nmaxdel) { 
               $alert_scoords = sprintf("seq:%s;", ($strand eq "+") ? 
                                        vdr_CoordsSegmentCreate($uapos-1, $uapos-1, $strand, $FH_HR) : 
@@ -7462,10 +7476,15 @@ sub add_protein_validation_alerts {
                     # calcuate $start_diff and $stop_diff, differently depending on if hit
                     # was to the full sequence or a fetched feature (true if $p_blastx_feature_flag == 1)
                     if($p_blastx_feature_flag) { 
-                      $start_diff = $p_qstart - 1; 
+                      # query blast sequence was a fetched feature sequence determine absolute (sequence) nt coords using
+                      # vdr_CoordsRelativeToAbsolute(), this will correctly handle case where we have multiple segments
+                      my $abs_p_qcoords = vdr_CoordsRelativeToAbsolute($n_scoords, 
+                                                                       vdr_CoordsSegmentCreate($p_qstart, $p_qstop, $n_strand, $FH_HR), 
+                                                                       $FH_HR);
+                      $p_sstart = vdr_Feature5pMostPosition($abs_p_qcoords, $FH_HR); 
+                      $p_sstop  = vdr_Feature3pMostPosition($abs_p_qcoords, $FH_HR); 
+                      $start_diff = $p_qstart - 1;
                       $stop_diff  = $p_qlen - $p_qstop;
-                      $p_sstart = ($n_strand eq "+") ? $n_start + $start_diff : $n_start - $start_diff;
-                      $p_sstop  = ($n_strand eq "+") ? $n_stop  - $stop_diff  : $n_stop  + $stop_diff;
                       # printf("p_blastx_feature_flag: $p_blastx_feature_flag, p_qstart: $p_qstart, n_start: $n_start p_qstop: $p_qstop, n_stop: $n_stop, start_diff: $start_diff, stop_diff: $stop_diff\n");
                     }
                     else { 
@@ -7540,7 +7559,7 @@ sub add_protein_validation_alerts {
                         my $nt_ins_spos = vdr_Feature3pMostPosition(vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, 
                                                                                                         vdr_CoordsSinglePositionSegmentCreate($p_ins_spos_A[$ins_idx], "+", $FH_HR),
                                                                                                         $FH_HR), $FH_HR);
-                        my $local_xmaxins = defined ($insertn_posn_exc_AH[$ftr_idx]{$nt_ins_spos}) ? $insertn_posn_exc_AH[$ftr_idx]{$nt_ins_spos} : $xmaxins;
+                        my $local_xmaxins = (defined $insertn_posn_exc_AH[$ftr_idx]{$nt_ins_spos}) ? $insertn_posn_exc_AH[$ftr_idx]{$nt_ins_spos} : $xmaxins;
                         if($p_ins_len_A[$ins_idx] > $local_xmaxins) { 
                           if(defined $alt_str_HH{$ftr_results_prefix}{"insertnp"}) { $alt_str_HH{$ftr_results_prefix}{"insertnp"} .= ":VADRSEP:"; } # we are adding another instance
                           else                               { $alt_str_HH{$ftr_results_prefix}{"insertnp"}  = ""; } # initialize
@@ -7564,7 +7583,7 @@ sub add_protein_validation_alerts {
                         my $nt_del_spos = vdr_Feature3pMostPosition(vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, 
                                                                                                         vdr_CoordsSinglePositionSegmentCreate($p_del_spos_A[$del_idx], "+", $FH_HR),
                                                                                                         $FH_HR), $FH_HR);
-                        my $local_xmaxdel = defined ($deletin_posn_exc_AH[$ftr_idx]{$nt_del_spos}) ? $deletin_posn_exc_AH[$ftr_idx]{$nt_del_spos} : $xmaxdel;
+                        my $local_xmaxdel = (defined $deletin_posn_exc_AH[$ftr_idx]{$nt_del_spos}) ? $deletin_posn_exc_AH[$ftr_idx]{$nt_del_spos} : $xmaxdel;
                         if($p_del_len_A[$del_idx] > $local_xmaxdel) { 
                           if(defined $alt_str_HH{$ftr_results_prefix}{"deletinp"}) { $alt_str_HH{$ftr_results_prefix}{"deletinp"} .= ":VADRSEP:"; } # we are adding another instance
                           else                                                     { $alt_str_HH{$ftr_results_prefix}{"deletinp"} = ""; }           # initialize
@@ -7659,7 +7678,9 @@ sub add_protein_validation_alerts {
               $winning_prefix     = "p_";
               my $winning_nalt       = $nalt_H{$winning_prefix};
               my $winning_nalt_fatal = $nalt_fatal_H{$winning_prefix};
-              if(defined $nalt_fatal_H{"pc_"}) { 
+              if((defined $ftr_results_HR->{"pc_qstart"}) && 
+                 (defined $ftr_results_HR->{"pc_qstop"}) && 
+                 (defined $nalt_fatal_H{"pc_"})) { 
                 if(($nalt_fatal_H{"pc_"}  <  $winning_nalt_fatal) || 
                    (($nalt_fatal_H{"pc_"} == $winning_nalt_fatal) && ($nalt_H{"pc_"} < $winning_nalt))) { 
                   $winning_prefix     = "pc_";
@@ -7667,7 +7688,9 @@ sub add_protein_validation_alerts {
                   $winning_nalt_fatal = $nalt_fatal_H{$winning_prefix};
                 }
               }
-              if(defined $nalt_fatal_H{"pl_"}) { 
+              if((defined $ftr_results_HR->{"pl_qstart"}) && 
+                 (defined $ftr_results_HR->{"pl_qstop"}) && 
+                 (defined $nalt_fatal_H{"pl_"})) { 
                 if(($nalt_fatal_H{"pl_"}  <  $winning_nalt_fatal) || 
                    (($nalt_fatal_H{"pl_"} == $winning_nalt_fatal) && ($nalt_H{"pl_"} < $winning_nalt))) { 
                   $winning_prefix     = "pl_";
@@ -7676,10 +7699,13 @@ sub add_protein_validation_alerts {
                 }
               }
             }
-            # if pc_ or pl_ was the winner, overwrite p_ values in ftr_results_HR with pl_ values, so future subroutines use correct values
+            # if pc_ or pl_ was the winner, overwrite p_ values in ftr_results_HR with pc_ or pl_ values, so future subroutines use correct values
             if($winning_prefix ne "p_") { 
               foreach my $alt_key ("qstart", "qstop", "strand", "query", "len", "ins", "del", "trcstop", "score", "hstart", "hstop", "score", "q_ftr_idx", "frame") { 
-                $ftr_results_HR->{"p_" . $alt_key} = $ftr_results_HR->{($winning_prefix . $alt_key)};
+                my $winning_alt_key = $winning_prefix . $alt_key;
+                if(defined $ftr_results_HR->{($winning_prefix . $alt_key)}) { 
+                  $ftr_results_HR->{("p_" . $alt_key)} = $ftr_results_HR->{($winning_prefix . $alt_key)};
+                }
               }
             }
             foreach my $alt_code (sort keys %{$alt_str_HH{$winning_prefix}}) { 
@@ -10184,8 +10210,8 @@ sub output_tabular {
             my $ftr_n_stop   = (defined $ftr_results_HR->{"n_stop"})    ? $ftr_results_HR->{"n_stop"}    : "-";
             my $ftr_n_stop_c = (defined $ftr_results_HR->{"n_stop_c"})  ? $ftr_results_HR->{"n_stop_c"}  : "-";
             if(($ftr_n_stop_c ne "-") && ($ftr_n_stop_c ne "?") && ($ftr_n_stop_c == $ftr_n_stop)) { $ftr_n_stop_c = "-"; }
-            my $ftr_p_qstart  = (defined $ftr_results_HR->{"p_qstart"})   ? $ftr_results_HR->{"p_qstart"}   : "-";
-            my $ftr_p_qstop   = (defined $ftr_results_HR->{"p_qstop"})    ? $ftr_results_HR->{"p_qstop"}    : "-";
+            my $ftr_p_qstart  = (defined $ftr_results_HR->{"p_qstart"})  ? $ftr_results_HR->{"p_qstart"}   : "-";
+            my $ftr_p_qstop   = (defined $ftr_results_HR->{"p_qstop"})   ? $ftr_results_HR->{"p_qstop"}    : "-";
             my $ftr_p_qstop_c = (defined $ftr_results_HR->{"p_trcstop"}) ? $ftr_results_HR->{"p_trcstop"} : "-";
             if($ftr_p_qstop_c ne "-") { 
               $ftr_p_qstop_c =~ s/;.*$//; # keep only first early stop position

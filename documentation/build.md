@@ -255,7 +255,7 @@ The first category of options are the *basic* options:
 | `--ftfetch2` | use `efetch` program (must be in your `PATH`) to fetch feature table with `efetch -format gbc | xml2tbl` instead of default method of fetching from an `eutils` URL | 
 | `--gb` | fetch and parse a GenBank-format file from GenBank instead of a feature table | 
 | `--ingb <s>` | read the GenBank-format file in `<s>` instead of a feature table file (requires `--gb`)| 
-| `--addminfo <s>` | add arbitrary feature info in file `<s>` to output `.minfo` file, see an example [here](#1.0library-noro") | 
+| `--addminfo <s>` | add arbitrary feature info in file `<s>` to output `.minfo` file, see an example [here](#1.0library-noro) | 
 | `--forcelong` | *use at your own risk*; allow long models > 25Kb in length; by default `v-build.pl` will fail for any model more than 25Kb (25,000 nucleotides) because `v-build.pl` will be very slow and the memory requirements of `v-annotate.pl` will be prohibitively large
 | `--keep` | keep additional output files that are normally removed |
 
@@ -264,7 +264,7 @@ The first category of options are the *basic* options:
 By default, only `CDS`, `gene` and `mat_peptide` feature types read from the GenBank feature table file
 will be stored in the output `.minfo` file. This default set can be changed using the following three
 command line options. For an example of using the `--fadd` option, see the construction of the dengue virus
-RefSeq models for the VADR 1.0 model library [here](#1.0library-dengue").
+RefSeq models for the VADR 1.0 model library [here](#1.0library-dengue).
 
 | ......option...... | explanation | 
 |--------|-------------| 
@@ -281,11 +281,11 @@ stored. This default set can be changed using the following five
 command line options. 
 For an example of using the `--qadd` and `--qftradd` options, see
 the construction of the dengue virus RefSeq models for the VADR 1.0
-model library [here](#1.0library-dengue").
+model library [here](#1.0library-dengue).
 
 | .......option....... | explanation | 
 |--------|-------------| 
-| `--qall`   | specify that all qualifiers (except those in `<s> from `--qskip <s>`) be added to the `.minfo` output file |
+| `--qall`   | specify that all qualifiers (except those in `<s>` from `--qskip <s>`) be added to the `.minfo` output file |
 | `--qadd <s>`  | add qualifiers listed in `<s>` to the default set, where `<s>` is a comma-separated string with each qualifier separated by a comma with no whitespace |
 | `--qftradd <s>`  | specify that the qualifiers listed in `<s2>` from `qadd <s2>` only apply for feature types in the string `<s>`, where `<s>` is a comma-separated string with each qualifier separated by a comma with no whitespace |
 | `--qskip <s>`  | do not store information for qualifiers listed in `<s>`, where `<s>` is a comma-separated string with each qualifier separated by a comma with no whitespace; `<s>` may contain qualifiers from the default set, or from other qualifiers (if `--qall` also used) |
@@ -335,6 +335,7 @@ User's Guide manual page for `cmbuild` (section 8 of http://eddylab.org/infernal
 | `--cmere` | set CM relative entropy target bits to position to `<x>` (sets the `cmbuild --ere <x>` option), default is to use default `cmbuild` value |
 | `--cmeset` | set CM effective sequence number to '<x>` (sets the `cmbuild --eset <x>` option), default is to use default `cmbuild` value | 
 | `--cmemaxseq` | set CM maximum allowed effective sequence # for CM to `<x>` (sets the `cmbuild --emaxseq <x>` option) | 
+| `--cmnoh3pri` | do not use `--noh3pri` option with `cmbuild`, to allow CM to use prior from HMMER3 for zero basepair models |
 | `--cminfile` | read `cmbuild` options from an input file `<s>`, the contents of the file (after removing newlines) will be supplied directly to `cmbuild` as an options string (possibly with more than one option separated by whitespace) |
 
 ### `v-build.pl` options for skipping stages<a name="options-skip"></a>
@@ -451,7 +452,7 @@ used in the [paper on VADR 1.0](../README.md#reference) (https://doi.org/10.1186
 If you want to reproduce it exactly, you'll want to install
 version 1.0. The install script for v1.0 is here:
 
-https://raw.githubusercontent.com/ncbi/vadr/1.0/vadr-install.sh
+https://raw.githubusercontent.com/ncbi/vadr/vadr-1.0/vadr-install.sh
 
 Additionally, if the RefSeq annotation for any of these 197 VADR
 models has changed since October 2019, then it may not be able to

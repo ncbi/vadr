@@ -31,7 +31,7 @@ VERSION="1.6"
 # bio-easel (need this version info here only so we can check out correct easel branch in Bio-Easel/src)
 BEVERSION="Bio-Easel-0.16"
 # blast+
-BVERSION="2.14.1"
+BVERSION="2.15.0"
 # infernal
 IVERSION="1.1.5"
 # hmmer
