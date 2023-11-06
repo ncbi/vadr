@@ -1,5 +1,49 @@
 # VADR 1.x release notes 
 
+### VADR 1.6 release (November 2023): Major update
+  * adds new extrant{5,3} alerts (EXTRA_SEQUENCE{_START,_SEND}) for
+    extra sequence 5' or expected start or 3' of expected stop 
+  * adds new mutspst{5,3} alerts (MUTATION_AT_SPLICE_SITE) for
+    unexpected noncanonical donor splice site not (not GT) at 5' end
+    of intron or acceptor splice site (not AG) at 3' end of intron.
+  * protein validation using blastx now selects either longest or
+    best-scoring alignment based on which yields fewer alerts.
+    The v-annotate.pl --xlongest option has been removed as it is now
+    unnecessary. 
+  * makes alert exception support more consistent and adds exceptions
+    for low similarity alerts (lowsim*). See
+    documentation/annotate.md#exceptions for details.
+  * improves CM-based alignment of extra sequence at 5' and 3' ends 
+    using cmalign from infernal 1.1.5
+  * improves detailed error message for cdsstopn alert when CDS is 3'
+    truncated 
+  * overhauls miniscripts/build-add-to-blast-db.pl for adding new
+    proteins to model's blastx protein library
+  * adds support for sig_peptides in v-build.pl
+  * adds detailed tutorial on advanced model building using RSV as an
+    example in documentation/advbuild.md
+  * adds count-ambigs.pl, longest-N-stretch.pl and
+    esl-alipid-per-seq-stats.pl perl scripts to miniscripts/. These
+    are used in the advanced model building tutorial.
+
+  Bug fixes:
+  * fixes bug with reporting codon_start and truncation status of
+    multi-segment CDS if at least one segment is completely missing
+    due to truncation (github issue #72)
+  * fixes bug in reporting of early stops in multi-segment CDS (github
+    issue #71)
+  * fixes bug preventing reporting of in-frame early stop codon
+    (cdsstpon) if they are the final 3 nt of the sequence (github
+    issue #70)
+
+  Other changes:
+  * updates dependencies installed with VADR:
+    - blast+ version 2.15.0
+    - infernal version 1.1.5
+    - hmmer version 3.4
+
+---
+
 ### VADR 1.5.1 release (February 2023): Bug fix release
   * fixes bug that caused a failure during blastx parsing in rare
     cases, found during RSV testing. Logged as github issue #68.
