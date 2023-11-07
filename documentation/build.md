@@ -39,9 +39,9 @@ v-build.pl -h
 You'll see something like the following output:
 ```
 # v-build.pl :: build homology model of a single sequence for feature annotation
-# VADR 1.4 (Dec 2021)
+# VADR 1.6 (Nov 2023)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Tue Dec 21 10:59:56 2021
+# date:    Tue Nov  7 10:07:21 2023
 #
 Usage: v-build.pl [-options] <accession> <path to output directory to create>
 ```
@@ -100,9 +100,9 @@ a FASTA sequence file and feature table file for the input accession
 `NC_039897`. 
 
 ```
-# Fetching FASTA file                                          ... done. [    3.3 seconds]
+# Fetching FASTA file                                          ... done. [    3.4 seconds]
 # Parsing FASTA file                                           ... done. [    0.0 seconds]
-# Fetching feature table file                                  ... done. [    3.2 seconds]
+# Fetching feature table file                                  ... done. [    3.4 seconds]
 # Parsing feature table file                                   ... done. [    0.0 seconds]
 ```
 
@@ -112,7 +112,7 @@ data from GenBank is then pruned to remove information that will
 not be stored in the VADR model files:
 
 ```
-# Fetching and parsing protein feature table file(s)           ... done. [    9.4 seconds]
+# Fetching and parsing protein feature table file(s)           ... done. [   10.3 seconds]
 # Pruning data read from GenBank                               ... done. [    0.0 seconds]
 ```
 
@@ -124,12 +124,13 @@ create the BLAST database with `makeblastdb`, and the HMMER protein
 HMM database with `hmmbuild`.
 
 ```
-# Reformatting FASTA file to Stockholm file                    ... done. [    0.3 seconds]
-# Building BLAST nucleotide database                           ... done. [    1.2 seconds]
+# Reformatting FASTA file to Stockholm file                    ... done. [    0.0 seconds]
+# Building BLAST nucleotide database                           ... done. [    0.7 seconds]
 # Finalizing feature information                               ... done. [    0.0 seconds]
-# Translating CDS                                              ... done. [    0.1 seconds]
-# Building BLAST protein database                              ... done. [    0.2 seconds]
-# Building HMMER protein database                              ... done. [    1.2 seconds]
+# Translating CDS                                              ... done. [    0.2 seconds]
+# Building BLAST protein database                              ... done. [    0.3 seconds]
+# Building HMMER protein database                              ... done. [    1.1 seconds]
+# Checking intron splice sites, if any                         ... done. [    0.0 seconds]
 ```
 
 Next, the covariance model is built using `cmbuild`. This is by far
@@ -141,9 +142,8 @@ nucleotide database is created from the CM consensus sequence. The final
 step is to create the model info file:
 
 ```
-# Building CM (should take roughly 10-30 minutes)              ... done. [  480.6 seconds]
-# Pressing CM file                                             ... done. [    0.3 seconds]
-# Building BLAST nucleotide database of CM consensus           ... done. [    0.3 seconds]
+# Building CM (should take roughly 10-30 minutes)              ... done. [  477.0 seconds]
+# Pressing CM file                                             ... done. [    0.4 seconds]
 # Creating model info file                                     ... done. [    0.0 seconds]
 ```
 When all steps are complete, `v-build.pl` ends by outputting a list of
