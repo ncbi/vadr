@@ -12,6 +12,7 @@
   * [options for additional output files](#options-output)
   * [additional expert options](#options-expert)
 * [Building a VADR model library](#library)
+* [Advanced tutorial: building an RSV model library](advbuild.md#top)
 * [How the VADR 1.0 model library was constructed](#1.0library)
   * [Norovirus models](#1.0library-noro)
   * [Dengue virus models](#1.0library-dengue)
@@ -442,6 +443,10 @@ to use the `-s` and `--glsearch` options with `v-annotate.pl`.***
 If you ever move `.cm`, `.hmm`, or BLAST `.fa` files into new
 directories, make sure you also move the corresponding index files 
 (.cm.*, `.hmm.*`, `.fa.*`) along with them.
+
+---
+
+## [Advanced tutorial: building an RSV model library](advbuild.md#top)
 
 ---
 ## How the VADR 1.0 model library was constructed <a name="1.0library"></a>
