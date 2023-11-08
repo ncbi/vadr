@@ -260,6 +260,9 @@ sub parse_blastn_results {
   my $outfile_key  = undef; # a key for an output file in %{$ofile_info_HHR}
   my $small_value  = 0.000001;
   my $min_bitsc    = opt_Get("--s_blastnsc", $opt_HHR) - $small_value;
+  if(($stg_key eq "rpn.cls") || ($stg_key eq "rpn.cdt")) { 
+    $min_bitsc = opt_Get("--r_blastnsc", $opt_HHR) - $small_value;
+  }
   my $do_keep      = opt_Get("--keep", $opt_HHR) ? 1 : 0;
   my $mdl_name = undef;
   if(! defined $seq2mdl_HR) { 
