@@ -64,10 +64,14 @@ When `vadr-install.sh` is finished running it will print important
 instructions to the screen that explain how to modify your environment
 variables so that you can run the VADR scripts, as discussed next.
 
+---
+
 ### <a name="xcode"></a> Mac installation requires Xcode
 
 Installation on a mac will only work if Xcode has been
 installed. Xcode is available for download from the Mac app store.
+
+---
 
 ### <a name="alt-install"></a> Alternative two step method for installation: download first, then build
 
