@@ -451,11 +451,14 @@ directories, make sure you also move the corresponding index files
 ---
 ## How the VADR 1.0 model library was constructed <a name="1.0library"></a>
 
-The VADR 1.0 library was built with version 1.0 of VADR. It is included here as 
-an example of how to build a VADR library, but also so it can be reproduced, because it is the model library
-used in the [paper on VADR 1.0](../README.md#reference) (https://doi.org/10.1186/s12859-020-3537-3).
-If you want to reproduce it exactly, you'll want to install
-version 1.0. The install script for v1.0 is here:
+The VADR 1.0 library was built with version 1.0 of VADR. It has not
+changed since version 1.0 and is still the default model library used
+in this version. It is included here as an example of how to build a
+VADR library, but also so it can be reproduced, because it is the
+model library used in the [paper on VADR 1.0](../README.md#reference)
+(https://doi.org/10.1186/s12859-020-3537-3).  If you want to reproduce
+it exactly, you'll want to install version 1.0. The install script for
+v1.0 is here:
 
 https://raw.githubusercontent.com/ncbi/vadr/vadr-1.0/vadr-install.sh
 

@@ -12,7 +12,7 @@
     unnecessary. 
   * makes alert exception support more consistent and adds exceptions
     for low similarity alerts (*lowsim**). See
-    (documentation/annotate.md#exceptions)[documentation/annotate.md#exceptions]
+    [documentation/annotate.md#exceptions](documentation/annotate.md#exceptions)
     for details.
   * improves CM-based alignment of extra sequence at 5' and 3' ends 
     using cmalign from infernal 1.1.5
@@ -22,7 +22,7 @@
     proteins to model's blastx protein library
   * adds support for sig_peptides in `v-build.pl`
   * adds detailed tutorial on advanced model building using RSV as an
-    example in (documentation/advbuild.md)[documentation/advbuild.md#top]
+    example in [documentation/advbuild.md](documentation/advbuild.md#top)
   * adds `count-ambigs.pl`, `longest-N-stretch.pl` and
     `esl-alipid-per-seq-stats.pl` perl scripts to `miniscripts/`. These
     are used in the advanced model building tutorial.
@@ -265,7 +265,7 @@
 
   * adds markdown documentation file for "Explanations and examples of
     `v-annotate.pl` detailed alert and error messages" in 
-    (`documentation/alerts.md`)[documentation/alerts.md#top].
+    [`documentation/alerts.md`](documentation/alerts.md#top).
 
   * with `--keep` or `--out_stk`, output stockholm alignment files now
     include per-column reference model position annotation
