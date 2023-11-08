@@ -35,9 +35,9 @@
 
 `v-annotate.pl` uses previously created VADR models from `v-build.pl`
 to analyze and annotate sequences in an input sequence file. As part
-of the analysis of the sequences, more than 40 types of unexpected
+of the analysis of the sequences, more than 70 types of unexpected
 characteristics, or *alerts* are detected and reported in the
-output. Most of the alerts are *fatal* in that if a sequence has one
+output. Many of the alerts are *fatal* in that if a sequence has one
 or more fatal alerts, they will be designated as *failing*
 sequences. Sequences with zero fatal alerts are designated as
 *passing* sequences. The types of alerts are described further below.
@@ -114,7 +114,7 @@ is output.
 
 `v-annotate.pl` will use the default VADR model library (CM file
 `$VADRMODELDIR/vadr.cm`, model info file `$VADRMODELDIR/vadr.minfo`
-and BLAST DBs in $VADRMODELDIR) to analyze the sequences in
+and BLAST DBs in `$VADRMODELDIR/`) to analyze the sequences in
 `noro.9.fa`, and will create an output directory named `va-noro.9` and
 populate it with [many output files](formats.md#annotate). 
 
@@ -493,7 +493,7 @@ A more detailed description of the problem can be found in the final column.
 All possible alerts are listed in the [alert
 table](#alerttable).
 For some examples of different types of alerts see 
-[here](alerts.md#examples)
+    [here](alerts.md#examples).
 
 ##  <a name="examplealtpass"></a>Example of using the `v-annotate.pl` `--alt_pass` and `--alt_fail` to change alerts from fatal to non-fatal and vice versa
 
@@ -1053,8 +1053,8 @@ exception ranges are not allowed.
 
 The table below has additional information on the alerts 
 not contained in the `--alt_list` output.
-The "relevant_options" column lists command-line options that 
-pertain to each alert. The [**relevant feature types** column
+The **relevant_options** column lists command-line options that 
+pertain to each alert. The **relevant feature types** column
 shows which feature types each alert can be reported for (this field is "-" for 
 alerts that pertain to a sequence instead of a feature).  The
 **omitted in `.tbl` and `.alt.list` by** column lists other alerts
