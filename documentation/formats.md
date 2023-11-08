@@ -240,6 +240,7 @@ FEATURE NC_039897 type:"mat_peptide" coords:"3872..5401:+" parent_idx_str:"1" pr
 | `blastdb` | file name root of the BLAST DB (not including the directory path) | only if model has >=1 CDS feature | important for protein-validation stage of `v-annotate.pl` |
 | `group` | group for this model (e.g. `Norovirus`) | only if `subgroup` `<key>` is also present | for `v-annotate.pl`, useful for enforcing expected group and also included in output | 
 | `subgroup` | subgroup for this model (e.g. `GI`) | no | for `v-annotate.pl`, useful for enforcing expected subgroup and also included in output | 
+| exceptions (e.g. `dupregin_exc`) | varies | no | defines alert exception for a given model reference position range, see more info [here](annotate.md#exceptions) |
 
 #### Common FEATURE line `<key>:<value>` pairs:
 
@@ -252,6 +253,10 @@ FEATURE NC_039897 type:"mat_peptide" coords:"3872..5401:+" parent_idx_str:"1" pr
 | `gene` | gene name for this feature | no | used as name of feature in `.tbl` output files, if present and `product` not present |
 | `misc_not_failure` | usually `1` | no | if the corresponding feature has specific types of fatal alerts, still allow sequence to pass, just make feature a `misc_feature` in output `.tbl` file, see [here](annotate.md#mnf) for details |
 | `is_deletable` | usually `1` | no | if the corresponding feature is completely deleted, non-fatal `deletina` alert is reported instead of fatal `deletins` |
+| `canon_splice_sites` | usually `1` | no | if `1` `v-annotate.pl` will verify GT/AG splice sites, only relevant for `CDS` features |
+| `alternative_ftr_set` | name of ftr set | no | `v-annotate.pl` will choose 1 feature from each ftr set to annotate, see example in RSV model [here](advbuild.md#step6-alternative) |
+| `alternative_ftr_set_subn` | name of ftr set followed by period and integer `<d>` | no | `v-annotate.pl` will only annotate this feature if it chooses the corresponding feature number `<d>` in the stated ftr set, see example in RSV model [here](advbuild.md#step6-alternative) |
+| exceptions (e.g. `fst_exc`) | varies | no | defines alert exception for a given model reference position range, see more info [here](annotate.md#exceptions) |
 
 #### VADR model library `.minfo` files are just individual model `.minfo` files concatenated together
 
