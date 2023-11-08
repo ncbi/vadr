@@ -83,7 +83,7 @@ corresponding `.alt` file output [below](#examples).
 | *lowsimic*, *lowsimin*, *lowsimil* | *LOW_FEATURE_SIMILARITY* | sequence position(s) internal to a predicted feature (not including first or final position of the feature) that have low similarity to the reference model | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of internal low similarity](#example-lowsimi) | 
 | *lowsimis* | *LOW_SIMILARITY* | sequence position(s) internal to a sequence (not including first or final position of the sequence) and not overlapping with a feature that have low similarity to the reference model | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to, or '`-`' if sequence is not aligned | [examples of internal low similarity](#example-lowsimi) | 
 | *extrant5* | *EXTRA_SEQUENCE_START* | sequence position(s) at 5' end of sequence predicted to come before the first position of the reference model | always `0..0:+` | [examples of extra sequence at start](#example-extrant5) |
-| *extrant3* | *EXTRA_SEQUENCE_END*   | sequence position(s) at 3' end of sequence predicted to come after the final position of the reference model | always `L..L:+`, where `L` is the legnth of the reference model | [examples of extra sequence at end](#example-extrant3) |
+| *extrant3* | *EXTRA_SEQUENCE_END*   | sequence position(s) at 3' end of sequence predicted to come after the final position of the reference model | always `L..L:+`, where `L` is the length of the reference model | [examples of extra sequence at end](#example-extrant3) |
 | *deletins* | *DELETION_OF_FEATURE* | will be blank (`-`) | model (reference) positions that correspond to the feature that is deleted in the sequence | [deleted feature examples](#example-deletin) | 
 | *deletinf* | *DELETION_OF_FEATURE_SECTION* | will be blank (`-`) | model (reference) positions that correspond to the segment of the feature that is deleted in the sequence | [deleted features examples](#example-delftr) | 
 | *dupregin* | *DUPLICATE_REGIONS* | *N* sets of sequence coordinates, in pairs, each pair is two hits that overlap in model coordinates, *N* will be a factor of 2 | *N* model (reference) coordinates, one for each of the hits in the coverage determination stage that correspond to each set of sequence coordinates 1 to *N* | [duplicate regions example](#example-dupregin) | 
@@ -1272,7 +1272,7 @@ TOY50-LSI1         -AAATCACCGATGGTGATCGCTTTACCaaagcagtacaggcacatgacaaagcagtacagg
 
 | relevant alert codes | corresponding alert descriptions   |
 |----------------------|------------------------------------|
-| *extrant5*           | *EXTRA_SEQUENCE_START |
+| *extrant5*           | *EXTRA_SEQUENCE_START* |
 
   **Instructions to reproduce this example and create the files discussed below:**
   ```
@@ -1323,7 +1323,7 @@ TOY50-E5         ctacctGAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
 
 | relevant alert codes | corresponding alert descriptions   |
 |----------------------|------------------------------------|
-| *extrant3*           | *EXTRA_SEQUENCE_START |
+| *extrant3*           | *EXTRA_SEQUENCE_END* |
 
   **Instructions to reproduce this example and create the files discussed below:**
   ```
