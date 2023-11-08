@@ -6962,7 +6962,10 @@ sub add_low_similarity_alerts_for_one_sequence {
               my $found_spanning_overlap = 0; # set to 1 if we find an overlap that completely spans 
               if((defined $rpn_output_HHR) && ($do_r_lowsimok)) { 
                 if(! defined $rpn_ncoords) { 
-                  $rpn_ncoords = vdr_ReplacePseudoCoordsStringParse($rpn_output_HHR->{$seq_name}{"pseudo_coords"}, \@rpn_seq_sgm_A, undef, \@rpn_diff_A, \@rpn_ncount_A, undef, undef, undef, $FH_HR);
+                  $rpn_ncoords = 0; # default to 0 if rpn_output_HHR->{$seq_name}{"pseudo_coords"} is undefined
+                  if(defined $rpn_output_HHR->{$seq_name}{"pseudo_coords"}) { 
+                    $rpn_ncoords = vdr_ReplacePseudoCoordsStringParse($rpn_output_HHR->{$seq_name}{"pseudo_coords"}, \@rpn_seq_sgm_A, undef, \@rpn_diff_A, \@rpn_ncount_A, undef, undef, undef, $FH_HR);
+                  }
                 }
                 if($rpn_ncoords > 0) { 
                   for(my $y = 0; $y < $rpn_ncoords; $y++) { 
@@ -7615,7 +7618,10 @@ sub add_protein_validation_alerts {
                       my $found_overlap = 0; # set to 1 if we find an overlap
                       if(defined $rpn_output_HHR) { 
                         if(! defined $rpn_ncoords) { 
-                          $rpn_ncoords = vdr_ReplacePseudoCoordsStringParse($rpn_output_HHR->{$seq_name}{"pseudo_coords"}, \@rpn_seq_sgm_A, undef, undef, undef, undef, undef, \@rpn_replaced_A, $FH_HR);
+                          $rpn_ncoords = 0; # default to 0 if rpn_output_HHR->{$seq_name}{"pseudo_coords"} is undefined
+                          if(defined $rpn_output_HHR->{$seq_name}{"pseudo_coords"}) { 
+                            $rpn_ncoords = vdr_ReplacePseudoCoordsStringParse($rpn_output_HHR->{$seq_name}{"pseudo_coords"}, \@rpn_seq_sgm_A, undef, undef, undef, undef, undef, \@rpn_replaced_A, $FH_HR);
+                          }
                         }
                         if($rpn_ncoords > 0) { 
                           # rpn coords are *always* + strand, so convert stop codon coords to + too, 
