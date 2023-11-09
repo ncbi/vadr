@@ -43,6 +43,7 @@
     - infernal version 1.1.5
     - hmmer version 3.4
     - sequip version 0.10
+    - minimap2 version 2.26
 
 ---
 
