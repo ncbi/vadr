@@ -35,17 +35,22 @@
 
 `v-annotate.pl` uses previously created VADR models from `v-build.pl`
 to analyze and annotate sequences in an input sequence file. As part
-of the analysis of the sequences, more than 40 types of unexpected
+of the analysis of the sequences, more than 70 types of unexpected
 characteristics, or *alerts* are detected and reported in the
-output. Most of the alerts are *fatal* in that if a sequence has one
+output. Many of the alerts are *fatal* in that if a sequence has one
 or more fatal alerts, they will be designated as *failing*
 sequences. Sequences with zero fatal alerts are designated as
 *passing* sequences. The types of alerts are described further below.
 
 **NOTE: the examples below are for norovirus and demonstrate the
-typical usage of vadr. For examples specific to SARS-CoV-2 see:**
+typical usage of vadr. For examples specific to other viruses
+(SARS-CoV-2, mpox, and RSV) see:**
 
 https://github.com/ncbi/vadr/wiki/Coronavirus-annotation
+
+https://github.com/ncbi/vadr/wiki/Mpox-virus-annotation
+
+https://github.com/ncbi/vadr/wiki/RSV-annotation
 
 To determine the command-line usage of 
 `v-annotate.pl` (or any VADR script), use the `-h` option, like this:
@@ -56,10 +61,10 @@ v-annotate.pl -h
 
 You'll see something like the following output:
 ```
-# v-annotate.pl :: classify and annotate sequences using a CM library
-# VADR 1.5 (Sep 2022)
+# v-annotate.pl :: classify and annotate sequences using a model library
+# VADR 1.6 (Nov 2023)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Mon Sep 26 18:20:14 2022
+# date:    Wed Nov  8 10:39:19 2023
 #
 Usage: v-annotate.pl [-options] <fasta file to annotate> <output directory to create>
 ```
@@ -92,7 +97,7 @@ variables, the command line arguments used and any command line
 options used:
 
 ```
-# date:              Mon Sep 26 18:18:24 2022
+# date:              Wed Nov  8 10:40:06 2023
 # $VADRBIOEASELDIR:  /home/nawrocki/vadr-install-dir/Bio-Easel
 # $VADRBLASTDIR:     /home/nawrocki/vadr-install-dir/ncbi-blast/bin
 # $VADREASELDIR:     /home/nawrocki/vadr-install-dir/infernal/binaries
@@ -114,7 +119,7 @@ is output.
 
 `v-annotate.pl` will use the default VADR model library (CM file
 `$VADRMODELDIR/vadr.cm`, model info file `$VADRMODELDIR/vadr.minfo`
-and BLAST DBs in $VADRMODELDIR) to analyze the sequences in
+and BLAST DBs in `$VADRMODELDIR/`) to analyze the sequences in
 `noro.9.fa`, and will create an output directory named `va-noro.9` and
 populate it with [many output files](formats.md#annotate). 
 
@@ -142,8 +147,8 @@ The output of `v-annotate.pl` lists one or more steps per stage. The
 first two steps are:
 
 ```
-# Validating input                                                                        ... done. [    0.7 seconds]
-# Classifying sequences (9 seqs)                                                          ... done. [   31.4 seconds]
+# Validating input                                                                        ... done. [    0.3 seconds]
+# Classifying sequences (9 seqs)                                                          ... done. [   31.9 seconds]
 ```
 
 The first step validates that the VADR library `.minfo` file being
@@ -153,10 +158,10 @@ classification stage is performed. After that, each model that is
 determination stage for all of its sequences:
 
 ```
-# Determining sequence coverage (NC_001959: 1 seq)                                        ... done. [    1.0 seconds]
-# Determining sequence coverage (NC_008311: 2 seqs)                                       ... done. [    2.9 seconds]
-# Determining sequence coverage (NC_029645: 2 seqs)                                       ... done. [    1.1 seconds]
-# Determining sequence coverage (NC_039477: 2 seqs)                                       ... done. [    3.0 seconds]
+# Determining sequence coverage (NC_001959: 1 seq)                                        ... done. [    0.8 seconds]
+# Determining sequence coverage (NC_008311: 2 seqs)                                       ... done. [    3.0 seconds]
+# Determining sequence coverage (NC_029645: 2 seqs)                                       ... done. [    1.0 seconds]
+# Determining sequence coverage (NC_039477: 2 seqs)                                       ... done. [    3.1 seconds]
 # Determining sequence coverage (NC_044854: 2 seqs)                                       ... done. [    0.9 seconds]
 ```
 
@@ -164,23 +169,23 @@ Next, the alignments are performed for each model, and used to map
 feature annotation:
 
 ```
-# Aligning sequences (NC_001959: 1 seq)                                                   ... done. [    0.8 seconds]
-# Aligning sequences (NC_008311: 2 seqs)                                                  ... done. [   10.9 seconds]
+# Aligning sequences (NC_001959: 1 seq)                                                   ... done. [    0.7 seconds]
+# Aligning sequences (NC_008311: 2 seqs)                                                  ... done. [   13.5 seconds]
 # Aligning sequences (NC_029645: 2 seqs)                                                  ... done. [    1.5 seconds]
-# Aligning sequences (NC_039477: 2 seqs)                                                  ... done. [   11.6 seconds]
+# Aligning sequences (NC_039477: 2 seqs)                                                  ... done. [   14.2 seconds]
 # Aligning sequences (NC_044854: 2 seqs)                                                  ... done. [    0.9 seconds]
-# Determining annotation                                                                  ... done. [    0.6 seconds]
+# Determining annotation                                                                  ... done. [    0.3 seconds]
 ```
 
 The classification and alignment stages are typically the
 slowest. The protein validation stage is usually relatively fast:
 
 ```
-# Validating proteins with blastx (NC_001959: 1 seq)                                      ... done. [    2.0 seconds]
-# Validating proteins with blastx (NC_008311: 2 seqs)                                     ... done. [    1.1 seconds]
-# Validating proteins with blastx (NC_029645: 2 seqs)                                     ... done. [    0.8 seconds]
-# Validating proteins with blastx (NC_039477: 2 seqs)                                     ... done. [    1.0 seconds]
-# Validating proteins with blastx (NC_044854: 2 seqs)                                     ... done. [    0.7 seconds]
+# Validating proteins with blastx (NC_001959: 1 seq)                                      ... done. [    1.0 seconds]
+# Validating proteins with blastx (NC_008311: 2 seqs)                                     ... done. [    0.8 seconds]
+# Validating proteins with blastx (NC_029645: 2 seqs)                                     ... done. [    0.6 seconds]
+# Validating proteins with blastx (NC_039477: 2 seqs)                                     ... done. [    0.7 seconds]
+# Validating proteins with blastx (NC_044854: 2 seqs)                                     ... done. [    0.5 seconds]
 ```
 
 The only remaining steps are to create the output files:
@@ -269,7 +274,7 @@ printed, along with elapsed time:
 #
 # All output files created in directory ./va-noro.9/
 #
-# Elapsed time:  00:01:25.62
+# Elapsed time:  00:01:16.72
 #                hh:mm:ss
 # 
 [ok]
@@ -493,7 +498,7 @@ A more detailed description of the problem can be found in the final column.
 All possible alerts are listed in the [alert
 table](#alerttable).
 For some examples of different types of alerts see 
-[here](alerts.md#examples)
+    [here](alerts.md#examples).
 
 ##  <a name="examplealtpass"></a>Example of using the `v-annotate.pl` `--alt_pass` and `--alt_fail` to change alerts from fatal to non-fatal and vice versa
 
@@ -1053,8 +1058,8 @@ exception ranges are not allowed.
 
 The table below has additional information on the alerts 
 not contained in the `--alt_list` output.
-The "relevant_options" column lists command-line options that 
-pertain to each alert. The [**relevant feature types** column
+The **relevant_options** column lists command-line options that 
+pertain to each alert. The **relevant feature types** column
 shows which feature types each alert can be reported for (this field is "-" for 
 alerts that pertain to a sequence instead of a feature).  The
 **omitted in `.tbl` and `.alt.list` by** column lists other alerts
@@ -1166,7 +1171,7 @@ in the output feature table `.pass.tbl` file, but the sequence will
 still pass, as long as it has zero fatal alerts for all other (essential)
 features and zero fatal sequence alerts.
 
-The default set of specific alerts that an non-essential feature can have
+The default set of specific alerts that a non-essential feature can have
 without failing its sequence are listed with 'yes' in the 'causes
 `misc_feature`, not failure (if in modelinfo file)' column in the
 [tables describing alerts above](#alerts) as well as in the
@@ -1176,7 +1181,7 @@ without failing its sequence are listed with 'yes' in the 'causes
 specify that alert codes in the comma-separated string `<s2>` be
 removed from the set.
 
-Non-Essential features are specified in the `.modelinfo` file, with a
+Non-essential features are specified in the `.modelinfo` file, with a
 key/value pair string: `misc_not_feature:"1"` in the `FEATURE` line
 for the corresponding feature.
 
@@ -1201,14 +1206,15 @@ FEATURE NC_008311 type:"gene" coords:"6681..7307:+" parent_idx_str:"GBNULL" gene
 FEATURE NC_008311 type:"CDS" coords:"6681..7307:+" parent_idx_str:"GBNULL" gene:"ORF3" product:"VP2" misc_not_failure:"1"
 ```
 
-Note that in addition to the two CDS features, the two gene features that correspond them also have
-`misc_not_failure:"1"` key/value pairs. When a CDS is made non-essential,
-it often makes sense to make any corresponding gene features
-non-essential too. However, gene features are an exception 
-in that they do not get turned into a `misc_feature` if they have
-alerts that are normally fatal, as per GenBank convention, but 
-it is still relevant to mark them as non-essential because some alerts 
-in them will not cause the sequence to fail.
+Note that in addition to the two CDS features, the two gene features
+that correspond to them also have `misc_not_failure:"1"` key/value
+pairs. When a CDS is made non-essential, it often makes sense to make
+any corresponding gene features non-essential too. However, gene
+features are an exception in that they do not get turned into a
+`misc_feature` if they have alerts that are normally fatal, as per
+GenBank convention, but it is still relevant to mark them as
+non-essential because some alerts in them will not cause the sequence
+to fail.
 
 To rerun the example using this new `.minfo` file, execute:
 
@@ -1292,7 +1298,7 @@ positions 100 to 37 on the negative strand the exception value would
 be `"100..37:-"`. If you are able to have `v-annotate.pl` output
 an alert that you want to make an exception for using a test
 sequence, you can check the `mdl coords` field of the [`.alt` output file](formats.md#alt)
-to determine the relevant model coordinates for
+to determine the relevant model coordinates to use for
 the exception value. 
 
 The table below lists all alert codes for which exceptions are allowed
@@ -1300,7 +1306,7 @@ along with their specific exception keys and value types, and whether
 they pertain to a specific feature and should be added to the
 corresponding feature line (lines starting with
 `FEATURE`) in the model info file or are not specific to a feature and
-should be added to the model line (line starting with `MODEL`).:
+should be added to the model line (line starting with `MODEL`):
 
 | alert code   | short description              | exception key   | exception value type | model info file line type |
 |--------------|--------------------------------|-----------------|----------------------|---------------------------

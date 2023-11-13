@@ -12,6 +12,7 @@
   * [options for additional output files](#options-output)
   * [additional expert options](#options-expert)
 * [Building a VADR model library](#library)
+* [Advanced tutorial: building an RSV model library](advbuild.md#top)
 * [How the VADR 1.0 model library was constructed](#1.0library)
   * [Norovirus models](#1.0library-noro)
   * [Dengue virus models](#1.0library-dengue)
@@ -39,9 +40,9 @@ v-build.pl -h
 You'll see something like the following output:
 ```
 # v-build.pl :: build homology model of a single sequence for feature annotation
-# VADR 1.4 (Dec 2021)
+# VADR 1.6 (Nov 2023)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Tue Dec 21 10:59:56 2021
+# date:    Tue Nov  7 10:07:21 2023
 #
 Usage: v-build.pl [-options] <accession> <path to output directory to create>
 ```
@@ -100,9 +101,9 @@ a FASTA sequence file and feature table file for the input accession
 `NC_039897`. 
 
 ```
-# Fetching FASTA file                                          ... done. [    3.3 seconds]
+# Fetching FASTA file                                          ... done. [    3.4 seconds]
 # Parsing FASTA file                                           ... done. [    0.0 seconds]
-# Fetching feature table file                                  ... done. [    3.2 seconds]
+# Fetching feature table file                                  ... done. [    3.4 seconds]
 # Parsing feature table file                                   ... done. [    0.0 seconds]
 ```
 
@@ -112,7 +113,7 @@ data from GenBank is then pruned to remove information that will
 not be stored in the VADR model files:
 
 ```
-# Fetching and parsing protein feature table file(s)           ... done. [    9.4 seconds]
+# Fetching and parsing protein feature table file(s)           ... done. [   10.3 seconds]
 # Pruning data read from GenBank                               ... done. [    0.0 seconds]
 ```
 
@@ -124,12 +125,13 @@ create the BLAST database with `makeblastdb`, and the HMMER protein
 HMM database with `hmmbuild`.
 
 ```
-# Reformatting FASTA file to Stockholm file                    ... done. [    0.3 seconds]
-# Building BLAST nucleotide database                           ... done. [    1.2 seconds]
+# Reformatting FASTA file to Stockholm file                    ... done. [    0.0 seconds]
+# Building BLAST nucleotide database                           ... done. [    0.7 seconds]
 # Finalizing feature information                               ... done. [    0.0 seconds]
-# Translating CDS                                              ... done. [    0.1 seconds]
-# Building BLAST protein database                              ... done. [    0.2 seconds]
-# Building HMMER protein database                              ... done. [    1.2 seconds]
+# Translating CDS                                              ... done. [    0.2 seconds]
+# Building BLAST protein database                              ... done. [    0.3 seconds]
+# Building HMMER protein database                              ... done. [    1.1 seconds]
+# Checking intron splice sites, if any                         ... done. [    0.0 seconds]
 ```
 
 Next, the covariance model is built using `cmbuild`. This is by far
@@ -141,9 +143,8 @@ nucleotide database is created from the CM consensus sequence. The final
 step is to create the model info file:
 
 ```
-# Building CM (should take roughly 10-30 minutes)              ... done. [  480.6 seconds]
-# Pressing CM file                                             ... done. [    0.3 seconds]
-# Building BLAST nucleotide database of CM consensus           ... done. [    0.3 seconds]
+# Building CM (should take roughly 10-30 minutes)              ... done. [  477.0 seconds]
+# Pressing CM file                                             ... done. [    0.4 seconds]
 # Creating model info file                                     ... done. [    0.0 seconds]
 ```
 When all steps are complete, `v-build.pl` ends by outputting a list of
@@ -444,13 +445,20 @@ directories, make sure you also move the corresponding index files
 (.cm.*, `.hmm.*`, `.fa.*`) along with them.
 
 ---
+
+## [Advanced tutorial: building an RSV model library (link to different page)](advbuild.md#top)
+
+---
 ## How the VADR 1.0 model library was constructed <a name="1.0library"></a>
 
-The VADR 1.0 library was built with version 1.0 of VADR. It is included here as 
-an example of how to build a VADR library, but also so it can be reproduced, because it is the model library
-used in the [paper on VADR 1.0](../README.md#reference) (https://doi.org/10.1186/s12859-020-3537-3).
-If you want to reproduce it exactly, you'll want to install
-version 1.0. The install script for v1.0 is here:
+The VADR 1.0 library was built with version 1.0 of VADR. It has not
+changed since version 1.0 and is still the default model library used
+in this version. It is included here as an example of how to build a
+VADR library, but also so it can be reproduced, because it is the
+model library used in the [paper on VADR 1.0](../README.md#reference)
+(https://doi.org/10.1186/s12859-020-3537-3).  If you want to reproduce
+it exactly, you'll want to install version 1.0. The install script for
+v1.0 is here:
 
 https://raw.githubusercontent.com/ncbi/vadr/vadr-1.0/vadr-install.sh
 

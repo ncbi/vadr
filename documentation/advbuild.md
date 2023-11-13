@@ -1945,7 +1945,7 @@ $ perl $VADRSCRIPTSDIR/miniscripts/build-add-to-blast-db.pl -h
 # build-add-to-blast-db.pl :: add a single protein to a VADR blastx protein database
 # VADR 1.6 (Nov 2023)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Mon Oct 16 15:23:37 2023
+# date:    Wed Nov  8 11:30:19 2023
 #
 Usage: build-add-to-blast-db.pl [-options]
 	<path to .minfo file>

@@ -1,5 +1,5 @@
 # VADR - Viral Annotation DefineR <a name="top"></a>
-#### Version 1.5.1; February 2023
+#### Version 1.6; November 2023
 #### https://github.com/ncbi/vadr.git
 
 VADR is a suite of tools for classifying and analyzing sequences
@@ -43,7 +43,7 @@ Submitted Norovirus, Dengue virus and SARS-CoV-2 sequences that pass
 
 The homology search and alignment components of VADR scripts, the most
 computationally expensive steps, are performed by the Infernal, HMMER,
-FASTA and BLAST software packages, which are downloaded and installed
+FASTA, MINIMAP2 and BLAST software packages, which are downloaded and installed
 with [VADR installation](documentation/install.md#top).
 
 ---
@@ -63,13 +63,15 @@ VADR installation includes a default set of *Caliciviridae* models
 including Norovirus virus. The installation also includes a set of
 *Flaviviridae* models including Dengue virus.  You can download
 additional pre-built models to use to validate and annotate viruses,
-including SARS-CoV-2, or cox1 genes. Importantly, to
+including SARS-CoV-2, RSV, or cox1 genes. Importantly, to
 use a set of models other than the default *Caliciviridae* set, you
 will need to use either the `--mdir` and `--mkey` options, or the the
 `-m`, `-i`, `-x` and possibly `-n` options as described
 [here](documentation/annotate.md#options).
 
-See [this page](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files) for more information
+See [this
+page](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files)
+for a list of all available models and additional information.
 
 ---
 ## VADR documentation <a name="documentation"></a>
@@ -143,8 +145,8 @@ See [this page](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files) fo
 
 * The recommended citation for using VADR for SARS-CoV-2 analysis:
   *Eric P Nawrocki; Faster SARS-CoV-2 sequence validation and
-  *annotation for GenBank using VADR. NAR Genom Bioinform. 2023 Jan
-  *20;5(1)::lqad002. (2023).* https://doi.org/10.1093/nargab/lqad002
+  annotation for GenBank using VADR. NAR Genom Bioinform. 2023 Jan
+  20;5(1)::lqad002. (2023).* https://doi.org/10.1093/nargab/lqad002
 
 * The recommended citation for non-SARS-CoV-2 use of VADR is:
   *Alejandro A Schäffer, Eneida L Hatcher, Linda Yankie, Lara Shonkwiler,
