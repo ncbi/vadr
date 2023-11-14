@@ -1,0 +1,4 @@
+#      seq                                               ftr   ftr   ftr  alert           alert                  seq  seq         mdl  mdl  alert 
+#idx   name                           model              type  name  idx  code      fail  description         coords  len      coords  len  detail
+#----  -----------------------------  -----------------  ----  ----  ---  --------  ----  --------------  ----------  ---  ----------  ---  ------
+1.1.1  gi|106060735|ref|NC_001959.2|  NC_001959-vp2only  -     -       -  lowsimis  yes   LOW_SIMILARITY  421..700:+  280  419..560:+  142  internal region without significant similarity [low similarity region of length 280]

@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # 
-# version: 1.5.1 [Feb 2023]
+# version: 1.6 [Nov 2023]
 #
 # vadr_seed.pm
 # Eric Nawrocki
@@ -260,6 +260,9 @@ sub parse_blastn_results {
   my $outfile_key  = undef; # a key for an output file in %{$ofile_info_HHR}
   my $small_value  = 0.000001;
   my $min_bitsc    = opt_Get("--s_blastnsc", $opt_HHR) - $small_value;
+  if(($stg_key eq "rpn.cls") || ($stg_key eq "rpn.cdt")) { 
+    $min_bitsc = opt_Get("--r_blastnsc", $opt_HHR) - $small_value;
+  }
   my $do_keep      = opt_Get("--keep", $opt_HHR) ? 1 : 0;
   my $mdl_name = undef;
   if(! defined $seq2mdl_HR) { 
@@ -2661,27 +2664,37 @@ sub parse_minimap2_to_get_seed_info {
 
   my $nq = 0;      # number of query sequences we've created stockholm alignments for
 
-  # First 2 lines should look something like this:
-  #@SQ	SN:NC_063383	LN:197209
-  #@PG	ID:minimap2	PN:minimap2	VN:2.24-r1122	CL:minimap2 -a -x asm20 -rmq=no --junc-bonus=0 --for-only --sam-hit-only --secondary=no --score-N=0 -t 1 --end-bonus 100 -o va-test/va-test.vadr.NC_063383.align.r1.s0.stdout va-test/va-test.vadr.NC_063383.minimap2.fa -
-
-  # validate line 1
-  #@SQ	SN:NC_063383	LN:197209
   open(IN, $mm2_file) || ofile_FileOpenFailure($mm2_file,  $sub_name, $!, "reading", $FH_HR);
   my $line_ctr = 0;
   my $line = undef;
+
+  # First 3 lines should look something like this:
+  #@HD	VN:1.6	SO:unsorted	GO:query
+  #@SQ	SN:NC_063383	LN:197209
+  #@PG	ID:minimap2	PN:minimap2	VN:2.26-r1175	CL:minimap2 -a -x asm20 -rmq=no --junc-bonus=0 --for-only --sam-hit-only --secondary=no --score-N=0 -t 1 --end-bonus 100 -o va-test/va-test.vadr.NC_063383.align.r1.s0.stdout va-test/va-test.vadr.NC_063383.minimap2.fa -
+
+  # validate line 1
+  #@HD	VN:1.6	SO:unsorted	GO:query
   $line = <IN>; $line_ctr++;
   chomp $line;
-  if($line !~ m/^\@SQ/) { 
-    ofile_FAIL("ERROR, in $sub_name, parsing $mm2_file, first line did not start with \"\@SQ\"\n$line\n", 1, $FH_HR);
+  if($line !~ m/^\@HD/) { 
+    ofile_FAIL("ERROR, in $sub_name, parsing $mm2_file, first line did not start with \"\@HD\"\n$line\n", 1, $FH_HR);
   }
 
   # validate line 2
+  #@SQ	SN:NC_063383	LN:197209
+  $line = <IN>; $line_ctr++;
+  chomp $line;
+  if($line !~ m/^\@SQ/) { 
+    ofile_FAIL("ERROR, in $sub_name, parsing $mm2_file, second line did not start with \"\@SQ\"\n$line\n", 1, $FH_HR);
+  }
+
+  # validate line 3
   #@PG	ID:minimap2	PN:minimap2	VN:2.24-r1122	CL:minimap2 -a -x asm20 -rmq=no --junc-bonus=0 --for-only --sam-hit-only --secondary=no --score-N=0 -t 1 --end-bonus 100 -o va-test/va-test.vadr.NC_063383.align.r1.s0.stdout va-test/va-test.vadr.NC_063383.minimap2.fa -
   $line = <IN>; $line_ctr++;
   chomp $line;
   if($line !~ m/^\@PG/) { 
-    ofile_FAIL("ERROR, in $sub_name, parsing $mm2_file, second line did not start with \"\@PG\"\n$line\n", 1, $FH_HR);
+    ofile_FAIL("ERROR, in $sub_name, parsing $mm2_file, third line did not start with \"\@PG\"\n$line\n", 1, $FH_HR);
   }
 
   # Lines L=3 to L=N+2 (for N input sequences) pertain to sequence L-2

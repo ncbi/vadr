@@ -104,7 +104,7 @@ opt_Add("--addminfo",   "string",  undef,      $g,    undef, undef,       "add f
 opt_Add("--forcelong",  "boolean", 0,          $g,    undef, undef,       "allow long models > 25Kb in length",                          "allow long models > 25Kb in length", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,          $g,    undef, undef,       "leave intermediate files on disk",                            "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options for controlling what feature types are stored in model info file\n[default set is: CDS,gene,mat_peptide]";
+$opt_group_desc_H{++$g} = "options for controlling what feature types are stored in model info file\n[default set is: CDS,gene,mat_peptide,sig_peptide]";
 #     option            type       default  group   requires incompat     preamble-output                                                      help-output    
 opt_Add("--fall",       "boolean", 0,          $g,    undef,  undef,      "store info for all feature types (except those in --fskip)",        "store info for all feature types (except those in --fskip)", \%opt_HH, \@opt_order_A);
 opt_Add("--fadd",       "string",  undef,      $g,    undef,"--fall",     "also store features types in comma separated string <s>",           "also store feature types in comma separated string <s>", \%opt_HH, \@opt_order_A);
@@ -115,8 +115,10 @@ $opt_group_desc_H{++$g} = "options for controlling what qualifiers are stored in
 opt_Add("--qall",       "boolean",  0,        $g,    undef,  undef,       "store info for all qualifiers (except those in --qskip)",                  "store info for all qualifiers (except those in --qskip)", \%opt_HH, \@opt_order_A);
 opt_Add("--qadd",       "string",   undef,    $g,    undef,"--qall",      "also store info for qualifiers in comma separated string <s>",             "also store info for qualifiers in comma separated string <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--qftradd",    "string",   undef,    $g,"--qadd",    undef,      "--qadd <s2> only applies for feature types in comma separated string <s>", "--qadd <s2> only applies for feature types in comma separated string <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--qskip",      "string",   undef,    $g,    undef,  undef,       "do not store info for qualifiers in comma separated string <s>",           "do not store info for qualifiers in comma separated string <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--noaddgene", "boolean",  0,        $g,    undef,  undef,       "do not add gene qualifiers from gene features to overlapping features",     "do not add gene qualifiers from gene features to overlapping features", \%opt_HH, \@opt_order_A);
+opt_Add("--qskip",      "string",   undef,    $g,    undef,   undef,      "do not store info for qualifiers in comma separated string <s>",           "do not store info for qualifiers in comma separated string <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--noaddgene", "boolean",  0,         $g,    undef,   undef,      "do not add gene qualifiers from gene features to overlapping features",     "do not add gene qualifiers from gene features to overlapping features", \%opt_HH, \@opt_order_A);
+opt_Add("--nosplice",  "boolean",  0,         $g,    undef,   undef,      "do not check and add valid splice sites qualifiers for CDS",                "do not check and add valid splice sites qualifiers for CDS", \%opt_HH, \@opt_order_A);
+opt_Add("--ssplice",   "boolean",  0,         $g,    undef,"--nosplice",  "exit if any noncanonical splice sites exist in any CDS",                    "exit if any noncanonical splice sites exist in any CDS",  \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for including additional model attributes";
 #     option           type       default    group   requires    incompat   preamble-output                       help-output    
@@ -128,13 +130,14 @@ $opt_group_desc_H{++$g} = "options for controlling CDS translation step";
 opt_Add("--ttbl",     "integer", 1,            $g,  undef,         undef,  "use NCBI translation table <n> to translate CDS",          "use NCBI translation table <n> to translate CDS", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling cmbuild step";
-#     option          type       default    group   requires    incompat              preamble-output                                             help-output    
-opt_Add("--cmn",      "integer", undef,       $g,   undef, "--skipbuild,--cminfile",  "set number of seqs for glocal fwd HMM calibration to <n>", "set number of seqs for glocal fwd HMM calibration to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--cmp7ml",   "boolean", 0,           $g,   undef, "--skipbuild,--cminfile",  "set CM's filter p7 HMM as the ML p7 HMM",                  "set CM's filter p7 HMM as the ML p7 HMM",                  \%opt_HH, \@opt_order_A);
-opt_Add("--cmere",    "real",    undef,       $g,   undef,  "--skipbuild,--cminfile", "set CM relative entropy target to <x>",                    "set CM relative entropy target to <x>",                    \%opt_HH, \@opt_order_A);
-opt_Add("--cmeset",   "real",    undef,       $g,   undef,  "--skipbuild,--cminfile", "set CM eff seq # for CM to <x>",                           "set CM eff seq # for CM to <x>",                           \%opt_HH, \@opt_order_A);
-opt_Add("--cmemaxseq","real",    undef,       $g,   undef,  "--skipbuild,--cminfile", "set CM maximum allowed eff seq # for CM to <x>",           "set CM maximum alowed eff seq # for CM to <x>",            \%opt_HH, \@opt_order_A);
-opt_Add("--cminfile", "string",  undef,       $g,   undef,  "--skipbuild",            "read cmbuild options from file <s>",                       "read cmbuild options from file <s>",                       \%opt_HH, \@opt_order_A);
+#     option          type       default    group   requires    incompat             preamble-output                                             help-output    
+opt_Add("--cmn",      "integer", undef,       $g,   undef, "--skipbuild,--cminfile", "set number of seqs for glocal fwd HMM calibration to <n>", "set number of seqs for glocal fwd HMM calibration to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--cmp7ml",   "boolean", 0,           $g,   undef, "--skipbuild,--cminfile", "set CM's filter p7 HMM as the ML p7 HMM",                  "set CM's filter p7 HMM as the ML p7 HMM",                  \%opt_HH, \@opt_order_A);
+opt_Add("--cmere",    "real",    undef,       $g,   undef, "--skipbuild,--cminfile", "set CM relative entropy target to <x>",                    "set CM relative entropy target to <x>",                    \%opt_HH, \@opt_order_A);
+opt_Add("--cmeset",   "real",    undef,       $g,   undef, "--skipbuild,--cminfile", "set CM eff seq # for CM to <x>",                           "set CM eff seq # for CM to <x>",                           \%opt_HH, \@opt_order_A);
+opt_Add("--cmemaxseq","real",    undef,       $g,   undef, "--skipbuild,--cminfile", "set CM maximum allowed eff seq # for CM to <x>",           "set CM maximum alowed eff seq # for CM to <x>",            \%opt_HH, \@opt_order_A);
+opt_Add("--cmnoh3pri","boolean", 0,           $g,   undef, "--skipbuild,--cminfile", "do not use --noh3pri option with cmbuild",                 "do not use --noh3pri option with cmbuild",                 \%opt_HH, \@opt_order_A);
+opt_Add("--cminfile", "string",  undef,       $g,   undef, "--skipbuild",            "read cmbuild options from file <s>, one per line",         "read cmbuild options from file <s>, one per line",         \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for skipping stages";
 #       option             type       default     group requires   incompat  preamble-output                                    help-output    
@@ -147,8 +150,10 @@ opt_Add("--ftrinfo",    "boolean", 0,         $g,    undef,     undef,    "outpu
 opt_Add("--sgminfo",    "boolean", 0,         $g,    undef,     undef,    "output internal segment information",   "create file with internal segment information", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "other expert options";
-#       option       type          default     group  requires incompat  preamble-output                                 help-output    
-opt_Add("--execname",   "string",  undef,         $g,    undef, undef,   "define executable name of this script as <s>", "define executable name of this script as <s>", \%opt_HH, \@opt_order_A);        
+#       option       type          default     group  requires incompat      preamble-output                                              help-output    
+opt_Add("--execname",   "string",  undef,         $g,    undef, undef,       "define executable name of this script as <s>",              "define executable name of this script as <s>", \%opt_HH, \@opt_order_A);        
+opt_Add("--nosig2mat",  "boolean", 0,             $g,    undef, undef,       "do not treat sig_peptide as mat_peptide",                   "do not treat sig_peptide as mat_peptide", \%opt_HH, \@opt_order_A);        
+opt_Add("--intlen",     "integer", 40,            $g,    undef,"--nosplice", "set min length of intron to check for splice sites to <n>", "set min length of intron to check for splice sites to <n>", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -177,6 +182,8 @@ my $options_okay =
                 'qftradd=s'    => \$GetOptions_H{"--qftradd"},
                 'qskip=s'      => \$GetOptions_H{"--qskip"},
                 'noaddgene'    => \$GetOptions_H{"--noaddgene"},
+                'nosplice'     => \$GetOptions_H{"--nosplice"},
+                'ssplice'      => \$GetOptions_H{"--ssplice"},
 # options for including additional model attributes
                 'group=s'      => \$GetOptions_H{"--group"},
                 'subgroup=s'   => \$GetOptions_H{"--subgroup"},
@@ -188,6 +195,7 @@ my $options_okay =
                 'cmere=s'      => \$GetOptions_H{"--cmere"},
                 'cmeset=s'     => \$GetOptions_H{"--cmeset"},
                 'cmemaxseq=s'  => \$GetOptions_H{"--cmemaxseq"},
+                'cmnoh3pr'     => \$GetOptions_H{"--cmnoh3pri"},
                 'cminfile=s'   => \$GetOptions_H{"--cminfile"},
 # options for skipping stages
                 'skipbuild'    => \$GetOptions_H{"--skipbuild"},
@@ -196,7 +204,9 @@ my $options_okay =
                 'sgminfo'      => \$GetOptions_H{"--sgminfo"},
                 'ftrinfo'      => \$GetOptions_H{"--ftrinfo"},
 # other expert options
-                'execname=s'   => \$GetOptions_H{"--execname"});
+                'execname=s'   => \$GetOptions_H{"--execname"},
+                'nosig2mat'    => \$GetOptions_H{"--nosig2mat"},
+                'intlen=s'     => \$GetOptions_H{"--intlen"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another ofile_SecondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
@@ -204,8 +214,8 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-build.pl";
 my $usage         = "Usage: $executable [-options] <accession> <path to output directory to create>\n";
 my $synopsis      = "$executable :: build homology model of a single sequence for feature annotation";
 my $date          = scalar localtime();
-my $version       = "1.5.1";
-my $releasedate   = "Feb 2023";
+my $version       = "1.6";
+my $releasedate   = "Nov 2023";
 my $pkgname       = "VADR";
 
 # print help and exit if necessary
@@ -474,7 +484,7 @@ $start_secs = ofile_OutputProgressPrior("Pruning data read from GenBank", $progr
 my %fdf_H   = (); # default feature types to keep
 my %fadd_H  = (); # feature types to add
 my %fskip_H = (); # feature types to skip
-process_add_and_skip_options("CDS,gene,mat_peptide", "--fadd", "--fskip", undef, \%fdf_H, \%fadd_H, \%fskip_H, undef, \%opt_HH, $FH_HR);
+process_add_and_skip_options("CDS,gene,mat_peptide,sig_peptide", "--fadd", "--fskip", undef, \%fdf_H, \%fadd_H, \%fskip_H, undef, \%opt_HH, $FH_HR);
 
 # determine what qualifiers we will store based on cmdline options
 # --qall is incompatible with --qadd
@@ -581,6 +591,20 @@ if(opt_Get("--gb", \%opt_HH)) {
   }
 }
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+####################################################################################
+# Change 'type' value for sig_peptide features to 'mat_peptide' (unless --nosig2mat)
+####################################################################################
+if(! opt_Get("--nosig2mat", \%opt_HH)) { 
+  for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
+    if((defined $ftr_info_HAH{$mdl_name}[$ftr_idx]) && 
+       (defined $ftr_info_HAH{$mdl_name}[$ftr_idx]{"type"}) && 
+       ($ftr_info_HAH{$mdl_name}[$ftr_idx]{"type"} eq "sig_peptide")) { 
+      $ftr_info_HAH{$mdl_name}[$ftr_idx]{"type"}     = "mat_peptide";
+      $ftr_info_HAH{$mdl_name}[$ftr_idx]{"out_type"} = "sig_peptide";
+    }
+  }
+}
 
 ###############################################
 # Add in features read from --addminfo if used
@@ -691,6 +715,7 @@ ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 # - translate the CDS
 # - build BLAST DB
 # - build HMMER DB
+# - check for valid splice sites
 ###################################
 my $ncds = vdr_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS");
 my $cds_fa_file = undef;
@@ -778,6 +803,13 @@ if($ncds > 0) {
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "hmmpress", $hmmpress_file,     1, 1, "hmmpress output file");
 
   ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
+
+  # check splice sites and add canon_splice_sites:"1" if all are valid
+  if(! opt_Get("--nosplice", \%opt_HH)) { 
+    $start_secs = ofile_OutputProgressPrior("Checking intron splice sites, if any", $progress_w, $log_FH, *STDOUT);
+    check_and_add_cds_splice_sites($stk_file, \@{$ftr_info_HAH{$mdl_name}}, \@sgm_info_AH, \%opt_HH, $FH_HR);
+    ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
+  }
 }
 
 ##############
@@ -799,24 +831,28 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
 
   $start_secs = ofile_OutputProgressPrior("Building CM $cmbuild_str", $progress_w, $log_FH, *STDOUT);
 
-  my $cmbuild_occ_file = $out_root . ".cmbuild.occ";
-  my $cmbuild_cp9occ_file = $out_root . ".cmbuild.cp9occ";
-  my $cmbuild_fp7occ_file = $out_root . ".cmbuild.fp7occ";
+#  my $cmbuild_occ_file = $out_root . ".cmbuild.occ";
+#  my $cmbuild_cp9occ_file = $out_root . ".cmbuild.cp9occ";
+#  my $cmbuild_fp7occ_file = $out_root . ".cmbuild.fp7occ";
 
-  my $cmbuild_opts = "-n $mdl_name --verbose --occfile $cmbuild_occ_file --cp9occfile $cmbuild_cp9occ_file --fp7occfile $cmbuild_fp7occ_file ";
-  if((! defined $stk_has_ss) || (! $stk_has_ss)) { $cmbuild_opts .= " --noss"; }
-  if(opt_IsUsed("--cmn",       \%opt_HH)) { $cmbuild_opts .= " --EgfN "    . opt_Get("--cmn", \%opt_HH); }
-  if(opt_IsUsed("--cmp7ml",    \%opt_HH)) { $cmbuild_opts .= " --p7ml"; }
-  if(opt_IsUsed("--cmere",     \%opt_HH)) { $cmbuild_opts .= " --ere "     . opt_Get("--cmere", \%opt_HH); }
-  if(opt_IsUsed("--cmeset",    \%opt_HH)) { $cmbuild_opts .= " --eset "    . opt_Get("--cmeset", \%opt_HH); }
-  if(opt_IsUsed("--cmemaxseq", \%opt_HH)) { $cmbuild_opts .= " --emaxseq " . opt_Get("--cmemaxseq", \%opt_HH); }
-  if(opt_IsUsed("--cminfile",  \%opt_HH)) { 
+#  my $cmbuild_opts = "-n $mdl_name --verbose --occfile $cmbuild_occ_file --cp9occfile $cmbuild_cp9occ_file --fp7occfile $cmbuild_fp7occ_file ";
+  my $cmbuild_opts = "-n $mdl_name --verbose ";
+  if(opt_IsUsed("--cminfile",  \%opt_HH))   { 
     my @cminfile_A = ();
     utl_FileLinesToArray(opt_Get("--cminfile", \%opt_HH), 1, \@cminfile_A, $FH_HR);
     foreach my $optline (@cminfile_A) { 
       chomp $optline;
       $cmbuild_opts .= " " . $optline . " ";
     }
+  }
+  else { 
+    if((! defined $stk_has_ss) || (! $stk_has_ss)) { $cmbuild_opts .= " --noss"; }
+    if(opt_IsUsed("--cmn",       \%opt_HH))   { $cmbuild_opts .= " --EgfN "    . opt_Get("--cmn", \%opt_HH); }
+    if(opt_IsUsed("--cmp7ml",    \%opt_HH))   { $cmbuild_opts .= " --p7ml"; }
+    if(opt_IsUsed("--cmere",     \%opt_HH))   { $cmbuild_opts .= " --ere "     . opt_Get("--cmere", \%opt_HH); }
+    if(opt_IsUsed("--cmeset",    \%opt_HH))   { $cmbuild_opts .= " --eset "    . opt_Get("--cmeset", \%opt_HH); }
+    if(opt_IsUsed("--cmemaxseq", \%opt_HH))   { $cmbuild_opts .= " --emaxseq " . opt_Get("--cmemaxseq", \%opt_HH); }
+    if(! opt_IsUsed("--cmnoh3pri", \%opt_HH)) { $cmbuild_opts .= " --noh3pri"; }
   }
   # if model is big > 0.5 * 25Kb (maxlen), then use the --Egcmult option
   # this avoids problems and slowness with very large sequence lengths for glocal HMM calibration
@@ -960,7 +996,7 @@ sub stockholm_validate_single_sequence_input {
 #           for features or qualifiers.
 #
 # Arguments:
-#  $df_string:  comma separated string of default values (e.g. "CDS,gene,mat_peptide")
+#  $df_string:  comma separated string of default values (e.g. "CDS,gene,mat_peptide,sig_peptide")
 #  $add_opt:    name of add option (e.g. "--fadd")
 #  $skip_opt:   name of skip option (e.g. "--fskip")
 #  $sub_opt:    name of option with subset of features add option applies to, or undef
@@ -1102,7 +1138,7 @@ sub fetch_and_parse_cds_protein_feature_tables {
             }
           }
           else { # we didn't find this feature already in the feature info hash, add it
-            # printf("adding feature " . $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"type"} . " with coords " . $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"coords"} . "\n");
+            #printf("adding feature " . $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"type"} . " with coords " . $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"coords"} . "\n");
             my $nxt_ftr_idx = scalar(@{$ftr_info_AHR});
             %{$ftr_info_AHR->[$nxt_ftr_idx]} = ();
             foreach my $prot_key (sort keys (%{$prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]})) { 
@@ -1185,6 +1221,146 @@ sub integerize_parent_index_strings {
     }
   }
 
+  return;
+}
+
+#################################################################
+# Subroutine: check_and_add_cds_splice_sites
+# Incept:     EPN, Mon Jul 24 13:04:00 2023
+# 
+# Purpose:    Check any CDS features to see if they have any
+#             introns, and if so if those introns have canonical
+#             GT donor (5') and AG acceptor (3') sites. If all 
+#             introns have canonical splice sites, then add 
+#             canon_splice_sites="1" qualifier for that CDS.
+# 
+# Arguments:
+#   $stk_file:      stockholm file with aligned full length sequences
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $opt_HHR:       REF to 2D hash of option values, see top of sqp_opts.pm for description, PRE-FILLED
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#
+#################################################################
+sub check_and_add_cds_splice_sites { 
+  my $sub_name = "check_and_add_cds_splice_sites";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($stk_file, $ftr_info_AHR, $sgm_info_AHR, $opt_HHR, $FH_HR) = @_;
+
+  my $msa = Bio::Easel::MSA->new({ fileLocation => $stk_file, isDna => 1});
+  my $msa_has_rf = $msa->has_rf;
+  my $nseq = $msa->nseq;
+
+  my $min_intron_length = opt_Get("--intlen", $opt_HHR);
+
+  # precompute start, stop, strand, for all features, so we don't have to redo this for each seq
+  my @sgm_start_AA  = ();
+  my @sgm_stop_AA   = ();
+  my @sgm_strand_AA = ();
+  vdr_FeatureInfoStartStopStrandArrays($ftr_info_AHR, \@sgm_start_AA, \@sgm_stop_AA, \@sgm_strand_AA, $FH_HR);
+
+  my $nftr = scalar(@{$ftr_info_AHR});
+
+  my $canon_5p; # TRUE if all seqs have canonical 5' splice site (GT)
+  my $canon_3p; # TRUE if all seqs have canonical 3' splice site (AG)
+  my ($rfstart, $rfstop, $astart, $astop); # model/alignment positions 
+  my ($nsgm, $next_sgm_idx, $strand);
+  my $seq_idx;     # sequence index in the MSA (always 0 if 1 seq MSA)
+  my $ss_sqstring; # the splice site string
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") { 
+      $nsgm = scalar(@{$sgm_start_AA[$ftr_idx]});
+      if($nsgm > 1) { 
+        $canon_5p = 1; # will set to 0 below if any 5' splice site for any intron is not GT
+        $canon_3p = 1; # will set to 0 below if any 3' splice site for any intron is not AG
+
+        # NOTE: as currently implemented, if there are more than one
+        # introns, splice sites have to be canonical in all for
+        # canon_splice_sites:"1" to get set, else we won't set it
+
+        foreach(my $sgm_idx = 0; $sgm_idx < ($nsgm-1); $sgm_idx++) { 
+          $next_sgm_idx = $sgm_idx+1;
+          # determine if the intron is >= 40 nt
+          $strand = $sgm_strand_AA[$ftr_idx][$sgm_idx];
+          if($strand ne $sgm_strand_AA[$ftr_idx][$next_sgm_idx]) { 
+            ofile_FAIL(sprintf("ERROR in $sub_name, with --fss, all adjacent CDS segments must be on the same strand, but CDS with coordinates %s violates this", $ftr_info_AHR->[$ftr_idx]{"coords"}), 1, $FH_HR);
+          }
+          my $intron_length = vdr_FeatureLengthBetweenAdjacentSegments($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx, $FH_HR);
+          
+          if($intron_length >= $min_intron_length) { 
+            # check 5' splice site
+            $rfstart = ($strand eq "+") ? $sgm_stop_AA[$ftr_idx][$sgm_idx] + 1 : $sgm_stop_AA[$ftr_idx][$sgm_idx] - 1;
+            $rfstop  = ($strand eq "+") ? $sgm_stop_AA[$ftr_idx][$sgm_idx] + 2 : $sgm_stop_AA[$ftr_idx][$sgm_idx] - 2;
+            $astart  = ($msa_has_rf) ? $msa->rfpos_to_aligned_pos($rfstart) : $rfstart;
+            $astop   = ($msa_has_rf) ? $msa->rfpos_to_aligned_pos($rfstop)  : $rfstop;
+            if($astart > $astop) { utl_Swap(\$astart, \$astop); }
+            for($seq_idx = 0; $seq_idx < $msa->nseq; $seq_idx++) { 
+              $ss_sqstring = $msa->get_sqstring_unaligned_and_truncated($seq_idx, $astart, $astop);
+              if($sgm_strand_AA[$ftr_idx][$sgm_idx] eq "-") { 
+                seq_SqstringReverseComplement(\$ss_sqstring);
+              }
+              $ss_sqstring =~ tr/a-z/A-Z/; # convert to uppercase
+              $ss_sqstring =~ tr/U/T/;     # convert to DNA
+              if(length($ss_sqstring) != 2) {
+                # exit if --strictss
+                if(opt_Get("--strictss", $opt_HHR)) { 
+                  ofile_FAIL(sprintf("ERROR in $sub_name, with --strictss, splice sites expected to be length 2, but got length of %d for 5' splice site for seq#%d (positions $astart..$astop:$sgm_strand_AA[$ftr_idx][$sgm_idx])", 
+                                     length($ss_sqstring), $seq_idx), 1, $FH_HR);
+                }
+                $canon_5p = 0;
+              }
+              if($ss_sqstring ne "GT") { 
+                if(opt_Get("--strictss", $opt_HHR)) { 
+                  ofile_FAIL(sprintf("ERROR in $sub_name, with --strictss, 5' splice sites expected to be GT, but got %s for 5' splice site for seq#%d (positions $astart..$astop:$sgm_strand_AA[$ftr_idx][$sgm_idx])", 
+                                     $ss_sqstring, $seq_idx), 1, $FH_HR);
+                }
+                $canon_5p = 0;
+              }
+            }
+            
+            # check 3' splice site
+            $rfstart = ($strand eq "+") ? $sgm_start_AA[$ftr_idx][$next_sgm_idx] - 2 : $sgm_start_AA[$ftr_idx][$next_sgm_idx] + 2;
+            $rfstop  = ($strand eq "+") ? $sgm_start_AA[$ftr_idx][$next_sgm_idx] - 1 : $sgm_start_AA[$ftr_idx][$next_sgm_idx] + 1;
+            $astart  = ($msa_has_rf) ? $msa->rfpos_to_aligned_pos($rfstart) : $rfstart;
+            $astop   = ($msa_has_rf) ? $msa->rfpos_to_aligned_pos($rfstop)  : $rfstop;
+            if($astart > $astop) { utl_Swap(\$astart, \$astop); }
+            for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+              $ss_sqstring = $msa->get_sqstring_unaligned_and_truncated($seq_idx, $astart, $astop);
+              if($sgm_strand_AA[$ftr_idx][$sgm_idx] eq "-") { 
+                seq_SqstringReverseComplement(\$ss_sqstring);
+              }
+              $ss_sqstring =~ tr/a-z/A-Z/; # convert to uppercase
+              $ss_sqstring =~ tr/U/T/;     # convert to DNA
+              if(length($ss_sqstring) != 2) {
+                # exit if --strictss
+                if(opt_Get("--strictss", $opt_HHR)) { 
+                  ofile_FAIL(sprintf("ERROR in $sub_name, with --strictss, splice sites expected to be length 2, but got length of %d for 3' splice site for seq#%d (positions $astart..$astop:$sgm_strand_AA[$ftr_idx][$sgm_idx])", 
+                                     length($ss_sqstring), $seq_idx), 1, $FH_HR);
+                }
+                $canon_3p = 0;
+              }
+              if($ss_sqstring ne "AG") { 
+                if(opt_Get("--strictss", $opt_HHR)) { 
+                  ofile_FAIL(sprintf("ERROR in $sub_name, with --strictss, 3' splice sites expected to be AG, but got %s for 5' splice site for seq#%d (positions $astart..$astop:$sgm_strand_AA[$ftr_idx][$sgm_idx])", 
+                                     $ss_sqstring, $seq_idx), 1, $FH_HR);
+                }
+                $canon_3p = 0;
+              }
+            }
+          } # end of if($intron_length >= $min_intron_length)
+        } # end of for($sgm_idx...
+        if($canon_5p && $canon_3p) { 
+          # set canon_splice_sites="1"
+          $ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"} = 1;
+        }
+      } # end of if($nsgm > 1)
+    }
+  }
   return;
 }
 

@@ -41,20 +41,19 @@ ERROR: INDEFINITE_ANNOTATION_START: (CDS:VP1) protein-based alignment does not e
 			note	similar to VP2
 
 Additional note(s) to submitter:
-ERROR: CDS_HAS_STOP_CODON: (CDS:VP2) in-frame stop codon exists 5' of stop position predicted by homology to reference [TGA, shifted S:9,M:9]; seq-coords:490..492:+; mdl-coords:7488..7490:+; mdl:NC_001959;
+ERROR: CDS_HAS_STOP_CODON: (CDS:VP2) in-frame stop codon exists 5' of stop position predicted by homology to reference [TGA, shifted M:98]; seq-coords:490..492:+; mdl-coords:7488..7490:+; mdl:NC_001959;
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:VP2) high confidence possible frameshift in CDS (frame not restored before end) [cause:delete,S:452,M:7450(1); frame:<1(3)>; length:<158:(49)>; shifted_avgpp:0.966; exp_avgpp:0.971;]; seq-coords:453..501:+; mdl-coords:7450..7499:+; mdl:NC_001959;
 ERROR: INDEFINITE_ANNOTATION_END: (CDS:VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [48>5, no valid stop codon in nucleotide-based prediction]; seq-coords:454..501:+; mdl-coords:7588..7588:+; mdl:NC_001959;
 >Feature NC_001959.2-manually-added-frameshifts-1/7200-7655
 <1	390	gene
 			gene	ORF3
-104	390	misc_feature
+<104	390	misc_feature
 			note	similar to VP2
 
 Additional note(s) to submitter:
 ERROR: CDS_HAS_STOP_CODON: (CDS:VP2) in-frame stop codon exists 5' of stop position predicted by homology to reference [TGA, shifted S:98,M:98]; seq-coords:290..292:+; mdl-coords:7488..7490:+; mdl:NC_001959;
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:VP2) high confidence possible frameshift in CDS (frame not restored before end) [cause:delete,S:252,M:7450(1); frame:1(3); length:149:(138); shifted_avgpp:0.972; exp_avgpp:0.971;]; seq-coords:253..390:+; mdl-coords:7450..7588:+; mdl:NC_001959;
 ERROR: INDEFINITE_ANNOTATION_END: (CDS:VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [137>8, valid stop codon in nucleotide-based prediction]; seq-coords:254..390:+; mdl-coords:7588..7588:+; mdl:NC_001959;
-ERROR: INDEFINITE_ANNOTATION_START: (CDS:VP2) protein-based alignment extends past nucleotide-based alignment at 5' end [-]; seq-coords:101..103:+; mdl-coords:6950..6950:+; mdl:NC_001959;
 >Feature NC_001959.2-manually-added-frameshifts-2/30-80
 <1	>51	gene
 			gene	ORF1

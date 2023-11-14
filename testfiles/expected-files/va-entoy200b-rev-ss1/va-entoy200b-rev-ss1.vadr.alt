@@ -1,0 +1,16 @@
+#      seq                                          ftr   ftr          ftr  alert           alert                           seq  seq         mdl  mdl  alert 
+#idx   name                          model          type  name         idx  code      fail  description                  coords  len      coords  len  detail
+#----  ----------------------------  -------------  ----  -----------  ---  --------  ----  -----------------------  ----------  ---  ----------  ---  ------
+2.1.1  ENTOY200B-REV.cds1.5          ENTOY200B-REV  CDS   protein_one    2  mutspst5  yes   MUTATION_AT_SPLICE_SITE  187..186:-    2  187..186:-    2  expected splice site at 5' end of intron (GT) could not be identified [GA, intron#1]
+#
+3.1.1  ENTOY200B-REV.cds1.3          ENTOY200B-REV  CDS   protein_one    2  mutspst3  yes   MUTATION_AT_SPLICE_SITE  136..135:-    2  136..135:-    2  expected splice site at 3' end of intron (AG) could not be identified [AA, intron#1]
+#
+4.1.1  ENTOY200B-REV.cds1.53         ENTOY200B-REV  CDS   protein_one    2  mutspst5  yes   MUTATION_AT_SPLICE_SITE  187..186:-    2  187..186:-    2  expected splice site at 5' end of intron (GT) could not be identified [GA, intron#1]
+4.1.2  ENTOY200B-REV.cds1.53         ENTOY200B-REV  CDS   protein_one    2  mutspst3  yes   MUTATION_AT_SPLICE_SITE  136..135:-    2  136..135:-    2  expected splice site at 3' end of intron (AG) could not be identified [AA, intron#1]
+#
+5.1.1  ENTOY200B-REV.cds2.i1.5       ENTOY200B-REV  CDS   protein_two    4  mutspst5  yes   MUTATION_AT_SPLICE_SITE  176..175:-    2  176..175:-    2  expected splice site at 5' end of intron (GT) could not be identified [CT, intron#1]
+#
+6.1.1  ENTOY200B-REV.cds2.i2.3       ENTOY200B-REV  CDS   protein_two    4  mutspst3  yes   MUTATION_AT_SPLICE_SITE    36..35:-    2    36..35:-    2  expected splice site at 3' end of intron (AG) could not be identified [AA, intron#2]
+#
+7.1.1  ENTOY200B-REV.cds2.i1.3.i2.5  ENTOY200B-REV  CDS   protein_two    4  mutspst5  yes   MUTATION_AT_SPLICE_SITE  176..175:-    2  176..175:-    2  expected splice site at 5' end of intron (GT) could not be identified [CT, intron#1]
+7.1.2  ENTOY200B-REV.cds2.i1.3.i2.5  ENTOY200B-REV  CDS   protein_two    4  mutspst3  yes   MUTATION_AT_SPLICE_SITE    36..35:-    2    36..35:-    2  expected splice site at 3' end of intron (AG) could not be identified [AA, intron#2]

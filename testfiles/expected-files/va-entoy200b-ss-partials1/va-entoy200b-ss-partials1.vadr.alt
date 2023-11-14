@@ -1,0 +1,8 @@
+#      seq                          ftr   ftr          ftr  alert           alert                           seq  seq         mdl  mdl  alert 
+#idx   name              model      type  name         idx  code      fail  description                  coords  len      coords  len  detail
+#----  ----------------  ---------  ----  -----------  ---  --------  ----  -----------------------  ----------  ---  ----------  ---  ------
+2.1.1  ENTOY200B/1-150   ENTOY200B  CDS   protein_two    4  mutspst5  yes   MUTATION_AT_SPLICE_SITE  118..119:+    2  118..119:+    2  expected splice site at 5' end of intron (GT) could not be identified [AT, intron#2]
+#
+3.1.1  ENTOY200B/50-200  ENTOY200B  CDS   protein_one    2  mutspst3  yes   MUTATION_AT_SPLICE_SITE    16..17:+    2    65..66:+    2  expected splice site at 3' end of intron (AG) could not be identified [GG, intron#1]
+#
+4.1.1  ENTOY200B/1-118   ENTOY200B  CDS   protein_two    4  mutspst5  yes   MUTATION_AT_SPLICE_SITE  118..118:+    1  118..118:+    1  expected splice site at 5' end of intron (GT) could not be identified [A, intron#2 (second position missing due to end of sequence)]

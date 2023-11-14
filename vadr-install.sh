@@ -27,23 +27,22 @@ set -e
 VADRINSTALLDIR=$PWD
 
 # versions
-VERSION="1.5.1"
+VERSION="1.6"
 # bio-easel (need this version info here only so we can check out correct easel branch in Bio-Easel/src)
 BEVERSION="Bio-Easel-0.16"
 # blast+
-BVERSION="2.12.0"
+BVERSION="2.15.0"
 # infernal
-IVERSION="1.1.4"
+IVERSION="1.1.5"
 # hmmer
-HVERSION="3.3.2"
+HVERSION="3.4"
 # fasta
 FVERSION="36.3.8h"
 FVERSIONGIT="v36.3.8h_04-May-2020"
 FVERSIONGITNOV="36.3.8h_04-May-2020"
 # minimap2
-MM2VERSION="2.24-r1222"
-MM2VERSIONGIT="v2.24"
-MM2VERSIONGITNOV="2.24"
+MM2VERSIONGIT="v2.26"
+MM2VERSIONGITNOV="2.26"
 # dependency git tag
 VVERSION="vadr-$VERSION"
 # vadr models

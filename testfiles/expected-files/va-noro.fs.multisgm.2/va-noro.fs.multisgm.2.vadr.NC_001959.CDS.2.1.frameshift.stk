@@ -1,5 +1,5 @@
 # STOCKHOLM 1.0
-#=GF AU Infernal 1.1.4
+#=GF AU Infernal 1.1.5
 #=GF CC Alignment of CDS 2 segment 1 of 3 for sequence NC_001959.2-manually-added-frameshifts-1/5380-6000 to model NC_001959 with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.

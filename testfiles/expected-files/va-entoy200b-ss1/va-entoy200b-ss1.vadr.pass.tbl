@@ -1,0 +1,14 @@
+>Feature ENTOY200B
+3	97	gene
+			gene	one
+3	13	CDS
+67	97
+			product	protein one
+			protein_id	ENTOY200B_1
+6	181	gene
+			gene	two
+6	24	CDS
+71	117
+167	181
+			product	protein two
+			protein_id	ENTOY200B_2

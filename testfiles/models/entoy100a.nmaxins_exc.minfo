@@ -4,7 +4,7 @@ FEATURE ENTOY100A type:"CDS" coords:"11..31:+" parent_idx_str:"GBNULL" gene:"one
 FEATURE ENTOY100A type:"mat_peptide" coords:"11..22:+" parent_idx_str:"1" product:"protein one mp1"
 FEATURE ENTOY100A type:"mat_peptide" coords:"23..28:+" parent_idx_str:"1" product:"protein one mp2"
 FEATURE ENTOY100A type:"CDS" coords:"32..47:+,47..64:+,66..73:+" parent_idx_str:"GBNULL" gene:"two" product:"protein two"
-FEATURE ENTOY100A type:"CDS" coords:"67..79:+,85..95:+" parent_idx_str:"GBNULL" gene:"three" product:"protein three" nmaxins_exc:"86:4"
+FEATURE ENTOY100A type:"CDS" coords:"67..79:+,85..95:+" parent_idx_str:"GBNULL" gene:"three" product:"protein three" insertn_exc:"86..86:+:4"
 FEATURE ENTOY100A type:"mat_peptide" coords:"67..75:+" parent_idx_str:"5" product:"protein three mp1"
 FEATURE ENTOY100A type:"mat_peptide" coords:"76..79:+,85..92:+" parent_idx_str:"5" product:"protein three mp2"
 FEATURE ENTOY100A type:"CDS" coords:"98..84:-" parent_idx_str:"GBNULL" gene:"four" product:"protein four"

@@ -1,6 +1,7 @@
 #  <a name="top"></a> VADR installation instructions
 
 * [Installation using `vadr-install.sh`](#install)
+  * [Mac installation requires Xcode](#xcode)
   * [Alternative two step installation](#alt-install)
   * [Installing Inline and LWP if installation fails](#inline)
 * [Setting environment variables](#environment)
@@ -23,7 +24,7 @@ the corresponding `vadr-install.sh` file for that release/version
 (prior to version 1.0, the name of the installation script was
 `install.sh`, not `vadr-install.sh`):
 
-https://raw.githubusercontent.com/ncbi/vadr/1.0/vadr-install.sh
+https://raw.githubusercontent.com/ncbi/vadr/vadr-1.0/vadr-install.sh
 
 Copy the `vadr-install.sh` file into the directory in which you want
 to install VADR. A good name for that directory is
@@ -48,12 +49,12 @@ current directory.  It will download and install VADR and the required
 module libraries [sequip](https://github.com/nawrockie/sequip),
 [Bio-Easel](https://github.com/nawrockie/Bio-Easel), as well as the
 binary executables of [Infernal](http://eddylab.org/infernal/), the
-src distribution of [HMMER](http://hmmer.org), the NCBI BLAST package
-and William Pearson's FASTA package (for either Linux or
-Mac/OSX). (The VADR installation script modifies the FASTA package
-slightly prior to installing it to allow alignment
-of long sequences up to 250Kb using the `glsearch` executable. This is
-described more [here](#fastamods).)
+src distribution of [HMMER](http://hmmer.org), the NCBI BLAST package,
+William Pearson's FASTA package (for either Linux or Mac/OSX), and
+Heng Li's (minimap2)[https://github.com/lh3/minimap2]. (The VADR
+installation script modifies the FASTA package slightly prior to
+installing it to allow alignment of long sequences up to 250Kb using
+the `glsearch` executable. This is described more [here](#fastamods).)
 
 The installation requires that you have the perl Inline module
 installed on your system. If not, the installation script may
@@ -63,7 +64,17 @@ When `vadr-install.sh` is finished running it will print important
 instructions to the screen that explain how to modify your environment
 variables so that you can run the VADR scripts, as discussed next.
 
-###<a name="alt-install"></a> Alternative two step method for installation: download first, then build
+---
+
+### <a name="xcode"></a> Mac installation requires Xcode
+
+Installation on a mac will only work if Xcode has been
+installed. Xcode is available for download from the Mac app store.
+
+---
+
+### <a name="alt-install"></a> Alternative two step method for installation: download first, then build
+
 Alternatively, you can install VADR in two steps, downloading the
 dependencies and source code files in step 1, and building packages in
 step 2. This alternative approach, using the following two commands, may be more convenient for some
@@ -146,6 +157,7 @@ export VADRBIOEASELDIR="$VADRINSTALLDIR/Bio-Easel"
 export VADRSEQUIPDIR="$VADRINSTALLDIR/sequip"
 export VADRBLASTDIR="$VADRINSTALLDIR/ncbi-blast/bin"
 export VADRFASTADIR="$VADRINSTALLDIR/fasta/bin"
+export VADRMINIMAP2DIR="$VADRINSTALLDIR/minimap2"
 export PERL5LIB="$VADRSCRIPTSDIR":"$VADRSEQUIPDIR":"$VADRBIOEASELDIR/blib/lib":"$VADRBIOEASELDIR/blib/arch":"$PERL5LIB"
 export PATH="$VADRSCRIPTSDIR":"$PATH"
 
@@ -173,6 +185,7 @@ setenv VADRBIOEASELDIR "$VADRINSTALLDIR/Bio-Easel"
 setenv VADRSEQUIPDIR "$VADRINSTALLDIR/sequip"
 setenv VADRBLASTDIR "$VADRINSTALLDIR/ncbi-blast/bin"
 setenv VADRFASTADIR "$VADRINSTALLDIR/fasta/bin"
+setenv VADRMINIMAP2DIR "$VADRINSTALLDIR/minimap2"
 setenv PERL5LIB "$VADRSCRIPTSDIR":"$VADRSEQUIPDIR":"$VADRBIOEASELDIR/blib/lib":"$VADRBIOEASELDIR/blib/arch":"$PERL5LIB"
 setenv PATH "$VADRSCRIPTSDIR":"$PATH"
 
@@ -224,13 +237,6 @@ correctly. They should pass, as shown below.
 The script `vadr/testfiles/do-all-tests.sh` will run all tests, but be
 warned that script may take up to an hour or so to run. All the tests
 should pass.
-
-There is also special test script `do-install-tests-parallel.sh` that you
-should run if you want to test if you can use the `-p` option to
-`v-annotate.pl` for parallelization on a cluster.  But this test will
-likely only work internally at NCBI.  See this
-[example](annotate.md#exampleparallel) for more information.
-`do-install-tests-parallel.sh` is **not** run as part of `do-all-tests.sh`.
 
 To run all tests, execute:
 
@@ -370,11 +376,15 @@ build a CM with `v-build.pl` (i.e. use the `--skipbuild` option),
 and it is recommended to use the `-s` and `--glsearch` options with `v-annotate.pl`.
 
 ---
-## Further information
+## <a name="further"></a> Further information
 
-* [`v-annotate.pl` example usage and command-line options](annotate.md#top)
 * [`v-build.pl` example usage and command-line options](build.md#top)
-* [VADR output formats](formats.md#top)
+* [`v-annotate.pl` example usage, command-line options and alert information](annotate.md#top)
+* [Explanations and examples of `v-annotate.pl` detailed alert and error messages](alerts.md#top)
+* [VADR output file formats](formats.md#top)
+* [Available VADR model files (github wiki)](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files)
+* [SARS-CoV-2 annotation (github wiki)](https://github.com/ncbi/vadr/wiki/Coronavirus-annotation)
+* [Development notes and instructions (github wiki)](https://github.com/ncbi/vadr/wiki/Development-notes-and-instructions)
 
 ---
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.

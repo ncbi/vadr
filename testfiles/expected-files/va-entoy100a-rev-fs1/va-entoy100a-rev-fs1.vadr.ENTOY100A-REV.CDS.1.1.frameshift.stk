@@ -1,5 +1,5 @@
 # STOCKHOLM 1.0
-#=GF AU Infernal 1.1.4
+#=GF AU Infernal 1.1.5
 #=GF CC Alignment of CDS 1 segment 1 of 1 for sequence ENTOY100A-REV-fs1 to model ENTOY100A-REV with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
@@ -18,7 +18,7 @@ ENTOY100A-REV-fs1         TTATGGTAAAGCGATCACGCAT
 #=GC RFCOL..X             012345678901234567.890
 //
 # STOCKHOLM 1.0
-#=GF AU Infernal 1.1.4
+#=GF AU Infernal 1.1.5
 #=GF CC Alignment of CDS 1 segment 1 of 1 for sequence ENTOY100A-REV-fs2 to model ENTOY100A-REV with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
@@ -37,7 +37,7 @@ ENTOY100A-REV-fs2         TTATGGTAAAGCGATCACGGGGGCAT
 #=GC RFCOL..X             012345678901234567.....890
 //
 # STOCKHOLM 1.0
-#=GF AU Infernal 1.1.4
+#=GF AU Infernal 1.1.5
 #=GF CC Alignment of CDS 1 segment 1 of 1 for sequence ENTOY100A-REV-fs3 to model ENTOY100A-REV with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
@@ -56,7 +56,7 @@ ENTOY100A-REV-fs3         TTATGGTAAACCGCGATCACGCAT
 #=GC RFCOL..X             0123456789..01234567.890
 //
 # STOCKHOLM 1.0
-#=GF AU Infernal 1.1.4
+#=GF AU Infernal 1.1.5
 #=GF CC Alignment of CDS 1 segment 1 of 1 for sequence ENTOY100A-REV-fs4 to model ENTOY100A-REV with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
@@ -75,7 +75,7 @@ ENTOY100A-REV-fs4         TTATGGTAAACGCGATCACGGGGGCAT
 #=GC RFCOL..X             0123456789.01234567.....890
 //
 # STOCKHOLM 1.0
-#=GF AU Infernal 1.1.4
+#=GF AU Infernal 1.1.5
 #=GF CC Alignment of CDS 1 segment 1 of 1 for sequence ENTOY100A-REV-fs5 to model ENTOY100A-REV with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
@@ -94,7 +94,7 @@ ENTOY100A-REV-fs5         TTATGGTAAA-CGATCACGCAT
 #=GC RFCOL..X             012345678901234567.890
 //
 # STOCKHOLM 1.0
-#=GF AU Infernal 1.1.4
+#=GF AU Infernal 1.1.5
 #=GF CC Alignment of CDS 1 segment 1 of 1 for sequence ENTOY100A-REV-fs6 to model ENTOY100A-REV with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
@@ -113,7 +113,7 @@ ENTOY100A-REV-fs6         TTATGGTAA--CGATCACGGGGGCAT
 #=GC RFCOL..X             012345678901234567.....890
 //
 # STOCKHOLM 1.0
-#=GF AU Infernal 1.1.4
+#=GF AU Infernal 1.1.5
 #=GF CC Alignment of CDS 1 segment 1 of 1 for sequence ENTOY100A-REV-fs7 to model ENTOY100A-REV with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
@@ -132,7 +132,7 @@ ENTOY100A-REV-fs7         TTATGGTAAAGCGATCAC-AT
 #=GC RFCOL..X             012345678901234567890
 //
 # STOCKHOLM 1.0
-#=GF AU Infernal 1.1.4
+#=GF AU Infernal 1.1.5
 #=GF CC Alignment of CDS 1 segment 1 of 1 for sequence ENTOY100A-REV-fs8 to model ENTOY100A-REV with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
@@ -151,7 +151,7 @@ ENTOY100A-REV-fs8         TTATGGTAAAGCGATCA--AT
 #=GC RFCOL..X             012345678901234567890
 //
 # STOCKHOLM 1.0
-#=GF AU Infernal 1.1.4
+#=GF AU Infernal 1.1.5
 #=GF CC Alignment of CDS 1 segment 1 of 1 for sequence ENTOY100A-REV-fs9 to model ENTOY100A-REV with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
@@ -170,7 +170,7 @@ ENTOY100A-REV-fs9         TTATGGTAA--CGATCAC-AT
 #=GC RFCOL..X             012345678901234567890
 //
 # STOCKHOLM 1.0
-#=GF AU Infernal 1.1.4
+#=GF AU Infernal 1.1.5
 #=GF CC Alignment of CDS 1 segment 1 of 1 for sequence ENTOY100A-REV-fs10 to model ENTOY100A-REV with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
@@ -189,7 +189,7 @@ ENTOY100A-REV-fs10         TTATGGTAAA-CGATCA--AT
 #=GC RFCOL..X              012345678901234567890
 //
 # STOCKHOLM 1.0
-#=GF AU Infernal 1.1.4
+#=GF AU Infernal 1.1.5
 #=GF CC Alignment of CDS 1 segment 1 of 1 for sequence ENTOY100A-REV-fs11 to model ENTOY100A-REV with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
@@ -208,7 +208,7 @@ ENTOY100A-REV-fs11         TTATGGTAAACGCGATCAC-AT
 #=GC RFCOL..X              0123456789.01234567890
 //
 # STOCKHOLM 1.0
-#=GF AU Infernal 1.1.4
+#=GF AU Infernal 1.1.5
 #=GF CC Alignment of CDS 1 segment 1 of 1 for sequence ENTOY100A-REV-fs12 to model ENTOY100A-REV with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.

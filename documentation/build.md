@@ -12,6 +12,7 @@
   * [options for additional output files](#options-output)
   * [additional expert options](#options-expert)
 * [Building a VADR model library](#library)
+* [Advanced tutorial: building an RSV model library](advbuild.md#top)
 * [How the VADR 1.0 model library was constructed](#1.0library)
   * [Norovirus models](#1.0library-noro)
   * [Dengue virus models](#1.0library-dengue)
@@ -39,9 +40,9 @@ v-build.pl -h
 You'll see something like the following output:
 ```
 # v-build.pl :: build homology model of a single sequence for feature annotation
-# VADR 1.4 (Dec 2021)
+# VADR 1.6 (Nov 2023)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Tue Dec 21 10:59:56 2021
+# date:    Tue Nov  7 10:07:21 2023
 #
 Usage: v-build.pl [-options] <accession> <path to output directory to create>
 ```
@@ -100,9 +101,9 @@ a FASTA sequence file and feature table file for the input accession
 `NC_039897`. 
 
 ```
-# Fetching FASTA file                                          ... done. [    3.3 seconds]
+# Fetching FASTA file                                          ... done. [    3.4 seconds]
 # Parsing FASTA file                                           ... done. [    0.0 seconds]
-# Fetching feature table file                                  ... done. [    3.2 seconds]
+# Fetching feature table file                                  ... done. [    3.4 seconds]
 # Parsing feature table file                                   ... done. [    0.0 seconds]
 ```
 
@@ -112,7 +113,7 @@ data from GenBank is then pruned to remove information that will
 not be stored in the VADR model files:
 
 ```
-# Fetching and parsing protein feature table file(s)           ... done. [    9.4 seconds]
+# Fetching and parsing protein feature table file(s)           ... done. [   10.3 seconds]
 # Pruning data read from GenBank                               ... done. [    0.0 seconds]
 ```
 
@@ -124,12 +125,13 @@ create the BLAST database with `makeblastdb`, and the HMMER protein
 HMM database with `hmmbuild`.
 
 ```
-# Reformatting FASTA file to Stockholm file                    ... done. [    0.3 seconds]
-# Building BLAST nucleotide database                           ... done. [    1.2 seconds]
+# Reformatting FASTA file to Stockholm file                    ... done. [    0.0 seconds]
+# Building BLAST nucleotide database                           ... done. [    0.7 seconds]
 # Finalizing feature information                               ... done. [    0.0 seconds]
-# Translating CDS                                              ... done. [    0.1 seconds]
-# Building BLAST protein database                              ... done. [    0.2 seconds]
-# Building HMMER protein database                              ... done. [    1.2 seconds]
+# Translating CDS                                              ... done. [    0.2 seconds]
+# Building BLAST protein database                              ... done. [    0.3 seconds]
+# Building HMMER protein database                              ... done. [    1.1 seconds]
+# Checking intron splice sites, if any                         ... done. [    0.0 seconds]
 ```
 
 Next, the covariance model is built using `cmbuild`. This is by far
@@ -141,9 +143,8 @@ nucleotide database is created from the CM consensus sequence. The final
 step is to create the model info file:
 
 ```
-# Building CM (should take roughly 10-30 minutes)              ... done. [  480.6 seconds]
-# Pressing CM file                                             ... done. [    0.3 seconds]
-# Building BLAST nucleotide database of CM consensus           ... done. [    0.3 seconds]
+# Building CM (should take roughly 10-30 minutes)              ... done. [  477.0 seconds]
+# Pressing CM file                                             ... done. [    0.4 seconds]
 # Creating model info file                                     ... done. [    0.0 seconds]
 ```
 When all steps are complete, `v-build.pl` ends by outputting a list of
@@ -255,7 +256,7 @@ The first category of options are the *basic* options:
 | `--ftfetch2` | use `efetch` program (must be in your `PATH`) to fetch feature table with `efetch -format gbc | xml2tbl` instead of default method of fetching from an `eutils` URL | 
 | `--gb` | fetch and parse a GenBank-format file from GenBank instead of a feature table | 
 | `--ingb <s>` | read the GenBank-format file in `<s>` instead of a feature table file (requires `--gb`)| 
-| `--addminfo <s>` | add arbitrary feature info in file `<s>` to output `.minfo` file, see an example [here](#1.0library-noro") | 
+| `--addminfo <s>` | add arbitrary feature info in file `<s>` to output `.minfo` file, see an example [here](#1.0library-noro) | 
 | `--forcelong` | *use at your own risk*; allow long models > 25Kb in length; by default `v-build.pl` will fail for any model more than 25Kb (25,000 nucleotides) because `v-build.pl` will be very slow and the memory requirements of `v-annotate.pl` will be prohibitively large
 | `--keep` | keep additional output files that are normally removed |
 
@@ -264,7 +265,7 @@ The first category of options are the *basic* options:
 By default, only `CDS`, `gene` and `mat_peptide` feature types read from the GenBank feature table file
 will be stored in the output `.minfo` file. This default set can be changed using the following three
 command line options. For an example of using the `--fadd` option, see the construction of the dengue virus
-RefSeq models for the VADR 1.0 model library [here](#1.0library-dengue").
+RefSeq models for the VADR 1.0 model library [here](#1.0library-dengue).
 
 | ......option...... | explanation | 
 |--------|-------------| 
@@ -281,15 +282,17 @@ stored. This default set can be changed using the following five
 command line options. 
 For an example of using the `--qadd` and `--qftradd` options, see
 the construction of the dengue virus RefSeq models for the VADR 1.0
-model library [here](#1.0library-dengue").
+model library [here](#1.0library-dengue).
 
 | .......option....... | explanation | 
 |--------|-------------| 
-| `--qall`   | specify that all qualifiers (except those in `<s> from `--qskip <s>`) be added to the `.minfo` output file |
+| `--qall`   | specify that all qualifiers (except those in `<s>` from `--qskip <s>`) be added to the `.minfo` output file |
 | `--qadd <s>`  | add qualifiers listed in `<s>` to the default set, where `<s>` is a comma-separated string with each qualifier separated by a comma with no whitespace |
 | `--qftradd <s>`  | specify that the qualifiers listed in `<s2>` from `qadd <s2>` only apply for feature types in the string `<s>`, where `<s>` is a comma-separated string with each qualifier separated by a comma with no whitespace |
 | `--qskip <s>`  | do not store information for qualifiers listed in `<s>`, where `<s>` is a comma-separated string with each qualifier separated by a comma with no whitespace; `<s>` may contain qualifiers from the default set, or from other qualifiers (if `--qall` also used) |
 | `--noaddgene`  | do not automatically add `gene` qualifiers from `gene` features to any overlapping non-gene features | 
+| `--nosplice`   | do not automatically check for GT/AG intron splice sites and add `canon_splice_sites` qualifiers for introns with valid splice sites, an intron is defined as a gap between CDS segments >= `<n>` nucleotides from `--intlen` option, by default `<n>` is `40` |
+| `--ssplice`    | exit if any introns in CDS are found that do not have valid GT/AG splice sites, introns defined as explained in `--nosplice` description above |
 
 ### `v-build.pl` options for including additional model attributes<a name="options-attributes"></a>
 
@@ -333,6 +336,7 @@ User's Guide manual page for `cmbuild` (section 8 of http://eddylab.org/infernal
 | `--cmere` | set CM relative entropy target bits to position to `<x>` (sets the `cmbuild --ere <x>` option), default is to use default `cmbuild` value |
 | `--cmeset` | set CM effective sequence number to '<x>` (sets the `cmbuild --eset <x>` option), default is to use default `cmbuild` value | 
 | `--cmemaxseq` | set CM maximum allowed effective sequence # for CM to `<x>` (sets the `cmbuild --emaxseq <x>` option) | 
+| `--cmnoh3pri` | do not use `--noh3pri` option with `cmbuild`, to allow CM to use prior from HMMER3 for zero basepair models |
 | `--cminfile` | read `cmbuild` options from an input file `<s>`, the contents of the file (after removing newlines) will be supplied directly to `cmbuild` as an options string (possibly with more than one option separated by whitespace) |
 
 ### `v-build.pl` options for skipping stages<a name="options-skip"></a>
@@ -346,14 +350,17 @@ User's Guide manual page for `cmbuild` (section 8 of http://eddylab.org/infernal
 
 | .......option....... | explanation | 
 |--------|-------------| 
-| `--sgminfo <s>` | output information on the internal data structure used to keep track of segments of features to `<s>`, mainly useful for debugging |
 | `--ftrinfo <s>` | output information on the internal data structure used to keep track of features to `<s>`, mainly useful for debugging |
+| `--sgminfo <s>` | output information on the internal data structure used to keep track of segments of features to `<s>`, mainly useful for debugging |
 
 ### Other `v-build.pl` expert options<a name="options-expert"></a>
 
 | .......option....... | explanation | 
 |--------|-------------| 
 | `--execname <s>` | in banner and usage output, replace `v-annotate.pl` with `<s>` |
+| `--nosig2mat`    | do not treat `sig_peptide` features as `mat_peptide` in model info file |
+| `--intlen <n>`   | define intron as any gap >= `<n>` nucleotides between segments in a CDS, only relevant for checking for canonical splice sites, the default value for `<n>` is `40` |
+
 
 ---
 ## Building a VADR model library<a name="library"></a>
@@ -438,15 +445,22 @@ directories, make sure you also move the corresponding index files
 (.cm.*, `.hmm.*`, `.fa.*`) along with them.
 
 ---
+
+## [Advanced tutorial: building an RSV model library (link to different page)](advbuild.md#top)
+
+---
 ## How the VADR 1.0 model library was constructed <a name="1.0library"></a>
 
-The VADR 1.0 library was built with version 1.0 of VADR. It is included here as 
-an example of how to build a VADR library, but also so it can be reproduced, because it is the model library
-used in the [paper on VADR 1.0](../README.md#reference) (https://doi.org/10.1186/s12859-020-3537-3).
-If you want to reproduce it exactly, you'll want to install
-version 1.0. The install script for v1.0 is here:
+The VADR 1.0 library was built with version 1.0 of VADR. It has not
+changed since version 1.0 and is still the default model library used
+in this version. It is included here as an example of how to build a
+VADR library, but also so it can be reproduced, because it is the
+model library used in the [paper on VADR 1.0](../README.md#reference)
+(https://doi.org/10.1186/s12859-020-3537-3).  If you want to reproduce
+it exactly, you'll want to install version 1.0. The install script for
+v1.0 is here:
 
-https://raw.githubusercontent.com/ncbi/vadr/1.0/vadr-install.sh
+https://raw.githubusercontent.com/ncbi/vadr/vadr-1.0/vadr-install.sh
 
 Additionally, if the RefSeq annotation for any of these 197 VADR
 models has changed since October 2019, then it may not be able to
