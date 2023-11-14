@@ -44,7 +44,7 @@
     - hmmer version 3.4
     - sequip version 0.10
     - minimap2 version 2.26
-
+    - fasta version 36.3.8h (unchanged)
 ---
 
 ### VADR 1.5.1 release (February 2023): Bug fix release
