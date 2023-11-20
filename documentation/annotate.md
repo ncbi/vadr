@@ -661,8 +661,8 @@ In the table below, `<n>` represents a positive interger argument and
 | `--lowsim5lftr  <n>`| [*lowsim5l*](#lowsim5l1)                             | LOW_FEATURE_SIMILARITY_START           | >= 30  | <a name="options-alerts-lowsim5lftr"></a> set length (nt) threshold for alert to `<n>` |
 | `--lowsim3lftr  <n>`| [*lowsim3l*](#lowsim3l1)                             | LOW_FEATURE_SIMILARITY_END             | >= 30  | <a name="options-alerts-lowsim3lftr"></a> set length (nt) threshold for alert to `<n>` |
 | `--lowsimilftr <n>` | [*lowsimil*](#lowsimil1)                             | LOW_FEATURE_SIMILARITY                 | >= 30  | <a name="options-alerts-lowsimilftr"></a> set length (nt) threshold for alert to `<n>` |
-| `--extrant5 <n>`    | [*extrant5*](#extrant51)                             | EXTRA_SEQUENCE_START                   | >= 5   | <a name="options-alerts-extrant5"></a> set length (nt) threshold for alert to `<n>` |
-| `--extrant3 <n>`    | [*extrant3*](#extrant31)                             | EXTRA_SEQUENCE_END                     | >= 5   | <a name="options-alerts-extrant3"></a> set length (nt) threshold for alert to `<n>` |
+| `--extrant5 <n>`    | [*extrant5*](#extrant51)                             | EXTRA_SEQUENCE_START                   | >= 1   | <a name="options-alerts-extrant5"></a> set length (nt) threshold for alert to `<n>` |
+| `--extrant3 <n>`    | [*extrant3*](#extrant31)                             | EXTRA_SEQUENCE_END                     | >= 1   | <a name="options-alerts-extrant3"></a> set length (nt) threshold for alert to `<n>` |
 | `--biasfrac <x>`    | [*biasdseq*](#biasdseq1)                             | BIASED_SEQUENCE                        | >= 0.25| <a name="options-alerts-biasfrac"></a>  set fractional bit score threshold for biased score/total score for alert to `<x>` |
 | `--nmiscftrthr <n>` | [*nmiscftr*](#nmiscftr1)                             | TOO_MANY_MISC_FEATURES                 | >= 4   | <a name="options-alerts-nmiscftr"></a>  set minimum number of misc_features per sequence for alert to `<n>` |
 | `--indefann <x>`    | [*indf5lcc*](#indf5lcc1), [*indf5lcn*](#indf5lcn1), [*indf3lcc*](#indf3lcc1), [*indf3lcn*](#indf3lcn1)   | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.8 | <a name="options-alerts-indefann"></a> set posterior probability threshold for non-mat_peptide features for alert to `<x>` |
@@ -1139,7 +1139,7 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*lowscore*](#lowscore1)  | LOW_SCORE                       | [`--lowsc`](#options-alerts-lowscore) | - | - <a name="lowscore2"></a> | 
 | [*biasdseq*](#biasdseq1)  | BIASED_SEQUENCE                 | [`--biasfrac`](#options-alerts-biasfrac) | - | - <a name="biasdseq2"></a> | 
 | [*extrant5*](#extrant51)  | EXTRA_SEQUENCE_START            | [`--extrant5`](#options-alerts-extrant5) | - | - <a name="extrant52"></a> |
-| [*extrant3*](#extrant31)  | EXTRA_SEQUENCE_END              | [`--extrant3`](#options-alerts-extrant3) | - | - <a name="extrant32"></a> |
+| [*extrant3*](#extrant31)  | EXTRA_SEQUENCE_END              | [`--extrant3`](#options-alerts-extrant3) | - | - <a name="extrant32"></a> |<
 | [*unjoinbl*](#unjoinbl1)  | UNJOINABLE_SUBSEQ_ALIGNMENTS    | none | - | <a name="unjoinbl12"></a> |
 | [*deletina*](#deletina1)  | DELETION_OF_FEATURE             | [`--ignore_isdel`](#options-alerts-ignore) | all | - <a name="deletina2"></a> | 
 | [*ambgntrp*](#ambgntrp1)  | N_RICH_REGION_NOT_REPLACED      | [`--r_diffno`, `--r_diffmaxdel`, `--r_diffmaxins`, `--r_diffminnonn`, `--r_diffminfract`](#options-replace) | - | - <a name="ambgntrp2"></a> | 
@@ -1335,6 +1335,8 @@ should be added to the model line (line starting with `MODEL`):
 | *fstukcfi*   | POSSIBLE_FRAMESHIFT            | `fst_exc`       | coords-only          | feature (CDS)|
 | *fstlocft*   | POSSIBLE_FRAMESHIFT_LOW_CONF   | `fst_exc`       | coords-only          | feature (CDS)|
 | *fstlocfi*   | POSSIBLE_FRAMESHIFT_LOW_CONF   | `fst_exc`       | coords-only          | feature (CDS)|
+| *extrant5*   | EXTRA_SEQUENCE_START           | `extrant5_exc`  | coords-value*        | model | 
+| *extrant3*   | EXTRA_SEQUENCE_END             | `extrant3_exc`  | coords-value*        | model | 
 
 If you specify a given exception key and value in the model info file,
 it will mean that all alerts with that specific key will have
@@ -1366,6 +1368,10 @@ multiple position ranges and values, separate with commas.
 
 The alert codes which allow exception ranges can also be viewed by
 running `v-annotate.pl` with the `--alt_list` option.
+
+For `extrant5_exc` the `coords` must be `1..1:+`. For `extrant3_exc`,
+the coords must be `<mdllen>..<mdllen>:+` where `<mdllen>` is the
+length of the reference model.
 
 Prior to VADR version 1.6, some alert exceptions in model info files
 were permitted in different formats. As of version 1.6, the formats
