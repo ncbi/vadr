@@ -1287,7 +1287,7 @@ TOY50-LSI1         -AAATCACCGATGGTGATCGCTTTACCaaagcagtacaggcacatgacaaagcagtacagg
 #      seq              ftr   ftr   ftr  alert           alert                    seq  seq     mdl  mdl  alert 
 #idx   name      model  type  name  idx  code      fail  description           coords  len  coords  len  detail
 #----  --------  -----  ----  ----  ---  --------  ----  --------------------  ------  ---  ------  ---  ------
-1.1.1  TOY50-E5  toy50  -     -       -  extrant5  yes   EXTRA_SEQUENCE_START  1..6:+    6  0..0:+    1  extra sequence detected 5' of expected sequence start [6 extra nucleotides]
+1.1.1  TOY50-E5  toy50  -     -       -  extrant5  no    EXTRA_SEQUENCE_START  1..6:+    6  0..0:+    1  extra sequence detected 5' of expected sequence start [6 extra nucleotides]
 ```
 
   **Alignment of the `TOY50-E5` sequence to the toy50 model:** The output
@@ -1338,7 +1338,7 @@ TOY50-E5         ctacctGAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
 #      seq              ftr   ftr   ftr  alert           alert                    seq  seq       mdl  mdl  alert 
 #idx   name      model  type  name  idx  code      fail  description           coords  len    coords  len  detail
 #----  --------  -----  ----  ----  ---  --------  ----  ------------------  --------  ---  --------  ---  ------
-1.1.1  TOY50-E3  toy50  -     -       -  extrant3  yes   EXTRA_SEQUENCE_END  51..59:+    9  50..50:+    1  extra sequence detected 3' of expected sequence end [9 extra nucleotides]
+1.1.1  TOY50-E3  toy50  -     -       -  extrant3  no    EXTRA_SEQUENCE_END  51..59:+    9  50..50:+    1  extra sequence detected 3' of expected sequence end [9 extra nucleotides]
 ```
 
   **Alignment of the `TOY50-E3` sequence to the toy50 model:** The output
