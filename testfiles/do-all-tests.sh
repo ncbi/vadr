@@ -52,6 +52,7 @@ for t in \
     do-minimap2-tests.sh \
     do-lowsimexc-tests.sh \
     do-ss-tests.sh \
+    do-extrant-tests.sh \
     github-issues/do-issue-tests.sh \
     ; do
     sh $VADRSCRIPTSDIR/testfiles/$t
