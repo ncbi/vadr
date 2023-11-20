@@ -2691,13 +2691,13 @@ sub vdr_AlertInfoInitialize {
   vdr_AlertInfoAdd($alt_info_HHR, "extrant5", "sequence",
                    "EXTRA_SEQUENCE_START", # short description
                    "extra sequence detected 5' of expected sequence start", # long description
-                   0, 0, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   0, 0, 0, 0, "extrant5_exc", "coords-value", # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "extrant3", "sequence",
                    "EXTRA_SEQUENCE_END", # short description
                    "extra sequence detected 3' of expected sequence end", # long description
-                   0, 0, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   0, 0, 0, 0, "extrant3_exc", "coords-value", # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
                    $FH_HR);
  
   vdr_AlertInfoAdd($alt_info_HHR, "dupregin", "sequence",
