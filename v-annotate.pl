@@ -635,7 +635,7 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-annotate.pl";
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a model library";
 my $date          = scalar localtime();
-my $version       = "1.6";
+my $version       = "1.6.1";
 my $releasedate   = "Nov 2023";
 my $pkgname       = "VADR";
 
