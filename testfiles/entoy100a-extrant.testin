@@ -1,0 +1,34 @@
+# format of this file:
+# '#' prefixed files are comments, and are not parsed.
+# 'command:' prefix indicates remainder of line is a command to run
+# 'desc:' prefix indicates description of test for dnaorg_test.pl output        
+# 'out:' prefix indicates output file to check against an expected file
+# 'exp:' prefix indicates expected file to check against an output file
+# 'rmdir:' prefix indicates name of output directory to remove after 
+# command is run and all output files have been checked.
+#
+# All 'out:' and 'exp:' lines following a 'command:' line (and before the 
+# next 'command:' line, will be checked after that command runs. The first
+# 'out:' file is compared against the first 'exp:' file, the second 
+# 'out:' file is compared against the second 'exp:' file, the second 'out:'
+# file, etc.
+# 
+# 
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --lowcov 0.6 --extrant5 7 --extrant3 7 --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a $VADRSCRIPTSDIR/testfiles/entoy100a-extrant.fa va-entoy100a-extrant1 > va-entoy100a-extrant1.out
+desc: annotate-entoy100a-extrant1
+out: va-entoy100a-extrant1/va-entoy100a-extrant1.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-extrant1/va-entoy100a-extrant1.vadr.alt
+rmdir: va-entoy100a-extrant1
+#
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --lowcov 0.6 --extrant5 1 --extrant3 1 --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a $VADRSCRIPTSDIR/testfiles/entoy100a-extrant.fa va-entoy100a-extrant2 > va-entoy100a-extrant2.out
+desc: annotate-entoy100a-extrant2
+out: va-entoy100a-extrant2/va-entoy100a-extrant2.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-extrant2/va-entoy100a-extrant2.vadr.alt
+rmdir: va-entoy100a-extrant2
+#
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --lowcov 0.6 --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.extrant.minfo $VADRSCRIPTSDIR/testfiles/entoy100a-extrant.fa va-entoy100a-extrant3 > va-entoy100a-extrant3.out
+desc: annotate-entoy100a-extrant3
+out: va-entoy100a-extrant3/va-entoy100a-extrant3.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-extrant1/va-entoy100a-extrant1.vadr.alt
+rmdir: va-entoy100a-extrant3
+#

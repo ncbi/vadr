@@ -281,8 +281,8 @@ opt_Add("--lowsimiftr", "integer",   1,         $g,   undef,   undef,           
 opt_Add("--lowsim5lftr", "integer",  30,        $g,   undef,   undef,            "long lowsim5l/LOW_FEATURE_SIMILARITY_START minimum length is <n>",                "long lowsim5l/LOW_FEATURE_SIMILARITY_START minimum length is <n>",                 \%opt_HH, \@opt_order_A);
 opt_Add("--lowsim3lftr", "integer",  30,        $g,   undef,   undef,            "long lowsim3l/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                  "long lowsim3l/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                   \%opt_HH, \@opt_order_A);
 opt_Add("--lowsimilftr", "integer",  30,        $g,   undef,   undef,            "long lowsimil/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",           "long lowsimil/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",            \%opt_HH, \@opt_order_A);
-opt_Add("--extrant5",    "integer",  5,         $g,   undef,   undef,            "extrant5/EXTRA_SEQUENCE_START minimum length is <n>",                             "extrant5/EXTRA_SEQUENCE_START minimum length is <n>",                             \%opt_HH, \@opt_order_A);
-opt_Add("--extrant3",    "integer",  5,         $g,   undef,   undef,            "extrant3/EXTRA_SEQUENCE_END minimum length is <n>",                               "extrant3/EXTRA_SEQUENCE_END minimum length is <n>",                               \%opt_HH, \@opt_order_A);
+opt_Add("--extrant5",    "integer",  1,         $g,   undef,   undef,            "extrant5/EXTRA_SEQUENCE_START minimum length is <n>",                             "extrant5/EXTRA_SEQUENCE_START minimum length is <n>",                             \%opt_HH, \@opt_order_A);
+opt_Add("--extrant3",    "integer",  1,         $g,   undef,   undef,            "extrant3/EXTRA_SEQUENCE_END minimum length is <n>",                               "extrant3/EXTRA_SEQUENCE_END minimum length is <n>",                               \%opt_HH, \@opt_order_A);
 opt_Add("--biasfract",  "real",      0.25,      $g,   undef,   undef,            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            \%opt_HH, \@opt_order_A);
 opt_Add("--nmiscftrthr","integer",   4,         $g,   undef,   undef,            "nmiscftr/TOO_MANY_MISC_FEATURES reported if <n> or more misc_features",           "nmiscftr/TOO_MANY_MISC_FEATURES reported if <n> or more misc_features",           \%opt_HH, \@opt_order_A);
 opt_Add("--indefann",   "real",      0.8,       $g,   undef,   undef,            "indf{5,3}lc{c,n}/INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>",         "indf{5,3}lc{c,n}/'INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
@@ -635,7 +635,7 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-annotate.pl";
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a model library";
 my $date          = scalar localtime();
-my $version       = "1.6";
+my $version       = "1.6.1";
 my $releasedate   = "Nov 2023";
 my $pkgname       = "VADR";
 
@@ -4870,7 +4870,7 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
                                                  $opt_HHR, $ofile_info_HHR);
 
       # add extrant{5,3} alerts based on the alignment, these are based on inserts before/after first/final model position and
-      add_extrant_alerts_for_one_sequence($seq_name, $seq_len_HR, $mdl_len, \@ua2rf_A, $alt_info_HHR, $alt_seq_instances_HHR, 
+      add_extrant_alerts_for_one_sequence($seq_name, $seq_len_HR, $mdl_info_AHR, $mdl_idx, \@ua2rf_A, $alt_info_HHR, $alt_seq_instances_HHR, 
                                           $opt_HHR, $ofile_info_HHR);
 
       # update the model coords for ambgnt5s/ambgnt3s seqs, now that we have the alignment
@@ -7015,7 +7015,8 @@ sub add_low_similarity_alerts_for_one_sequence {
 # Arguments:
 #  $seq_name:               name of the sequence
 #  $seq_len_HR:             REF to hash of sequence lengths, PRE-FILLED
-#  $mdl_len:                length of model for this sequence
+#  $mdl_info_AHR:           REF to array of hashes with model info     
+#  $mdl_idx:                index of relevant model in @{$mdl_info_AHR}
 #  $ua2rf_AR:               REF to array that maps unaligned positions to reference positions
 #                           [1..$uapos..$ualen]: reference position that unaligned position $uapos aligns to 
 #                           if $ua2rf_A[$uapos] <  0, $uapos inserts *after* ref posn (-1 * $ua2rf_A[$uapos])
@@ -7034,13 +7035,57 @@ sub add_low_similarity_alerts_for_one_sequence {
 #################################################################
 sub add_extrant_alerts_for_one_sequence { 
   my $sub_name = "add_extrant_alerts_for_one_sequence";
-  my $nargs_exp = 8;
+  my $nargs_exp = 9;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($seq_name, $seq_len_HR, $mdl_len, $ua2rf_AR, $alt_info_HHR, $alt_seq_instances_HHR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($seq_name, $seq_len_HR, $mdl_info_AHR, $mdl_idx, $ua2rf_AR, $alt_info_HHR, $alt_seq_instances_HHR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR   = $ofile_info_HHR->{"FH"}; # for convenience
   my $seq_len = $seq_len_HR->{$seq_name};
+  my $min_extrant5 = (opt_Get("--extrant5", $opt_HHR)); # this may be overridden by extrant5_exc values in mdl_info_AHR
+  my $min_extrant3 = (opt_Get("--extrant3", $opt_HHR)); # this may be overridden by extrant3_exc values in mdl_info_AHR
+  my $mdl_len = $mdl_info_AHR->[$mdl_idx]{"length"};
+
+  # deal with possible exceptions from the model info file
+  if(! opt_Get("--ignore_exc", $opt_HHR)) { 
+    # extrant5_exc
+    if((defined $alt_info_HHR->{"extrant5"}{"exc_key"}) && 
+       (defined $mdl_info_AHR->[$mdl_idx]{$alt_info_HHR->{"extrant5"}{"exc_key"}})) { 
+      my %extrant5_sgm_exc_H = (); # don't need to save this because we will save its lone value to $min_extrant5
+      vdr_ExceptionCoordsAndValuesToSegmentsAndValues($mdl_info_AHR->[$mdl_idx]{$alt_info_HHR->{"extrant5"}{"exc_key"}}, undef, \%extrant5_sgm_exc_H, $FH_HR);
+      # there should be exactly 1 key (segment) in %extrant5_sgm_exc_H, "1..1:+"
+      my $expected_exc = "1..1:+";
+      my $errmsg = "ERROR, in $sub_name, extrant5_exc in model info file should have exactly 1 coordinate span: \'1..1:+\'";
+      if(scalar(keys %extrant5_sgm_exc_H) != 1) { 
+        ofile_FAIL($errmsg, 1, $FH_HR);
+      }
+      foreach my $key (keys %extrant5_sgm_exc_H) { 
+        if($key ne $expected_exc) { 
+          ofile_FAIL($errmsg . ", but read $key", 1, $FH_HR);
+        }
+        $min_extrant5 = $extrant5_sgm_exc_H{$key};
+      }
+    }
+
+    # extrant3_exc
+    if((defined $alt_info_HHR->{"extrant3"}{"exc_key"}) && 
+       (defined $mdl_info_AHR->[$mdl_idx]{$alt_info_HHR->{"extrant3"}{"exc_key"}})) { 
+      my %extrant3_sgm_exc_H = (); # don't need to save this because we will save its lone value to $min_extrant3
+      vdr_ExceptionCoordsAndValuesToSegmentsAndValues($mdl_info_AHR->[$mdl_idx]{$alt_info_HHR->{"extrant3"}{"exc_key"}}, undef, \%extrant3_sgm_exc_H, $FH_HR);
+      # there should be exactly 1 key (segment) in %extrant3_sgm_exc_H, "1..1:+"
+      my $expected_exc = $mdl_len . ".." . $mdl_len . ":+";
+      my $errmsg = "ERROR, in $sub_name, extrant3_exc in model info file should have exactly 1 coordinate span: \'<mdllen>..<mdllen>:+\' ($expected_exc)";
+      if(scalar(keys %extrant3_sgm_exc_H) != 1) { 
+        ofile_FAIL($errmsg, 1, $FH_HR);
+      }
+      foreach my $key (keys %extrant3_sgm_exc_H) { 
+        if($key ne $expected_exc) { 
+          ofile_FAIL($errmsg . ", but read $key", 1, $FH_HR);
+        }
+        $min_extrant3 = $extrant3_sgm_exc_H{$key};
+      }
+    }
+  }          
 
   # find how many nt are inserted before first rf position
   my $nextra5 = 0;
@@ -7052,7 +7097,7 @@ sub add_extrant_alerts_for_one_sequence {
       $i = $seq_len + 1; # breaks loop
     }
   }
-  if($nextra5 >= (opt_Get("--extrant5", $opt_HHR))) { 
+  if($nextra5 >= $min_extrant5) { 
     my $alt_msg = sprintf("%s%s%d extra nucleotide%s", 
                        sprintf("seq:" . vdr_CoordsSegmentCreate(1, $nextra5, "+", $FH_HR) . ";"), 
                        sprintf("mdl:" . vdr_CoordsSegmentCreate(0, 0, "+", $FH_HR) . ";"), 
@@ -7071,7 +7116,7 @@ sub add_extrant_alerts_for_one_sequence {
       $i = 0; # breaks loop
     }
   }
-  if($nextra3 >= (opt_Get("--extrant3", $opt_HHR))) { 
+  if($nextra3 >= $min_extrant3) { 
     my $alt_msg = sprintf("%s%s%d extra nucleotide%s", 
                        sprintf("seq:" . vdr_CoordsSegmentCreate(($seq_len - $nextra3 + 1), $seq_len, "+", $FH_HR) . ";"), 
                        sprintf("mdl:" . vdr_CoordsSegmentCreate($mdl_len, $mdl_len, "+", $FH_HR) . ";"), 

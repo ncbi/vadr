@@ -1,5 +1,14 @@
 # VADR 1.x release notes 
 
+### VADR 1.6.1 release (November 2023): (very) Minor update
+  * changes *extrant{5,3}* alerts (EXTRA_SEQUENCE_{START,END}) from 
+    fatal to non-fatal by default, and default minimum length
+    threshold to trigger alerts from 5 down to 1.
+  * adds support for `extrant5_exc` and `extrant3_exc` exceptions in
+    model info files.
+
+---
+
 ### VADR 1.6 release (November 2023): Major update
   * adds new *extrant{5,3}* alerts (EXTRA_SEQUENCE{_START,_END}) for
     extra sequence 5' or expected start or 3' of expected stop 

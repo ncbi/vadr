@@ -1,0 +1,9 @@
+#      seq                               ftr   ftr   ftr  alert           alert                        seq  seq         mdl  mdl  alert 
+#idx   name                   model      type  name  idx  code      fail  description               coords  len      coords  len  detail
+#----  ---------------------  ---------  ----  ----  ---  --------  ----  --------------------  ----------  ---  ----------  ---  ------
+2.1.1  ENTOY100A-6extra5      ENTOY100A  -     -       -  extrant5  no    EXTRA_SEQUENCE_START      1..6:+    6      0..0:+    1  extra sequence detected 5' of expected sequence start [6 extra nucleotides]
+#
+3.1.1  ENTOY100A-6extra3      ENTOY100A  -     -       -  extrant3  no    EXTRA_SEQUENCE_END    101..106:+    6  100..100:+    1  extra sequence detected 3' of expected sequence end [6 extra nucleotides]
+#
+4.1.1  ENTOY100A-6extra5and3  ENTOY100A  -     -       -  extrant5  no    EXTRA_SEQUENCE_START      1..6:+    6      0..0:+    1  extra sequence detected 5' of expected sequence start [6 extra nucleotides]
+4.1.2  ENTOY100A-6extra5and3  ENTOY100A  -     -       -  extrant3  no    EXTRA_SEQUENCE_END    107..112:+    6  100..100:+    1  extra sequence detected 3' of expected sequence end [6 extra nucleotides]

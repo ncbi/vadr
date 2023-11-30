@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # 
-# version: 1.6 [Nov 2023]
+# version: 1.6.1 [Nov 2023]
 #
 # vadr.pm
 # Eric Nawrocki
@@ -2688,6 +2688,18 @@ sub vdr_AlertInfoInitialize {
                    0, 0, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
                    $FH_HR); 
 
+  vdr_AlertInfoAdd($alt_info_HHR, "extrant5", "sequence",
+                   "EXTRA_SEQUENCE_START", # short description
+                   "extra sequence detected 5' of expected sequence start", # long description
+                   0, 0, 0, 0, "extrant5_exc", "coords-value", # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "extrant3", "sequence",
+                   "EXTRA_SEQUENCE_END", # short description
+                   "extra sequence detected 3' of expected sequence end", # long description
+                   0, 0, 0, 0, "extrant3_exc", "coords-value", # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   $FH_HR);
+ 
   vdr_AlertInfoAdd($alt_info_HHR, "dupregin", "sequence",
                    "DUPLICATE_REGIONS", # short description
                    "similarity to a model region occurs more than once", # long description
@@ -2724,18 +2736,6 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, 0, "lowsim_exc", "coords-only", # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "extrant5", "sequence",
-                   "EXTRA_SEQUENCE_START", # short description
-                   "extra sequence detected 5' of expected sequence start", # long description
-                   0, 1, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
-                   $FH_HR);
-
-  vdr_AlertInfoAdd($alt_info_HHR, "extrant3", "sequence",
-                   "EXTRA_SEQUENCE_END", # short description
-                   "extra sequence detected 3' of expected sequence end", # long description
-                   0, 1, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
-                   $FH_HR);
- 
   vdr_AlertInfoAdd($alt_info_HHR, "unexdivg", "sequence",
                    "UNEXPECTED_DIVERGENCE", # short description
                    "sequence is too divergent to confidently assign nucleotide-based annotation", # long description
