@@ -1,5 +1,5 @@
 Brief installation instructions 
-VADR 1.6.1; November 2023
+VADR 1.6.2; December 2023
 -------------------------------------------------------------
 
 These are quick installation instructions. For complete documentation,
@@ -18,9 +18,14 @@ If you are installing on a Linux system, execute the command:
 
 sh ./vadr-install.sh linux
 
-If you are installing on a Mac/OSX, execute the command:
+If you are installing on a Mac/OSX silicon (M1/M2) system, execute the
+command:
 
-sh ./vadr-install.sh macosx
+sh ./vadr-install.sh macosx-silicon
+
+If you are installing on a Mac/OSX intel system, execute the command:
+
+sh ./vadr-install.sh macosx-intel
 
 Next, set your environment variables as explained at the end of the
 output of the above command.
@@ -42,12 +47,18 @@ with two commands, as follows:
 If you are installing on a Linux system, execute the commands:
 
 sh ./vadr-install.sh linux download
-sh ./vadr-install.sh build
+sh ./vadr-install.sh linux build
 
-If you are installing on a Mac/OSX, execute the commands:
+If you are installing on a Mac/OSX silicon (M1/M2) system, execute the
+commands:
 
-sh ./vadr-install.sh macosx download
-sh ./vadr-install.sh build
+sh ./vadr-install.sh macosx-silicon download
+sh ./vadr-install.sh macosx-silicon build
+
+If you are installing on a Mac/OSX intel system, execute the commands:
+
+sh ./vadr-install.sh macosx-intel download
+sh ./vadr-install.sh macosx-intel build
 
 These two commands must be run from the same directory.
 

@@ -1,5 +1,12 @@
 # VADR 1.x release notes 
 
+### VADR 1.6.2 release (December 2023): Bug fix release
+  * fixes a problem with installing VADR on silicon Macs with M1/M2
+    chips
+  * removes separate installation of the HMMER package, scripts use
+    copies of HMMER executables installed with Infernal instead
+
+---
 ### VADR 1.6.1 release (November 2023): (very) Minor update
   * changes *extrant{5,3}* alerts (EXTRA_SEQUENCE_{START,END}) from 
     fatal to non-fatal by default, and default minimum length
