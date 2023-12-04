@@ -34,8 +34,6 @@ BEVERSION="Bio-Easel-0.16"
 BVERSION="2.15.0"
 # infernal
 IVERSION="1.1.5"
-# hmmer
-HVERSION="3.4"
 # fasta
 FVERSION="36.3.8h"
 FVERSIONGIT="v36.3.8h_04-May-2020"
@@ -47,6 +45,8 @@ MM2VERSIONGITNOV="2.26"
 VVERSION="vadr-$VERSION"
 # vadr models
 MVERSION="1.2-1"
+# hmmer (not needed in this release, we can use infernal's hmmer executables)
+#HVERSION="3.4"
 
 # set defaults
 INPUTSYSTEM="?"
@@ -182,13 +182,6 @@ if [ "$DOWNLOADORBUILD" != "build" ]; then
     rm infernal.tar.gz
     echo "------------------------------------------------------------"
 
-    # download hmmer source distribution
-    echo "Downloading HMMER version $HVERSION src distribution"
-    curl -k -L -o hmmer.tar.gz http://eddylab.org/software/hmmer/hmmer-$HVERSION.tar.gz
-    tar xfz hmmer.tar.gz
-    rm hmmer.tar.gz
-    echo "------------------------------------------------------------"
-
     # download fasta source distribution from github
     echo "Downloading FASTA version $FVERSIONGIT src distribution"
     curl -k -L -o $FVERSIONGIT.zip https://github.com/wrpearson/fasta36/archive/$FVERSIONGIT.zip; unzip $FVERSIONGIT.zip; mv fasta36-$FVERSIONGITNOV fasta; rm $FVERSIONGIT.zip
@@ -296,34 +289,9 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
     make
     make install
     (cd easel/miniapps; make install)
+    (cd hmmer; make install)
     cd ..
     echo "Finished building Infernal."
-    echo "------------------------------------------------------------"
-
-    # Build HMMER:
-    if [ ! -d hmmer-$HVERSION ]; then
-        echo ""
-        echo "ERROR: hmmer-$HVERSION dir does not exist"
-        if [ "$DOWNLOADORBUILD" = "build" ]; then
-            echo ""
-            echo "This may be because you did not yet run this script in download mode from this directory,"
-            echo "which is required prior to running in build mode. To do that, execute:"
-            echo "  $0 <\"linux\" or \"macosx-silicon\" or \"macosx-intel\"> download"
-            echo ""
-            exit 1
-        fi
-        exit 1
-    fi
-    echo "------------------------------------------------------------"
-    echo "Building HMMER ... "
-    mv hmmer-$HVERSION hmmer
-    cd hmmer
-    mkdir binaries
-    sh ./configure --bindir=$PWD/binaries --prefix=$PWD
-    make
-    make install
-    cd ..
-    echo "Finished building HMMER."
     echo "------------------------------------------------------------"
 
     # Build FASTA:
@@ -394,7 +362,7 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
     echo "export VADRMODELDIR=\"\$VADRINSTALLDIR/vadr-models-calici\""
     echo "export VADRINFERNALDIR=\"\$VADRINSTALLDIR/infernal/binaries\""
     echo "export VADREASELDIR=\"\$VADRINSTALLDIR/infernal/binaries\""
-    echo "export VADRHMMERDIR=\"\$VADRINSTALLDIR/hmmer/binaries\""
+    echo "export VADRHMMERDIR=\"\$VADRINSTALLDIR/infernal/binaries\""
     echo "export VADRBIOEASELDIR=\"\$VADRINSTALLDIR/Bio-Easel\""
     echo "export VADRSEQUIPDIR=\"\$VADRINSTALLDIR/sequip\""
     echo "export VADRBLASTDIR=\"\$VADRINSTALLDIR/ncbi-blast/bin\""
@@ -421,7 +389,7 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
     echo "setenv VADRSCRIPTSDIR \"\$VADRINSTALLDIR/vadr\""
     echo "setenv VADRMODELDIR \"\$VADRINSTALLDIR/vadr-models-calici\""
     echo "setenv VADRINFERNALDIR \"\$VADRINSTALLDIR/infernal/binaries\""
-    echo "setenv VADRHMMERDIR \"\$VADRINSTALLDIR/hmmer/binaries\""
+    echo "setenv VADRHMMERDIR \"\$VADRINSTALLDIR/infernal/binaries\""
     echo "setenv VADREASELDIR \"\$VADRINSTALLDIR/infernal/binaries\""
     echo "setenv VADRBIOEASELDIR \"\$VADRINSTALLDIR/Bio-Easel\""
     echo "setenv VADRSEQUIPDIR \"\$VADRINSTALLDIR/sequip\""
