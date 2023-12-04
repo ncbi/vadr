@@ -29,8 +29,9 @@ https://raw.githubusercontent.com/ncbi/vadr/vadr-1.0/vadr-install.sh
 Copy the `vadr-install.sh` file into the directory in which you want
 to install VADR. A good name for that directory is
 `vadr-install-dir`. Then move into that directory and run one of the
-following two commands depending on whether you are installing on a
-Linux or Mac/OSX system:
+following three commands depending on whether you are installing on a
+Linux, Mac/OSX system with Apple silicon chips (M1/M2) or Mac/OSX
+system with intel chips:
 
 ```
 sh ./vadr-install.sh linux
@@ -39,17 +40,20 @@ sh ./vadr-install.sh linux
 OR
 
 ```
-sh ./vadr-install.sh macosx
+sh ./vadr-install.sh macosx-silicon
 ```
-The `linux` or `macosx` argument controls (only) the type of infernal
-and blast executable files that will be installed.
+
+OR
+
+```
+sh ./vadr-install.sh macosx-intel
+```
 
 The `vadr-install.sh` command will create several directories in the
 current directory.  It will download and install VADR and the required
 module libraries [sequip](https://github.com/nawrockie/sequip),
-[Bio-Easel](https://github.com/nawrockie/Bio-Easel), as well as the
-binary executables of [Infernal](http://eddylab.org/infernal/), the
-src distribution of [HMMER](http://hmmer.org), the NCBI BLAST package,
+[Bio-Easel](https://github.com/nawrockie/Bio-Easel), as well as
+[Infernal](http://eddylab.org/infernal/), the NCBI BLAST package,
 William Pearson's FASTA package (for either Linux or Mac/OSX), and
 Heng Li's (minimap2)[https://github.com/lh3/minimap2]. (The VADR
 installation script modifies the FASTA package slightly prior to
@@ -83,12 +87,11 @@ that the download step was run in:
 
 ```
 sh ./vadr-install.sh linux download
-sh ./vadr-install.sh build
+sh ./vadr-install.sh linux build
 ```
 
-The download command should have `macosx` instead of `linux` if you are
-installing on Mac/OSX. The build command will work on either Linux or
-Mac/OSX without the need to specify. 
+These commands should have `macosx-silicon` or `macosx-intel` instead
+of `linux` if you are installing on Mac/OSX.
 
 ---
 ### <a name="inline"></a> If installation or `do-install-tests-local.sh` fails because the `Inline` or `LWP` perl modules are not installed...
@@ -141,7 +144,7 @@ vadr-install.sh>`)
 ```
 ********************************************************
 The final step is to update your environment variables.
-(See https://github.com/ncbi/vadr/blob/1.4.2/documentation/install.md for more information.)
+(See https://github.com/ncbi/vadr/blob/1.6.2/documentation/install.md for more information.)
 
 If you are using the bash or zsh shell (zsh is default in MacOS/X as
 of v10.15 (Catalina)), add the following lines to the end of your
@@ -152,7 +155,7 @@ export VADRSCRIPTSDIR="$VADRINSTALLDIR/vadr"
 export VADRMODELDIR="$VADRINSTALLDIR/vadr-models-calici"
 export VADRINFERNALDIR="$VADRINSTALLDIR/infernal/binaries"
 export VADREASELDIR="$VADRINSTALLDIR/infernal/binaries"
-export VADRHMMERDIR="$VADRINSTALLDIR/hmmer/binaries"
+export VADRHMMERDIR="$VADRINSTALLDIR/infernal/binaries"
 export VADRBIOEASELDIR="$VADRINSTALLDIR/Bio-Easel"
 export VADRSEQUIPDIR="$VADRINSTALLDIR/sequip"
 export VADRBLASTDIR="$VADRINSTALLDIR/ncbi-blast/bin"
@@ -179,7 +182,7 @@ setenv VADRINSTALLDIR "<full path to directory in which you ran vadr-install.sh>
 setenv VADRSCRIPTSDIR "$VADRINSTALLDIR/vadr"
 setenv VADRMODELDIR "$VADRINSTALLDIR/vadr-models-calici"
 setenv VADRINFERNALDIR "$VADRINSTALLDIR/infernal/binaries"
-setenv VADRHMMERDIR "$VADRINSTALLDIR/hmmer/binaries"
+setenv VADRHMMERDIR "$VADRINSTALLDIR/infernal/binaries"
 setenv VADREASELDIR "$VADRINSTALLDIR/infernal/binaries"
 setenv VADRBIOEASELDIR "$VADRINSTALLDIR/Bio-Easel"
 setenv VADRSEQUIPDIR "$VADRINSTALLDIR/sequip"
@@ -267,18 +270,18 @@ Below is an example of the expected output for
 
 ```
 # v-test.pl :: test VADR scripts [TEST SCRIPT]
-# VADR 1.4 (Dec 2021)
+# VADR 1.6.2 (Dec 2023)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Thu Dec 16 14:24:16 2021
+# date:    Mon Dec  4 10:29:11 2023
 #
-# test file:                                                         /usr/local/vadr-install-dir/vadr/testfiles/noro.r10.local.testin
+# test file:                                                         /net/intdev/oblast01/infernal/notebook/23_0925_vadr_1p6_and_1p6p1_and_1p6p2_releases/test-install13/vadr/testfiles/noro.r10.local.testin
 # output directory:                                                  vt-n10-local
 # forcing directory overwrite:                                       yes [-f]
 # if output files listed in testin file already exist, remove them:  yes [--rmout]
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Parsing test file                                  ... done. [    0.0 seconds]
 ##teamcity[testStarted name='annotate-noro-10-local' captureStandardOutput='true']
-# Running command  1 [annotate-noro-10-local]        ... done. [   36.4 seconds]
+# Running command  1 [annotate-noro-10-local]        ... done. [   35.4 seconds]
 #	checking va-noro.r10/va-noro.r10.vadr.pass.tbl                                                                ... pass
 #	checking va-noro.r10/va-noro.r10.vadr.fail.tbl                                                                ... pass
 #	checking va-noro.r10/va-noro.r10.vadr.sqa                                                                     ... pass
@@ -300,22 +303,23 @@ Below is an example of the expected output for
 #
 # All output files created in directory ./vt-n10-local/
 #
-# Elapsed time:  00:00:37.20
+# Elapsed time:  00:00:36.05
 #                hh:mm:ss
 # 
 [ok]
 # v-test.pl :: test VADR scripts [TEST SCRIPT]
-# VADR 1.4 (Dec 2021)
+# VADR 1.6.2 (Dec 2023)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Thu Dec 16 14:24:55 2021
+# date:    Mon Dec  4 10:29:48 2023
 #
-# test file:                                                         /usr/local/vadr-install-dir/vadr/testfiles/dengue.r5.local.testin
+# test file:                                                         /net/intdev/oblast01/infernal/notebook/23_0925_vadr_1p6_and_1p6p1_and_1p6p2_releases/test-install13/vadr/testfiles/dengue.r5.local.testin
+# output directory:                                                  vt-d5-local
 # forcing directory overwrite:                                       yes [-f]
 # if output files listed in testin file already exist, remove them:  yes [--rmout]
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Parsing test file                                  ... done. [    0.0 seconds]
 ##teamcity[testStarted name='annotate-dengue-5-local' captureStandardOutput='true']
-# Running command  1 [annotate-dengue-5-local]       ... done. [   86.2 seconds]
+# Running command  1 [annotate-dengue-5-local]       ... done. [   78.5 seconds]
 #	checking va-dengue.r5/va-dengue.r5.vadr.pass.tbl                                                              ... pass
 #	checking va-dengue.r5/va-dengue.r5.vadr.fail.tbl                                                              ... pass
 #	checking va-dengue.r5/va-dengue.r5.vadr.sqa                                                                   ... pass
@@ -337,7 +341,7 @@ Below is an example of the expected output for
 #
 # All output files created in directory ./vt-d5-local/
 #
-# Elapsed time:  00:01:27.32
+# Elapsed time:  00:01:19.16
 #                hh:mm:ss
 # 
 [ok]
