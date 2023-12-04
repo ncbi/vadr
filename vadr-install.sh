@@ -6,20 +6,20 @@
 # 
 # usage: 
 # to download and build files:
-# vadr-install.sh <"linux" or "macosx">
+# vadr-install.sh <"linux" or "macosx-silicon" or "macosx-intel">
 #
 # or to only download files:
-# vadr-install.sh <"linux" or "macosx"> download
+# vadr-install.sh <"linux" or "macosx-silicon" or "macosx-intel"> download
 #
 # or to only build files (after running in 'download' mode):
-# vadr-install.sh build
+# vadr-install.sh <"linux" or "macosx-silicon" or "macosx-intel"> download
 # 
 # for example:
 # vadr-install.sh linux
 # 
 # or
-# vadr-install.sh linux download
-# vadr-install.sh build
+# vadr-install.sh macosx-silicon download
+# vadr-install.sh macosx-silicon build
 # 
 # The following line will make the script fail if any commands fail
 set -e
@@ -27,15 +27,13 @@ set -e
 VADRINSTALLDIR=$PWD
 
 # versions
-VERSION="1.6.1"
+VERSION="1.6.2"
 # bio-easel (need this version info here only so we can check out correct easel branch in Bio-Easel/src)
 BEVERSION="Bio-Easel-0.16"
 # blast+
 BVERSION="2.15.0"
 # infernal
 IVERSION="1.1.5"
-# hmmer
-HVERSION="3.4"
 # fasta
 FVERSION="36.3.8h"
 FVERSIONGIT="v36.3.8h_04-May-2020"
@@ -47,6 +45,8 @@ MM2VERSIONGITNOV="2.26"
 VVERSION="vadr-$VERSION"
 # vadr models
 MVERSION="1.2-1"
+# hmmer (not needed in this release, we can use infernal's hmmer executables)
+#HVERSION="3.4"
 
 # set defaults
 INPUTSYSTEM="?"
@@ -60,58 +60,60 @@ if [ "$#" -ne 1 ]; then
     if [ "$#" -ne 2 ]; then
         echo "Usage:"
         echo "To download and build:"
-        echo "  $0 <\"linux\" or \"macosx\">"
+        echo "  $0 <\"linux\" or \"macosx-silicon\" or \"macosx-intel\">"
         echo ""
         echo "or to only download files:"
-        echo "  $0 <\"linux\" or \"macosx\"> download"
+        echo "  $0 <\"linux\" or \"macosx-silicon\" or \"macosx-intel\"> download"
         echo ""
         echo "or to only build the software (after running in download mode):"
-        echo "  $0 build"
+        echo "  $0 <\"linux\" or \"macosx-silicon\" or \"macosx-intel\"> build"
         echo ""
         exit 1
     fi
 fi
 
-# make sure 1st argument is either "linux" or "macosx"
+# make sure 1st argument is either "linux" or "macosx-silicon" or "macosx-intel"
 if [ "$1" = "linux" ]; then
     INPUTSYSTEM="linux";
 fi
-if [ "$1" = "macosx" ]; then
-    INPUTSYSTEM="macosx";
+if [ "$1" = "macosx-silicon" ]; then
+    INPUTSYSTEM="macosx-silicon";
 fi
-if [ "$1" = "build" ]; then
-    INPUTSYSTEM="either";
-    DOWNLOADORBUILD="build"
+if [ "$1" = "macosx-intel" ]; then
+    INPUTSYSTEM="macosx-intel";
 fi
 if [ "$INPUTSYSTEM" = "?" ]; then 
     echo "Usage:"
     echo "To download and build:"
-    echo "  $0 <\"linux\" or \"macosx\">"
+    echo "  $0 <\"linux\" or \"macosx-silicon\" or \"macosx-intel\">"
     echo ""
     echo "or to only download files:"
-    echo "  $0 <\"linux\" or \"macosx\"> download"
+    echo "  $0 <\"linux\" or \"macosx-silicon\" or \"macosx-intel\"> download"
     echo ""
     echo "or to only build the software (after running in download mode):"
-    echo "  $0 build"
+    echo "  $0 <\"linux\" or \"macosx-silicon\" or \"macosx-intel\"> build"
     echo ""
     exit 1
 fi
 
-# make sure 2nd argument (if we have one) is "download"
+# make sure 2nd argument (if we have one) is "download" or "build"
 if [ "$#" -eq 2 ]; then
     if [ "$2" = "download" ]; then
         DOWNLOADORBUILD="download";
     fi
+    if [ "$2" = "build" ]; then
+        DOWNLOADORBUILD="build";
+    fi
     if [ "$DOWNLOADORBUILD" = "both" ]; then 
         echo "Usage:"
         echo "To download and build:"
-        echo "  $0 <\"linux\" or \"macosx\">"
+        echo "  $0 <\"linux\" or \"macosx-silicon\" or \"macosx-intel\">"
         echo ""
         echo "or to only download files:"
-        echo "  $0 <\"linux\" or \"macosx\"> download"
+        echo "  $0 <\"linux\" or \"macosx-silicon\" or \"macosx-intel\"> download"
         echo ""
         echo "or to only build the software (after running in download mode):"
-        echo "  $0 build"
+        echo "  $0 <\"linux\" or \"macosx-silicon\" or \"macosx-intel\"> build"
         echo ""
         exit 1
     fi
@@ -180,13 +182,6 @@ if [ "$DOWNLOADORBUILD" != "build" ]; then
     rm infernal.tar.gz
     echo "------------------------------------------------------------"
 
-    # download hmmer source distribution
-    echo "Downloading HMMER version $HVERSION src distribution"
-    curl -k -L -o hmmer.tar.gz http://eddylab.org/software/hmmer/hmmer-$HVERSION.tar.gz
-    tar xfz hmmer.tar.gz
-    rm hmmer.tar.gz
-    echo "------------------------------------------------------------"
-
     # download fasta source distribution from github
     echo "Downloading FASTA version $FVERSIONGIT src distribution"
     curl -k -L -o $FVERSIONGIT.zip https://github.com/wrpearson/fasta36/archive/$FVERSIONGIT.zip; unzip $FVERSIONGIT.zip; mv fasta36-$FVERSIONGITNOV fasta; rm $FVERSIONGIT.zip
@@ -238,7 +233,7 @@ if [ "$DOWNLOADORBUILD" = "download" ]; then
     echo "Downloads finished successfully."
     echo "You will need to build the software before you can use it."
     echo "To do that, run this script in 'build' mode with the command:"
-    echo "  $0 build"
+    echo "  $0 <\"linux\" or \"macosx-silicon\" or \"macosx-intel\"> build"
     echo "********************************************************"
     echo ""
 fi
@@ -256,7 +251,7 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
             echo ""
             echo "This may be because you did not yet run this script in download mode from this directory,"
             echo "which is required prior to running in build mode. To do that, execute:"
-            echo "  $0 <\"linux\" or \"macosx\"> download"
+            echo "  $0 <\"linux\" or \"macosx-silicon\" or \"macosx-intel\"> download"
             echo ""
             exit 1
         fi
@@ -279,7 +274,7 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
             echo ""
             echo "This may be because you did not yet run this script in download mode from this directory,"
             echo "which is required prior to running in build mode. To do that, execute:"
-            echo "  $0 <\"linux\" or \"macosx\"> download"
+            echo "  $0 <\"linux\" or \"macosx-silicon\" or \"macosx-intel\"> download"
             echo ""
             exit 1
         fi
@@ -294,34 +289,9 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
     make
     make install
     (cd easel/miniapps; make install)
+    (cd hmmer; make install)
     cd ..
     echo "Finished building Infernal."
-    echo "------------------------------------------------------------"
-
-    # Build HMMER:
-    if [ ! -d hmmer-$HVERSION ]; then
-        echo ""
-        echo "ERROR: hmmer-$HVERSION dir does not exist"
-        if [ "$DOWNLOADORBUILD" = "build" ]; then
-            echo ""
-            echo "This may be because you did not yet run this script in download mode from this directory,"
-            echo "which is required prior to running in build mode. To do that, execute:"
-            echo "  $0 <\"linux\" or \"macosx\"> download"
-            echo ""
-            exit 1
-        fi
-        exit 1
-    fi
-    echo "------------------------------------------------------------"
-    echo "Building HMMER ... "
-    mv hmmer-$HVERSION hmmer
-    cd hmmer
-    mkdir binaries
-    sh ./configure --bindir=$PWD/binaries --prefix=$PWD
-    make
-    make install
-    cd ..
-    echo "Finished building HMMER."
     echo "------------------------------------------------------------"
 
     # Build FASTA:
@@ -332,7 +302,7 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
             echo ""
             echo "This may be because you did not yet run this script in download mode from this directory,"
             echo "which is required prior to running in build mode. To do that, execute:"
-            echo "  $0 <\"linux\" or \"macosx\"> download"
+            echo "  $0 <\"linux\" or \"macosx-silicon\" or \"macosx-intel\"> download"
             echo ""
             exit 1
         fi
@@ -355,7 +325,7 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
             echo ""
             echo "This may be because you did not yet run this script in download mode from this directory,"
             echo "which is required prior to running in build mode. To do that, execute:"
-            echo "  $0 <\"linux\" or \"macosx\"> download"
+            echo "  $0 <\"linux\" or \"macosx-silicon\" or \"macosx-intel\"> download"
             echo ""
             exit 1
         fi
@@ -364,7 +334,12 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
     echo "------------------------------------------------------------"
     echo "Building minimap2 ... "
     cd minimap2
-    make
+    if [ "$INPUTSYSTEM" = "macosx-silicon" ]; then
+        make arm_neon=1 aarch64=1
+    fi
+    if [ "$INPUTSYSTEM" != "macosx-silicon" ]; then
+        make
+    fi
     cd ../../
     echo "Finished building minimap2."
     echo "------------------------------------------------------------"
@@ -387,7 +362,7 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
     echo "export VADRMODELDIR=\"\$VADRINSTALLDIR/vadr-models-calici\""
     echo "export VADRINFERNALDIR=\"\$VADRINSTALLDIR/infernal/binaries\""
     echo "export VADREASELDIR=\"\$VADRINSTALLDIR/infernal/binaries\""
-    echo "export VADRHMMERDIR=\"\$VADRINSTALLDIR/hmmer/binaries\""
+    echo "export VADRHMMERDIR=\"\$VADRINSTALLDIR/infernal/binaries\""
     echo "export VADRBIOEASELDIR=\"\$VADRINSTALLDIR/Bio-Easel\""
     echo "export VADRSEQUIPDIR=\"\$VADRINSTALLDIR/sequip\""
     echo "export VADRBLASTDIR=\"\$VADRINSTALLDIR/ncbi-blast/bin\""
@@ -414,7 +389,7 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
     echo "setenv VADRSCRIPTSDIR \"\$VADRINSTALLDIR/vadr\""
     echo "setenv VADRMODELDIR \"\$VADRINSTALLDIR/vadr-models-calici\""
     echo "setenv VADRINFERNALDIR \"\$VADRINSTALLDIR/infernal/binaries\""
-    echo "setenv VADRHMMERDIR \"\$VADRINSTALLDIR/hmmer/binaries\""
+    echo "setenv VADRHMMERDIR \"\$VADRINSTALLDIR/infernal/binaries\""
     echo "setenv VADREASELDIR \"\$VADRINSTALLDIR/infernal/binaries\""
     echo "setenv VADRBIOEASELDIR \"\$VADRINSTALLDIR/Bio-Easel\""
     echo "setenv VADRSEQUIPDIR \"\$VADRINSTALLDIR/sequip\""
