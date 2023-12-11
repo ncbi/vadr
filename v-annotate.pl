@@ -10924,6 +10924,7 @@ sub output_feature_table {
           my $ftr_out_str             = ""; # output string for this feature
           my $is_cds_or_mp            = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
           my $is_cds                  = vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx);
+          my $is_gene                 = vdr_FeatureTypeIsGene($ftr_info_AHR, $ftr_idx);
           my $parent_ftr_idx          = vdr_FeatureParentIndex($ftr_info_AHR, $ftr_idx); # will be -1 if has no parents
           my $parent_is_cds           = ($parent_ftr_idx == -1) ? 0 : vdr_FeatureTypeIsCds($ftr_info_AHR, $parent_ftr_idx);
           my $is_cds_or_parent_is_cds = ($is_cds || $parent_is_cds) ? 1 : 0;
@@ -11035,6 +11036,11 @@ sub output_feature_table {
               
               # add note qualifiers, if any
               $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "note", $qval_sep, $ftr_info_AHR, $FH_HR);
+
+              # add gene_syn qualifiers, if any
+              if($is_gene) { 
+                $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "gene_syn", $qval_sep, $ftr_info_AHR, $FH_HR);
+              }
 
               # if CDS, append the codon start only if we are truncated
               if($is_cds && $is_5trunc_term_or_n) { 
