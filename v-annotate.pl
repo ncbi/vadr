@@ -11037,11 +11037,6 @@ sub output_feature_table {
               # add note qualifiers, if any
               $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "note", $qval_sep, $ftr_info_AHR, $FH_HR);
 
-              # add gene_syn qualifiers, if any
-              if($is_gene) { 
-                $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "gene_syn", $qval_sep, $ftr_info_AHR, $FH_HR);
-              }
-
               # if CDS, append the codon start only if we are truncated
               if($is_cds && $is_5trunc_term_or_n) { 
                 $ftr_out_str .= helper_ftable_add_qualifier_specified($ftr_idx, "codon_start", $cds_codon_start, $FH_HR);
@@ -11049,6 +11044,14 @@ sub output_feature_table {
 
               # add rpt_type qualifiers, if any
               $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "rpt_type", $qval_sep, $ftr_info_AHR, $FH_HR);
+
+              # add gene_syn qualifiers, if any
+              if($is_gene) { 
+                $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "gene_syn", $qval_sep, $ftr_info_AHR, $FH_HR);
+              }
+
+              # add function, if any
+              $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "function", $qval_sep, $ftr_info_AHR, $FH_HR);
 
               if((! $do_noprotid) && ($is_cds_or_parent_is_cds)) { 
                 # add protein_id if we are a cds or parent is a cds
