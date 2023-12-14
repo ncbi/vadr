@@ -1,0 +1,50 @@
+# format of this file:
+# '#' prefixed files are comments, and are not parsed.
+# 'command:' prefix indicates remainder of line is a command to run
+# 'desc:' prefix indicates description of test for dnaorg_test.pl output        
+# 'out:' prefix indicates output file to check against an expected file
+# 'exp:' prefix indicates expected file to check against an output file
+# 'rmdir:' prefix indicates name of output directory to remove after 
+# command is run and all output files have been checked.
+#
+# All 'out:' and 'exp:' lines following a 'command:' line (and before the 
+# next 'command:' line, will be checked after that command runs. The first
+# 'out:' file is compared against the first 'exp:' file, the second 
+# 'out:' file is compared against the second 'exp:' file, the second 'out:'
+# file, etc.
+# 
+# 
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --alicheck --minpvlen 3 --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.qual.minfo $VADRSCRIPTSDIR/testfiles/entoy100a.minfo.fa va-entoy100a-minfo1 > va-entoy100a-minfo1.out
+desc: entoy100a-minfo1
+out: va-entoy100a-minfo1/va-entoy100a-minfo1.vadr.pass.tbl
+out: va-entoy100a-minfo1/va-entoy100a-minfo1.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-minfo1/va-entoy100a-minfo1.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-minfo1/va-entoy100a-minfo1.vadr.fail.tbl
+rmdir: va-entoy100a-minfo1
+#
+# --forcegene
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --forcegene -f --alicheck --minpvlen 3 --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.qual.minfo $VADRSCRIPTSDIR/testfiles/entoy100a.minfo.fa va-entoy100a-minfo2 > va-entoy100a-minfo2.out
+desc: entoy100a-minfo2
+out: va-entoy100a-minfo2/va-entoy100a-minfo2.vadr.pass.tbl
+out: va-entoy100a-minfo2/va-entoy100a-minfo2.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-minfo2/va-entoy100a-minfo2.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-minfo2/va-entoy100a-minfo2.vadr.fail.tbl
+rmdir: va-entoy100a-minfo2
+#
+# --forcequal qual1
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --forcequal qual1 --alicheck --minpvlen 3 --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.qual.minfo $VADRSCRIPTSDIR/testfiles/entoy100a.minfo.fa va-entoy100a-minfo3 > va-entoy100a-minfo3.out
+desc: entoy100a-minfo3
+out: va-entoy100a-minfo3/va-entoy100a-minfo3.vadr.pass.tbl
+out: va-entoy100a-minfo3/va-entoy100a-minfo3.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-minfo3/va-entoy100a-minfo3.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-minfo3/va-entoy100a-minfo3.vadr.fail.tbl
+rmdir: va-entoy100a-minfo3
+#
+# --forcequal qual2,rfam_id,qual3
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --forcequal qual2,rfam_id,qual3 --alicheck --minpvlen 3 --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.qual.minfo $VADRSCRIPTSDIR/testfiles/entoy100a.minfo.fa va-entoy100a-minfo4 > va-entoy100a-minfo4.out
+desc: entoy100a-minfo4
+out: va-entoy100a-minfo4/va-entoy100a-minfo4.vadr.pass.tbl
+out: va-entoy100a-minfo4/va-entoy100a-minfo4.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-minfo4/va-entoy100a-minfo4.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-minfo4/va-entoy100a-minfo4.vadr.fail.tbl
+rmdir: va-entoy100a-minfo4

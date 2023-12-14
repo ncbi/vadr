@@ -637,6 +637,8 @@ integer.
 | `--noftrtrim <s>` | in feature table, do not trim coordinate start and stops due to Ns at beginning or end of features for feature types listed in the comma-delimited string `<s>` (no spaces) | 
 | `--noprotid`      | in feature table, don't add protein_id for CDS and mat_peptide features |
 | `--forceprotid`   | in feature table, force protein_id value to be sequence name, then idx |
+| `--forcegene`     | in feature table, add 'gene' qualifiers from model info file for CDS and mat_peptide features, normally these are omitted |
+| `--forcequal <s>` | in feature table, add qualifiers from model info file listed in comma-delimited string <s> |
 
 ### `v-annotate.pl` options for controlling thresholds related to alerts <a name="options-alerts"></a>
 

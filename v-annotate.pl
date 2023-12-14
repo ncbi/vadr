@@ -262,6 +262,8 @@ opt_Add("--notrim",       "boolean",  0,        $g,    undef,   undef,      "in 
 opt_Add("--noftrtrim",    "string",   undef,    $g,    undef,"--notrim",    "in feature table, don't trim coords due to ambiguities for ftr types in comma-delimited <s>", "in feature table, don't trim coords due to ambiguities for feature types in comma-delmited <s>",  \%opt_HH, \@opt_order_A);
 opt_Add("--noprotid",     "boolean",  0,        $g,    undef,   undef,      "in feature table, don't add protein_id for CDS and mat_peptides",                             "in feature table, don't add protein_id for CDS and mat_peptides",         \%opt_HH, \@opt_order_A);
 opt_Add("--forceprotid",  "boolean",  0,        $g,    undef,"--noprotid",  "in feature table, force protein_id value to be sequence name, then idx",                      "in feature table, force protein_id value to be sequence name, then idx",  \%opt_HH, \@opt_order_A);
+opt_Add("--forcegene",    "boolean",  0,        $g,    undef,   undef,      "in feature table, add 'gene' qualifiers in model info file to CDS and mat_peptide",           "in feature table, add 'gene' qualifiers in model info file to CDS and mat_peptide",  \%opt_HH, \@opt_order_A);
+opt_Add("--forcequal",    "string",   undef,    $g,    undef,   undef,      "in feature table, add qualifiers in model info file listed in comma-delimited <s>",           "in feature table, add qualifiers in model info file listed in comma-delimited <s>",  \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling thresholds related to alerts";
 #       option          type         default  group   requires incompat           preamble-output                                                                    help-output    
@@ -479,6 +481,8 @@ my $options_okay =
                 "noftrtrim=s"   => \$GetOptions_H{"--noftrtrim"},
                 "noprotid"      => \$GetOptions_H{"--noprotid"},
                 "forceprotid"   => \$GetOptions_H{"--forceprotid"},
+                "forcegene"     => \$GetOptions_H{"--forcegene"},
+                "forcequal=s"   => \$GetOptions_H{"--forcequal"},
 # options for controlling alert thresholds
                 "lowsc=s"       => \$GetOptions_H{"--lowsc"},
                 'indefclass=s'  => \$GetOptions_H{"--indefclass"},
@@ -10822,9 +10826,15 @@ sub output_feature_table {
   my $do_nomisc       = opt_Get("--nomisc",       $opt_HHR); # 1 to never output misc_features
   my $do_noprotid     = opt_Get("--noprotid",     $opt_HHR); # 1 to never output protein_id qualifiers
   my $do_forceprotid  = opt_Get("--forceprotid",  $opt_HHR); # 1 to never modify sequence name for protein_id qualifiers
+  my $do_forcegene    = opt_Get("--forcegene",    $opt_HHR); # 1 to output gene qualifiers for CDS and mat_peptide
   my $do_noseqnamemax = opt_Get("--noseqnamemax", $opt_HHR); # 1 to allow protein_id values of any length
   my $nmiscftr_thr    = opt_Get("--nmiscftrthr",  $opt_HHR); # max num misc_features allowed via misc_not_failure w/o nmiscftr alert
   my $max_protein_id_length = 50; # hard-coded
+
+  my @force_qual_A = (); 
+  if(opt_IsUsed("--forcequal", $opt_HHR)) { 
+    @force_qual_A  = split(",", opt_Get("--forcequal", $opt_HHR));
+  }
 
   my $do_notrim   = opt_Get("--notrim",   $opt_HHR); # 1 to never trim any features
   my %noftrtrim_H = (); # key is feature type read from --noftrtrim <s> option, value is 1 to not trim start/end due to ambiguities
@@ -10924,6 +10934,7 @@ sub output_feature_table {
           my $ftr_out_str             = ""; # output string for this feature
           my $is_cds_or_mp            = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
           my $is_cds                  = vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx);
+          my $is_gene                 = vdr_FeatureTypeIsGene($ftr_info_AHR, $ftr_idx);
           my $parent_ftr_idx          = vdr_FeatureParentIndex($ftr_info_AHR, $ftr_idx); # will be -1 if has no parents
           my $parent_is_cds           = ($parent_ftr_idx == -1) ? 0 : vdr_FeatureTypeIsCds($ftr_info_AHR, $parent_ftr_idx);
           my $is_cds_or_parent_is_cds = ($is_cds || $parent_is_cds) ? 1 : 0;
@@ -11013,7 +11024,7 @@ sub output_feature_table {
             # add qualifiers: product, gene, exception and codon_start
             if(! $is_misc_feature) { 
               $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "product", $qval_sep, $ftr_info_AHR, $FH_HR);
-              if(! $is_cds_or_mp) { 
+              if((! $is_cds_or_mp) || ($do_forcegene)) { 
                 $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "gene", $qval_sep, $ftr_info_AHR, $FH_HR);
               }
 
@@ -11043,6 +11054,19 @@ sub output_feature_table {
 
               # add rpt_type qualifiers, if any
               $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "rpt_type", $qval_sep, $ftr_info_AHR, $FH_HR);
+
+              # add gene_syn qualifiers, if any
+              if($is_gene) { 
+                $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "gene_syn", $qval_sep, $ftr_info_AHR, $FH_HR);
+              }
+
+              # add function, if any
+              $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "function", $qval_sep, $ftr_info_AHR, $FH_HR);
+
+              # add any qualifiers listed in --forcequal <s> string
+              foreach my $force_qual (@force_qual_A) { 
+                $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, $force_qual, $qval_sep, $ftr_info_AHR, $FH_HR);
+              }
 
               if((! $do_noprotid) && ($is_cds_or_parent_is_cds)) { 
                 # add protein_id if we are a cds or parent is a cds
