@@ -144,7 +144,7 @@ vadr-install.sh>`)
 ```
 ********************************************************
 The final step is to update your environment variables.
-(See https://github.com/ncbi/vadr/blob/1.6.2/documentation/install.md for more information.)
+(See https://github.com/ncbi/vadr/blob/1.6.3/documentation/install.md for more information.)
 
 If you are using the bash or zsh shell (zsh is default in MacOS/X as
 of v10.15 (Catalina)), add the following lines to the end of your

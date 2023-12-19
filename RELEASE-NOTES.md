@@ -1,5 +1,11 @@
 # VADR 1.x release notes 
 
+### VADR 1.6.3 release (December 2023): (very) Minor update
+  * adds `--forcegene` and `--forcequal` options to `v-annotate.pl`
+    for controlling feature table output of qualifiers
+  * adds `function` and `gene_syn` qualifiers to feature table output 
+
+---
 ### VADR 1.6.2 release (December 2023): Bug fix release
   * fixes a problem with installing VADR on silicon Macs with M1/M2
     chips
