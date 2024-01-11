@@ -601,11 +601,11 @@ va-noro-r.9`.
 |   6 | `num_Ns tot`          | total number of Ns in the sequence |
 |   7 | `num_Ns rp`           | number of Ns in the sequence replaced with expected nucleotides from the model consensus |
 |   8 | `fract_Ns rp`         | fraction of Ns replaced: `num_Ns rp`/`num_Ns tot` |
-|   9 | `nregs tot`           | number of region between preprocessing stage blastn hits, including region at 5' and 3' ends |
-|  10 | `nregs int`           | number of internal region between preprocessing stage blastn hits, `nreg tot` minus number of region at 5' and/or 3' end |
-|  11 | `nregs rp`            | number of region in which one or more Ns were replaced | 
-|  12 | `nregs rp-full`       | number of region in which entire region was Ns and all Ns were replaced |
-|  13 | `nregs rp-part`       | number of region in which entire region was not Ns, but all Ns were replaced |
+|   9 | `nregs tot`           | number of regions between preprocessing stage blastn hits, including region at 5' and 3' ends |
+|  10 | `nregs int`           | number of internal region between preprocessing stage blastn hits, `nreg tot` minus number of regions at 5' and/or 3' end |
+|  11 | `nregs rp`            | number of regions in which one or more Ns were replaced | 
+|  12 | `nregs rp-full`       | number of regions in which entire region was Ns and all Ns were replaced |
+|  13 | `nregs rp-part`       | number of regions in which entire region was not Ns, but all Ns were replaced |
 |  14 | `nnt rp-full`         | number of Ns replaced in the `nreg rp-full` reg |
 |  15 | `nnt rp-part`         | number of Ns replaced in the `nreg rp-part` reg |
 |  16 | `detail_on_regions [S:seq,M:mdl,D:lendiff,N:#Ns, E:#non_N_match_expected, F:flush_direction,R:region_replaced?];` | string with details on each region; `S`: sequence positions of region; `M`: model positions of region; `D`:sequence length - model length; `N`: number of Ns in region; `E`: number of non-Ns that match expected / total non-Ns or `?/?` if replacement not attempted or `D` is 0 and region is entirely Ns; `F`: if `D` is 0 or `E` is `?/?` then `-`, else `5'` if shifting sequence region left gave higher `E` or `3'` if shifting right gave higher `E`; `R`: `Y` if region was replaced, `N` if not;
