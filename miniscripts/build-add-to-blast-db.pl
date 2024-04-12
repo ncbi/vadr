@@ -89,8 +89,8 @@ my $executable    = "build-add-to-blast-db.pl";
 my $usage         = "Usage: $executable [-options]\n\t<path to .minfo file>\n\t<path to blast db dir>\n\t<model name>\n\t<nt-accn-to-add>\n\t\<nt-coords-to-add>\n\t<model-CDS-feature-coords>\n\t<name for output directory>\n";
 my $synopsis      = "$executable :: add a single protein to a VADR blastx protein database";
 my $date          = scalar localtime();
-my $version       = "1.5.1";
-my $releasedate   = "Feb 2023";
+my $version       = "1.6.3";
+my $releasedate   = "Sep 2023";
 my $pkgname       = "VADR";
 
 # print help and exit if necessary
@@ -335,5 +335,5 @@ ofile_OutputProgressComplete($start_secs, undef, undef, *STDOUT);
 ##########
 
 $total_seconds += ofile_SecondsSinceEpoch();
-ofile_OutputConclusionAndCloseFilesOk($total_seconds, "", \%ofile_info_HH);
+ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
 exit 0;
