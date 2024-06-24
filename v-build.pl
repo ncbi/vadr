@@ -11,6 +11,7 @@ use Bio::Easel::MSA;
 use Bio::Easel::SqFile;
 use LWP::Simple; 
 use LWP::Protocol::https; 
+use Mozilla::CA;
 
 require "vadr.pm";
 require "sqp_opts.pm";

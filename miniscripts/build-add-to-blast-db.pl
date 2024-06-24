@@ -8,6 +8,7 @@ use Time::HiRes qw(gettimeofday);
 use Bio::Easel::MSA;
 use Bio::Easel::SqFile;
 use LWP::Simple; 
+use Mozilla::CA;
 
 require "vadr.pm"; 
 require "sqp_opts.pm";

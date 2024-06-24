@@ -3,7 +3,7 @@
 * [Installation using `vadr-install.sh`](#install)
   * [Mac installation requires Xcode](#xcode)
   * [Alternative two step installation](#alt-install)
-  * [Installing Inline and LWP if installation fails](#inline)
+  * [Installing Inline, LWP, and Mozilla modules if installation fails](#inline)
 * [Setting environment variables](#environment)
 * [Verifying successful installation](#tests)
 * [VADR-specific modifications to FASTA](#fastamods)
@@ -94,9 +94,9 @@ These commands should have `macosx-silicon` or `macosx-intel` instead
 of `linux` if you are installing on Mac/OSX.
 
 ---
-### <a name="inline"></a> If installation or `do-install-tests-local.sh` fails because the `Inline` or `LWP` perl modules are not installed...
+### <a name="inline"></a> If installation or `do-install-tests-local.sh` fails because the `Inline`,  `LWP` or `Mozilla::CA` perl modules are not installed...
 
-The perl `Inline::C`, `LWP::Simple` and `LWP::Protocol::https` modules
+The perl `Inline::C`, `LWP::Simple`, `LWP::Protocol::https` and `Mozilla::CA` modules
 must be installed prior to installation. ([This
 page](https://www.perl.com/article/1/2013/3/24/3-quick-ways-to-find-out-the-version-number-of-an-installed-Perl-module-from-the-terminal/)
 lists three ways to check if a perl module is installed.)
@@ -108,6 +108,8 @@ You can install these modules using `cpan` with these commands:
 `cpan install LWP::Simple`
 
 `cpan install LWP::Protocol::https`
+
+`cpan install Mozilla::CA`
 
 However, for Mac/OSX these commands may not work if you have
 not installed the "Command line tools for Xcode" or "XCode" packages.
@@ -261,9 +263,9 @@ If the script fails immediately with a warning like:
 `Can't locate LWP/Simple.pm in @INC (you may need to install the
 LWP::Simple module)`
 
-Or something similar but with `Inline` instead of `LWP`, then you will
-need to install the perl `LWP` and/or `Inline` modules as described
-[here.](#inline)
+Or something similar but with `Inline` or `Mozilla::CA` instead of
+`LWP`, then you will need to install the perl `LWP`, `Mozilla::CA` and/or `Inline`
+modules as described [here.](#inline)
 
 Below is an example of the expected output for
 `do-install-tests-local.sh`:
