@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # 
-# version: 1.6.3 [Dec 2023]
+# version: 1.6.4 [Jun 2024]
 #
 # vadr.pm
 # Eric Nawrocki
@@ -43,9 +43,10 @@ use warnings;
 use Cwd;
 use LWP::Simple; 
 # use LWP::Protocol::https; 
-# above line is purposefully commented out, b/c LWP::Protocol::https is only
-# needed for v-build.pl, and many users only use v-annotate.pl only, which can run without it
-# when a better solution for checking for modules during installation is found, uncomment it
+# use Mozilla::CA;
+# above line is purposefully commented out, b/c LWP::Protocol::https and Mozilla::CA are only
+# needed for v-build.pl, and many users only use v-annotate.pl only, which can run without them,
+# when a better solution for checking for modules during installation is found, uncomment these lines
 
 require "sqp_opts.pm";
 require "sqp_ofile.pm";

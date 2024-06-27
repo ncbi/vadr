@@ -1023,7 +1023,6 @@ exception ranges are not allowed.
 | [*lowsim3l*](#lowsim3l2)  | feature  | no    | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3l1"></a> long region overlapping annotated feature that does not match a CDS at 3' end of sequence lacks significant similarity | `lowsim_exc` | coords-only |
 | [*lowsimin*](#lowsimin2)  | feature  | yes   | LOW_FEATURE_SIMILARITY          | <a name="lowsimin1"></a> region overlapping annotated feature that does not match a CDS lacks significant similarity  | `lowsim_exc` | coords-only |
 | [*lowsimil*](#lowsimil2)  | feature  | no    | LOW_FEATURE_SIMILARITY          | <a name="lowsimil1"></a> long region overlapping annotated feature that does not match a CDS lacks significant similarity  | `lowsim_exc` | coords-only |
-| [*lowsimil*](#lowsimil2)  | feature  | no    | LOW_FEATURE_SIMILARITY          | <a name="lowsimil1"></a> long region overlapping annotated feature that does not match a CDS lacks significant similarity  | `lowsim_exc` | coords-only |
 
 #### Description of alerts that are *non-fatal* by default <a name="nonfatal1"></a>
 | alert code | type  | causes `misc_feature`, not failure (if in modelinfo file) |short description/error name | .........long_description......... | exception key (in modelinfo file) | exception value type |
@@ -1365,7 +1364,7 @@ increase the maximum allowed insertion length without a `insertnn` or
 `367` or `368` for a CDS feature encoded on the top (`+`) strand from
 the default value of `27` to `36`, add the following string to the
 `FEATURE` line for that CDS feature in the model info file:
-`insertn_exc:367..368:+:36`. As with `coords-only` keys, to add
+`insertn_exc:"367..368:+:36"`. As with `coords-only` keys, to add
 multiple position ranges and values, separate with commas.
 
 The alert codes which allow exception ranges can also be viewed by

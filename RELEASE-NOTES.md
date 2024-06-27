@@ -1,5 +1,16 @@
 # VADR 1.x release notes 
 
+### VADR 1.6.4 release (June 2024): Bug fix release
+  * no code changes (results should be identical to 1.6.3)
+  * removes unnecessary file
+    `testfiles/github-issues/iss70-cdsstopn3p/.#1.ntlist` that was
+    accidentally included in versions 1.6 to 1.6.3, and which
+    causes a problem for the bioconda recipe (github issue #78)
+  * adds `use Mozilla::CA` to `v-build.pl` to help with issue on Mac
+    OS/X (github issue #80) and adds note about requirement of this
+    module to documentation on installation
+
+---
 ### VADR 1.6.3 release (December 2023): (very) Minor update
   * adds `--forcegene` and `--forcequal` options to `v-annotate.pl`
     for controlling feature table output of qualifiers
