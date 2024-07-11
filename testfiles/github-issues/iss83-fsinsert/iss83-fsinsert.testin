@@ -1,0 +1,23 @@
+# format of this file:
+# '#' prefixed files are comments, and are not parsed.
+# 'command:' prefix indicates remainder of line is a command to run
+# 'desc:' prefix indicates description of test for dnaorg_test.pl output        
+# 'out:' prefix indicates output file to check against an expected file
+# 'exp:' prefix indicates expected file to check against an output file
+# 'rmdir:' prefix indicates name of output directory to remove after 
+# command is run and all output files have been checked.
+#
+# All 'out:' and 'exp:' lines following a 'command:' line (and before the 
+# next 'command:' line, will be checked after that command runs. The first
+# 'out:' file is compared against the first 'exp:' file, the second 
+# 'out:' file is compared against the second 'exp:' file, the second 'out:'
+# file, etc.
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey cox1.arach --fstminntt 5 $VADRSCRIPTSDIR/testfiles/github-issues/iss83-fsinsert/iss83-fsinsert.fa va-iss83 > va-iss83.out
+desc: iss83-fsinsert
+out: va-iss83/va-iss83.vadr.pass.tbl
+out: va-iss83/va-iss83.vadr.fail.tbl
+out: va-iss83/va-iss83.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss83-fsinsert/va-iss83.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss83-fsinsert/va-iss83.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss83-fsinsert/va-iss83.vadr.alt.list
+rmdir: va-iss83

@@ -5112,7 +5112,7 @@ sub add_frameshift_alerts_for_one_sequence {
                     # (($rfpos-$rfpos_prv)-1) part is number of deleted reference positions we just covered
                   } 
                   # and begin the next frame 'token' that will describe the contiguous subsequence that is in the previous frame
-                  my $nins = (defined $F_prv) ? (abs($uapos - $uapos_prv) - 1) : 0;
+                  my $nins = (defined $F_prv) ? (abs($uapos - $uapos_prv) - 1) : (abs($uapos - $ftr_sstart)); # RHS is part of github issue #83 fix
                   my $ins_str = "I" . $nins;
                   $frame_stok_str .= $F_cur . "," . $ins_str . "," . $uapos . "..";
                   $frame_mtok_str .= $F_cur . "," . $rfpos . "..";
@@ -5232,6 +5232,12 @@ sub add_frameshift_alerts_for_one_sequence {
         my $initial_nondominant_span_slen = undef; # stays undefined unless first frame tok is non-dominant
         my $frame_is_nondominant = 1;
         my $f = 0;
+        # consider inserts before first token, if any, this is part of the github issue #83 fix
+        if($nframe_stok > 0) {
+          if($frame_stok_A[0] =~ /^[123],I(\d+),\d+\.\.\d+,D\d+\,[01]$/) { 
+            $initial_nondominant_span_slen += $1;
+          }
+        }
         while(($frame_is_nondominant) && ($f < $nframe_stok)) { 
           if($frame_stok_A[$f] =~ /^([123]),I\d+,(\d+)\.\.(\d+),D\d+\,[01]$/) { 
             my ($frame, $frame_sstart, $frame_sstop) = ($1, $2, $3); 
@@ -5746,7 +5752,7 @@ sub determine_frame_and_length_summary_strings {
   # add final frame and length
 
   # potentially add right parenthesis
-  $length_tok = $prv_sum_length;
+  $length_tok = $prv_sum_length + $save_ninsert; # adding $save_ninsert is part of github issue #83 fix
   $frame_tok  = $prv_frame;
   if($parentheses_end_flag) { 
     $length_tok .= ")";
