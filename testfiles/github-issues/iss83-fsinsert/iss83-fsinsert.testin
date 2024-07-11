@@ -12,7 +12,7 @@
 # 'out:' file is compared against the first 'exp:' file, the second 
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --mdir $VADRSCRIPTSDIR/testfiles/models --mkey cox1.arach --fstminntt 5 $VADRSCRIPTSDIR/testfiles/github-issues/iss83-fsinsert/iss83-fsinsert.fa va-iss83 > va-iss83.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey cox1.arach --fstminntt 5 $VADRSCRIPTSDIR/testfiles/github-issues/iss83-fsinsert/iss83-fsinsert.fa va-iss83 > va-iss83.out
 desc: iss83-fsinsert
 out: va-iss83/va-iss83.vadr.pass.tbl
 out: va-iss83/va-iss83.vadr.fail.tbl
