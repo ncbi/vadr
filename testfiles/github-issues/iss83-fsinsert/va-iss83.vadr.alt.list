@@ -1,0 +1,2 @@
+#sequence	model	feature-type	feature-name	error	seq-coords	mdl-coords	error-description
+bug	cox1.tt5.ar-ch-arachnida	CDS	cytochrome c oxidase subunit I	INDEFINITE_ANNOTATION_START	1..12:+	1..1:+	protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [12>5]

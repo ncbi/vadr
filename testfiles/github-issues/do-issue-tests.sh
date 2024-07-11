@@ -20,6 +20,7 @@ for i in \
     iss70-cdsstopn3p \
     iss71-multisgmcdsstopn \
     iss72-multisgmcstart \
+    iss83-fsinsert \
     ; do
     $VADRSCRIPTSDIR/v-test.pl -f --rmout $VADRSCRIPTSDIR/testfiles/github-issues/$i/$i.testin vt-$i
     if [ $? != 0 ]; then

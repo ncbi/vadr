@@ -1,0 +1,3 @@
+MODEL cox1.tt5.ar-ch-arachnida group:"cox1" subgroup:"ar-ch-arachnida" transl_table:"5" length:"1581" blastdb:"cox1.tt5.ar-ch-arachnida.vadr.protein.fa" hmmfile:"cox1.all.tt5.ar-ch-arachnidavadr.hmm"
+FEATURE cox1.tt5.ar-ch-arachnida type:"gene" coords:"1..1581:+" gene:"COX1"
+FEATURE cox1.tt5.ar-ch-arachnida type:"CDS" coords:"1..1581:+" gene:"COX1" product:"cytochrome c oxidase subunit I"

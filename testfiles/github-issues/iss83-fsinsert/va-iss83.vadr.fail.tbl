@@ -1,0 +1,8 @@
+>Feature bug
+<1	>306	gene
+			gene	COX1
+<1	>306	misc_feature
+			note	similar to cytochrome c oxidase subunit I
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_START: (CDS:cytochrome c oxidase subunit I) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [12>5]; seq-coords:1..12:+; mdl-coords:1..1:+; mdl:cox1.tt5.ar-ch-arachnida;
