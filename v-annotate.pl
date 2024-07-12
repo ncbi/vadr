@@ -328,6 +328,7 @@ opt_Add("--xdrop",       "integer",  25,         $g,     undef,"--pv_skip,--pv_h
 opt_Add("--xnumali",     "integer",  20,         $g,     undef,"--pv_skip,--pv_hmmer", "number of alignments to keep in blastx output and consider if --xlongest is <n>",  "number of alignments to keep in blastx output and consider if --xlongest is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--xnolongest",  "boolean",  0,          $g,     undef,"--pv_skip,--pv_hmmer", "do not consider longest blastx hit, only max scoring",                             "do not consider longest blastx hit, only max scoring", \%opt_HH, \@opt_order_A);
 opt_Add("--xnocomp",     "boolean",  0,          $g,     undef,"--pv_skip,--pv_hmmer", "turn off composition-based for blastx statistics with -comp_based_stats 0",        "turn off composition-based for blastx statistics with comp_based_stats 0", \%opt_HH, \@opt_order_A);
+opt_Add("--xwordsize",   "integer",  3,          $g,     undef,"--pv_skip,--pv_hmmer", "set the blastx word size value to <n> (must be in range [2..7])",                   "set the blastx word size value to <n> (must be in range [2..7])", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for using hmmer instead of blastx for protein validation";
 #     option          type       default group   requires    incompat   preamble-output                                     help-output    
@@ -539,6 +540,7 @@ my $options_okay =
                 'xnumali=s'     => \$GetOptions_H{"--xnumali"},
                 'xnolongest'    => \$GetOptions_H{"--xnolongest"},
                 'xnocomp'       => \$GetOptions_H{"--xnocomp"},
+                'xwordsize'     => \$GetOptions_H{"--xwordsize"},
 # options for using hmmer instead of blastx for protein validation
                 'pv_hmmer'      => \$GetOptions_H{"--pv_hmmer"},
                 'h_max'         => \$GetOptions_H{"--h_max"},
@@ -765,6 +767,12 @@ if((opt_IsUsed("--lowsim3ftr", \%opt_HH)) || (opt_IsUsed("--lowsim3lftr", \%opt_
 if((opt_IsUsed("--lowsimiftr", \%opt_HH)) || (opt_IsUsed("--lowsimilftr", \%opt_HH))) { 
   if((opt_Get("--lowsimiftr", \%opt_HH)) > (opt_Get("--lowsimilftr", \%opt_HH))) { 
     die "ERROR, with --lowsimiftr <n1> and/or --lowsimilftr <n2>, <n1> must be <= <n2>";
+  }
+}
+# with --xwordsize <n>, <n> must be in range [2..7]
+if(opt_IsUsed("--xwordsize", \%opt_HH)) {
+  if((opt_Get("--xwordsize", \%opt_HH) < 2) || (opt_Get("--xwordsize", \%opt_HH) > 7)) { 
+    die "ERROR, with --xwordsize <n>, <n> must be in the range [2..7]";
   }
 }
 
@@ -7842,6 +7850,9 @@ sub run_blastx_and_summarize_output {
   }
   if(opt_IsUsed("--xnocomp", $opt_HHR)) { 
     $blastx_options .= " -comp_based_stats 0"
+  }
+  if(opt_IsUsed("--xwordsize", $opt_HHR)) { 
+    $blastx_options .= " -word_size " . opt_Get("--xwordsize", $opt_HHR); 
   }
   my $xnumali = opt_Get("--xnumali", $opt_HHR);
 
