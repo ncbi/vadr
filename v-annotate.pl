@@ -540,7 +540,7 @@ my $options_okay =
                 'xnumali=s'     => \$GetOptions_H{"--xnumali"},
                 'xnolongest'    => \$GetOptions_H{"--xnolongest"},
                 'xnocomp'       => \$GetOptions_H{"--xnocomp"},
-                'xwordsize'     => \$GetOptions_H{"--xwordsize"},
+                'xwordsize=s'   => \$GetOptions_H{"--xwordsize"},
 # options for using hmmer instead of blastx for protein validation
                 'pv_hmmer'      => \$GetOptions_H{"--pv_hmmer"},
                 'h_max'         => \$GetOptions_H{"--h_max"},
