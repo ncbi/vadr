@@ -731,7 +731,8 @@ how they control `blastx`, see the NCBI BLAST documentation
 | `--xdrop <n>`       | set the xdrop options to `<n>` (sets the `blastx` `-xdrop_ungap <n>`, `-xdrop_gap <n>` and `-xdrop_gap_final <n>` with the same `<n>`), default is to use default `blastx` values |
 | `--xnumali <n>`     | specify that the top `<n>` alignments are output by `blastx` (sets the `blastx -num_alignments <n>` option), default `<n>` is 20 | 
 | `--xnolongest`      | do not consider the longest `blastx` alignment of those returned (controlled by `--xnumali <n>`), default is to consider both the longest or the highest scoring alignment, and use the one that results in the fewest alerts | 
-| `--xnocomp`         | do not use composition-based statistics for blastx |
+| `--xnocomp`         | do not use composition-based statistics for `blastx` |
+| `--xwordsize <n>`   | set the `blastx` word size value to `<n>` (`<n>` must be in the range `[2..7]`) |
 
 ### `v-annotate.pl` options for using hmmer instead of blastx for protein validation <a name="options-hmmer"></a>
 
