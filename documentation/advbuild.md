@@ -379,7 +379,7 @@ Information on the individual alert instances can be found in the
 most common alerts in detail next. Documentation on the alerts can be
 found [here](annotate.md#alerts) with additional examples [here](alerts.md#top).
 
-###<a name="step4-cdsstopn"></a> Investigate common `cdsstopn` alerts
+### <a name="step4-cdsstopn"></a> Investigate common `cdsstopn` alerts
 
 To see all the `cdsstopn` (early stop
 codon) alerts in the `.alt` file, we can use `grep` and `head`. Here are the
