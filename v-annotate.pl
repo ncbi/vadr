@@ -7674,7 +7674,14 @@ sub add_protein_validation_alerts {
                         $cdsstopp_detail = "VADRNULL"; 
                       }
                       elsif($beginning_of_detail ne "VADRNULL") { 
-                        $cdsstopp_detail = "mdl-coords_wrt:" . $cdsstopp_detail;
+                        if($cdsstopp_mcoords eq "VADRNULL") {
+                          # if mcoords is VADRNULL, then the stop occurred in a protein at a position that exceeds
+                          # the reference CDS length, we handle this special (this is github issue 84)
+                          $cdsstopp_detail = "early_stop_occurs_at_undeterminable_mdl_position_in:" . $cdsstopp_detail;
+                        }
+                        else { 
+                          $cdsstopp_detail = "mdl-coords_wrt:" . $cdsstopp_detail;
+                        }
                       }
                       # check if we exclude this alert because the early stop overlaps with a region
                       # replaced during the N replacement stage (-r option)
@@ -8260,7 +8267,15 @@ sub parse_blastx_results {
                   }
                   my $first_hstop = $cur_H{"HSTOP"};
                   $first_hstop =~ s/\;.*$//; # remove first ';' and anything after it
-                  $first_hstop = vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$t_ftr_idx]{"coords"}, $first_hstop, $FH_HR);
+                  # check to see if the stop position exceeds the reference (model) length for the CDS
+                  # this is possible if there are proteins in the blastx library that are longer than the reference (model CDS)
+                  # this was a bug up until v1.6.4; logged as github issue #84
+                  if(vdr_CoordsMax(vdr_CoordsProteinToNucleotide($first_hstop, $FH_HR), $FH_HR) > vdr_CoordsLength($ftr_info_AHR->[$t_ftr_idx]{"coords"}, $FH_HR)) {
+                    $first_hstop = "VADRNULL"; # we can't determine the reference positions, we'll eventually report '-' for mdl_coords
+                  }
+                  else { 
+                    $first_hstop = vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$t_ftr_idx]{"coords"}, $first_hstop, $FH_HR);
+                  }
                   my $hacc_accn = $cur_H{"HACC"};
                   if($hacc_accn =~ /(\S+)\/\S+/) { 
                     $hacc_accn = $1;
