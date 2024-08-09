@@ -113,6 +113,9 @@ my $start_secs = ofile_OutputProgressPrior("Parsing input feature table file", $
 my @seq_order_A = (); # array of sequence names read in order from feature table file
 local_sqf_FeatureTableParse($in_tbl_file, \%ftr_info_HAH, \@seq_order_A, 0, undef);
 
+utl_HAHDump("ftr_info_HAH", \%ftr_info_HAH, *STDOUT);
+
+FeatureInfoSetIdAndParentForGff(\%ftr_info_HAH, \@seq_order_A, undef);
 GffOutput(\%ftr_info_HAH, \@seq_order_A, undef, \%opt_HH, undef);
 
 ##########
@@ -368,6 +371,78 @@ sub local_sqf_FeatureTableParse {
 }
 
 #################################################################
+# Subroutine: FeatureInfoSetIdAndParentForGff()
+# Incept:     EPN, Thu Aug  8 14:07:34 2024
+#
+# Synopsis: Given feature info, further populate it with ID and
+#           parent information in preparation for GFF output. Parent 
+#           information is determined using the protein_id key. 
+#
+# Arguments:
+#  $ftr_info_HAHR: feature info
+#  $seq_order_AR:  ref to array with order of sequences to output, if undef, output in sorted order
+#  $FH_HR:         ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       never
+#################################################################
+sub FeatureInfoSetIdAndParentForGff { 
+  my $sub_name = "GffOutput";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($ftr_info_HAHR, $seq_order_AR, $FH_HR) = @_;
+  my @seq_A = ();
+  if(! defined $seq_order_AR) {
+    @seq_A = sort keys %{$ftr_info_HAHR};
+  }
+  else {
+    @seq_A = @{$seq_order_AR};
+  }
+
+  # first pass through to determine ID value and
+  # populate %protein_id2cds_id_H
+  my %protein_id2cds_id_H = (); # key is protein_id of a CDS, value is that CDS' ID value
+  foreach my $seq (@seq_order_A) {
+    if(! defined $ftr_info_HAHR->{$seq}) {
+      ofile_FAIL("ERROR in $sub_name, no feature information for sequence $seq", 1, $FH_HR);
+    }
+    my $nftr = scalar(@{$ftr_info_HAHR->{$seq}});
+    
+    my %ftr_id_idx_H = (); # key is feature name, value is index for this feature for current accn
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      my $ftr_type = $ftr_info_HAHR->{$seq}[$ftr_idx]->{"type"};   
+      if(! defined $ftr_id_idx_H{$ftr_type}) {
+        $ftr_id_idx_H{$ftr_type} = 1;
+      }
+      else {
+        $ftr_id_idx_H{$ftr_type}++;
+      }
+      $ftr_info_HAHR->{$seq}[$ftr_idx]{"GFF_ID"} = $ftr_type . $ftr_id_idx_H{$ftr_type};
+      # keep track of the id for this protein id, so we can set parent indices for 
+      if((vdr_FeatureTypeIsCds($ftr_info_HAHR->{$seq}, $ftr_idx)) &&
+         (defined $ftr_info_HAHR->{$seq}[$ftr_idx]{"protein_id"})) {
+        $protein_id2cds_id_H{$protein_id} = $id;
+      }
+    }
+  }
+
+  # second pass through to set parent values for mat_peptide and sig_peptide features
+  foreach my $seq (@seq_order_A) {
+    my $nftr = scalar(@{$ftr_info_HAHR->{$seq}});
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if((vdr_FeatureTypeIsMatPeptide($ftr_info_HAHR->{$seq}, $ftr_idx)) &&
+       (defined $ftr_info_HAHR->{$seq}[$ftr_idx]{"protein_id"})) {
+      if(defined $protein_id2cds_id_H{$protein_id}) {
+        $ftr_info_HAHR->{$seq}[$ftr_idx]{"GFF_Parent"} = $protein_id2cds_id_H{$protein_id};
+      }
+    }
+  }    
+  return;
+}
+  
+#################################################################
 # Subroutine: GffOutput()
 # Incept:     EPN, Wed Aug  7 15:35:24 2024
 #
@@ -407,8 +482,7 @@ sub GffOutput {
     my $nftr = scalar(@{$ftr_info_HAHR->{$seq}});
     
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      my %ftr_id_idx_H = (); # key is feature name, value is index for this feature for current accn
-      my $ftr_type = $ftr_info_HAHR->{$seq}[$ftr_idx]->{"type"};
+      my $ftr_type = $ftr_info_HAHR->{$seq}[$ftr_idx]->{"type"};   
       my @start_A  = ();
       my @stop_A   = ();
       my @strand_A = ();
@@ -416,13 +490,16 @@ sub GffOutput {
       my $nsgm = scalar(@start_A);
       my @ftr_lines_A = (); # we'll store the feature lines here, and output them in forward order or reverse order depending on strand
       my $summary_strand = vdr_FeatureSummaryStrand($ftr_info_HAHR->{$seq}[$ftr_idx]{"coords"}, $FH_HR);
-      if(! defined $ftr_id_idx_H{$ftr_type}) {
-        $ftr_id_idx_H{$ftr_type} = 1;
+      my $id = $ftr_info_HAHR->{$seq}[$ftr_idx]{"GFF_ID"}
+      if(! defined $id) {
+        ofile_FAIL("ERROR in $sub_name, no ID set for feature for sequence $seq", 1, $FH_HR);
       }
-      else {
-        $ftr_id_idx_H{$ftr_type}++;
+      my $key_values = "";
+      foreach my $key (sort keys(%{$ftr_info_HAHR->{$seq}[$ftr_idx]})) { 
+        if(($key ne "coords") && ($key ne "type")) { 
+          $key_values .= $key . "=" . $ftr_info_HAHR->{$seq}[$ftr_idx]{$key} . ";";
+        }
       }
-      my $id = "ID=" . $ftr_type . $ftr_id_idx_H{$ftr_type};
       for(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) {
         my ($start, $stop, $strand) = (undef, undef, undef);
         if($strand_A[$sgm_idx] eq "+") {
@@ -431,7 +508,7 @@ sub GffOutput {
         else {
           ($stop, $start, $strand) = ($start_A[$sgm_idx], $stop_A[$sgm_idx], $strand_A[$sgm_idx]);
         }
-        my $attributes = $id . ";";
+        my $attributes = $id . ";" . $key_values;
         push(@ftr_lines_A,
              sprintf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", 
                      $seq,                                 # token 1: 'sequence' (sequence name)
