@@ -56,6 +56,7 @@ $opt_group_desc_H{$g} = "basic options";
 #     option            type       default  group   requires incompat    preamble-output                                                          help-output    
 opt_Add("-h",           "boolean", 0,          $g,    undef, undef,      undef,                                                                   "display this help",                                   \%opt_HH, \@opt_order_A);
 opt_Add("-s",           "string",  undef,      $g,    undef, undef,      "define source field as <s>",                                            "define source field as <s>",                          \%opt_HH, \@opt_order_A);
+opt_Add("--ftr",        "boolean",  0,         $g,    undef, undef,      "input file is a .ftr file not a .tbl file",                             "input file is a .ftr file not a .tbl file",           \%opt_HH, \@opt_order_A);
 $opt_group_desc_H{++$g} = "options for controlling which features or qualifiers are output in attributes field";
 opt_Add("--qall",       "boolean",  0,         $g,    undef,  undef,     "output info for all qualifiers (except those in --qskip)",              "output info for all qualifiers (except those in --qskip)", \%opt_HH, \@opt_order_A);
 opt_Add("--fskip",      "string",   undef,     $g,    undef,  undef,     "do not output features in comma separated string <s>",                  "do not output features in comma separated string <s>", \%opt_HH, \@opt_order_A);
@@ -69,6 +70,7 @@ my $options_okay =
 # basic options
                 'f'            => \$GetOptions_H{"-f"},
                 's=s'          => \$GetOptions_H{"-s"},
+                'ftr'          => \$GetOptions_H{"--ftr"},
 # options for controlling which features or qualifiers are output in attributes field
                 'qall'         => \$GetOptions_H{"--qall"},
                 'fskip=s'      => \$GetOptions_H{"--fskip"},
@@ -100,7 +102,7 @@ if(scalar(@ARGV) != 1) {
   print "\nTo see more help on available options, do $executable -h\n\n";
   exit(1);
 }
-my ($in_tbl_file) = (@ARGV);
+my ($in_file) = (@ARGV);
 
 # set options in opt_HH
 opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
@@ -120,12 +122,17 @@ if(opt_IsUsed("--qskip", \%opt_HH)) { utl_ExistsHFromCommaSepString(\%qskip_H, o
 my %ftr_info_HAH = (); # hash of array of hashes with feature info 
 
 my @seq_order_A = (); # array of sequence names read in order from feature table file
-local_sqf_FeatureTableParse($in_tbl_file, \%ftr_info_HAH, \@seq_order_A, 0, undef);
-
+if(opt_Get("--ftr", \%opt_HH)) {
+  ftrParse($in_file, \%ftr_info_HAH, \@seq_order_A);
+  featureInfoSetIdAndParentFromParentIdxForGff(\%ftr_info_HAH, \@seq_order_A, undef);
+}
+else {
+  local_sqf_FeatureTableParse($in_file, \%ftr_info_HAH, \@seq_order_A, 0, undef);
+  featureInfoSetIdAndParentFromProteinIdForGff(\%ftr_info_HAH, \@seq_order_A, undef);
+}
 #utl_HAHDump("ftr_info_HAH", \%ftr_info_HAH, *STDOUT);
 
-FeatureInfoSetIdAndParentForGff(\%ftr_info_HAH, \@seq_order_A, undef);
-GffOutput(\%ftr_info_HAH, \@seq_order_A, *STDOUT, \%opt_HH, undef);
+gffOutput(\%ftr_info_HAH, \@seq_order_A, *STDOUT, \%opt_HH, undef);
 
 ##########
 # Conclude
@@ -380,12 +387,99 @@ sub local_sqf_FeatureTableParse {
 }
 
 #################################################################
-# Subroutine: FeatureInfoSetIdAndParentForGff()
-# Incept:     EPN, Thu Aug  8 14:07:34 2024
+# Subroutine: ftrParse()
+# Incept:     EPN, Wed Aug 14 11:38:06 2024
+#             
 #
-# Synopsis: Given feature info, further populate it with ID and
-#           parent information in preparation for GFF output. Parent 
-#           information is determined using the protein_id key. 
+# Synopsis: Parse a vadr ftr files into a %ftr_info_HAHR
+#
+# Arguments:
+#  $infile:         feature table file to parse
+#  $ftr_info_HAHR:  feature information, filled here
+#                   1D key: accession
+#                   2D:     feature index
+#                   3D key: qualifer, value: qualifier value
+#  $seq_order_AR:   REF to array of sequence names, added to here if defined, can be undef
+#
+# Returns:    void
+#
+# Dies:       if we have trouble parsing the file
+#
+# Reference: https://github.com/ncbi/vadr/blob/master/documentation/formats.md#explanation-of-ftr-suffixed-output-files
+#################################################################
+sub ftrParse { 
+  my $sub_name = "ftrParse";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($infile, $ftr_info_HAHR, $seq_order_AR) = @_;
+
+  open(IN, $infile) || ofile_FileOpenFailure($infile, $sub_name, $!, "reading", undef);
+
+  my $line_ctr = 0;
+  while(my $line = <IN>) { 
+    $line =~ s/^\s+//;
+    $line =~ s/\s+$//;
+    $line_ctr++;
+    chomp $line;
+    if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
+    if(($line !~ m/^\#/) && ($line =~ m/\w/)) { 
+      #      seq                               seq                  ftr          ftr                       ftr  ftr  par                                                                                                              seq                  model  ftr   
+      #idx   name                              len  p/f   model     type         name                      len  idx  idx  str  n_from  n_to  n_instp  trc    5'N  3'N  p_from  p_to         p_instp  p_sc  nsa  nsn                coords                 coords  alerts
+      #----  -------------------------------  ----  ----  --------  -----------  -----------------------  ----  ---  ---  ---  ------  ----  -------  -----  ---  ---  ------  ----  --------------  ----  ---  ---  --------------------  ---------------------  ------
+      my @el_A = split(/\s+/, $line);
+      my $ftr_idx;
+      if(scalar(@el_A) == 26) { 
+        my ($seqidx, $seq, $seqlen, $pf, $model, $ftr_type, $ftr_name, $ftr_len, $mdl_ftr_idx, $par_idx, $strand, $n_from, $n_to, $n_instp, $trc, $n5, $n3, $p_from, $p_to, $p_instp, $p_sc, $nsa, $nsn, $seq_coords, $mdl_coords, $alerts) = (@el_A);
+        if(! defined $ftr_info_HAHR->{$seq}) {
+          @{$ftr_info_HAHR->{$seq}} = ();
+          $ftr_idx = 0;
+          push(@{$seq_order_AR}, $seq);
+        }
+        else {
+          $ftr_idx = scalar(@{$ftr_info_HAHR->{$seq}});
+        }
+        $ftr_info_HAHR->{$seq}[$ftr_idx]{"seq_len"}   = $seqlen;
+        $ftr_info_HAHR->{$seq}[$ftr_idx]{"passfail"}  = $pf;
+        $ftr_info_HAHR->{$seq}[$ftr_idx]{"model"}     = $model;
+        $ftr_info_HAHR->{$seq}[$ftr_idx]{"type"}      = $ftr_type;
+        $ftr_info_HAHR->{$seq}[$ftr_idx]{"name"}      = $ftr_name;
+        $ftr_info_HAHR->{$seq}[$ftr_idx]{"ftr_len"}   = $ftr_len;
+        $ftr_info_HAHR->{$seq}[$ftr_idx]{"mdl_ftr_idx"} = $mdl_ftr_idx;
+        $ftr_info_HAHR->{$seq}[$ftr_idx]{"par_idx"}   = $par_idx;
+        $ftr_info_HAHR->{$seq}[$ftr_idx]{"sumstrand"} = $strand;
+        $ftr_info_HAHR->{$seq}[$ftr_idx]{"n_from"}    = $n_from;
+        $ftr_info_HAHR->{$seq}[$ftr_idx]{"n_to"}      = $n_to;
+        $ftr_info_HAHR->{$seq}[$ftr_idx]{"n_instp"}   = $n_instp;
+        $ftr_info_HAHR->{$seq}[$ftr_idx]{"trc"}       = $trc;
+        $ftr_info_HAHR->{$seq}[$ftr_idx]{"n5"}        = $n5;
+        $ftr_info_HAHR->{$seq}[$ftr_idx]{"n3"}        = $n3;
+        $ftr_info_HAHR->{$seq}[$ftr_idx]{"p_from"}    = $p_from;
+        $ftr_info_HAHR->{$seq}[$ftr_idx]{"p_to"}      = $p_to;
+        $ftr_info_HAHR->{$seq}[$ftr_idx]{"p_instp"}   = $p_instp;
+        $ftr_info_HAHR->{$seq}[$ftr_idx]{"p_sc"}      = $p_sc;
+        $ftr_info_HAHR->{$seq}[$ftr_idx]{"nsa"}       = $nsn;
+        $ftr_info_HAHR->{$seq}[$ftr_idx]{"coords"}    = $seq_coords;
+        $ftr_info_HAHR->{$seq}[$ftr_idx]{"mdlcoords"} = $mdl_coords;
+        $ftr_info_HAHR->{$seq}[$ftr_idx]{"alerts"}    = $alerts;
+      }
+      else {
+        die "ERROR, did not read expected number of tokens (26) on line $line_ctr of $infile\nline: $line\n"; 
+      }
+    }
+  } 
+  close(IN);
+  
+  return;
+}
+
+#################################################################
+# Subroutine: featureInfoSetIdAndParentFromParentIdxForGff()
+# Incept:     EPN, Wed Aug 14 14:42:58 2024
+#
+# Synopsis: Given feature info read from a .ftr file that includes
+#           parent_idx qualifiers, further populate it with ID and
+#           parent information in preparation for GFF output.
 #
 # Arguments:
 #  $ftr_info_HAHR: feature info
@@ -396,8 +490,84 @@ sub local_sqf_FeatureTableParse {
 #
 # Dies:       never
 #################################################################
-sub FeatureInfoSetIdAndParentForGff { 
-  my $sub_name = "FeatureInfoSetIdAndParentForGff";
+sub featureInfoSetIdAndParentFromParentIdxForGff { 
+  my $sub_name = "featureInfoSetIdAndParentIdxForGff";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($ftr_info_HAHR, $seq_order_AR, $FH_HR) = @_;
+  my @seq_A = ();
+  if(! defined $seq_order_AR) {
+    @seq_A = sort keys %{$ftr_info_HAHR};
+  }
+  else {
+    @seq_A = @{$seq_order_AR};
+  }
+  
+  # first pass through to determine ID value and
+  # populate %protein_id2cds_id_H
+  my %mdl_ftr_idx2cds_id_HH = (); # key1 is seq name, key 2 is model ftr_idx of a CDS (read from .ftr input file), value is that CDS' ID value
+  my %ftr_id_idx_H = (); # key is feature name, value is index for this feature for current accn
+  foreach my $seq (@seq_order_A) {
+    if(! defined $ftr_info_HAHR->{$seq}) {
+      ofile_FAIL("ERROR in $sub_name, no feature information for sequence $seq", 1, $FH_HR);
+    }
+    my $nftr = scalar(@{$ftr_info_HAHR->{$seq}});
+    
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      my $ftr_type = $ftr_info_HAHR->{$seq}[$ftr_idx]->{"type"};   
+      if(! defined $ftr_id_idx_H{$ftr_type}) {
+        $ftr_id_idx_H{$ftr_type} = 1;
+      }
+      else {
+        $ftr_id_idx_H{$ftr_type}++;
+      }
+      $ftr_info_HAHR->{$seq}[$ftr_idx]{"GFF_ID"} = $ftr_type . $ftr_id_idx_H{$ftr_type};
+      # keep track of the id for this protein id, so we can set parent indices for 
+      if((vdr_FeatureTypeIsCds($ftr_info_HAHR->{$seq}, $ftr_idx)) &&
+         (defined $ftr_info_HAHR->{$seq}[$ftr_idx]{"mdl_ftr_idx"})) {
+        $mdl_ftr_idx2cds_id_HH{$seq}{$ftr_info_HAHR->{$seq}[$ftr_idx]{"mdl_ftr_idx"}} = $ftr_info_HAHR->{$seq}[$ftr_idx]{"GFF_ID"};
+      }
+    }
+  }
+  
+  # second pass through to set parent values for mat_peptide and sig_peptide features
+  foreach my $seq (@seq_order_A) {
+    my $nftr = scalar(@{$ftr_info_HAHR->{$seq}});
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      if(($ftr_info_HAHR->{$seq}[$ftr_idx]{"type"} eq "mat_peptide") ||
+         ($ftr_info_HAHR->{$seq}[$ftr_idx]{"type"} eq "sig_peptide") && 
+         (defined $ftr_info_HAHR->{$seq}[$ftr_idx]{"par_idx"})) {
+        my $parent_idx = $ftr_info_HAHR->{$seq}[$ftr_idx]{"par_idx"};
+        if(defined $mdl_ftr_idx2cds_id_HH{$seq}{$parent_idx}) {
+          $ftr_info_HAHR->{$seq}[$ftr_idx]{"GFF_Parent"} = $mdl_ftr_idx2cds_id_HH{$seq}{$parent_idx};
+        }
+      }
+    }
+  }    
+  return;
+}
+
+#################################################################
+# Subroutine: featureInfoSetIdAndParentFromProteinIdForGff()
+# Incept:     EPN, Thu Aug  8 14:07:34 2024
+#
+# Synopsis: Given feature info read from a .tbl file that includes
+#           protein_id qualifiers, further populate it with ID and
+#           parent information in preparation for GFF output.
+#
+# Arguments:
+#  $ftr_info_HAHR: feature info
+#  $seq_order_AR:  ref to array with order of sequences to output, if undef, output in sorted order
+#  $FH_HR:         ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       never
+#################################################################
+
+sub featureInfoSetIdAndParentFromProteinIdForGff { 
+  my $sub_name = "featureInfoSetIdAndParentFromProteinIdForGff";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
@@ -453,9 +623,9 @@ sub FeatureInfoSetIdAndParentForGff {
   }    
   return;
 }
-  
+
 #################################################################
-# Subroutine: GffOutput()
+# Subroutine: gffOutput()
 # Incept:     EPN, Wed Aug  7 15:35:24 2024
 #
 # Synopsis: Output a GFF file given a ftr_info_HAH.
@@ -472,8 +642,8 @@ sub FeatureInfoSetIdAndParentForGff {
 #
 # Dies:       never
 #################################################################
-sub GffOutput { 
-  my $sub_name = "GffOutput";
+sub gffOutput { 
+  my $sub_name = "gffOutput";
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
@@ -512,6 +682,9 @@ sub GffOutput {
         my @start_A  = ();
         my @stop_A   = ();
         my @strand_A = ();
+        if(! defined $ftr_info_HAHR->{$seq}[$ftr_idx]{"coords"}) {
+          die "ERROR coords undefined for seq $seq ftr_idx: $ftr_idx\n";
+        }
         vdr_FeatureStartStopStrandArrays($ftr_info_HAHR->{$seq}[$ftr_idx]{"coords"}, \@start_A, \@stop_A, \@strand_A, $FH_HR);
         my $nsgm = scalar(@start_A);
         my @ftr_lines_A = (); # we'll store the feature lines here, and output them in forward order or reverse order depending on strand
@@ -577,4 +750,5 @@ sub GffOutput {
   
   return;
 }
+
 
