@@ -51,13 +51,12 @@ my %opt_group_desc_H = ();
 
 # Add all options to %opt_HH and @opt_order_A.
 # This section needs to be kept in sync (manually) with the &GetOptions call below
-$opt_group_desc_H{"1"} = "basic options";
-#     option            type       default               group   requires incompat    preamble-output                                                help-output    
-opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                                         "display this help",                                   \%opt_HH, \@opt_order_A);
-opt_Add("-f",           "boolean", 0,                        1,    undef, undef,      "forcing directory overwrite",                                 "force; if dir <output directory> exists, overwrite it", \%opt_HH, \@opt_order_A);
-opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("--ttbl",       "integer", 1,                        1,    undef, undef,      "use NCBI translation table <n> to translate CDS",             "use NCBI translation table <n> to translate CDS", \%opt_HH, \@opt_order_A);
-opt_Add("--keep",       "boolean", 0,                        1,    undef, undef,      "leaving intermediate files on disk",                          "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
+my $g = 1;
+$opt_group_desc_H{$g} = "basic options";
+#     option            type       default  group   requires incompat    preamble-output                                                          help-output    
+opt_Add("-h",           "boolean", 0,           0,    undef, undef,      undef,                                                                   "display this help",                                   \%opt_HH, \@opt_order_A);
+$opt_group_desc_H{++$g} = "options for controlling what qualifiers are output in attributes column";
+opt_Add("--noaddgene",  "boolean",  0,         $g,    undef,   undef,    "do not add gene qualifiers from gene features to overlapping features", "do not add gene qualifiers from gene features to overlapping features", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -65,9 +64,7 @@ my $options_okay =
     &GetOptions('h'            => \$GetOptions_H{"-h"}, 
 # basic options
                 'f'            => \$GetOptions_H{"-f"},
-                'v'            => \$GetOptions_H{"-v"},
-                'ttbl=s'       => \$GetOptions_H{"--ttbl"},
-                'keep'         => \$GetOptions_H{"--keep"});
+                'noaddgene'    => \$GetOptions_H{"--noaddgene"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another ofile_SecondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
@@ -485,7 +482,13 @@ sub GffOutput {
       ofile_FAIL("ERROR in $sub_name, no feature information for sequence $seq", 1, $FH_HR);
     }
     my $nftr = scalar(@{$ftr_info_HAHR->{$seq}});
-    
+
+    # impute gene features, based on overlap
+    if(! (opt_Get("--noaddgene", $opt_HHR))) { 
+      vdr_FeatureInfoImputeByOverlap(\@{$ftr_info_HAHR->{$seq}}, "gene", "gene", "CDS",        "gene", $FH_HR);
+      vdr_FeatureInfoImputeByOverlap(\@{$ftr_info_HAHR->{$seq}}, "gene", "gene", "mRNA",       "gene", $FH_HR);
+      vdr_FeatureInfoImputeByOverlap(\@{$ftr_info_HAHR->{$seq}}, "gene", "gene", "regulatory", "gene", $FH_HR);
+    }
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       my $ftr_type = $ftr_info_HAHR->{$seq}[$ftr_idx]->{"type"};   
       my @start_A  = ();
