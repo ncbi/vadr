@@ -54,9 +54,13 @@ my %opt_group_desc_H = ();
 my $g = 1;
 $opt_group_desc_H{$g} = "basic options";
 #     option            type       default  group   requires incompat    preamble-output                                                          help-output    
-opt_Add("-h",           "boolean", 0,           0,    undef, undef,      undef,                                                                   "display this help",                                   \%opt_HH, \@opt_order_A);
-$opt_group_desc_H{++$g} = "options for controlling what qualifiers are output in attributes column";
-opt_Add("--noaddgene",  "boolean",  0,         $g,    undef,   undef,    "do not add gene qualifiers from gene features to overlapping features", "do not add gene qualifiers from gene features to overlapping features", \%opt_HH, \@opt_order_A);
+opt_Add("-h",           "boolean", 0,          $g,    undef, undef,      undef,                                                                   "display this help",                                   \%opt_HH, \@opt_order_A);
+opt_Add("-s",           "string",  undef,      $g,    undef, undef,      "define source field as <s>",                                            "define source field as <s>",                          \%opt_HH, \@opt_order_A);
+$opt_group_desc_H{++$g} = "options for controlling which features or qualifiers are output in attributes field";
+opt_Add("--qall",       "boolean",  0,         $g,    undef,  undef,     "output info for all qualifiers (except those in --qskip)",              "output info for all qualifiers (except those in --qskip)", \%opt_HH, \@opt_order_A);
+opt_Add("--fskip",      "string",   undef,     $g,    undef,  undef,     "do not output features in comma separated string <s>",                  "do not output features in comma separated string <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--qskip",      "string",   undef,     $g,    undef,  undef,     "do not output qualifiers in comma separated string <s>",                "do not output qualifiers in comma separated string <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--noaddgene",  "boolean",  0,         $g,    undef,  undef,     "do not add gene qualifiers from gene features to overlapping features", "do not add gene qualifiers from gene features to overlapping features", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -64,6 +68,11 @@ my $options_okay =
     &GetOptions('h'            => \$GetOptions_H{"-h"}, 
 # basic options
                 'f'            => \$GetOptions_H{"-f"},
+                's=s'          => \$GetOptions_H{"-s"},
+# options for controlling which features or qualifiers are output in attributes field
+                'qall'         => \$GetOptions_H{"--qall"},
+                'fskip=s'      => \$GetOptions_H{"--fskip"},
+                'qskip=s'      => \$GetOptions_H{"--qskip"},
                 'noaddgene'    => \$GetOptions_H{"--noaddgene"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another ofile_SecondsSinceEpoch call at end to get total time
@@ -99,13 +108,16 @@ opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
 # validate options (check for conflicts)
 opt_ValidateSet(\%opt_HH, \@opt_order_A);
 
+# process --fskip and --qskip options
+my %fskip_H    = (); # feature types to not output
+my %qskip_H    = (); # qualifier values to not output in attributes field
+if(opt_IsUsed("--fskip", \%opt_HH)) { utl_ExistsHFromCommaSepString(\%fskip_H, opt_Get("--fskip", \%opt_HH)); }
+if(opt_IsUsed("--qskip", \%opt_HH)) { utl_ExistsHFromCommaSepString(\%qskip_H, opt_Get("--qskip", \%opt_HH)); }
+
 #####################
 # Input the tbl file 
 #####################
 my %ftr_info_HAH = (); # hash of array of hashes with feature info 
-
-my $progress_w = 50;
-my $start_secs = ofile_OutputProgressPrior("Parsing input feature table file", $progress_w, undef, *STDOUT);
 
 my @seq_order_A = (); # array of sequence names read in order from feature table file
 local_sqf_FeatureTableParse($in_tbl_file, \%ftr_info_HAH, \@seq_order_A, 0, undef);
@@ -113,7 +125,7 @@ local_sqf_FeatureTableParse($in_tbl_file, \%ftr_info_HAH, \@seq_order_A, 0, unde
 #utl_HAHDump("ftr_info_HAH", \%ftr_info_HAH, *STDOUT);
 
 FeatureInfoSetIdAndParentForGff(\%ftr_info_HAH, \@seq_order_A, undef);
-GffOutput(\%ftr_info_HAH, \@seq_order_A, undef, \%opt_HH, undef);
+GffOutput(\%ftr_info_HAH, \@seq_order_A, *STDOUT, \%opt_HH, undef);
 
 ##########
 # Conclude
@@ -421,7 +433,6 @@ sub FeatureInfoSetIdAndParentForGff {
       if((vdr_FeatureTypeIsCds($ftr_info_HAHR->{$seq}, $ftr_idx)) &&
          (defined $ftr_info_HAHR->{$seq}[$ftr_idx]{"protein_id"})) {
         $protein_id2cds_id_H{$ftr_info_HAHR->{$seq}[$ftr_idx]{"protein_id"}} = $ftr_info_HAHR->{$seq}[$ftr_idx]{"GFF_ID"};
-        printf("HEYA set protein_id2cds_id_H{ftr_info_HAHR->{$seq}[$ftr_idx]{protein_id}} to " . $ftr_info_HAHR->{$seq}[$ftr_idx]{"GFF_ID"} .  "\n");
       }
     }
   }
@@ -436,7 +447,6 @@ sub FeatureInfoSetIdAndParentForGff {
         my $protein_id = $ftr_info_HAHR->{$seq}[$ftr_idx]{"protein_id"};
         if(defined $protein_id2cds_id_H{$protein_id}) {
           $ftr_info_HAHR->{$seq}[$ftr_idx]{"GFF_Parent"} = $protein_id2cds_id_H{$protein_id};
-          printf("HEYA set ftr_info_HAHR->{$seq}[$ftr_idx]{GFF_Parent} to $protein_id2cds_id_H{$protein_id}\n");
         }
       }
     }
@@ -468,6 +478,13 @@ sub GffOutput {
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
   my ($ftr_info_HAHR, $seq_order_AR, $out_FH, $opt_HHR, $FH_HR) = @_;
+
+  my %fskip_H    = (); # feature types to not output
+  my %qskip_H    = (); # qualifier values to not output in attributes field
+  if(opt_IsUsed("--fskip", $opt_HHR)) { utl_ExistsHFromCommaSepString(\%fskip_H, opt_Get("--fskip", $opt_HHR)); }
+  if(opt_IsUsed("--qskip", $opt_HHR)) { utl_ExistsHFromCommaSepString(\%qskip_H, opt_Get("--qskip", $opt_HHR)); }
+  my $do_qall = (opt_IsUsed("--qall",  $opt_HHR)) ? 1 : 0;
+
   my @seq_A = ();
   if(! defined $seq_order_AR) {
     @seq_A = sort keys %{$ftr_info_HAHR};
@@ -476,7 +493,7 @@ sub GffOutput {
     @seq_A = @{$seq_order_AR};
   }
   
-  my $source = "VADR:v" . $version . ":v-annotate.pl";
+  my $source = (opt_IsUsed("-s", $opt_HHR)) ? opt_Get("-s", $opt_HHR) : "VADR:v" . $version . ":v-annotate.pl";
   foreach my $seq (@seq_order_A) {
     if(! defined $ftr_info_HAHR->{$seq}) {
       ofile_FAIL("ERROR in $sub_name, no feature information for sequence $seq", 1, $FH_HR);
@@ -491,59 +508,70 @@ sub GffOutput {
     }
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       my $ftr_type = $ftr_info_HAHR->{$seq}[$ftr_idx]->{"type"};   
-      my @start_A  = ();
-      my @stop_A   = ();
-      my @strand_A = ();
-      vdr_FeatureStartStopStrandArrays($ftr_info_HAHR->{$seq}[$ftr_idx]{"coords"}, \@start_A, \@stop_A, \@strand_A, $FH_HR);
-      my $nsgm = scalar(@start_A);
-      my @ftr_lines_A = (); # we'll store the feature lines here, and output them in forward order or reverse order depending on strand
-      my $summary_strand = vdr_FeatureSummaryStrand($ftr_info_HAHR->{$seq}[$ftr_idx]{"coords"}, $FH_HR);
-      my $id = $ftr_info_HAHR->{$seq}[$ftr_idx]{"GFF_ID"};
-      if(! defined $id) {
-        ofile_FAIL("ERROR in $sub_name, no ID set for feature for sequence $seq", 1, $FH_HR);
-      }
-      my $key_values = "";
-      foreach my $key (sort keys(%{$ftr_info_HAHR->{$seq}[$ftr_idx]})) { 
-        if(($key ne "GFF_ID") && ($key ne "coords") && ($key ne "type") && ($key ne "protein_id")) { 
-          my $key2print = $key;
-          $key2print =~ s/^GFF\_//;
-          $key_values .= $key2print . "=" . $ftr_info_HAHR->{$seq}[$ftr_idx]{$key} . ";";
+      if(! defined $fskip_H{$ftr_type}) { 
+        my @start_A  = ();
+        my @stop_A   = ();
+        my @strand_A = ();
+        vdr_FeatureStartStopStrandArrays($ftr_info_HAHR->{$seq}[$ftr_idx]{"coords"}, \@start_A, \@stop_A, \@strand_A, $FH_HR);
+        my $nsgm = scalar(@start_A);
+        my @ftr_lines_A = (); # we'll store the feature lines here, and output them in forward order or reverse order depending on strand
+        my $summary_strand = vdr_FeatureSummaryStrand($ftr_info_HAHR->{$seq}[$ftr_idx]{"coords"}, $FH_HR);
+        my $id = $ftr_info_HAHR->{$seq}[$ftr_idx]{"GFF_ID"};
+        if(! defined $id) {
+          ofile_FAIL("ERROR in $sub_name, no ID set for feature for sequence $seq", 1, $FH_HR);
         }
-      }
-      for(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) {
-        my ($start, $stop, $strand) = (undef, undef, undef);
-        if($strand_A[$sgm_idx] eq "+") {
-          ($start, $stop, $strand) = ($start_A[$sgm_idx], $stop_A[$sgm_idx], $strand_A[$sgm_idx]);
+        $id = "ID:" . $id;
+        if(defined $qskip_H{"ID"}) {
+          $id = "";
         }
-        else {
-          ($stop, $start, $strand) = ($start_A[$sgm_idx], $stop_A[$sgm_idx], $strand_A[$sgm_idx]);
+        my $key_values = "";
+        foreach my $key (sort keys(%{$ftr_info_HAHR->{$seq}[$ftr_idx]})) { 
+          if(($key ne "GFF_ID") &&
+             (($key ne "coords") || $do_qall) &&
+             (($key ne "type")   || $do_qall) &&
+             (($key ne "protein_id") || $do_qall)) { 
+            my $key2print = $key;
+            $key2print =~ s/^GFF\_//;
+            if(! defined $qskip_H{$key2print}) { 
+              $key_values .= $key2print . "=" . $ftr_info_HAHR->{$seq}[$ftr_idx]{$key} . ";";
+            }
+          }
         }
-        my $attributes = "ID:" . $id . ";" . $key_values;
-        push(@ftr_lines_A,
-             sprintf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", 
-                     $seq,                                 # token 1: 'sequence' (sequence name)
-                     $source,                              # token 2: 'source'
-                     $ftr_type,                            # token 3: 'feature' (model name) you may want to change this to 'ncRNA'
-                     $start,                               # token 4: 'start' in coordinate space [1..seqlen], must be <= 'end'
-                     $stop,                                # token 5: 'end' in coordinate space [1..seqlen], must be >= 'start'
-                     ".",                                  # token 6: 'score' 
-                     $strand,                              # token 7: 'strand' ('+' or '-')
-                     ".",                                  # token 8: 'phase' irrelevant for noncoding RNAs
-                     $attributes));                         # token 9: attributes, currently only E-value, unless --all, --none or --desc
-      } # end of 'for(my $sgm_idx = 0'...
+        for(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) {
+          my ($start, $stop, $strand) = (undef, undef, undef);
+          if($strand_A[$sgm_idx] eq "+") {
+            ($start, $stop, $strand) = ($start_A[$sgm_idx], $stop_A[$sgm_idx], $strand_A[$sgm_idx]);
+          }
+          else {
+            ($stop, $start, $strand) = ($start_A[$sgm_idx], $stop_A[$sgm_idx], $strand_A[$sgm_idx]);
+          }
+          my $attributes = $id . ";" . $key_values;
+          push(@ftr_lines_A,
+               sprintf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", 
+                       $seq,                                 # token 1: 'sequence' (sequence name)
+                       $source,                              # token 2: 'source'
+                       $ftr_type,                            # token 3: 'feature' (model name) you may want to change this to 'ncRNA'
+                       $start,                               # token 4: 'start' in coordinate space [1..seqlen], must be <= 'end'
+                       $stop,                                # token 5: 'end' in coordinate space [1..seqlen], must be >= 'start'
+                       ".",                                  # token 6: 'score' 
+                       $strand,                              # token 7: 'strand' ('+' or '-')
+                       ".",                                  # token 8: 'phase' irrelevant for noncoding RNAs
+                       $attributes));                         # token 9: attributes, currently only E-value, unless --all, --none or --desc
+        } # end of 'for(my $sgm_idx = 0'...
 
-      # output lines for this feature
-      my $line_idx; 
-      if($summary_strand ne "-") { # summary_strand is -
-        for($line_idx = 0; $line_idx < scalar(@ftr_lines_A); $line_idx++) {
-          print $ftr_lines_A[$line_idx];
+        # output lines for this feature
+        my $line_idx; 
+        if($summary_strand ne "-") { # summary_strand is -
+          for($line_idx = 0; $line_idx < scalar(@ftr_lines_A); $line_idx++) {
+            print $ftr_lines_A[$line_idx];
+          }
         }
-      }
-      else { # summary_strand is -
-        for($line_idx = (scalar(@ftr_lines_A)-1); $line_idx >= 0; $line_idx--) {
-          print $ftr_lines_A[$line_idx];
+        else { # summary_strand is -
+          for($line_idx = (scalar(@ftr_lines_A)-1); $line_idx >= 0; $line_idx--) {
+            print $ftr_lines_A[$line_idx];
+          }
         }
-      }
+      } # end of 'if(! defined $fskip_H{$ftr_type})'
     }
   }
   
