@@ -656,6 +656,7 @@ sub gff_output {
   my %qskip_H    = (); # qualifier values to not output in attributes field
   if(opt_IsUsed("--fskip", $opt_HHR)) { utl_ExistsHFromCommaSepString(\%fskip_H, opt_Get("--fskip", $opt_HHR)); }
   if(opt_IsUsed("--qskip", $opt_HHR)) { utl_ExistsHFromCommaSepString(\%qskip_H, opt_Get("--qskip", $opt_HHR)); }
+  my $do_ftr  = (opt_IsUsed("--ftr",   $opt_HHR)) ? 1 : 0;
   my $do_qall = (opt_IsUsed("--qall",  $opt_HHR)) ? 1 : 0;
 
   my @seq_A = ();
@@ -711,6 +712,19 @@ sub gff_output {
             }
           }
         }
+        my $codon_start = undef;
+        if(($ftr_type eq "CDS") && (! $do_ftr)) {
+          # --ftr NOT used, so we should have codon_start info for the first segment
+          # if it is ! defined then we can assume it is 1. We need to determine
+          # the 'phase' value for each segment
+          # if codon_start == 1, then phase = 0
+          # if codon_start == 2, then phase = 1
+          # if codon_start == 3, then phase = 2
+          $codon_start = (defined $ftr_info_HAHR->{$seq}[$ftr_idx]{"codon_start"}) ?
+              $ftr_info_HAHR->{$seq}[$ftr_idx]{"codon_start"} : 1;
+        }
+          
+        my $cum_length = 0;
         for(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) {
           my ($start, $stop, $strand) = (undef, undef, undef);
           if($strand_A[$sgm_idx] eq "+") {
@@ -720,6 +734,10 @@ sub gff_output {
             ($stop, $start, $strand) = ($start_A[$sgm_idx], $stop_A[$sgm_idx], $strand_A[$sgm_idx]);
           }
           my $attributes = $id . ";" . $key_values;
+          my $phase = ".";
+          if(defined $codon_start) {
+            $phase = vdr_FrameAdjust($codon_start, $cum_length, undef) - 1;
+          }
           push(@ftr_lines_A,
                sprintf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", 
                        $seq,                                 # token 1: 'sequence' (sequence name)
@@ -729,8 +747,9 @@ sub gff_output {
                        $stop,                                # token 5: 'end' in coordinate space [1..seqlen], must be >= 'start'
                        ".",                                  # token 6: 'score' 
                        $strand,                              # token 7: 'strand' ('+' or '-')
-                       ".",                                  # token 8: 'phase'
+                       $phase,                               # token 8: 'phase'
                        $attributes));                        # token 9: attributes, remaining qualifiers read from .tbl/.ftr input file
+          $cum_length += vdr_CoordsLength(vdr_CoordsSegmentCreate($start_A[$sgm_idx], $stop_A[$sgm_idx], $strand_A[$sgm_idx], undef), undef);
         } # end of 'for(my $sgm_idx = 0'...
 
         # output lines for this feature
