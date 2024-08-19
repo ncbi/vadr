@@ -615,7 +615,7 @@ sub featureInfoSetIdAndParentFromProteinIdForGff {
          ($ftr_info_HAHR->{$seq}[$ftr_idx]{"type"} eq "sig_peptide") && 
          (defined $ftr_info_HAHR->{$seq}[$ftr_idx]{"protein_id"})) {
         my $protein_id = $ftr_info_HAHR->{$seq}[$ftr_idx]{"protein_id"};
-        if(defined $protein_id2cds_id_H{$protein_id}) {
+        if((defined $protein_id) && (defined $protein_id2cds_id_H{$protein_id})) {
           $ftr_info_HAHR->{$seq}[$ftr_idx]{"GFF_Parent"} = $protein_id2cds_id_H{$protein_id};
         }
       }
@@ -670,12 +670,10 @@ sub gffOutput {
     }
     my $nftr = scalar(@{$ftr_info_HAHR->{$seq}});
 
-    # impute gene features, based on overlap
-    if(! (opt_Get("--noaddgene", $opt_HHR))) { 
-      vdr_FeatureInfoImputeByOverlap(\@{$ftr_info_HAHR->{$seq}}, "gene", "gene", "CDS",        "gene", $FH_HR);
-      vdr_FeatureInfoImputeByOverlap(\@{$ftr_info_HAHR->{$seq}}, "gene", "gene", "mRNA",       "gene", $FH_HR);
-      vdr_FeatureInfoImputeByOverlap(\@{$ftr_info_HAHR->{$seq}}, "gene", "gene", "regulatory", "gene", $FH_HR);
-    }
+    # Note: we do not impute gene qualifiers, based on overlap, because this can fail due to ambiguity
+    # (example is flu seq CY089961.1 which has a CDS that overlaps with two genes (M1 and M2, model:CY002009).
+    # v-annotate.pl will put gene qualifiers in the output tbl if --forcegene is used.
+
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       my $ftr_type = $ftr_info_HAHR->{$seq}[$ftr_idx]->{"type"};   
       if(! defined $fskip_H{$ftr_type}) { 
