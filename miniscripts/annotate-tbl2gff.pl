@@ -81,7 +81,7 @@ my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we c
 my $execname_opt  = $GetOptions_H{"--execname"};
 my $executable    = "annotate-tbl2gff.pl";
 my $usage         = "Usage: $executable [-options]\n\t<path to v-annotate.pl output .tbl file>\n";
-my $synopsis      = "$executable :: add a single protein to a VADR blastx protein database";
+my $synopsis      = "$executable :: convert a v-annotate.pl .tbl or .ftr output file to GFF\n";
 my $date          = scalar localtime();
 my $version       = "1.6.4";
 my $releasedate   = "Jun 2024";
@@ -116,37 +116,41 @@ my %qskip_H    = (); # qualifier values to not output in attributes field
 if(opt_IsUsed("--fskip", \%opt_HH)) { utl_ExistsHFromCommaSepString(\%fskip_H, opt_Get("--fskip", \%opt_HH)); }
 if(opt_IsUsed("--qskip", \%opt_HH)) { utl_ExistsHFromCommaSepString(\%qskip_H, opt_Get("--qskip", \%opt_HH)); }
 
-#####################
-# Input the tbl file 
-#####################
+#############################
+# input the .tbl or .ftr file 
+#############################
 my %ftr_info_HAH = (); # hash of array of hashes with feature info 
 
 my @seq_order_A = (); # array of sequence names read in order from feature table file
 if(opt_Get("--ftr", \%opt_HH)) {
-  ftrParse($in_file, \%ftr_info_HAH, \@seq_order_A);
-  featureInfoSetIdAndParentFromParentIdxForGff(\%ftr_info_HAH, \@seq_order_A, undef);
+  ftr_parse($in_file, \%ftr_info_HAH, \@seq_order_A);
+  feature_info_set_idx_and_parent_from_parent_idx_for_gff(\%ftr_info_HAH, \@seq_order_A);
 }
 else {
-  local_sqf_FeatureTableParse($in_file, \%ftr_info_HAH, \@seq_order_A, 0, undef);
-  featureInfoSetIdAndParentFromProteinIdForGff(\%ftr_info_HAH, \@seq_order_A, undef);
+  local_feature_table_parse($in_file, \%ftr_info_HAH, \@seq_order_A, 0, undef);
+  feature_info_set_id_and_parent_from_protein_id_for_gff(\%ftr_info_HAH, \@seq_order_A);
 }
 #utl_HAHDump("ftr_info_HAH", \%ftr_info_HAH, *STDOUT);
 
-gffOutput(\%ftr_info_HAH, \@seq_order_A, *STDOUT, \%opt_HH, undef);
-
-##########
-# Conclude
-##########
+################
+# output the GFF
+################
+gff_output(\%ftr_info_HAH, \@seq_order_A, *STDOUT, \%opt_HH, undef);
 
 exit 0;
 
 #################################################################
-# Subroutine: local_sqf_FeatureTableParse()
+# Subroutine: local_feature_table_parse()
 # Incept:     EPN, Thu Aug  8 10:41:39 2024
 #             EPN, Mon May 20 09:36:09 2019
 #
 # Synopsis: Parse a INSDC feature table format file.
-#
+#           Very similar to sequips sqf_FeatureTableParse() but
+#           with some modifications required to handle vadr output
+#           .tbl files (e.g. 'Additional notes to submitter' lines)
+#           and to keep track of sequence order.
+#           We may eventually want to put this version into sequip.
+# 
 # Arguments:
 #  $infile:         feature table file to parse
 #  $ftr_info_HAHR:  feature information, filled here
@@ -165,8 +169,8 @@ exit 0;
 #
 # Reference: https://www.ncbi.nlm.nih.gov/Sequin/table.html
 #################################################################
-sub local_sqf_FeatureTableParse { 
-  my $sub_name = "local_sqf_FeatureTableParse";
+sub local_feature_table_parse { 
+  my $sub_name = "local_feature_table_parse";
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -387,7 +391,7 @@ sub local_sqf_FeatureTableParse {
 }
 
 #################################################################
-# Subroutine: ftrParse()
+# Subroutine: ftr_parse()
 # Incept:     EPN, Wed Aug 14 11:38:06 2024
 #             
 #
@@ -407,8 +411,8 @@ sub local_sqf_FeatureTableParse {
 #
 # Reference: https://github.com/ncbi/vadr/blob/master/documentation/formats.md#explanation-of-ftr-suffixed-output-files
 #################################################################
-sub ftrParse { 
-  my $sub_name = "ftrParse";
+sub ftr_parse { 
+  my $sub_name = "ftr_parse";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -476,7 +480,7 @@ sub ftrParse {
 }
 
 #################################################################
-# Subroutine: featureInfoSetIdAndParentFromParentIdxForGff()
+# Subroutine: feature_info_set_idx_and_parent_from_parent_idx_for_gff()
 # Incept:     EPN, Wed Aug 14 14:42:58 2024
 #
 # Synopsis: Given feature info read from a .ftr file that includes
@@ -486,18 +490,17 @@ sub ftrParse {
 # Arguments:
 #  $ftr_info_HAHR: feature info
 #  $seq_order_AR:  ref to array with order of sequences to output, if undef, output in sorted order
-#  $FH_HR:         ref to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
 #
 # Dies:       never
 #################################################################
-sub featureInfoSetIdAndParentFromParentIdxForGff { 
-  my $sub_name = "featureInfoSetIdAndParentIdxForGff";
-  my $nargs_expected = 3;
+sub feature_info_set_idx_and_parent_from_parent_idx_for_gff { 
+  my $sub_name = "feature_info_set_idx_and_parent_from_parent_idx_for_gff";
+  my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($ftr_info_HAHR, $seq_order_AR, $FH_HR) = @_;
+  my ($ftr_info_HAHR, $seq_order_AR) = @_;
   my @seq_A = ();
   if(! defined $seq_order_AR) {
     @seq_A = sort keys %{$ftr_info_HAHR};
@@ -512,7 +515,7 @@ sub featureInfoSetIdAndParentFromParentIdxForGff {
   my %ftr_id_idx_H = (); # key is feature name, value is index for this feature for current accn
   foreach my $seq (@seq_order_A) {
     if(! defined $ftr_info_HAHR->{$seq}) {
-      ofile_FAIL("ERROR in $sub_name, no feature information for sequence $seq", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, no feature information for sequence $seq", 1, undef);
     }
     my $nftr = scalar(@{$ftr_info_HAHR->{$seq}});
     
@@ -551,7 +554,7 @@ sub featureInfoSetIdAndParentFromParentIdxForGff {
 }
 
 #################################################################
-# Subroutine: featureInfoSetIdAndParentFromProteinIdForGff()
+# Subroutine: feature_info_set_id_and_parent_from_protein_id_for_gff()
 # Incept:     EPN, Thu Aug  8 14:07:34 2024
 #
 # Synopsis: Given feature info read from a .tbl file that includes
@@ -561,19 +564,18 @@ sub featureInfoSetIdAndParentFromParentIdxForGff {
 # Arguments:
 #  $ftr_info_HAHR: feature info
 #  $seq_order_AR:  ref to array with order of sequences to output, if undef, output in sorted order
-#  $FH_HR:         ref to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
 #
 # Dies:       never
 #################################################################
 
-sub featureInfoSetIdAndParentFromProteinIdForGff { 
-  my $sub_name = "featureInfoSetIdAndParentFromProteinIdForGff";
-  my $nargs_expected = 3;
+sub feature_info_set_id_and_parent_from_protein_id_for_gff { 
+  my $sub_name = "feature_info_set_id_and_parent_from_protein_id_for_gff";
+  my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($ftr_info_HAHR, $seq_order_AR, $FH_HR) = @_;
+  my ($ftr_info_HAHR, $seq_order_AR) = @_;
   my @seq_A = ();
   if(! defined $seq_order_AR) {
     @seq_A = sort keys %{$ftr_info_HAHR};
@@ -588,7 +590,7 @@ sub featureInfoSetIdAndParentFromProteinIdForGff {
   my %ftr_id_idx_H = (); # key is feature name, value is index for this feature for current accn
   foreach my $seq (@seq_order_A) {
     if(! defined $ftr_info_HAHR->{$seq}) {
-      ofile_FAIL("ERROR in $sub_name, no feature information for sequence $seq", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, no feature information for sequence $seq", 1, undef);
     }
     my $nftr = scalar(@{$ftr_info_HAHR->{$seq}});
     
@@ -627,7 +629,7 @@ sub featureInfoSetIdAndParentFromProteinIdForGff {
 }
 
 #################################################################
-# Subroutine: gffOutput()
+# Subroutine: gff_output()
 # Incept:     EPN, Wed Aug  7 15:35:24 2024
 #
 # Synopsis: Output a GFF file given a ftr_info_HAH.
@@ -638,18 +640,17 @@ sub featureInfoSetIdAndParentFromProteinIdForGff {
 #  $seq_order_AR:  ref to array with order of sequences to output, if undef, output in sorted order
 #  $out_FH:        file handle to output to 
 #  $opt_HHR:       REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
-#  $FH_HR:         REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
 #
 # Dies:       never
 #################################################################
-sub gffOutput { 
-  my $sub_name = "gffOutput";
+sub gff_output { 
+  my $sub_name = "gff_output";
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($ftr_info_HAHR, $seq_order_AR, $out_FH, $opt_HHR, $FH_HR) = @_;
+  my ($ftr_info_HAHR, $seq_order_AR, $out_FH, $opt_HHR) = @_;
 
   my %fskip_H    = (); # feature types to not output
   my %qskip_H    = (); # qualifier values to not output in attributes field
@@ -668,7 +669,7 @@ sub gffOutput {
   my $source = (opt_IsUsed("-s", $opt_HHR)) ? opt_Get("-s", $opt_HHR) : "VADR:v" . $version;
   foreach my $seq (@seq_order_A) {
     if(! defined $ftr_info_HAHR->{$seq}) {
-      ofile_FAIL("ERROR in $sub_name, no feature information for sequence $seq", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, no feature information for sequence $seq", 1, undef);
     }
     my $nftr = scalar(@{$ftr_info_HAHR->{$seq}});
 
@@ -685,13 +686,13 @@ sub gffOutput {
         if(! defined $ftr_info_HAHR->{$seq}[$ftr_idx]{"coords"}) {
           die "ERROR coords undefined for seq $seq ftr_idx: $ftr_idx\n";
         }
-        vdr_FeatureStartStopStrandArrays($ftr_info_HAHR->{$seq}[$ftr_idx]{"coords"}, \@start_A, \@stop_A, \@strand_A, $FH_HR);
+        vdr_FeatureStartStopStrandArrays($ftr_info_HAHR->{$seq}[$ftr_idx]{"coords"}, \@start_A, \@stop_A, \@strand_A, undef);
         my $nsgm = scalar(@start_A);
         my @ftr_lines_A = (); # we'll store the feature lines here, and output them in forward order or reverse order depending on strand
-        my $summary_strand = vdr_FeatureSummaryStrand($ftr_info_HAHR->{$seq}[$ftr_idx]{"coords"}, $FH_HR);
+        my $summary_strand = vdr_FeatureSummaryStrand($ftr_info_HAHR->{$seq}[$ftr_idx]{"coords"}, undef);
         my $id = $ftr_info_HAHR->{$seq}[$ftr_idx]{"GFF_ID"};
         if(! defined $id) {
-          ofile_FAIL("ERROR in $sub_name, no ID set for feature for sequence $seq", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, no ID set for feature for sequence $seq", 1, undef);
         }
         $id = "ID:" . $id;
         if(defined $qskip_H{"ID"}) {
@@ -722,14 +723,14 @@ sub gffOutput {
           push(@ftr_lines_A,
                sprintf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", 
                        $seq,                                 # token 1: 'sequence' (sequence name)
-                       $source,                              # token 2: 'source'
-                       $ftr_type,                            # token 3: 'feature' (model name) you may want to change this to 'ncRNA'
+                       $source,                              # token 2: 'source' (VADR:v1.6.4)
+                       $ftr_type,                            # token 3: 'feature'
                        $start,                               # token 4: 'start' in coordinate space [1..seqlen], must be <= 'end'
                        $stop,                                # token 5: 'end' in coordinate space [1..seqlen], must be >= 'start'
                        ".",                                  # token 6: 'score' 
                        $strand,                              # token 7: 'strand' ('+' or '-')
-                       ".",                                  # token 8: 'phase' irrelevant for noncoding RNAs
-                       $attributes));                         # token 9: attributes, currently only E-value, unless --all, --none or --desc
+                       ".",                                  # token 8: 'phase'
+                       $attributes));                        # token 9: attributes, remaining qualifiers read from .tbl/.ftr input file
         } # end of 'for(my $sgm_idx = 0'...
 
         # output lines for this feature
