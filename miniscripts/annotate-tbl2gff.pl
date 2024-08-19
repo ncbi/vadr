@@ -431,37 +431,39 @@ sub ftrParse {
       my $ftr_idx;
       if(scalar(@el_A) == 26) { 
         my ($seqidx, $seq, $seqlen, $pf, $model, $ftr_type, $ftr_name, $ftr_len, $mdl_ftr_idx, $par_idx, $strand, $n_from, $n_to, $n_instp, $trc, $n5, $n3, $p_from, $p_to, $p_instp, $p_sc, $nsa, $nsn, $seq_coords, $mdl_coords, $alerts) = (@el_A);
-        if(! defined $ftr_info_HAHR->{$seq}) {
-          @{$ftr_info_HAHR->{$seq}} = ();
-          $ftr_idx = 0;
-          push(@{$seq_order_AR}, $seq);
+        if($seq_coords ne "-") { # silently skip features with no coords, this can happen if a CDS has an indfantp alert
+          if(! defined $ftr_info_HAHR->{$seq}) {
+            @{$ftr_info_HAHR->{$seq}} = ();
+            $ftr_idx = 0;
+            push(@{$seq_order_AR}, $seq);
+          }
+          else {
+            $ftr_idx = scalar(@{$ftr_info_HAHR->{$seq}});
+          }
+          $ftr_info_HAHR->{$seq}[$ftr_idx]{"seq_len"}   = $seqlen;
+          $ftr_info_HAHR->{$seq}[$ftr_idx]{"passfail"}  = $pf;
+          $ftr_info_HAHR->{$seq}[$ftr_idx]{"model"}     = $model;
+          $ftr_info_HAHR->{$seq}[$ftr_idx]{"type"}      = $ftr_type;
+          $ftr_info_HAHR->{$seq}[$ftr_idx]{"name"}      = $ftr_name;
+          $ftr_info_HAHR->{$seq}[$ftr_idx]{"ftr_len"}   = $ftr_len;
+          $ftr_info_HAHR->{$seq}[$ftr_idx]{"mdl_ftr_idx"} = $mdl_ftr_idx;
+          $ftr_info_HAHR->{$seq}[$ftr_idx]{"par_idx"}   = $par_idx;
+          $ftr_info_HAHR->{$seq}[$ftr_idx]{"sumstrand"} = $strand;
+          $ftr_info_HAHR->{$seq}[$ftr_idx]{"n_from"}    = $n_from;
+          $ftr_info_HAHR->{$seq}[$ftr_idx]{"n_to"}      = $n_to;
+          $ftr_info_HAHR->{$seq}[$ftr_idx]{"n_instp"}   = $n_instp;
+          $ftr_info_HAHR->{$seq}[$ftr_idx]{"trc"}       = $trc;
+          $ftr_info_HAHR->{$seq}[$ftr_idx]{"n5"}        = $n5;
+          $ftr_info_HAHR->{$seq}[$ftr_idx]{"n3"}        = $n3;
+          $ftr_info_HAHR->{$seq}[$ftr_idx]{"p_from"}    = $p_from;
+          $ftr_info_HAHR->{$seq}[$ftr_idx]{"p_to"}      = $p_to;
+          $ftr_info_HAHR->{$seq}[$ftr_idx]{"p_instp"}   = $p_instp;
+          $ftr_info_HAHR->{$seq}[$ftr_idx]{"p_sc"}      = $p_sc;
+          $ftr_info_HAHR->{$seq}[$ftr_idx]{"nsa"}       = $nsn;
+          $ftr_info_HAHR->{$seq}[$ftr_idx]{"coords"}    = $seq_coords;
+          $ftr_info_HAHR->{$seq}[$ftr_idx]{"mdlcoords"} = $mdl_coords;
+          $ftr_info_HAHR->{$seq}[$ftr_idx]{"alerts"}    = $alerts;
         }
-        else {
-          $ftr_idx = scalar(@{$ftr_info_HAHR->{$seq}});
-        }
-        $ftr_info_HAHR->{$seq}[$ftr_idx]{"seq_len"}   = $seqlen;
-        $ftr_info_HAHR->{$seq}[$ftr_idx]{"passfail"}  = $pf;
-        $ftr_info_HAHR->{$seq}[$ftr_idx]{"model"}     = $model;
-        $ftr_info_HAHR->{$seq}[$ftr_idx]{"type"}      = $ftr_type;
-        $ftr_info_HAHR->{$seq}[$ftr_idx]{"name"}      = $ftr_name;
-        $ftr_info_HAHR->{$seq}[$ftr_idx]{"ftr_len"}   = $ftr_len;
-        $ftr_info_HAHR->{$seq}[$ftr_idx]{"mdl_ftr_idx"} = $mdl_ftr_idx;
-        $ftr_info_HAHR->{$seq}[$ftr_idx]{"par_idx"}   = $par_idx;
-        $ftr_info_HAHR->{$seq}[$ftr_idx]{"sumstrand"} = $strand;
-        $ftr_info_HAHR->{$seq}[$ftr_idx]{"n_from"}    = $n_from;
-        $ftr_info_HAHR->{$seq}[$ftr_idx]{"n_to"}      = $n_to;
-        $ftr_info_HAHR->{$seq}[$ftr_idx]{"n_instp"}   = $n_instp;
-        $ftr_info_HAHR->{$seq}[$ftr_idx]{"trc"}       = $trc;
-        $ftr_info_HAHR->{$seq}[$ftr_idx]{"n5"}        = $n5;
-        $ftr_info_HAHR->{$seq}[$ftr_idx]{"n3"}        = $n3;
-        $ftr_info_HAHR->{$seq}[$ftr_idx]{"p_from"}    = $p_from;
-        $ftr_info_HAHR->{$seq}[$ftr_idx]{"p_to"}      = $p_to;
-        $ftr_info_HAHR->{$seq}[$ftr_idx]{"p_instp"}   = $p_instp;
-        $ftr_info_HAHR->{$seq}[$ftr_idx]{"p_sc"}      = $p_sc;
-        $ftr_info_HAHR->{$seq}[$ftr_idx]{"nsa"}       = $nsn;
-        $ftr_info_HAHR->{$seq}[$ftr_idx]{"coords"}    = $seq_coords;
-        $ftr_info_HAHR->{$seq}[$ftr_idx]{"mdlcoords"} = $mdl_coords;
-        $ftr_info_HAHR->{$seq}[$ftr_idx]{"alerts"}    = $alerts;
       }
       else {
         die "ERROR, did not read expected number of tokens (26) on line $line_ctr of $infile\nline: $line\n"; 
@@ -663,7 +665,7 @@ sub gffOutput {
     @seq_A = @{$seq_order_AR};
   }
   
-  my $source = (opt_IsUsed("-s", $opt_HHR)) ? opt_Get("-s", $opt_HHR) : "VADR:v" . $version . ":v-annotate.pl";
+  my $source = (opt_IsUsed("-s", $opt_HHR)) ? opt_Get("-s", $opt_HHR) : "VADR:v" . $version;
   foreach my $seq (@seq_order_A) {
     if(! defined $ftr_info_HAHR->{$seq}) {
       ofile_FAIL("ERROR in $sub_name, no feature information for sequence $seq", 1, $FH_HR);
