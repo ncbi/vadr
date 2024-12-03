@@ -413,6 +413,7 @@ $opt_group_desc_H{++$g} = "options for skipping stages";
 opt_Add("--pv_skip",       "boolean", 0,         $g,   undef,      undef,                         "do not perform blastx-based protein validation",          "do not perform blastx-based protein validation", \%opt_HH, \@opt_order_A);
 opt_Add("--align_skip",    "boolean", 0,         $g,   undef,      "-f",                          "skip the alignment step, use existing results",           "skip the alignment step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 opt_Add("--val_only",      "boolean", 0,         $g,   undef,      undef,                         "validate CM and other input files and exit",              "validate CM and other input files and exit", \%opt_HH, \@opt_order_A);
+opt_Add("--cls_only",      "boolean", 0,         $g,   undef,      "-r",                          "only perform classification stage",                       "only perform classification stage", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "optional output files";
 #       option       type       default   group  requires incompat  preamble-output                                                      help-output    
@@ -612,6 +613,7 @@ my $options_okay =
                 'pv_skip'       => \$GetOptions_H{"--pv_skip"},
                 'align_skip'    => \$GetOptions_H{"--align_skip"},
                 'val_only'      => \$GetOptions_H{"--val_only"},
+                'cls_only'      => \$GetOptions_H{"--cls_only"},
 # optional output files
                 'out_stk'       => \$GetOptions_H{"--out_stk"}, 
                 'out_afa'       => \$GetOptions_H{"--out_afa"}, 
@@ -667,6 +669,7 @@ opt_ValidateSet(\%opt_HH, \@opt_order_A);
 my $do_keep       = opt_Get("--keep", \%opt_HH);
 my $do_replace_ns = opt_Get("-r", \%opt_HH);
 my $do_nofasta    = opt_Get("--out_nofasta", \%opt_HH);
+my $do_clsonly    = opt_Get("--cls_only", \%opt_HH);
 
 #######################################
 # deal with --alt_list option, if used
@@ -1715,7 +1718,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   $mdl_len  = $mdl_info_AH[$mdl_idx]{"length"};
 
-  if(defined $mdl_seq_name_HA{$mdl_name}) {  
+  if((defined $mdl_seq_name_HA{$mdl_name}) && (! $do_clsonly)) {  
     %sda_mdl_H     = (); 
     %sda_seq_H     = (); 
     %ovw_sda_seq_H = (); 
@@ -1891,7 +1894,7 @@ $start_secs = ofile_OutputProgressPrior("Determining annotation", $progress_w, $
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   $mdl_len  = $mdl_info_AH[$mdl_idx]{"length"};
-  if(defined $mdl_seq_name_HA{$mdl_name}) { 
+  if((defined $mdl_seq_name_HA{$mdl_name}) && (! $do_clsonly)) {  
     my $mdl_nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
     initialize_ftr_or_sgm_results_for_model(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, $FH_HR);
     initialize_ftr_or_sgm_results_for_model(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$sgm_info_HAH{$mdl_name}}, \%{$sgm_results_HHAH{$mdl_name}}, $FH_HR);
@@ -1970,7 +1973,7 @@ if($do_pv_blastx) {
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
     my $blastx_db_mdl_name = $mdl_name;
-    if(defined $mdl_seq_name_HA{$mdl_name}) { 
+    if((defined $mdl_seq_name_HA{$mdl_name}) && (! $do_clsonly)) {  
       my $ncds = vdr_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS"); 
       if($ncds > 0) { # only run blast for models with >= 1 CDS
         my $nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
@@ -2048,7 +2051,7 @@ elsif(! $do_pv_hmmer) {
 if($do_pv_hmmer) { 
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
-    if(defined $mdl_seq_name_HA{$mdl_name}) { 
+    if((defined $mdl_seq_name_HA{$mdl_name}) && (! $do_clsonly)) {
       my $ncds = vdr_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS"); 
       if($ncds > 0) { # only run blast for models with >= 1 CDS
         my $nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
@@ -2084,7 +2087,7 @@ if($do_pv_hmmer) {
 ##############################################################
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
-  if(defined $mdl_seq_name_HA{$mdl_name}) { 
+  if((defined $mdl_seq_name_HA{$mdl_name}) && (! $do_clsonly)) {
     alert_add_parent_based(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, \%{$ftr_results_HHAH{$mdl_name}}, 
                            \%alt_ftr_instances_HHH, "CDS", "mat_peptide", "peptrans", "VADRNULL", \%opt_HH, \%{$ofile_info_HH{"FH"}});
   }
@@ -2096,8 +2099,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 ##############################################################
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
-#  if((0) && (defined $mdl_seq_name_HA{$mdl_name})) { 
- if(defined $mdl_seq_name_HA{$mdl_name}) { 
+  if((defined $mdl_seq_name_HA{$mdl_name}) && (! $do_clsonly)) {
     if(vdr_FeatureInfoValidateAlternativeFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR)) { 
       # we'll enter this 'if' if any features have non-empty alternative_ftr_set
       
@@ -2135,39 +2137,42 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 # feature table file #
 ######################
 
-# open files for writing
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_tbl",       $out_root . ".pass.tbl",       1, 1, "5 column feature table output for passing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_tbl",       $out_root . ".fail.tbl",       1, 1, "5 column feature table output for failing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",      $out_root . ".pass.list",      1, 1, "list of passing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",      $out_root . ".fail.list",      1, 1, "list of failing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alerts_list",    $out_root . ".alt.list",       1, 1, "list of alerts in the feature tables");
+  # open files for writing
+if(! $do_clsonly) {
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_tbl",       $out_root . ".pass.tbl",       1, 1, "5 column feature table output for passing sequences");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_tbl",       $out_root . ".fail.tbl",       1, 1, "5 column feature table output for failing sequences");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",      $out_root . ".pass.list",      1, 1, "list of passing sequences");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",      $out_root . ".fail.list",      1, 1, "list of failing sequences");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alerts_list",    $out_root . ".alt.list",       1, 1, "list of alerts in the feature tables");
 
-$start_secs = ofile_OutputProgressPrior("Generating feature table output", $progress_w, $log_FH, *STDOUT);
-my $npass = output_feature_table(\%mdl_cls_ct_H, \@seq_name_A, \%ftr_info_HAH, \%sgm_info_HAH, \%alt_info_HH, 
-                                 \%stg_results_HHH, \%ftr_results_HHAH, \%sgm_results_HHAH, \%alt_seq_instances_HH,
-                                 \%alt_ftr_instances_HHH, 
-                                 ((opt_IsUsed("--msub", \%opt_HH)) ? \%mdl_sub_H : undef),
-                                 \$in_sqfile, $out_root, \%opt_HH, \%ofile_info_HH);
-ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
+  $start_secs = ofile_OutputProgressPrior("Generating feature table output", $progress_w, $log_FH, *STDOUT);
+  my $npass = output_feature_table(\%mdl_cls_ct_H, \@seq_name_A, \%ftr_info_HAH, \%sgm_info_HAH, \%alt_info_HH, 
+                                   \%stg_results_HHH, \%ftr_results_HHAH, \%sgm_results_HHAH, \%alt_seq_instances_HH,
+                                   \%alt_ftr_instances_HHH, 
+                                   ((opt_IsUsed("--msub", \%opt_HH)) ? \%mdl_sub_H : undef),
+                                   \$in_sqfile, $out_root, \%opt_HH, \%ofile_info_HH);
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+}
 ########################
 # tabular output files #
 ########################
 
 # open files for writing
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "ant",      $out_root . ".sqa", 1, 1, "per-sequence tabular annotation summary file");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cls",      $out_root . ".sqc", 1, 1, "per-sequence tabular classification summary file");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "ftr",      $out_root . ".ftr", 1, 1, "per-feature tabular summary file");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sgm",      $out_root . ".sgm", 1, 1, "per-model-segment tabular summary file");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "mdl",      $out_root . ".mdl", 1, 1, "per-model tabular summary file");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alt",      $out_root . ".alt", 1, 1, "per-alert tabular summary file");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alc",      $out_root . ".alc", 1, 1, "alert count tabular summary file");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "dcr",      $out_root . ".dcr", 1, 1, "alignment doctoring tabular summary file");
-if($do_blastn_ali) {
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sda",    $out_root . ".sda", 1, 1, "seed alignment summary file (-s)");
-}
-if($do_replace_ns) { 
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "rpn",    $out_root . ".rpn", 1, 1, "replaced stretches of Ns summary file (-r)");
+if(! $do_clsonly) {
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "ant",      $out_root . ".sqa", 1, 1, "per-sequence tabular annotation summary file");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "ftr",      $out_root . ".ftr", 1, 1, "per-feature tabular summary file");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sgm",      $out_root . ".sgm", 1, 1, "per-model-segment tabular summary file");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alt",      $out_root . ".alt", 1, 1, "per-alert tabular summary file");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alc",      $out_root . ".alc", 1, 1, "alert count tabular summary file");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "dcr",      $out_root . ".dcr", 1, 1, "alignment doctoring tabular summary file");
+  if($do_blastn_ali) {
+    ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sda",    $out_root . ".sda", 1, 1, "seed alignment summary file (-s)");
+  }
+  if($do_replace_ns) { 
+    ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "rpn",    $out_root . ".rpn", 1, 1, "replaced stretches of Ns summary file (-r)");
+  }
 }
 
 $start_secs = ofile_OutputProgressPrior("Generating tabular output", $progress_w, $log_FH, *STDOUT);
@@ -10053,6 +10058,8 @@ sub output_tabular {
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
 
+  my $do_clsonly = opt_Get("--cls_only", $opt_HHR);
+
   # if --glsearch we won't have PP values
   my $do_glsearch = opt_Get("--glsearch", $opt_HHR) ? 1 : 0;
 
@@ -10592,37 +10599,41 @@ sub output_tabular {
   # output the tables:
   # if we are doing headers, we always call ofile_TableHumanOutput()
   if($do_headers) { 
-    ofile_TableHumanOutput(\@data_ant_AA, \@head_ant_AA, \@clj_ant_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ant"}, undef, $FH_HR);
-    ofile_TableHumanOutput(\@data_cls_AA, \@head_cls_AA, \@clj_cls_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"cls"}, undef, $FH_HR);
-    ofile_TableHumanOutput(\@data_ftr_AA, \@head_ftr_AA, \@clj_ftr_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ftr"}, undef, $FH_HR);
-    ofile_TableHumanOutput(\@data_sgm_AA, \@head_sgm_AA, \@clj_sgm_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sgm"}, undef, $FH_HR);
-    ofile_TableHumanOutput(\@data_alt_AA, \@head_alt_AA, \@clj_alt_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"alt"}, undef, $FH_HR);
-    ofile_TableHumanOutput(\@data_alc_AA, \@head_alc_AA, \@clj_alc_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"alc"}, undef, $FH_HR);
     ofile_TableHumanOutput(\@data_mdl_AA, \@head_mdl_AA, \@clj_mdl_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"mdl"}, undef, $FH_HR);
-    ofile_TableHumanOutput(\@data_dcr_AA, \@head_dcr_AA, \@clj_dcr_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"dcr"}, undef, $FH_HR);
-    if($do_sda) {
-      ofile_TableHumanOutput(\@data_sda_AA, \@head_sda_AA, \@clj_sda_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sda"}, undef, $FH_HR);
-    }
-    if($do_rpn) {
-      ofile_TableHumanOutput(\@data_rpn_AA, \@head_rpn_AA, \@clj_rpn_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"rpn"}, undef, $FH_HR);
+    ofile_TableHumanOutput(\@data_cls_AA, \@head_cls_AA, \@clj_cls_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"cls"}, undef, $FH_HR);
+    if(! $do_clsonly) { 
+      ofile_TableHumanOutput(\@data_ant_AA, \@head_ant_AA, \@clj_ant_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ant"}, undef, $FH_HR);
+      ofile_TableHumanOutput(\@data_ftr_AA, \@head_ftr_AA, \@clj_ftr_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ftr"}, undef, $FH_HR);
+      ofile_TableHumanOutput(\@data_sgm_AA, \@head_sgm_AA, \@clj_sgm_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sgm"}, undef, $FH_HR);
+      ofile_TableHumanOutput(\@data_alt_AA, \@head_alt_AA, \@clj_alt_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"alt"}, undef, $FH_HR);
+      ofile_TableHumanOutput(\@data_alc_AA, \@head_alc_AA, \@clj_alc_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"alc"}, undef, $FH_HR);
+      ofile_TableHumanOutput(\@data_dcr_AA, \@head_dcr_AA, \@clj_dcr_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"dcr"}, undef, $FH_HR);
+      if($do_sda) {
+        ofile_TableHumanOutput(\@data_sda_AA, \@head_sda_AA, \@clj_sda_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sda"}, undef, $FH_HR);
+      }
+      if($do_rpn) {
+        ofile_TableHumanOutput(\@data_rpn_AA, \@head_rpn_AA, \@clj_rpn_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"rpn"}, undef, $FH_HR);
+      }
     }
   }
   else { 
     # if we are not doing headers, we only call ofile_TableHumanOutput() if we have data, because ofile_TableHumanOutput() requires at least one of header and data arrays be non-empty
-    if(scalar(@data_ant_AA) > 0) { ofile_TableHumanOutput(\@data_ant_AA, undef, \@clj_ant_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ant"}, undef, $FH_HR); }
     if(scalar(@data_cls_AA) > 0) { ofile_TableHumanOutput(\@data_cls_AA, undef, \@clj_cls_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"cls"}, undef, $FH_HR); }
-    if(scalar(@data_ftr_AA) > 0) { ofile_TableHumanOutput(\@data_ftr_AA, undef, \@clj_ftr_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ftr"}, undef, $FH_HR); }
-    if(scalar(@data_sgm_AA) > 0) { ofile_TableHumanOutput(\@data_sgm_AA, undef, \@clj_sgm_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sgm"}, undef, $FH_HR); }
-    if(scalar(@data_alt_AA) > 0) { ofile_TableHumanOutput(\@data_alt_AA, undef, \@clj_alt_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"alt"}, undef, $FH_HR); }
-    if(scalar(@data_alc_AA) > 0) { ofile_TableHumanOutput(\@data_alc_AA, undef, \@clj_alc_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"alc"}, undef, $FH_HR); }
     if(scalar(@data_mdl_AA) > 0) { ofile_TableHumanOutput(\@data_mdl_AA, undef, \@clj_mdl_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"mdl"}, undef, $FH_HR); }
-    if(scalar(@data_dcr_AA) > 0) { ofile_TableHumanOutput(\@data_dcr_AA, undef, \@clj_dcr_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"dcr"}, undef, $FH_HR); }
-    if(($do_sda) && (scalar(@data_sda_AA) > 0)) {
-      ofile_TableHumanOutput(\@data_sda_AA, undef, \@clj_sda_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sda"}, undef, $FH_HR);
-    }
-    if(($do_rpn) && (scalar(@data_rpn_AA) > 0)) {
-      ofile_TableHumanOutput(\@data_rpn_AA, undef, \@clj_rpn_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"rpn"}, undef, $FH_HR);
-    }
+    if(! $do_clsonly) { 
+      if(scalar(@data_ant_AA) > 0) { ofile_TableHumanOutput(\@data_ant_AA, undef, \@clj_ant_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ant"}, undef, $FH_HR); }
+      if(scalar(@data_ftr_AA) > 0) { ofile_TableHumanOutput(\@data_ftr_AA, undef, \@clj_ftr_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ftr"}, undef, $FH_HR); }
+      if(scalar(@data_sgm_AA) > 0) { ofile_TableHumanOutput(\@data_sgm_AA, undef, \@clj_sgm_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sgm"}, undef, $FH_HR); }
+      if(scalar(@data_alt_AA) > 0) { ofile_TableHumanOutput(\@data_alt_AA, undef, \@clj_alt_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"alt"}, undef, $FH_HR); }
+      if(scalar(@data_alc_AA) > 0) { ofile_TableHumanOutput(\@data_alc_AA, undef, \@clj_alc_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"alc"}, undef, $FH_HR); }
+      if(scalar(@data_dcr_AA) > 0) { ofile_TableHumanOutput(\@data_dcr_AA, undef, \@clj_dcr_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"dcr"}, undef, $FH_HR); }
+      if(($do_sda) && (scalar(@data_sda_AA) > 0)) {
+        ofile_TableHumanOutput(\@data_sda_AA, undef, \@clj_sda_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sda"}, undef, $FH_HR);
+      }
+      if(($do_rpn) && (scalar(@data_rpn_AA) > 0)) {
+        ofile_TableHumanOutput(\@data_rpn_AA, undef, \@clj_rpn_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"rpn"}, undef, $FH_HR);
+      }
+    }      
   }
   return ($zero_classifications, $zero_alerts);
 }
@@ -14206,9 +14217,13 @@ sub output_mdl_and_alc_files_and_remove_temp_files {
 
   my ($zero_alt, $to_remove_AR, $opt_HHR, $ofile_info_HHR) = (@_);
 
+  my $do_clsonly    = opt_Get("--cls_only", $opt_HHR);
+
   # close the two files we may output to stdout and the log
   close($ofile_info_HHR->{"FH"}{"mdl"}); 
-  close($ofile_info_HHR->{"FH"}{"alc"}); 
+  if(! $do_clsonly) { 
+    close($ofile_info_HHR->{"FH"}{"alc"});
+  }
   
   my $FH_HR  = $ofile_info_HH{"FH"};
   
@@ -14220,7 +14235,10 @@ sub output_mdl_and_alc_files_and_remove_temp_files {
   utl_FileLinesToArray($ofile_info_HHR->{"fullpath"}{"mdl"}, 1, \@file_A, $FH_HR);
   push(@conclude_A, @file_A);
   push(@conclude_A, "#");
-  if($zero_alt) { 
+  if($do_clsonly) {
+    push(@conclude_A, "# Only classification-related alerts detected due to --cls_only.");
+  }
+  elsif($zero_alt) { 
     push(@conclude_A, "# Zero alerts were reported.");
   }
   else { 
@@ -14235,7 +14253,7 @@ sub output_mdl_and_alc_files_and_remove_temp_files {
     ofile_OutputString($FH_HR->{"log"}, 1, $line . "\n");
   }
   
-# remove unwanted files, unless --keep
+  # remove unwanted files, unless --keep
   if(! opt_Get("--keep", $opt_HHR)) { 
     my @to_actually_remove_A = (); # sanity check: make sure the files we're about to remove actually exist
     my %to_actually_remove_H = (); # sanity check: to make sure we don't try to delete 
