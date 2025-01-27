@@ -55,9 +55,12 @@ my $do_strict       = 0;
 my $do_3rules       = 0; # set to 1 if --3rules used
 
 # variables only relevant if --3rules is used
-my $ten_max_ambig   = 5;
-my $fifty_max_ambig = 15;
-my $maxfrac_Ns      = 0.5;
+my $df_ten_max_ambig   = 5;
+my $df_fifty_max_ambig = 15;
+my $df_maxfrac_Ns      = 0.5;
+my $ten_max_ambig      = undef;
+my $fifty_max_ambig    = undef;
+my $maxfrac_Ns         = undef;
 
 &GetOptions( "minlen=s" => \$minlen,
              "maxlen=s" => \$maxlen,
@@ -70,6 +73,28 @@ my $maxfrac_Ns      = 0.5;
 
 if(scalar(@ARGV) != 1) { die $usage; }
 my ($fasta_file) = @ARGV;
+
+# enforce --3rules related options only used if --3rules also used
+if(! $do_3rules) {
+  if(defined $ten_max_ambig) {
+    die "ERROR, using --ten only makes sense if --3rules is also used";
+  }
+  if(defined $fifty_max_ambig) {
+    die "ERROR, using --fifty only makes sense if --3rules is also used";
+  }
+  if(defined $maxfrac_Ns) { 
+    die "ERROR, using --maxfrac only makes sense if --3rules is also used";
+  }
+}
+if(! defined $ten_max_ambig) {
+  $ten_max_ambig = $df_ten_max_ambig;
+}
+if(! defined $fifty_max_ambig) {
+  $fifty_max_ambig = $df_fifty_max_ambig;
+}
+if(! defined $maxfrac_Ns) { 
+  $maxfrac_Ns = $df_maxfrac_Ns;
+}
 
 # enforce ranges that make sense for options
 if($minlen < 0) { 
@@ -150,11 +175,11 @@ for(my $i = 0; $i < $nseq; $i++) {
     # (this makes it so we can reuse same code for both ends)
     # then reverse it back and output it (if there's any sequence left after trimming)
     $sqstring = trim_5p_end_using_three_rules($sqstring, $ten_max_ambig, $fifty_max_ambig);
-    #printf("5' trimmed length: %d\n", length($sqstring));
+    printf("5' trimmed length: %d\n", length($sqstring));
     if($sqstring ne "") { 
       $sqstring = reverse($sqstring);
       $sqstring = trim_5p_end_using_three_rules($sqstring, $ten_max_ambig, $fifty_max_ambig);
-      #printf("3' trimmed length: %d\n", length($sqstring));
+      printf("3' trimmed length: %d\n", length($sqstring));
       if($sqstring ne "") { # reverse it back to original forward direction
         $sqstring = reverse($sqstring);
       }
@@ -162,7 +187,7 @@ for(my $i = 0; $i < $nseq; $i++) {
   }
   my $seqlen = length($sqstring);
   my $n_N    = () = $sqstring =~ /[Nn]/g; # count Ns
-  my $frac_N = $n_N / $seqlen;
+  my $frac_N = ($seqlen > 0) ? ($n_N / $seqlen) : 0.;
 
   if(($seqlen < $minlen) ||     # too short (after trimming)
      ($seqlen > $maxlen) ||    # too long  (after trimming)
@@ -252,6 +277,9 @@ sub trim_5p_end_using_three_rules {
         # remove all non-ambiguous nt from the end to determine length to trim
         $next_50 =~ s/[ACGTUacgtu]+$//;
         $trim_offset = length($next_50);
+
+        $ntrimmed += $trim_offset;
+        printf("nambig: $nambig, trimming $trim_offset: %s (ntrimmed: $ntrimmed)\n", substr($sqstring, 0, $trim_offset));
         $sqstring = substr($sqstring, $trim_offset);
         $keep_going = 1;
       }
