@@ -1,14 +1,5 @@
 #!/usr/bin/env perl
 
-### comments that start with ### pertain to code that could be used
-### to try and reproduce how submission portal trims seqs for sars-cov-2
-### - trim in 10nt chunks if > 5 ambigs
-### - trim in 50nt chunks if > 15 ambigs
-### - trim terminal nt
-### - min length 50
-### - max length 30000
-### - max fraction Ns is 0.5
-
 use strict;
 use warnings;
 use Getopt::Long;
@@ -18,7 +9,6 @@ require "sqp_seq.pm";
 require "sqp_utils.pm";
 
 my $usage;
-###$usage  = "fasta-sarscov2-trim-ambigs-genbank.pl\n\n";
 $usage  = "fasta-trim-terminal-ambigs.pl\n\n";
 $usage .= "Usage:\n\n";
 $usage .= "perl fasta-trim-terminal-ambigs.pl [OPTIONS] <fasta file>\n\n";
@@ -44,7 +34,7 @@ $usage .= "Options related to the alternative '3 rules' strategy:\n";
 $usage .= "  --3rules     : use the 3 rules strategy described above [df: do not]\n";
 $usage .= "  --ten <n>    : max number of ambiguous nucleotides allowed in first/final 10 [df: 5]\n";
 $usage .= "  --fifty <n>  : max number of ambiguous nucleotides allowed in first/final 50 [df: 15]\n";
-$usage .= "  ---maxfrac <f>: max allowed fraction of sequence that can be Ns after trimming [df: 0.5]\n";
+$usage .= "  --maxfrac <f>: max allowed fraction of sequence that can be Ns after trimming [df: 0.5]\n";
 
 # set defaults, for SC2 processing, GenBank used min of 50 and max of 30000 (as of May 2021)
 my $minlen          = 1;
@@ -175,11 +165,11 @@ for(my $i = 0; $i < $nseq; $i++) {
     # (this makes it so we can reuse same code for both ends)
     # then reverse it back and output it (if there's any sequence left after trimming)
     $sqstring = trim_5p_end_using_three_rules($sqstring, $ten_max_ambig, $fifty_max_ambig);
-    printf("5' trimmed length: %d\n", length($sqstring));
+    ##printf("5' trimmed length: %d\n", length($sqstring));
     if($sqstring ne "") { 
       $sqstring = reverse($sqstring);
       $sqstring = trim_5p_end_using_three_rules($sqstring, $ten_max_ambig, $fifty_max_ambig);
-      printf("3' trimmed length: %d\n", length($sqstring));
+      ##printf("3' trimmed length: %d\n", length($sqstring));
       if($sqstring ne "") { # reverse it back to original forward direction
         $sqstring = reverse($sqstring);
       }
@@ -263,7 +253,7 @@ sub trim_5p_end_using_three_rules {
       $trim_offset = length($next_10);
 
       $ntrimmed += $trim_offset;
-      printf("nambig: $nambig, trimming $trim_offset: %s (ntrimmed: $ntrimmed)\n", substr($sqstring, 0, $trim_offset));
+      ##printf("nambig: $nambig, trimming $trim_offset: %s (ntrimmed: $ntrimmed)\n", substr($sqstring, 0, $trim_offset));
 
       $sqstring = substr($sqstring, $trim_offset);
       $keep_going = 1;
@@ -279,7 +269,7 @@ sub trim_5p_end_using_three_rules {
         $trim_offset = length($next_50);
 
         $ntrimmed += $trim_offset;
-        printf("nambig: $nambig, trimming $trim_offset: %s (ntrimmed: $ntrimmed)\n", substr($sqstring, 0, $trim_offset));
+        ##printf("nambig: $nambig, trimming $trim_offset: %s (ntrimmed: $ntrimmed)\n", substr($sqstring, 0, $trim_offset));
         $sqstring = substr($sqstring, $trim_offset);
         $keep_going = 1;
       }

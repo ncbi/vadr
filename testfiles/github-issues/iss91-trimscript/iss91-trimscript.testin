@@ -17,4 +17,40 @@ desc: iss91-trimscript1
 out: iss91-1.fa
 exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss91-trimscript/exp.iss91-1.fa
 rmdir: iss91-1.fa
+# 
+command: perl $VADRSCRIPTSDIR/miniscripts/fasta-trim-terminal-ambigs.pl --3rules $VADRSCRIPTSDIR/testfiles/github-issues/iss91-trimscript/iss91-trimscript.fa > iss91-2.fa
+desc: iss91-trimscript2
+out: iss91-2.fa
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss91-trimscript/exp.iss91-2.fa
+rmdir: iss91-2.fa
+# 
+command: perl $VADRSCRIPTSDIR/miniscripts/fasta-trim-terminal-ambigs.pl --3rules --ten 3 $VADRSCRIPTSDIR/testfiles/github-issues/iss91-trimscript/iss91-trimscript.fa > iss91-3.fa
+desc: iss91-trimscript3
+out: iss91-3.fa
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss91-trimscript/exp.iss91-3.fa
+rmdir: iss91-3.fa
+# 
+command: perl $VADRSCRIPTSDIR/miniscripts/fasta-trim-terminal-ambigs.pl --3rules --ten 2 $VADRSCRIPTSDIR/testfiles/github-issues/iss91-trimscript/iss91-trimscript.fa > iss91-4.fa
+desc: iss91-trimscript4
+out: iss91-4.fa
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss91-trimscript/exp.iss91-4.fa
+rmdir: iss91-4.fa
+# 
+command: perl $VADRSCRIPTSDIR/miniscripts/fasta-trim-terminal-ambigs.pl --3rules --fifty 10 $VADRSCRIPTSDIR/testfiles/github-issues/iss91-trimscript/iss91-trimscript.fa > iss91-5.fa
+desc: iss91-trimscript5
+out: iss91-5.fa
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss91-trimscript/exp.iss91-5.fa
+rmdir: iss91-5.fa
+# 
+command: perl $VADRSCRIPTSDIR/miniscripts/fasta-trim-terminal-ambigs.pl --3rules --maxfrac 0.1 $VADRSCRIPTSDIR/testfiles/github-issues/iss91-trimscript/iss91-trimscript.fa > iss91-6.fa
+desc: iss91-trimscript6
+out: iss91-6.fa
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss91-trimscript/exp.iss91-6.fa
+rmdir: iss91-6.fa
+# 
+command: perl $VADRSCRIPTSDIR/miniscripts/fasta-trim-terminal-ambigs.pl --3rules --maxfrac 0.07 $VADRSCRIPTSDIR/testfiles/github-issues/iss91-trimscript/iss91-trimscript.fa > iss91-7.fa
+desc: iss91-trimscript7
+out: iss91-7.fa
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss91-trimscript/exp.iss91-7.fa
+rmdir: iss91-7.fa
 
