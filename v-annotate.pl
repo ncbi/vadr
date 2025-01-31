@@ -1649,7 +1649,6 @@ coverage_determination_stage(\%execs_H, "std.cdt", $cm_file, $sqfile_for_analysi
                              ((opt_IsUsed("--msub", \%opt_HH)) ? \%mdl_sub_H : undef),
                              $out_root, $progress_w, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
 
-
 ############################
 # Add classification alerts
 ############################
@@ -1894,7 +1893,10 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 ######################################
 # Parse cmalign or glsearch alignments
 ######################################
-$start_secs = ofile_OutputProgressPrior("Determining annotation", $progress_w, $log_FH, *STDOUT);
+
+if(! $do_clsonly) { 
+  $start_secs = ofile_OutputProgressPrior("Determining annotation", $progress_w, $log_FH, *STDOUT);
+}
 
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
@@ -1968,8 +1970,9 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   }
 }
 
-ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
+if(! $do_clsonly) { 
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+}
 
 #########################################################################################
 # Run BLASTX: all full length sequences and all fetched CDS features versus all proteins
@@ -2499,7 +2502,8 @@ sub coverage_determination_stage {
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
   my $ncpu = opt_Get("--cpu", $opt_HHR);
   if($ncpu == 0) { $ncpu = 1; }
-
+  my $do_clsonly = opt_Get("--cls_only", $opt_HHR);
+  
   if(($stg_key ne "rpn.cdt") && ($stg_key ne "std.cdt")) { 
     ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rpn.cdt or std.cdt", 1, $FH_HR);
   }
@@ -2551,65 +2555,67 @@ sub coverage_determination_stage {
   #   if blastn mode:  parse our blastn results a second time to get model
   #                    specific tblout files to use instead of cmsearch tblout
   #                    files
-  if($do_blastn) { 
-    my $stg_desc = "";
-    if($stg_key eq "rpn.cdt") { 
-      $stg_desc = sprintf("Preprocessing for N replacement: coverage determination from blastn results ($nseq seq%s)", ($nseq > 1) ? "s" : "");
+  if(! $do_clsonly) { 
+    if($do_blastn) { 
+      my $stg_desc = "";
+      if($stg_key eq "rpn.cdt") { 
+        $stg_desc = sprintf("Preprocessing for N replacement: coverage determination from blastn results ($nseq seq%s)", ($nseq > 1) ? "s" : "");
+      }
+      else { # stg_key eq "std.cdt"
+        $stg_desc = sprintf("Determining sequence coverage from blastn results ($nseq seq%s)", ($nseq > 1) ? "s" : "");
+      }
+      $start_secs = ofile_OutputProgressPrior($stg_desc, $progress_w, $log_FH, *STDOUT);
+      my $blastn_summary_key = ($stg_key eq "rpn.cdt") ? "rpn.cls.blastn.summary" : "std.cls.blastn.summary";
+      parse_blastn_results($ofile_info_HHR->{"fullpath"}{$blastn_summary_key}, $seq_len_HR, 
+                           \%seq2mdl_H, \@cls_mdl_name_A, $out_root, $stg_key, $opt_HHR, $ofile_info_HHR);
+      # keep track of the tblout output files:
+      foreach $mdl_name (@cls_mdl_name_A) { 
+        my $tblout_key = "$stg_key.$mdl_name.tblout";
+        push(@tblout_key_A,  $tblout_key);
+        push(@tblout_file_A, $ofile_info_HH{"fullpath"}{$tblout_key});
+        push(@to_remove_A, 
+             ($ofile_info_HH{"fullpath"}{$tblout_key}, 
+              $ofile_info_HH{"fullpath"}{"$stg_key.$mdl_name.indel"}));
+      }
+      ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
     }
-    else { # stg_key eq "std.cdt"
-      $stg_desc = sprintf("Determining sequence coverage from blastn results ($nseq seq%s)", ($nseq > 1) ? "s" : "");
-    }
-    $start_secs = ofile_OutputProgressPrior($stg_desc, $progress_w, $log_FH, *STDOUT);
-    my $blastn_summary_key = ($stg_key eq "rpn.cdt") ? "rpn.cls.blastn.summary" : "std.cls.blastn.summary";
-    parse_blastn_results($ofile_info_HHR->{"fullpath"}{$blastn_summary_key}, $seq_len_HR, 
-                         \%seq2mdl_H, \@cls_mdl_name_A, $out_root, $stg_key, $opt_HHR, $ofile_info_HHR);
-    # keep track of the tblout output files:
-    foreach $mdl_name (@cls_mdl_name_A) { 
-      my $tblout_key = "$stg_key.$mdl_name.tblout";
-      push(@tblout_key_A,  $tblout_key);
-      push(@tblout_file_A, $ofile_info_HH{"fullpath"}{$tblout_key});
-      push(@to_remove_A, 
-           ($ofile_info_HH{"fullpath"}{$tblout_key}, 
-            $ofile_info_HH{"fullpath"}{"$stg_key.$mdl_name.indel"}));
-    }
-    ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-  }
-  else { # default, not (! $do_blastn) 
-    my $cmsearch_opts = " -T " . opt_Get("--minbit", $opt_HHR) . " --cpu $ncpu --hmmonly "; # cmsearch options for round 2 searches to determine coverage
+    else { # default, not (! $do_blastn) 
+      my $cmsearch_opts = " -T " . opt_Get("--minbit", $opt_HHR) . " --cpu $ncpu --hmmonly "; # cmsearch options for round 2 searches to determine coverage
 
-    if(! opt_Get("-v", \%opt_HH)) { $cmsearch_opts .= " --noali "; }
-    foreach $mdl_name (@cls_mdl_name_A) { 
-      my $mdl_fa_file = $out_root . "." . $mdl_name . ".fa";
-      cmsearch_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix,
-                                 $cm_file, $mdl_name, $mdl_fa_file, $cmsearch_opts, 
-                                 $out_root, $stg_key, scalar(@{$local_mdl_seq_name_HAR->{$mdl_name}}), 
-                                 $mdl_seq_len_H{$mdl_name}, $progress_w, \%opt_HH, \%ofile_info_HH);
-      my $tblout_key = "$stg_key.$mdl_name.tblout"; # set in cmsearch_wrapper()
-      my $stdout_key = "$stg_key.$mdl_name.stdout"; # set in cmsearch_wrapper()
-      my $err_key    = "$stg_key.$mdl_name.err";    # set in cmsearch_wrapper()
-      push(@tblout_key_A,  $tblout_key);
-      push(@tblout_file_A, $ofile_info_HH{"fullpath"}{$tblout_key});
-      push(@to_remove_A, 
-           ($ofile_info_HH{"fullpath"}{$tblout_key}, 
-            $ofile_info_HH{"fullpath"}{$stdout_key}, 
-            $ofile_info_HH{"fullpath"}{$err_key}));
+      if(! opt_Get("-v", \%opt_HH)) { $cmsearch_opts .= " --noali "; }
+      foreach $mdl_name (@cls_mdl_name_A) { 
+        my $mdl_fa_file = $out_root . "." . $mdl_name . ".fa";
+        cmsearch_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix,
+                         $cm_file, $mdl_name, $mdl_fa_file, $cmsearch_opts, 
+                         $out_root, $stg_key, scalar(@{$local_mdl_seq_name_HAR->{$mdl_name}}), 
+                         $mdl_seq_len_H{$mdl_name}, $progress_w, \%opt_HH, \%ofile_info_HH);
+        my $tblout_key = "$stg_key.$mdl_name.tblout"; # set in cmsearch_wrapper()
+        my $stdout_key = "$stg_key.$mdl_name.stdout"; # set in cmsearch_wrapper()
+        my $err_key    = "$stg_key.$mdl_name.err";    # set in cmsearch_wrapper()
+        push(@tblout_key_A,  $tblout_key);
+        push(@tblout_file_A, $ofile_info_HH{"fullpath"}{$tblout_key});
+        push(@to_remove_A, 
+             ($ofile_info_HH{"fullpath"}{$tblout_key}, 
+              $ofile_info_HH{"fullpath"}{$stdout_key}, 
+              $ofile_info_HH{"fullpath"}{$err_key}));
+      }
     }
-  }
 
-  # sort the coverage determination search results, we concatenate all model's tblout files and sort them
-  my $sort_tblout_key  = "$stg_key.tblout.sort";
-  my $sort_tblout_file = $out_root . "." . $sort_tblout_key;
-  if($nmdl_cdt > 0) { # only sort output if we ran coverage determination stage for at least one model
-    my $sort_cmd = "cat " . join(" ", @tblout_file_A) . " | grep -v ^\# | sed 's/  */ /g' | sort -k 1,1 -k 15,15rn -k 16,16g > $sort_tblout_file"; 
-    # the 'sed' call replaces multiple spaces with a single one, because sort is weird about multiple spaces sometimes
-    utl_RunCommand($sort_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
-    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $sort_tblout_key, $sort_tblout_file, 0, $do_keep, "stage $stg_key sorted tblout file");
-    push(@{$to_remove_AR}, $sort_tblout_file);
+    # sort the coverage determination search results, we concatenate all model's tblout files and sort them
+    my $sort_tblout_key  = "$stg_key.tblout.sort";
+    my $sort_tblout_file = $out_root . "." . $sort_tblout_key;
+    if($nmdl_cdt > 0) { # only sort output if we ran coverage determination stage for at least one model
+      my $sort_cmd = "cat " . join(" ", @tblout_file_A) . " | grep -v ^\# | sed 's/  */ /g' | sort -k 1,1 -k 15,15rn -k 16,16g > $sort_tblout_file"; 
+      # the 'sed' call replaces multiple spaces with a single one, because sort is weird about multiple spaces sometimes
+      utl_RunCommand($sort_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+      ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $sort_tblout_key, $sort_tblout_file, 0, $do_keep, "stage $stg_key sorted tblout file");
+      push(@{$to_remove_AR}, $sort_tblout_file);
 
-    # parse cmsearch round 2 tblout data
-    cmsearch_parse_sorted_tblout($sort_tblout_file, $stg_key,
-                                 $mdl_info_AHR, $stg_results_HHHR, $opt_HHR, $FH_HR);
-  }
+      # parse cmsearch round 2 tblout data
+      cmsearch_parse_sorted_tblout($sort_tblout_file, $stg_key,
+                                   $mdl_info_AHR, $stg_results_HHHR, $opt_HHR, $FH_HR);
+    }
+  } # end of 'if(! $do_clsonly)'
   return;
 }
 
