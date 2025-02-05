@@ -966,7 +966,11 @@ if($opt_q_used)     { $qsubinfo_extra_string .= " -q"; }
 utl_FileValidateExistsAndNonEmpty($minfo_file,  sprintf("model info file%s",  ($minfo_extra_string  eq "") ? "" : ", due to $minfo_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 
 # only check for cm file if we need it
-if((! $do_glsearch) || (opt_Get("--r_prof", \%opt_HH)) || (opt_Get("--val_only", \%opt_HH))) { 
+my $check_for_cm_file = ((! $do_glsearch) || (opt_Get("--r_prof", \%opt_HH)) || (opt_Get("--val_only", \%opt_HH))) ? 1 : 0;
+if(($do_clsonly) && (opt_Get("-s", \%opt_HH))) {
+  $check_for_cm_file = 0;
+}
+if($check_for_cm_file) { 
   utl_FileValidateExistsAndNonEmpty($cm_file,  sprintf("CM file%s",  ($cm_extra_string  eq "") ? "" : ", due to $cm_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
   for my $sfx (".i1f", ".i1i", ".i1m", ".i1p") { 
     utl_FileValidateExistsAndNonEmpty($cm_file . $sfx, "cmpress created $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
@@ -3229,7 +3233,7 @@ sub add_classification_alerts {
           $cls_output_HHR->{$seq_name}{"subgroup2"} = $stg_results_HHHR->{$seq_name}{"std.cls.2"}{"subgroup"}; # can be undef
           my @score_A = split(",", $stg_results_HHHR->{$seq_name}{"std.cls.2"}{"score"});
           $score2 = utl_ASum(\@score_A);
-          $scpnt1 = ($score2 / vdr_CoordsLength($stg_results_HHHR->{$seq_name}{"std.cls.2"}{"s_coords"}, $FH_HR));
+          $scpnt2 = ($score2 / vdr_CoordsLength($stg_results_HHHR->{$seq_name}{"std.cls.2"}{"s_coords"}, $FH_HR));
           if(defined $score1) { 
             $cls_output_HHR->{$seq_name}{"scdiff"}  = sprintf("%.1f", ($score1 - $score2));
             $cls_output_HHR->{$seq_name}{"diffpnt"} = sprintf("%.3f", ($scpnt1 - $scpnt2));
