@@ -413,6 +413,7 @@ $opt_group_desc_H{++$g} = "options for skipping stages";
 opt_Add("--pv_skip",       "boolean", 0,         $g,   undef,      undef,                         "do not perform blastx-based protein validation",          "do not perform blastx-based protein validation", \%opt_HH, \@opt_order_A);
 opt_Add("--align_skip",    "boolean", 0,         $g,   undef,      "-f",                          "skip the alignment step, use existing results",           "skip the alignment step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 opt_Add("--val_only",      "boolean", 0,         $g,   undef,      undef,                         "validate CM and other input files and exit",              "validate CM and other input files and exit", \%opt_HH, \@opt_order_A);
+opt_Add("--cls_only",      "boolean", 0,         $g,   undef,      "-r",                          "only perform classification stage",                       "only perform classification stage", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "optional output files";
 #       option       type       default   group  requires incompat  preamble-output                                                      help-output    
@@ -612,6 +613,7 @@ my $options_okay =
                 'pv_skip'       => \$GetOptions_H{"--pv_skip"},
                 'align_skip'    => \$GetOptions_H{"--align_skip"},
                 'val_only'      => \$GetOptions_H{"--val_only"},
+                'cls_only'      => \$GetOptions_H{"--cls_only"},
 # optional output files
                 'out_stk'       => \$GetOptions_H{"--out_stk"}, 
                 'out_afa'       => \$GetOptions_H{"--out_afa"}, 
@@ -667,6 +669,7 @@ opt_ValidateSet(\%opt_HH, \@opt_order_A);
 my $do_keep       = opt_Get("--keep", \%opt_HH);
 my $do_replace_ns = opt_Get("-r", \%opt_HH);
 my $do_nofasta    = opt_Get("--out_nofasta", \%opt_HH);
+my $do_clsonly    = opt_Get("--cls_only", \%opt_HH);
 
 #######################################
 # deal with --alt_list option, if used
@@ -963,7 +966,11 @@ if($opt_q_used)     { $qsubinfo_extra_string .= " -q"; }
 utl_FileValidateExistsAndNonEmpty($minfo_file,  sprintf("model info file%s",  ($minfo_extra_string  eq "") ? "" : ", due to $minfo_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 
 # only check for cm file if we need it
-if((! $do_glsearch) || (opt_Get("--r_prof", \%opt_HH)) || (opt_Get("--val_only", \%opt_HH))) { 
+my $check_for_cm_file = ((! $do_glsearch) || (opt_Get("--r_prof", \%opt_HH)) || (opt_Get("--val_only", \%opt_HH))) ? 1 : 0;
+if(($do_clsonly) && (opt_Get("-s", \%opt_HH))) {
+  $check_for_cm_file = 0;
+}
+if($check_for_cm_file) { 
   utl_FileValidateExistsAndNonEmpty($cm_file,  sprintf("CM file%s",  ($cm_extra_string  eq "") ? "" : ", due to $cm_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
   for my $sfx (".i1f", ".i1i", ".i1m", ".i1p") { 
     utl_FileValidateExistsAndNonEmpty($cm_file . $sfx, "cmpress created $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
@@ -1330,7 +1337,7 @@ if($do_split) {
   # merge all per-chunk files together
   $start_secs = ofile_OutputProgressPrior("Merging and finalizing output", $progress_w, $FH_HR->{"log"}, *STDOUT);
 
-  # deal with .cmd file first, this one of the more complicated cases
+  # deal with .cmd file first, this is one of the more complicated cases
   my $cmd_file = $ofile_info_HH{"fullpath"}{"cmd"};
   my @cmd_filelist_A = (); # array of chunk cmd files to concatenate
   vdr_MergeOutputGetFileList($out_root_no_vadr, ".cmd", 1, \@cmd_filelist_A, \@chunk_outdir_A, $FH_HR);
@@ -1358,50 +1365,55 @@ if($do_split) {
   }
   
   my $do_check_exists = 1; # require that all files we are expecting to concatenate below exist, if not exit with error message
-  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".pass.tbl",  "pass_tbl",    "5 column feature table output for passing sequences",  $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
-  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".fail.tbl",  "fail_tbl",    "5 column feature table output for failing sequences",  $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
-  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".pass.list", "pass_list",   "list of passing sequences",                            $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
-  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".fail.list", "fail_list",   "list of failing sequences",                            $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
-  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".alt.list",  "alerts_list", "list of alerts in the feature tables",                 $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
-  if(! opt_Get("--out_nofasta", \%opt_HH)) { 
-    vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".pass.fa",  "pass_fa", "fasta file with passing sequences", $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
-    vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".fail.fa",  "fail_fa", "fasta file with failing sequences", $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  if(! $do_clsonly) { 
+    vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".pass.tbl",  "pass_tbl",    "5 column feature table output for passing sequences",  $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+    vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".fail.tbl",  "fail_tbl",    "5 column feature table output for failing sequences",  $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+    vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".pass.list", "pass_list",   "list of passing sequences",                            $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+    vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".fail.list", "fail_list",   "list of failing sequences",                            $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+    vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".alt.list",  "alerts_list", "list of alerts in the feature tables",                 $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+    if(! opt_Get("--out_nofasta", \%opt_HH)) { 
+      vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".pass.fa",  "pass_fa", "fasta file with passing sequences", $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+      vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".fail.fa",  "fail_fa", "fasta file with failing sequences", $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+    }
   }
 
   # merge files for which we take special care to preserve spacing
   my $nlines_preserve_spacing = 100; # we preserve spacing for up to 100 lines
   my @head_AA = ();  # 2D array with header strings
   my @cljust_A = (); # '1'/'0' array for whether each column is left-justified or not
+  my $zero_alt = 0;  # changed below if ! --cls_only
 
-  helper_tabular_fill_header_and_justification_arrays("ant", \@head_AA, \@cljust_A, $FH_HR);
-  vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".sqa", "ant", "per-sequence tabular annotation summary file", $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
-  
   helper_tabular_fill_header_and_justification_arrays("cls", \@head_AA, \@cljust_A, $FH_HR);
   vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".sqc", "cls", "per-sequence tabular classification summary file", $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
-
-  helper_tabular_fill_header_and_justification_arrays("ftr", \@head_AA, \@cljust_A, $FH_HR);
-  vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".ftr", "ftr", "per-feature tabular summary file", $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
-
-  helper_tabular_fill_header_and_justification_arrays("sgm", \@head_AA, \@cljust_A, $FH_HR);
-  vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".sgm", "sgm", "per-model-segment tabular summary file", $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
-
-  helper_tabular_fill_header_and_justification_arrays("alt", \@head_AA, \@cljust_A, $FH_HR);
-  vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".alt", "alt", "per-alert tabular summary file", $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
-
-  my $zero_alt = vdr_MergeOutputAlcTabularFile ($out_root_no_vadr, \%alt_info_HH,"alert count tabular summary file", $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
-
+  
   vdr_MergeOutputMdlTabularFile ($out_root_no_vadr, "per-model tabular summary file", $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  
+  if(! $do_clsonly) { 
+    helper_tabular_fill_header_and_justification_arrays("ant", \@head_AA, \@cljust_A, $FH_HR);
+    vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".sqa", "ant", "per-sequence tabular annotation summary file", $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+    
+    helper_tabular_fill_header_and_justification_arrays("ftr", \@head_AA, \@cljust_A, $FH_HR);
+    vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".ftr", "ftr", "per-feature tabular summary file", $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+    
+    helper_tabular_fill_header_and_justification_arrays("sgm", \@head_AA, \@cljust_A, $FH_HR);
+    vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".sgm", "sgm", "per-model-segment tabular summary file", $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+    
+    helper_tabular_fill_header_and_justification_arrays("alt", \@head_AA, \@cljust_A, $FH_HR);
+    vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".alt", "alt", "per-alert tabular summary file", $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+    
+    $zero_alt = vdr_MergeOutputAlcTabularFile ($out_root_no_vadr, \%alt_info_HH,"alert count tabular summary file", $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+    
+    helper_tabular_fill_header_and_justification_arrays("dcr", \@head_AA, \@cljust_A, $FH_HR);
+    vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".dcr", "dcr", "alignment doctoring tabular summary file", $do_check_exists, $nlines_preserve_spacing, "  ", 0, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
 
-  helper_tabular_fill_header_and_justification_arrays("dcr", \@head_AA, \@cljust_A, $FH_HR);
-  vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".dcr", "dcr", "alignment doctoring tabular summary file", $do_check_exists, $nlines_preserve_spacing, "  ", 0, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
-
-  if($do_blastn_ali) {
-    helper_tabular_fill_header_and_justification_arrays("sda", \@head_AA, \@cljust_A, $FH_HR);
-    vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".sda", "sda", "seed alignment summary file (-s)", $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
-  }
-  if($do_replace_ns) { 
-    helper_tabular_fill_header_and_justification_arrays("rpn", \@head_AA, \@cljust_A, $FH_HR);
-    vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".rpn", "rpn", "replaced stretches of Ns summary file (-r)", $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+    if($do_blastn_ali) {
+      helper_tabular_fill_header_and_justification_arrays("sda", \@head_AA, \@cljust_A, $FH_HR);
+      vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".sda", "sda", "seed alignment summary file (-s)", $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+    }
+    if($do_replace_ns) { 
+      helper_tabular_fill_header_and_justification_arrays("rpn", \@head_AA, \@cljust_A, $FH_HR);
+      vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".rpn", "rpn", "replaced stretches of Ns summary file (-r)", $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+    }
   }
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -1641,7 +1653,6 @@ coverage_determination_stage(\%execs_H, "std.cdt", $cm_file, $sqfile_for_analysi
                              ((opt_IsUsed("--msub", \%opt_HH)) ? \%mdl_sub_H : undef),
                              $out_root, $progress_w, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
 
-
 ############################
 # Add classification alerts
 ############################
@@ -1715,7 +1726,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   $mdl_len  = $mdl_info_AH[$mdl_idx]{"length"};
 
-  if(defined $mdl_seq_name_HA{$mdl_name}) {  
+  if((defined $mdl_seq_name_HA{$mdl_name}) && (! $do_clsonly)) {  
     %sda_mdl_H     = (); 
     %sda_seq_H     = (); 
     %ovw_sda_seq_H = (); 
@@ -1886,12 +1897,15 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 ######################################
 # Parse cmalign or glsearch alignments
 ######################################
-$start_secs = ofile_OutputProgressPrior("Determining annotation", $progress_w, $log_FH, *STDOUT);
+
+if(! $do_clsonly) { 
+  $start_secs = ofile_OutputProgressPrior("Determining annotation", $progress_w, $log_FH, *STDOUT);
+}
 
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   $mdl_len  = $mdl_info_AH[$mdl_idx]{"length"};
-  if(defined $mdl_seq_name_HA{$mdl_name}) { 
+  if((defined $mdl_seq_name_HA{$mdl_name}) && (! $do_clsonly)) {  
     my $mdl_nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
     initialize_ftr_or_sgm_results_for_model(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, $FH_HR);
     initialize_ftr_or_sgm_results_for_model(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$sgm_info_HAH{$mdl_name}}, \%{$sgm_results_HHAH{$mdl_name}}, $FH_HR);
@@ -1960,8 +1974,9 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   }
 }
 
-ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
+if(! $do_clsonly) { 
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+}
 
 #########################################################################################
 # Run BLASTX: all full length sequences and all fetched CDS features versus all proteins
@@ -1970,7 +1985,7 @@ if($do_pv_blastx) {
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
     my $blastx_db_mdl_name = $mdl_name;
-    if(defined $mdl_seq_name_HA{$mdl_name}) { 
+    if((defined $mdl_seq_name_HA{$mdl_name}) && (! $do_clsonly)) {  
       my $ncds = vdr_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS"); 
       if($ncds > 0) { # only run blast for models with >= 1 CDS
         my $nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
@@ -2048,7 +2063,7 @@ elsif(! $do_pv_hmmer) {
 if($do_pv_hmmer) { 
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
-    if(defined $mdl_seq_name_HA{$mdl_name}) { 
+    if((defined $mdl_seq_name_HA{$mdl_name}) && (! $do_clsonly)) {
       my $ncds = vdr_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS"); 
       if($ncds > 0) { # only run blast for models with >= 1 CDS
         my $nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
@@ -2084,7 +2099,7 @@ if($do_pv_hmmer) {
 ##############################################################
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
-  if(defined $mdl_seq_name_HA{$mdl_name}) { 
+  if((defined $mdl_seq_name_HA{$mdl_name}) && (! $do_clsonly)) {
     alert_add_parent_based(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, \%{$ftr_results_HHAH{$mdl_name}}, 
                            \%alt_ftr_instances_HHH, "CDS", "mat_peptide", "peptrans", "VADRNULL", \%opt_HH, \%{$ofile_info_HH{"FH"}});
   }
@@ -2096,8 +2111,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 ##############################################################
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
-#  if((0) && (defined $mdl_seq_name_HA{$mdl_name})) { 
- if(defined $mdl_seq_name_HA{$mdl_name}) { 
+  if((defined $mdl_seq_name_HA{$mdl_name}) && (! $do_clsonly)) {
     if(vdr_FeatureInfoValidateAlternativeFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR)) { 
       # we'll enter this 'if' if any features have non-empty alternative_ftr_set
       
@@ -2135,39 +2149,42 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 # feature table file #
 ######################
 
-# open files for writing
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_tbl",       $out_root . ".pass.tbl",       1, 1, "5 column feature table output for passing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_tbl",       $out_root . ".fail.tbl",       1, 1, "5 column feature table output for failing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",      $out_root . ".pass.list",      1, 1, "list of passing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",      $out_root . ".fail.list",      1, 1, "list of failing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alerts_list",    $out_root . ".alt.list",       1, 1, "list of alerts in the feature tables");
+  # open files for writing
+if(! $do_clsonly) {
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_tbl",       $out_root . ".pass.tbl",       1, 1, "5 column feature table output for passing sequences");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_tbl",       $out_root . ".fail.tbl",       1, 1, "5 column feature table output for failing sequences");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",      $out_root . ".pass.list",      1, 1, "list of passing sequences");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",      $out_root . ".fail.list",      1, 1, "list of failing sequences");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alerts_list",    $out_root . ".alt.list",       1, 1, "list of alerts in the feature tables");
 
-$start_secs = ofile_OutputProgressPrior("Generating feature table output", $progress_w, $log_FH, *STDOUT);
-my $npass = output_feature_table(\%mdl_cls_ct_H, \@seq_name_A, \%ftr_info_HAH, \%sgm_info_HAH, \%alt_info_HH, 
-                                 \%stg_results_HHH, \%ftr_results_HHAH, \%sgm_results_HHAH, \%alt_seq_instances_HH,
-                                 \%alt_ftr_instances_HHH, 
-                                 ((opt_IsUsed("--msub", \%opt_HH)) ? \%mdl_sub_H : undef),
-                                 \$in_sqfile, $out_root, \%opt_HH, \%ofile_info_HH);
-ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
+  $start_secs = ofile_OutputProgressPrior("Generating feature table output", $progress_w, $log_FH, *STDOUT);
+  my $npass = output_feature_table(\%mdl_cls_ct_H, \@seq_name_A, \%ftr_info_HAH, \%sgm_info_HAH, \%alt_info_HH, 
+                                   \%stg_results_HHH, \%ftr_results_HHAH, \%sgm_results_HHAH, \%alt_seq_instances_HH,
+                                   \%alt_ftr_instances_HHH, 
+                                   ((opt_IsUsed("--msub", \%opt_HH)) ? \%mdl_sub_H : undef),
+                                   \$in_sqfile, $out_root, \%opt_HH, \%ofile_info_HH);
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+}
 ########################
 # tabular output files #
 ########################
 
 # open files for writing
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "ant",      $out_root . ".sqa", 1, 1, "per-sequence tabular annotation summary file");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cls",      $out_root . ".sqc", 1, 1, "per-sequence tabular classification summary file");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "ftr",      $out_root . ".ftr", 1, 1, "per-feature tabular summary file");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sgm",      $out_root . ".sgm", 1, 1, "per-model-segment tabular summary file");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "mdl",      $out_root . ".mdl", 1, 1, "per-model tabular summary file");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alt",      $out_root . ".alt", 1, 1, "per-alert tabular summary file");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alc",      $out_root . ".alc", 1, 1, "alert count tabular summary file");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "dcr",      $out_root . ".dcr", 1, 1, "alignment doctoring tabular summary file");
-if($do_blastn_ali) {
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sda",    $out_root . ".sda", 1, 1, "seed alignment summary file (-s)");
-}
-if($do_replace_ns) { 
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "rpn",    $out_root . ".rpn", 1, 1, "replaced stretches of Ns summary file (-r)");
+if(! $do_clsonly) {
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "ant",      $out_root . ".sqa", 1, 1, "per-sequence tabular annotation summary file");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "ftr",      $out_root . ".ftr", 1, 1, "per-feature tabular summary file");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sgm",      $out_root . ".sgm", 1, 1, "per-model-segment tabular summary file");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alt",      $out_root . ".alt", 1, 1, "per-alert tabular summary file");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alc",      $out_root . ".alc", 1, 1, "alert count tabular summary file");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "dcr",      $out_root . ".dcr", 1, 1, "alignment doctoring tabular summary file");
+  if($do_blastn_ali) {
+    ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sda",    $out_root . ".sda", 1, 1, "seed alignment summary file (-s)");
+  }
+  if($do_replace_ns) { 
+    ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "rpn",    $out_root . ".rpn", 1, 1, "replaced stretches of Ns summary file (-r)");
+  }
 }
 
 $start_secs = ofile_OutputProgressPrior("Generating tabular output", $progress_w, $log_FH, *STDOUT);
@@ -2489,7 +2506,8 @@ sub coverage_determination_stage {
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
   my $ncpu = opt_Get("--cpu", $opt_HHR);
   if($ncpu == 0) { $ncpu = 1; }
-
+  my $do_clsonly = opt_Get("--cls_only", $opt_HHR);
+  
   if(($stg_key ne "rpn.cdt") && ($stg_key ne "std.cdt")) { 
     ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rpn.cdt or std.cdt", 1, $FH_HR);
   }
@@ -2541,65 +2559,67 @@ sub coverage_determination_stage {
   #   if blastn mode:  parse our blastn results a second time to get model
   #                    specific tblout files to use instead of cmsearch tblout
   #                    files
-  if($do_blastn) { 
-    my $stg_desc = "";
-    if($stg_key eq "rpn.cdt") { 
-      $stg_desc = sprintf("Preprocessing for N replacement: coverage determination from blastn results ($nseq seq%s)", ($nseq > 1) ? "s" : "");
+  if(! $do_clsonly) { 
+    if($do_blastn) { 
+      my $stg_desc = "";
+      if($stg_key eq "rpn.cdt") { 
+        $stg_desc = sprintf("Preprocessing for N replacement: coverage determination from blastn results ($nseq seq%s)", ($nseq > 1) ? "s" : "");
+      }
+      else { # stg_key eq "std.cdt"
+        $stg_desc = sprintf("Determining sequence coverage from blastn results ($nseq seq%s)", ($nseq > 1) ? "s" : "");
+      }
+      $start_secs = ofile_OutputProgressPrior($stg_desc, $progress_w, $log_FH, *STDOUT);
+      my $blastn_summary_key = ($stg_key eq "rpn.cdt") ? "rpn.cls.blastn.summary" : "std.cls.blastn.summary";
+      parse_blastn_results($ofile_info_HHR->{"fullpath"}{$blastn_summary_key}, $seq_len_HR, 
+                           \%seq2mdl_H, \@cls_mdl_name_A, $out_root, $stg_key, $opt_HHR, $ofile_info_HHR);
+      # keep track of the tblout output files:
+      foreach $mdl_name (@cls_mdl_name_A) { 
+        my $tblout_key = "$stg_key.$mdl_name.tblout";
+        push(@tblout_key_A,  $tblout_key);
+        push(@tblout_file_A, $ofile_info_HH{"fullpath"}{$tblout_key});
+        push(@to_remove_A, 
+             ($ofile_info_HH{"fullpath"}{$tblout_key}, 
+              $ofile_info_HH{"fullpath"}{"$stg_key.$mdl_name.indel"}));
+      }
+      ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
     }
-    else { # stg_key eq "std.cdt"
-      $stg_desc = sprintf("Determining sequence coverage from blastn results ($nseq seq%s)", ($nseq > 1) ? "s" : "");
-    }
-    $start_secs = ofile_OutputProgressPrior($stg_desc, $progress_w, $log_FH, *STDOUT);
-    my $blastn_summary_key = ($stg_key eq "rpn.cdt") ? "rpn.cls.blastn.summary" : "std.cls.blastn.summary";
-    parse_blastn_results($ofile_info_HHR->{"fullpath"}{$blastn_summary_key}, $seq_len_HR, 
-                         \%seq2mdl_H, \@cls_mdl_name_A, $out_root, $stg_key, $opt_HHR, $ofile_info_HHR);
-    # keep track of the tblout output files:
-    foreach $mdl_name (@cls_mdl_name_A) { 
-      my $tblout_key = "$stg_key.$mdl_name.tblout";
-      push(@tblout_key_A,  $tblout_key);
-      push(@tblout_file_A, $ofile_info_HH{"fullpath"}{$tblout_key});
-      push(@to_remove_A, 
-           ($ofile_info_HH{"fullpath"}{$tblout_key}, 
-            $ofile_info_HH{"fullpath"}{"$stg_key.$mdl_name.indel"}));
-    }
-    ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-  }
-  else { # default, not (! $do_blastn) 
-    my $cmsearch_opts = " -T " . opt_Get("--minbit", $opt_HHR) . " --cpu $ncpu --hmmonly "; # cmsearch options for round 2 searches to determine coverage
+    else { # default, not (! $do_blastn) 
+      my $cmsearch_opts = " -T " . opt_Get("--minbit", $opt_HHR) . " --cpu $ncpu --hmmonly "; # cmsearch options for round 2 searches to determine coverage
 
-    if(! opt_Get("-v", \%opt_HH)) { $cmsearch_opts .= " --noali "; }
-    foreach $mdl_name (@cls_mdl_name_A) { 
-      my $mdl_fa_file = $out_root . "." . $mdl_name . ".fa";
-      cmsearch_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix,
-                                 $cm_file, $mdl_name, $mdl_fa_file, $cmsearch_opts, 
-                                 $out_root, $stg_key, scalar(@{$local_mdl_seq_name_HAR->{$mdl_name}}), 
-                                 $mdl_seq_len_H{$mdl_name}, $progress_w, \%opt_HH, \%ofile_info_HH);
-      my $tblout_key = "$stg_key.$mdl_name.tblout"; # set in cmsearch_wrapper()
-      my $stdout_key = "$stg_key.$mdl_name.stdout"; # set in cmsearch_wrapper()
-      my $err_key    = "$stg_key.$mdl_name.err";    # set in cmsearch_wrapper()
-      push(@tblout_key_A,  $tblout_key);
-      push(@tblout_file_A, $ofile_info_HH{"fullpath"}{$tblout_key});
-      push(@to_remove_A, 
-           ($ofile_info_HH{"fullpath"}{$tblout_key}, 
-            $ofile_info_HH{"fullpath"}{$stdout_key}, 
-            $ofile_info_HH{"fullpath"}{$err_key}));
+      if(! opt_Get("-v", \%opt_HH)) { $cmsearch_opts .= " --noali "; }
+      foreach $mdl_name (@cls_mdl_name_A) { 
+        my $mdl_fa_file = $out_root . "." . $mdl_name . ".fa";
+        cmsearch_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix,
+                         $cm_file, $mdl_name, $mdl_fa_file, $cmsearch_opts, 
+                         $out_root, $stg_key, scalar(@{$local_mdl_seq_name_HAR->{$mdl_name}}), 
+                         $mdl_seq_len_H{$mdl_name}, $progress_w, \%opt_HH, \%ofile_info_HH);
+        my $tblout_key = "$stg_key.$mdl_name.tblout"; # set in cmsearch_wrapper()
+        my $stdout_key = "$stg_key.$mdl_name.stdout"; # set in cmsearch_wrapper()
+        my $err_key    = "$stg_key.$mdl_name.err";    # set in cmsearch_wrapper()
+        push(@tblout_key_A,  $tblout_key);
+        push(@tblout_file_A, $ofile_info_HH{"fullpath"}{$tblout_key});
+        push(@to_remove_A, 
+             ($ofile_info_HH{"fullpath"}{$tblout_key}, 
+              $ofile_info_HH{"fullpath"}{$stdout_key}, 
+              $ofile_info_HH{"fullpath"}{$err_key}));
+      }
     }
-  }
 
-  # sort the coverage determination search results, we concatenate all model's tblout files and sort them
-  my $sort_tblout_key  = "$stg_key.tblout.sort";
-  my $sort_tblout_file = $out_root . "." . $sort_tblout_key;
-  if($nmdl_cdt > 0) { # only sort output if we ran coverage determination stage for at least one model
-    my $sort_cmd = "cat " . join(" ", @tblout_file_A) . " | grep -v ^\# | sed 's/  */ /g' | sort -k 1,1 -k 15,15rn -k 16,16g > $sort_tblout_file"; 
-    # the 'sed' call replaces multiple spaces with a single one, because sort is weird about multiple spaces sometimes
-    utl_RunCommand($sort_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
-    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $sort_tblout_key, $sort_tblout_file, 0, $do_keep, "stage $stg_key sorted tblout file");
-    push(@{$to_remove_AR}, $sort_tblout_file);
+    # sort the coverage determination search results, we concatenate all model's tblout files and sort them
+    my $sort_tblout_key  = "$stg_key.tblout.sort";
+    my $sort_tblout_file = $out_root . "." . $sort_tblout_key;
+    if($nmdl_cdt > 0) { # only sort output if we ran coverage determination stage for at least one model
+      my $sort_cmd = "cat " . join(" ", @tblout_file_A) . " | grep -v ^\# | sed 's/  */ /g' | sort -k 1,1 -k 15,15rn -k 16,16g > $sort_tblout_file"; 
+      # the 'sed' call replaces multiple spaces with a single one, because sort is weird about multiple spaces sometimes
+      utl_RunCommand($sort_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+      ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $sort_tblout_key, $sort_tblout_file, 0, $do_keep, "stage $stg_key sorted tblout file");
+      push(@{$to_remove_AR}, $sort_tblout_file);
 
-    # parse cmsearch round 2 tblout data
-    cmsearch_parse_sorted_tblout($sort_tblout_file, $stg_key,
-                                 $mdl_info_AHR, $stg_results_HHHR, $opt_HHR, $FH_HR);
-  }
+      # parse cmsearch round 2 tblout data
+      cmsearch_parse_sorted_tblout($sort_tblout_file, $stg_key,
+                                   $mdl_info_AHR, $stg_results_HHHR, $opt_HHR, $FH_HR);
+    }
+  } # end of 'if(! $do_clsonly)'
   return;
 }
 
@@ -3112,6 +3132,7 @@ sub add_classification_alerts {
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
   my $nseq = scalar(keys (%{$seq_len_HR}));
+  my $do_clsonly = opt_Get("--cls_only", $opt_HHR);
 
   # create the model index hash which gives index in $mdl_info_AHR[] 
   # for a given model name, this allows us to find model length given model name
@@ -3182,324 +3203,364 @@ sub add_classification_alerts {
     my $alt_str = "";
     %{$cls_output_HHR->{$seq_name}} = ();
 
-    # check for noannotn alert: 3 possibilities
-    # 1) no hits in round 1 search (most common cause of noannotn)
-    # 2) >= 1 hits in -r       classification stage (rpn.cls.1)  but 0 hits in standard classification stage (std.cls.1) (rare)
-    # 3) >= 1 hits in standard classification stage (std.cdt.bs) but 0 hits in coverage determination stage (std.cdt.bs) (rare)
-    if((! defined $stg_results_HHHR->{$seq_name}) || # case 1
-       ((defined $stg_results_HHHR->{$seq_name}) &&
-        (defined $stg_results_HHHR->{$seq_name}{"rpn.cls.1"}) &&
-        (! defined $stg_results_HHHR->{$seq_name}{"std.cls.1"})) || # case 2
-       ((defined $stg_results_HHHR->{$seq_name}) &&
-        (defined $stg_results_HHHR->{$seq_name}{"std.cls.1"}) &&
-        (! defined $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}))) { # case 3
-      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "noannotn", $seq_name, "VADRNULL", $FH_HR);
+    # handle --cls_only 
+    if($do_clsonly) {
+      # add noannotn if nec
+      if(! defined $stg_results_HHHR->{$seq_name}) { 
+        alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "noannotn", $seq_name, "VADRNULL", $FH_HR);
+      }
+      else {
+        my ($score1, $score2) = (undef, undef);
+        my ($scpnt1, $scpnt2) = (undef, undef);
+        if(defined $stg_results_HHHR->{$seq_name}{"std.cls.1"}) { 
+          $cls_output_HHR->{$seq_name}{"model1"}    = $stg_results_HHHR->{$seq_name}{"std.cls.1"}{"model"};
+          $cls_output_HHR->{$seq_name}{"group1"}    = $stg_results_HHHR->{$seq_name}{"std.cls.1"}{"group"};    # can be undef
+          $cls_output_HHR->{$seq_name}{"subgroup1"} = $stg_results_HHHR->{$seq_name}{"std.cls.1"}{"subgroup"}; # can be undef
+          my @score_A = split(",", $stg_results_HHHR->{$seq_name}{"std.cls.1"}{"score"});
+          $score1 = utl_ASum(\@score_A);
+          my $s_len = vdr_CoordsLength($stg_results_HHHR->{$seq_name}{"std.cls.1"}{"s_coords"}, $FH_HR);
+          my $scov = $s_len / $seq_len;
+          $scpnt1 = ($score1 / $s_len);
+          $cls_output_HHR->{$seq_name}{"score"} = sprintf("%.1f", $score1);
+          $cls_output_HHR->{$seq_name}{"scpnt"} = sprintf("%.3f", $scpnt1);
+          $cls_output_HHR->{$seq_name}{"bstrand"} = $stg_results_HHHR->{$seq_name}{"std.cls.1"}{"bstrand"};
+          $cls_output_HHR->{$seq_name}{"nhits"} = scalar(@score_A);
+          $cls_output_HHR->{$seq_name}{"scov"} = sprintf("%.3f", $scov);
+        }
+        if(defined $stg_results_HHHR->{$seq_name}{"std.cls.2"}) { 
+          $cls_output_HHR->{$seq_name}{"model2"}    = $stg_results_HHHR->{$seq_name}{"std.cls.2"}{"model"};
+          $cls_output_HHR->{$seq_name}{"group2"}    = $stg_results_HHHR->{$seq_name}{"std.cls.2"}{"group"};    # can be undef
+          $cls_output_HHR->{$seq_name}{"subgroup2"} = $stg_results_HHHR->{$seq_name}{"std.cls.2"}{"subgroup"}; # can be undef
+          my @score_A = split(",", $stg_results_HHHR->{$seq_name}{"std.cls.2"}{"score"});
+          $score2 = utl_ASum(\@score_A);
+          $scpnt2 = ($score2 / vdr_CoordsLength($stg_results_HHHR->{$seq_name}{"std.cls.2"}{"s_coords"}, $FH_HR));
+          if(defined $score1) { 
+            $cls_output_HHR->{$seq_name}{"scdiff"}  = sprintf("%.1f", ($score1 - $score2));
+            $cls_output_HHR->{$seq_name}{"diffpnt"} = sprintf("%.3f", ($scpnt1 - $scpnt2));
+          }
+        }
+      }
     }
-    else { 
-      if(! defined $stg_results_HHHR->{$seq_name}{"std.cls.1"}) { 
-        ofile_FAIL("ERROR in $sub_name, seq $seq_name should have but does not have any cls.1 hits", 1, $FH_HR);
+    else { # ! $do_clsonly (normal case)
+      # check for noannotn alert: 3 possibilities
+      # 1) no hits in round 1 search (most common cause of noannotn)
+      # 2) >= 1 hits in -r       classification stage (rpn.cls.1)  but 0 hits in standard classification stage (std.cls.1) (rare)
+      # 3) >= 1 hits in standard classification stage (std.cdt.bs) but 0 hits in coverage determination stage (std.cdt.bs) (rare)
+      if((! defined $stg_results_HHHR->{$seq_name}) || # case 1
+         ((defined $stg_results_HHHR->{$seq_name}) &&
+          (defined $stg_results_HHHR->{$seq_name}{"rpn.cls.1"}) &&
+          (! defined $stg_results_HHHR->{$seq_name}{"std.cls.1"})) || # case 2
+         ((defined $stg_results_HHHR->{$seq_name}) &&
+          (defined $stg_results_HHHR->{$seq_name}{"std.cls.1"}) &&
+          (! defined $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}))) { # case 3
+        alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "noannotn", $seq_name, "VADRNULL", $FH_HR);
       }
-      # determine model name and length
-      $mdl_name = $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"model"};
-      $mdl_idx  = $mdl_idx_H{$mdl_name};
-      $mdl_len  = $mdl_info_AHR->[$mdl_idx]{"length"};
-      foreach my $rkey (keys (%{$stg_results_HHHR->{$seq_name}})) { 
-        my @score_A = split(",", $stg_results_HHHR->{$seq_name}{$rkey}{"score"});
-        $score_H{$rkey} = utl_ASum(\@score_A);
-        $scpnt_H{$rkey} = $score_H{$rkey} / vdr_CoordsLength($stg_results_HHHR->{$seq_name}{$rkey}{"s_coords"}, $FH_HR);
-      }
-      my $have_cdt_bs = (defined $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}) ? 1 : 0;
-
-      my $scpnt2print = sprintf("%.3f", $scpnt_H{"std.cls.1"});
-      $cls_output_HHR->{$seq_name}{"scpnt"} = $scpnt2print;
-      $cls_output_HHR->{$seq_name}{"score"} = sprintf("%.1f", $score_H{"std.cls.1"});
-
-      # low score (lowscore)
-      if($scpnt_H{"std.cls.1"} < $lowsc_opt) { 
-        alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR,  "lowscore", $seq_name, $scpnt2print . "<" . $lowsc_opt2print . " bits/nt", $FH_HR);
-      }
-
-      # indefinite classification (indfclas))
-      if(defined $scpnt_H{"std.cls.2"}) { 
-        my $diffpnt = $scpnt_H{"std.cls.1"} - $scpnt_H{"std.cls.2"};
-        my $diffpnt2print = sprintf("%.3f", $diffpnt);
-        $cls_output_HHR->{$seq_name}{"scdiff"}  = sprintf("%.1f", $score_H{"std.cls.1"} - $score_H{"std.cls.2"});
-        $cls_output_HHR->{$seq_name}{"diffpnt"} = $diffpnt2print;
-        my $group_str = "best group/subgroup: " . 
-            group_subgroup_string_from_classification_results($stg_results_HHHR->{$seq_name}{"std.cls.1"}) . 
-            ", second group/subgroup: " . 
-            group_subgroup_string_from_classification_results($stg_results_HHHR->{$seq_name}{"std.cls.2"});
-
-        if($diffpnt < $indefclass_opt) { 
-          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "indfclas", $seq_name, $diffpnt2print . "<" . $indefclass_opt2print . " bits/nt, " . $group_str, $FH_HR);
+      else { 
+        if(! defined $stg_results_HHHR->{$seq_name}{"std.cls.1"}) { 
+          ofile_FAIL("ERROR in $sub_name, seq $seq_name should have but does not have any cls.1 hits", 1, $FH_HR);
         }
-      }
-
-      # incorrect group (incgroup) 
-      # - $exp_group must be defined and group of cls.1 must be undef or != $exp_group
-      # - no hits in cls.eg (no hits to group) (incgroup)
-      # OR 
-      # - hit(s) in cls.eg but scpernt diff between
-      #   cls.eg and cls.1 exceeds incspec_opt (incgroup)
-      #
-      # questionable group (qstgroup)
-      # - $exp_group must be defined 
-      # - hit(s) in cls.eg but scpernt diff between
-      #   cls.eg and cls.1 does not exceed incspec_opt (qstgroup)
-      #
-      my $igr_flag = 0;
-      my $qgr_flag = 0;
-      if((defined $exp_group) && # $exp_group defined
-         ((! defined $stg_results_HHHR->{$seq_name}{"std.cls.1"}{"group"}) || # cls.1 group undefined
-          ($stg_results_HHHR->{$seq_name}{"std.cls.1"}{"group"} ne $exp_group))) { # cls.1 group != $exp_group
-        # $exp_group is defined AND 
-        # (cls.1 group undefined OR cls.1 group != $exp_group)
-        if(! defined $scpnt_H{"std.cls.eg"}) { 
-          # no hit to $exp_group
-          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "incgroup", $seq_name, 
-                                      "no hits to expected group $exp_group, best model group/subgroup: " . 
-                                      group_subgroup_string_from_classification_results($stg_results_HHHR->{$seq_name}{"std.cls.1"}), $FH_HR);
-          $igr_flag = 1;
+        # determine model name and length
+        $mdl_name = $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"model"};
+        $mdl_idx  = $mdl_idx_H{$mdl_name};
+        $mdl_len  = $mdl_info_AHR->[$mdl_idx]{"length"};
+        foreach my $rkey (keys (%{$stg_results_HHHR->{$seq_name}})) { 
+          my @score_A = split(",", $stg_results_HHHR->{$seq_name}{$rkey}{"score"});
+          $score_H{$rkey} = utl_ASum(\@score_A);
+          $scpnt_H{$rkey} = $score_H{$rkey} / vdr_CoordsLength($stg_results_HHHR->{$seq_name}{$rkey}{"s_coords"}, $FH_HR);
         }
-        else { 
-          # at least one hit to $exp_group exists and cls.1's group undef or != $exp_group 
-          # so we either have a incgroup or qstgroup alert
-          my $diff = $scpnt_H{"std.cls.1"} - $scpnt_H{"std.cls.eg"};
-          my $diff2print = sprintf("%.3f", $diff);
-          if($diff > $incspec_opt) { 
-            $alt_str = "$diff2print > $incspec_opt2print bits/nt diff, best model group/subgroup: " . group_subgroup_string_from_classification_results($stg_results_HHHR->{$seq_name}{"std.cls.1"});
-            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "incgroup", $seq_name, $alt_str, $FH_HR);
+        my $have_cdt_bs = (defined $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}) ? 1 : 0;
+
+        my $scpnt2print = sprintf("%.3f", $scpnt_H{"std.cls.1"});
+        $cls_output_HHR->{$seq_name}{"scpnt"} = $scpnt2print;
+        $cls_output_HHR->{$seq_name}{"score"} = sprintf("%.1f", $score_H{"std.cls.1"});
+
+        # low score (lowscore)
+        if($scpnt_H{"std.cls.1"} < $lowsc_opt) { 
+          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR,  "lowscore", $seq_name, $scpnt2print . "<" . $lowsc_opt2print . " bits/nt", $FH_HR);
+        }
+
+        # indefinite classification (indfclas))
+        if(defined $scpnt_H{"std.cls.2"}) { 
+          my $diffpnt = $scpnt_H{"std.cls.1"} - $scpnt_H{"std.cls.2"};
+          my $diffpnt2print = sprintf("%.3f", $diffpnt);
+          $cls_output_HHR->{$seq_name}{"scdiff"}  = sprintf("%.1f", $score_H{"std.cls.1"} - $score_H{"std.cls.2"});
+          $cls_output_HHR->{$seq_name}{"diffpnt"} = $diffpnt2print;
+          my $group_str = "best group/subgroup: " . 
+              group_subgroup_string_from_classification_results($stg_results_HHHR->{$seq_name}{"std.cls.1"}) . 
+              ", second group/subgroup: " . 
+              group_subgroup_string_from_classification_results($stg_results_HHHR->{$seq_name}{"std.cls.2"});
+
+          if($diffpnt < $indefclass_opt) { 
+            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "indfclas", $seq_name, $diffpnt2print . "<" . $indefclass_opt2print . " bits/nt, " . $group_str, $FH_HR);
+          }
+        }
+
+        # incorrect group (incgroup) 
+        # - $exp_group must be defined and group of cls.1 must be undef or != $exp_group
+        # - no hits in cls.eg (no hits to group) (incgroup)
+        # OR 
+        # - hit(s) in cls.eg but scpernt diff between
+        #   cls.eg and cls.1 exceeds incspec_opt (incgroup)
+        #
+        # questionable group (qstgroup)
+        # - $exp_group must be defined 
+        # - hit(s) in cls.eg but scpernt diff between
+        #   cls.eg and cls.1 does not exceed incspec_opt (qstgroup)
+        #
+        my $igr_flag = 0;
+        my $qgr_flag = 0;
+        if((defined $exp_group) && # $exp_group defined
+           ((! defined $stg_results_HHHR->{$seq_name}{"std.cls.1"}{"group"}) || # cls.1 group undefined
+            ($stg_results_HHHR->{$seq_name}{"std.cls.1"}{"group"} ne $exp_group))) { # cls.1 group != $exp_group
+          # $exp_group is defined AND 
+          # (cls.1 group undefined OR cls.1 group != $exp_group)
+          if(! defined $scpnt_H{"std.cls.eg"}) { 
+            # no hit to $exp_group
+            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "incgroup", $seq_name, 
+                                        "no hits to expected group $exp_group, best model group/subgroup: " . 
+                                        group_subgroup_string_from_classification_results($stg_results_HHHR->{$seq_name}{"std.cls.1"}), $FH_HR);
             $igr_flag = 1;
           }
           else { 
-            $alt_str = "$diff2print bits/nt diff, best model group/subgroup: " . group_subgroup_string_from_classification_results($stg_results_HHHR->{$seq_name}{"std.cls.1"});
-            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "qstgroup", $seq_name, $alt_str, $FH_HR);
-            $qgr_flag = 1;
+            # at least one hit to $exp_group exists and cls.1's group undef or != $exp_group 
+            # so we either have a incgroup or qstgroup alert
+            my $diff = $scpnt_H{"std.cls.1"} - $scpnt_H{"std.cls.eg"};
+            my $diff2print = sprintf("%.3f", $diff);
+            if($diff > $incspec_opt) { 
+              $alt_str = "$diff2print > $incspec_opt2print bits/nt diff, best model group/subgroup: " . group_subgroup_string_from_classification_results($stg_results_HHHR->{$seq_name}{"std.cls.1"});
+              alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "incgroup", $seq_name, $alt_str, $FH_HR);
+              $igr_flag = 1;
+            }
+            else { 
+              $alt_str = "$diff2print bits/nt diff, best model group/subgroup: " . group_subgroup_string_from_classification_results($stg_results_HHHR->{$seq_name}{"std.cls.1"});
+              alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "qstgroup", $seq_name, $alt_str, $FH_HR);
+              $qgr_flag = 1;
+            }
           }
         }
-      }
 
-      # incorrect subgroup (c_sgr) 
-      # - $exp_subgroup must be defined and subgroup of cls.1 must be undef or != $exp_subgroup
-      # - incgroup not already reported
-      # - no hits in cls.esg (no hits to group) (incsbgrp)
-      # OR 
-      # - hit(s) in cls.esg but scpernt diff between
-      #   cls.esg and cls.1 exceeds incspec_opt (incsbgrp)
-      #
-      # questionable subgroup (qstsbgrp)
-      # - $exp_subgroup must be defined 
-      # - incgroup not already reported
-      # - qstgroup not already reported
-      # - hit(s) in cls.esg but scpernt diff between
-      #   cls.esg and cls.1 does not exceed incspec_opt (qstsbgrp)
-      #
-      if((! $igr_flag) # incgroup alert not reported
-         && (defined $exp_subgroup) && # exp_sugroup defined  
-         ((! defined $stg_results_HHHR->{$seq_name}{"std.cls.1"}{"subgroup"}) || # cls.1 subgroup undefined
-          ($stg_results_HHHR->{$seq_name}{"std.cls.1"}{"subgroup"} ne $exp_subgroup))) { # cls.1 subgroup != $exp_subgroup
-        # incgroup alert not reported AND
-        # $exp_subgroup is defined AND 
-        # (cls.1 subgroup undefined OR cls.1 subgroup != $exp_subgroup)
-        if(! defined $scpnt_H{"std.cls.esg"}) { 
-          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "incsbgrp", $seq_name, "no hits to expected subgroup $exp_subgroup", $FH_HR);
-        }
-        else { 
-          my $diff = $scpnt_H{"std.cls.1"} - $scpnt_H{"std.cls.esg"};
-          my $diff2print = sprintf("%.3f", $diff);
-          if($diff > $incspec_opt) { 
-            $alt_str = $diff2print . ">" . $incspec_opt2print . " bits/nt diff, best model group/subgroup: " . group_subgroup_string_from_classification_results($stg_results_HHHR->{$seq_name}{"std.cls.1"});
-            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "incsbgrp", $seq_name, $alt_str, $FH_HR);
+        # incorrect subgroup (c_sgr) 
+        # - $exp_subgroup must be defined and subgroup of cls.1 must be undef or != $exp_subgroup
+        # - incgroup not already reported
+        # - no hits in cls.esg (no hits to group) (incsbgrp)
+        # OR 
+        # - hit(s) in cls.esg but scpernt diff between
+        #   cls.esg and cls.1 exceeds incspec_opt (incsbgrp)
+        #
+        # questionable subgroup (qstsbgrp)
+        # - $exp_subgroup must be defined 
+        # - incgroup not already reported
+        # - qstgroup not already reported
+        # - hit(s) in cls.esg but scpernt diff between
+        #   cls.esg and cls.1 does not exceed incspec_opt (qstsbgrp)
+        #
+        if((! $igr_flag) # incgroup alert not reported
+           && (defined $exp_subgroup) && # exp_sugroup defined  
+           ((! defined $stg_results_HHHR->{$seq_name}{"std.cls.1"}{"subgroup"}) || # cls.1 subgroup undefined
+            ($stg_results_HHHR->{$seq_name}{"std.cls.1"}{"subgroup"} ne $exp_subgroup))) { # cls.1 subgroup != $exp_subgroup
+          # incgroup alert not reported AND
+          # $exp_subgroup is defined AND 
+          # (cls.1 subgroup undefined OR cls.1 subgroup != $exp_subgroup)
+          if(! defined $scpnt_H{"std.cls.esg"}) { 
+            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "incsbgrp", $seq_name, "no hits to expected subgroup $exp_subgroup", $FH_HR);
           }
-          elsif(! $qgr_flag) {
-            $alt_str = "$diff2print bits/nt diff, best model group/subgroup: " . group_subgroup_string_from_classification_results($stg_results_HHHR->{$seq_name}{"std.cls.1"});
-            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "qstsbgrp", $seq_name, $alt_str, $FH_HR);
+          else { 
+            my $diff = $scpnt_H{"std.cls.1"} - $scpnt_H{"std.cls.esg"};
+            my $diff2print = sprintf("%.3f", $diff);
+            if($diff > $incspec_opt) { 
+              $alt_str = $diff2print . ">" . $incspec_opt2print . " bits/nt diff, best model group/subgroup: " . group_subgroup_string_from_classification_results($stg_results_HHHR->{$seq_name}{"std.cls.1"});
+              alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "incsbgrp", $seq_name, $alt_str, $FH_HR);
+            }
+            elsif(! $qgr_flag) {
+              $alt_str = "$diff2print bits/nt diff, best model group/subgroup: " . group_subgroup_string_from_classification_results($stg_results_HHHR->{$seq_name}{"std.cls.1"});
+              alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "qstsbgrp", $seq_name, $alt_str, $FH_HR);
+            }
           }
         }
-      }
 
-      # classification alerts that depend on round 2 results
-      if($have_cdt_bs) { 
-        my @bias_A   = split(",", $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"bias"});
-        my $bias_sum = utl_ASum(\@bias_A);
-        my $bias_fract = undef;
-        if(($bias_sum <= $small_value) || ($score_H{"std.cdt.bs"} < $small_value)) { 
-         # (a) bias is 0 or negative OR (b) score_H{"std.cdt.bs"} is 0 
-         # (note: the sum ($score_H{"std.cdt.bs"} + $bias_sum) can't be 0 or negative if a or b isn't true) 
-          $bias_fract = 0.; # bias fraction doesn't really make sense if score is negative
-                            # this also ensures we don't try to divide by 0 (i.e. if ($score_H{"std.cdt.bs"} + $bias_sum) == 0)
-        }
-        else {
-          $bias_fract = $bias_sum / ($score_H{"std.cdt.bs"} + $bias_sum);
-        }
-        my $nhits = scalar(@bias_A);
-        $cls_output_HHR->{$seq_name}{"nhits"}   = $nhits;
-        $cls_output_HHR->{$seq_name}{"bias"}    = $bias_sum;
-        $cls_output_HHR->{$seq_name}{"bstrand"} = $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"bstrand"};
-        my $s_len = vdr_CoordsLength($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"}, $FH_HR);
-        my $m_len = vdr_CoordsLength($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"m_coords"}, $FH_HR);
-        my $scov = $s_len / $seq_len;
-        my $scov2print = sprintf("%.3f", $scov);
-        my $mcov2print = sprintf("%.3f", $m_len / $mdl_len);
-        $cls_output_HHR->{$seq_name}{"scov"} = $scov2print;
-        $cls_output_HHR->{$seq_name}{"mcov"} = $mcov2print;
-      
-        # reverse complement (revcompl)
-        if($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"bstrand"} eq "-") { 
-          $alt_scoords = "seq:" . $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"} . ";";
-          $alt_mcoords = "mdl:" . $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"m_coords"} . ";";
-          my @bstrand_score_A = split(",", $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"score"});
-          $alt_str = sprintf("best_hit_score:%.1f", $bstrand_score_A[0]);
-          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "revcompl", $seq_name, $alt_scoords . $alt_mcoords . $alt_str, $FH_HR);
-        }
+        # classification alerts that depend on round 2 results
+        if($have_cdt_bs) { 
+          my @bias_A   = split(",", $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"bias"});
+          my $bias_sum = utl_ASum(\@bias_A);
+          my $bias_fract = undef;
+          if(($bias_sum <= $small_value) || ($score_H{"std.cdt.bs"} < $small_value)) { 
+            # (a) bias is 0 or negative OR (b) score_H{"std.cdt.bs"} is 0 
+            # (note: the sum ($score_H{"std.cdt.bs"} + $bias_sum) can't be 0 or negative if a or b isn't true) 
+            $bias_fract = 0.; # bias fraction doesn't really make sense if score is negative
+            # this also ensures we don't try to divide by 0 (i.e. if ($score_H{"std.cdt.bs"} + $bias_sum) == 0)
+          }
+          else {
+            $bias_fract = $bias_sum / ($score_H{"std.cdt.bs"} + $bias_sum);
+          }
+          my $nhits = scalar(@bias_A);
+          $cls_output_HHR->{$seq_name}{"nhits"}   = $nhits;
+          $cls_output_HHR->{$seq_name}{"bias"}    = $bias_sum;
+          $cls_output_HHR->{$seq_name}{"bstrand"} = $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"bstrand"};
+          my $s_len = vdr_CoordsLength($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"}, $FH_HR);
+          my $m_len = vdr_CoordsLength($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"m_coords"}, $FH_HR);
+          my $scov = $s_len / $seq_len;
+          my $scov2print = sprintf("%.3f", $scov);
+          my $mcov2print = sprintf("%.3f", $m_len / $mdl_len);
+          $cls_output_HHR->{$seq_name}{"scov"} = $scov2print;
+          $cls_output_HHR->{$seq_name}{"mcov"} = $mcov2print;
+          
+          # reverse complement (revcompl)
+          if($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"bstrand"} eq "-") { 
+            $alt_scoords = "seq:" . $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"} . ";";
+            $alt_mcoords = "mdl:" . $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"m_coords"} . ";";
+            my @bstrand_score_A = split(",", $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"score"});
+            $alt_str = sprintf("best_hit_score:%.1f", $bstrand_score_A[0]);
+            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "revcompl", $seq_name, $alt_scoords . $alt_mcoords . $alt_str, $FH_HR);
+          }
 
-        # low coverage (lowcovrg)
-        if($scov < $lowcov_opt) { 
-          $alt_scoords = "seq:" . vdr_CoordsMissing($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"}, $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"bstrand"}, $seq_len, $FH_HR) . ";";
-          $alt_mcoords = "mdl:VADRNULL;";
-          $alt_str = sprintf("%s<%s", $scov2print, $lowcov_opt2print);
-          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowcovrg", $seq_name, $alt_scoords . $alt_mcoords . $alt_str, $FH_HR);
-        }
+          # low coverage (lowcovrg)
+          if($scov < $lowcov_opt) { 
+            $alt_scoords = "seq:" . vdr_CoordsMissing($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"}, $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"bstrand"}, $seq_len, $FH_HR) . ";";
+            $alt_mcoords = "mdl:VADRNULL;";
+            $alt_str = sprintf("%s<%s", $scov2print, $lowcov_opt2print);
+            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowcovrg", $seq_name, $alt_scoords . $alt_mcoords . $alt_str, $FH_HR);
+          }
 
-        # high bias (biasdseq) 
-        if($bias_fract > $biasfract_opt) { 
-          my $bias_fract2print = sprintf("%.3f", $bias_fract);
-          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "biasdseq", $seq_name, $bias_fract2print . ">" . $biasfract_opt2print, $FH_HR);
-        }
+          # high bias (biasdseq) 
+          if($bias_fract > $biasfract_opt) { 
+            my $bias_fract2print = sprintf("%.3f", $bias_fract);
+            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "biasdseq", $seq_name, $bias_fract2print . ">" . $biasfract_opt2print, $FH_HR);
+          }
 
-        # inconsistent hits: multiple strands (indfstrn) 
-        if(defined $stg_results_HHHR->{$seq_name}{"std.cdt.os"}) { 
-          my @ostrand_score_A = split(",", $stg_results_HHHR->{$seq_name}{"std.cdt.os"}{"score"});
-          my $top_ostrand_score = $ostrand_score_A[0];
-          if($top_ostrand_score > $indefstr_opt) { 
-            my @ostrand_sstart_A  = ();
-            my @ostrand_sstop_A   = ();
-            my @ostrand_sstrand_A = ();
-            my @ostrand_mstart_A  = ();
-            my @ostrand_mstop_A   = ();
-            my @ostrand_mstrand_A = ();
-            vdr_FeatureStartStopStrandArrays($stg_results_HHHR->{$seq_name}{"std.cdt.os"}{"s_coords"}, \@ostrand_sstart_A, \@ostrand_sstop_A, \@ostrand_sstrand_A, $FH_HR);
-            vdr_FeatureStartStopStrandArrays($stg_results_HHHR->{$seq_name}{"std.cdt.os"}{"m_coords"}, \@ostrand_mstart_A, \@ostrand_mstop_A, \@ostrand_mstrand_A, $FH_HR);
-            # check if this is an exempted region
-            my $exempted_region = 0;
-            foreach my $exc_coords (@{$indfstrn_exc_AA[$mdl_idx]}) { 
-              if(vdr_CoordsCheckIfSpans($exc_coords, vdr_CoordsSegmentCreate($ostrand_mstart_A[0], $ostrand_mstop_A[0], $ostrand_mstrand_A[0], $FH_HR), $FH_HR)) { 
-                $exempted_region = 1;
+          # inconsistent hits: multiple strands (indfstrn) 
+          if(defined $stg_results_HHHR->{$seq_name}{"std.cdt.os"}) { 
+            my @ostrand_score_A = split(",", $stg_results_HHHR->{$seq_name}{"std.cdt.os"}{"score"});
+            my $top_ostrand_score = $ostrand_score_A[0];
+            if($top_ostrand_score > $indefstr_opt) { 
+              my @ostrand_sstart_A  = ();
+              my @ostrand_sstop_A   = ();
+              my @ostrand_sstrand_A = ();
+              my @ostrand_mstart_A  = ();
+              my @ostrand_mstop_A   = ();
+              my @ostrand_mstrand_A = ();
+              vdr_FeatureStartStopStrandArrays($stg_results_HHHR->{$seq_name}{"std.cdt.os"}{"s_coords"}, \@ostrand_sstart_A, \@ostrand_sstop_A, \@ostrand_sstrand_A, $FH_HR);
+              vdr_FeatureStartStopStrandArrays($stg_results_HHHR->{$seq_name}{"std.cdt.os"}{"m_coords"}, \@ostrand_mstart_A, \@ostrand_mstop_A, \@ostrand_mstrand_A, $FH_HR);
+              # check if this is an exempted region
+              my $exempted_region = 0;
+              foreach my $exc_coords (@{$indfstrn_exc_AA[$mdl_idx]}) { 
+                if(vdr_CoordsCheckIfSpans($exc_coords, vdr_CoordsSegmentCreate($ostrand_mstart_A[0], $ostrand_mstop_A[0], $ostrand_mstrand_A[0], $FH_HR), $FH_HR)) { 
+                  $exempted_region = 1;
+                }
+              }
+              if(! $exempted_region) { 
+                $alt_scoords = "seq:" . vdr_CoordsSegmentCreate($ostrand_sstart_A[0], $ostrand_sstop_A[0], $ostrand_sstrand_A[0], $FH_HR) . ";";
+                $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate($ostrand_mstart_A[0], $ostrand_mstop_A[0], $ostrand_mstrand_A[0], $FH_HR) . ";";
+                $alt_str = sprintf("score:%.1f>%s", $top_ostrand_score, $indefstr_opt2print);
+                alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "indfstrn", $seq_name, $alt_scoords . $alt_mcoords . $alt_str, $FH_HR);
               }
             }
-            if(! $exempted_region) { 
-              $alt_scoords = "seq:" . vdr_CoordsSegmentCreate($ostrand_sstart_A[0], $ostrand_sstop_A[0], $ostrand_sstrand_A[0], $FH_HR) . ";";
-              $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate($ostrand_mstart_A[0], $ostrand_mstop_A[0], $ostrand_mstrand_A[0], $FH_HR) . ";";
-              $alt_str = sprintf("score:%.1f>%s", $top_ostrand_score, $indefstr_opt2print);
-              alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "indfstrn", $seq_name, $alt_scoords . $alt_mcoords . $alt_str, $FH_HR);
-            }
           }
-        }
 
-        # inconsistent hits: duplicate regions (dupregin) 
-        if($nhits > 1) { 
-          my @m_start_A  = ();
-          my @m_stop_A   = ();
-          my @m_strand_A = ();
-          my @s_start_A  = ();
-          my @s_stop_A   = ();
-          my @s_strand_A = ();
-          vdr_FeatureStartStopStrandArrays($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"m_coords"}, \@m_start_A, \@m_stop_A, \@m_strand_A, $FH_HR);
-          vdr_FeatureStartStopStrandArrays($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"}, \@s_start_A, \@s_stop_A, \@s_strand_A, $FH_HR);
-          my @dupreg_score_A = split(",", $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"score"});
-          for(my $i = 0; $i < $nhits; $i++) { 
-            if($dupreg_score_A[$i] > $dupregsc_opt) { 
-              for(my $j = $i+1; $j < $nhits; $j++) { 
-                if($dupreg_score_A[$j] > $dupregsc_opt) { 
-                  # helper_dupregin will set $alt_str to "" if no dupregin alert is necessary
-                  ($alt_str, $alt_scoords, $alt_mcoords) = 
-                      helper_dupregin(\@m_start_A, \@m_stop_A, \@m_strand_A,
-                                      \@s_start_A, \@s_stop_A, \@s_strand_A,
-                                      \@dupreg_score_A, $i, $j, $dupregolp_opt, 
-                                      \@{$dupregin_exc_AA[$mdl_idx]}, $FH_HR);
-                  if($alt_str ne "") { 
-                    alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "dupregin", $seq_name, "seq:" . $alt_scoords . ";" . "mdl:" . $alt_mcoords . ";" . $alt_str, $FH_HR);
-                    
+          # inconsistent hits: duplicate regions (dupregin) 
+          if($nhits > 1) { 
+            my @m_start_A  = ();
+            my @m_stop_A   = ();
+            my @m_strand_A = ();
+            my @s_start_A  = ();
+            my @s_stop_A   = ();
+            my @s_strand_A = ();
+            vdr_FeatureStartStopStrandArrays($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"m_coords"}, \@m_start_A, \@m_stop_A, \@m_strand_A, $FH_HR);
+            vdr_FeatureStartStopStrandArrays($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"}, \@s_start_A, \@s_stop_A, \@s_strand_A, $FH_HR);
+            my @dupreg_score_A = split(",", $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"score"});
+            for(my $i = 0; $i < $nhits; $i++) { 
+              if($dupreg_score_A[$i] > $dupregsc_opt) { 
+                for(my $j = $i+1; $j < $nhits; $j++) { 
+                  if($dupreg_score_A[$j] > $dupregsc_opt) { 
+                    # helper_dupregin will set $alt_str to "" if no dupregin alert is necessary
+                    ($alt_str, $alt_scoords, $alt_mcoords) = 
+                        helper_dupregin(\@m_start_A, \@m_stop_A, \@m_strand_A,
+                                        \@s_start_A, \@s_stop_A, \@s_strand_A,
+                                        \@dupreg_score_A, $i, $j, $dupregolp_opt, 
+                                        \@{$dupregin_exc_AA[$mdl_idx]}, $FH_HR);
+                    if($alt_str ne "") { 
+                      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "dupregin", $seq_name, "seq:" . $alt_scoords . ";" . "mdl:" . $alt_mcoords . ";" . $alt_str, $FH_HR);
+                      
+                    }
                   }
                 }
               }
             }
           }
-        }
-      
-        # inconsistent hits: wrong hit order (discontn)
-        if($nhits > 1) { 
-          my $i;
-          my @seq_hit_order_A = (); # array of sequence boundary hit indices in sorted order [0..nhits-1] values are in range 1..nhits
-          my @mdl_hit_order_A = (); # array of model    boundary hit indices in sorted order [0..nhits-1] values are in range 1..nhits
-          my @seq_hit_coords_A = split(",", $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"});
-          my @mdl_hit_coords_A = split(",", $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"m_coords"});
-          my $seq_hit_order_str = undef;
-          # if blastn was used, we allow overlaps in the seq hits because blastn can report these but cmsearch cannot
-          if($do_blastn_cdt) { 
-            $seq_hit_order_str = helper_sort_hit_array(\@seq_hit_coords_A, \@seq_hit_order_A, 1, $FH_HR); # 1 means duplicate values in best array are not allowed
-          }
-          else { 
-            $seq_hit_order_str = helper_sort_hit_array(\@seq_hit_coords_A, \@seq_hit_order_A, 0, $FH_HR); # 0 means duplicate values in best array are not allowed
-          }
-          my $mdl_hit_order_str = helper_sort_hit_array(\@mdl_hit_coords_A, \@mdl_hit_order_A, 1, $FH_HR); # 1 means duplicate values in best array are allowed
-          # check if the hits are out of order we don't just check for equality of the
-          # two strings because it's possible (but rare) that there could be duplicates in the model
-          # order array and sequence order array, so we need to allow for that.
-          my $out_of_order_flag = 0;
-          for($i = 0; $i < $nhits; $i++) { 
-            my $x = $mdl_hit_order_A[$i];
-            my $y = $seq_hit_order_A[$i];
-            # check to see if hit $i is same order in both mdl and seq coords
-            # or if it is not, it's okay if it is identical to the one that is
-            # example: 
-            # hit 1 seq 1..10,+   model  90..99,+
-            # hit 2 seq 11..20,+  model 100..110,+
-            # hit 3 seq 21..30,+  model 100..110,+
-            # seq order: 1,2,3
-            # mdl order: 1,3,2 (or 1,2,3) we want both to be ok (not FAIL)
-            if($x ne $y) { # hits are not the same order
-              my $mdl_identical_flag = ($mdl_hit_coords_A[($x-1)] eq $mdl_hit_coords_A[($y-1)]) ? 1 : 0;
-              my $seq_identical_flag = ($seq_hit_coords_A[($x-1)] eq $seq_hit_coords_A[($y-1)]) ? 1 : 0;
-              if($mdl_identical_flag && $seq_identical_flag) { 
-                ofile_FAIL("ERROR in $sub_name, found two hits identical in both seq and mdl coords for seq $seq_name seq_coords: " . $seq_hit_coords_A[($x-1)] . ", mdl_coords: " . $mdl_hit_coords_A[($x-1)], 1, $FH_HR);
-              }
-              if((! $mdl_identical_flag) && (! $seq_identical_flag)) { 
-                # hit is not identical in either mdl or seq coords to hit in correct order
-                $out_of_order_flag = 1;
-                $i = $nhits; # breaks 'for i' loop, slight optimization
+          
+          # inconsistent hits: wrong hit order (discontn)
+          if($nhits > 1) { 
+            my $i;
+            my @seq_hit_order_A = (); # array of sequence boundary hit indices in sorted order [0..nhits-1] values are in range 1..nhits
+            my @mdl_hit_order_A = (); # array of model    boundary hit indices in sorted order [0..nhits-1] values are in range 1..nhits
+            my @seq_hit_coords_A = split(",", $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"});
+            my @mdl_hit_coords_A = split(",", $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"m_coords"});
+            my $seq_hit_order_str = undef;
+            # if blastn was used, we allow overlaps in the seq hits because blastn can report these but cmsearch cannot
+            if($do_blastn_cdt) { 
+              $seq_hit_order_str = helper_sort_hit_array(\@seq_hit_coords_A, \@seq_hit_order_A, 1, $FH_HR); # 1 means duplicate values in best array are not allowed
+            }
+            else { 
+              $seq_hit_order_str = helper_sort_hit_array(\@seq_hit_coords_A, \@seq_hit_order_A, 0, $FH_HR); # 0 means duplicate values in best array are not allowed
+            }
+            my $mdl_hit_order_str = helper_sort_hit_array(\@mdl_hit_coords_A, \@mdl_hit_order_A, 1, $FH_HR); # 1 means duplicate values in best array are allowed
+            # check if the hits are out of order we don't just check for equality of the
+            # two strings because it's possible (but rare) that there could be duplicates in the model
+            # order array and sequence order array, so we need to allow for that.
+            my $out_of_order_flag = 0;
+            for($i = 0; $i < $nhits; $i++) { 
+              my $x = $mdl_hit_order_A[$i];
+              my $y = $seq_hit_order_A[$i];
+              # check to see if hit $i is same order in both mdl and seq coords
+              # or if it is not, it's okay if it is identical to the one that is
+              # example: 
+              # hit 1 seq 1..10,+   model  90..99,+
+              # hit 2 seq 11..20,+  model 100..110,+
+              # hit 3 seq 21..30,+  model 100..110,+
+              # seq order: 1,2,3
+              # mdl order: 1,3,2 (or 1,2,3) we want both to be ok (not FAIL)
+              if($x ne $y) { # hits are not the same order
+                my $mdl_identical_flag = ($mdl_hit_coords_A[($x-1)] eq $mdl_hit_coords_A[($y-1)]) ? 1 : 0;
+                my $seq_identical_flag = ($seq_hit_coords_A[($x-1)] eq $seq_hit_coords_A[($y-1)]) ? 1 : 0;
+                if($mdl_identical_flag && $seq_identical_flag) { 
+                  ofile_FAIL("ERROR in $sub_name, found two hits identical in both seq and mdl coords for seq $seq_name seq_coords: " . $seq_hit_coords_A[($x-1)] . ", mdl_coords: " . $mdl_hit_coords_A[($x-1)], 1, $FH_HR);
+                }
+                if((! $mdl_identical_flag) && (! $seq_identical_flag)) { 
+                  # hit is not identical in either mdl or seq coords to hit in correct order
+                  $out_of_order_flag = 1;
+                  $i = $nhits; # breaks 'for i' loop, slight optimization
+                }
               }
             }
-          }
-          if($out_of_order_flag) { 
-#            $alt_str = "seq order: " . $seq_hit_order_str . "(" . $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"} . ")";
-#            $alt_str .= ", model order: " . $mdl_hit_order_str . "(" . $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"m_coords"} . ")";
-            $alt_str = sprintf("%s%sseq order: %s, mdl order: %s",
-                               "seq:" . $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"} . ";", 
-                               "mdl:" . $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"m_coords"} . ";", 
-                               $seq_hit_order_str, 
-                               $mdl_hit_order_str);
-            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "discontn", $seq_name, $alt_str, $FH_HR);
+            if($out_of_order_flag) { 
+              #            $alt_str = "seq order: " . $seq_hit_order_str . "(" . $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"} . ")";
+              #            $alt_str .= ", model order: " . $mdl_hit_order_str . "(" . $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"m_coords"} . ")";
+              $alt_str = sprintf("%s%sseq order: %s, mdl order: %s",
+                                 "seq:" . $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"} . ";", 
+                                 "mdl:" . $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"m_coords"} . ";", 
+                                 $seq_hit_order_str, 
+                                 $mdl_hit_order_str);
+              alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "discontn", $seq_name, $alt_str, $FH_HR);
+            }
           }
         }
-      }
-      
-      # finally fill $cls_output_HHR->{$seq_name} info related to models and groups
-      if(defined $stg_results_HHHR->{$seq_name}{"std.cls.1"}) { 
-        $cls_output_HHR->{$seq_name}{"model1"}    = $stg_results_HHHR->{$seq_name}{"std.cls.1"}{"model"};
-        $cls_output_HHR->{$seq_name}{"group1"}    = $stg_results_HHHR->{$seq_name}{"std.cls.1"}{"group"};    # can be undef
-        $cls_output_HHR->{$seq_name}{"subgroup1"} = $stg_results_HHHR->{$seq_name}{"std.cls.1"}{"subgroup"}; # can be undef
-      }
-      if(defined $stg_results_HHHR->{$seq_name}{"std.cls.2"}) { 
-        $cls_output_HHR->{$seq_name}{"model2"}    = $stg_results_HHHR->{$seq_name}{"std.cls.2"}{"model"};
-        $cls_output_HHR->{$seq_name}{"group2"}    = $stg_results_HHHR->{$seq_name}{"std.cls.2"}{"group"};    # can be undef
-        $cls_output_HHR->{$seq_name}{"subgroup2"} = $stg_results_HHHR->{$seq_name}{"std.cls.2"}{"subgroup"}; # can be undef
-      }
-      # save -r data (which may differ from std.cls data, especially if --r_list or --r_only)
-      if(defined $stg_results_HHHR->{$seq_name}{"rpn.cls.1"}) { 
-        $cls_output_HHR->{$seq_name}{"rpn.model1"} = $stg_results_HHHR->{$seq_name}{"rpn.cls.1"}{"model"};
-      }
-    } # else entered if we didn't report a noannotn alert
+        
+        # finally fill $cls_output_HHR->{$seq_name} info related to models and groups
+        if(defined $stg_results_HHHR->{$seq_name}{"std.cls.1"}) { 
+          $cls_output_HHR->{$seq_name}{"model1"}    = $stg_results_HHHR->{$seq_name}{"std.cls.1"}{"model"};
+          $cls_output_HHR->{$seq_name}{"group1"}    = $stg_results_HHHR->{$seq_name}{"std.cls.1"}{"group"};    # can be undef
+          $cls_output_HHR->{$seq_name}{"subgroup1"} = $stg_results_HHHR->{$seq_name}{"std.cls.1"}{"subgroup"}; # can be undef
+        }
+        if(defined $stg_results_HHHR->{$seq_name}{"std.cls.2"}) { 
+          $cls_output_HHR->{$seq_name}{"model2"}    = $stg_results_HHHR->{$seq_name}{"std.cls.2"}{"model"};
+          $cls_output_HHR->{$seq_name}{"group2"}    = $stg_results_HHHR->{$seq_name}{"std.cls.2"}{"group"};    # can be undef
+          $cls_output_HHR->{$seq_name}{"subgroup2"} = $stg_results_HHHR->{$seq_name}{"std.cls.2"}{"subgroup"}; # can be undef
+        }
+        # save -r data (which may differ from std.cls data, especially if --r_list or --r_only)
+        if(defined $stg_results_HHHR->{$seq_name}{"rpn.cls.1"}) { 
+          $cls_output_HHR->{$seq_name}{"rpn.model1"} = $stg_results_HHHR->{$seq_name}{"rpn.cls.1"}{"model"};
+        }
+      } # end of else entered if we didn't report a noannotn alert
+    } # end of else entered if ! $do_clsonly
   } # end of foreach seq loop
 
   return;
@@ -10053,6 +10114,8 @@ sub output_tabular {
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
 
+  my $do_clsonly = opt_Get("--cls_only", $opt_HHR);
+
   # if --glsearch we won't have PP values
   my $do_glsearch = opt_Get("--glsearch", $opt_HHR) ? 1 : 0;
 
@@ -10592,37 +10655,41 @@ sub output_tabular {
   # output the tables:
   # if we are doing headers, we always call ofile_TableHumanOutput()
   if($do_headers) { 
-    ofile_TableHumanOutput(\@data_ant_AA, \@head_ant_AA, \@clj_ant_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ant"}, undef, $FH_HR);
-    ofile_TableHumanOutput(\@data_cls_AA, \@head_cls_AA, \@clj_cls_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"cls"}, undef, $FH_HR);
-    ofile_TableHumanOutput(\@data_ftr_AA, \@head_ftr_AA, \@clj_ftr_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ftr"}, undef, $FH_HR);
-    ofile_TableHumanOutput(\@data_sgm_AA, \@head_sgm_AA, \@clj_sgm_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sgm"}, undef, $FH_HR);
-    ofile_TableHumanOutput(\@data_alt_AA, \@head_alt_AA, \@clj_alt_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"alt"}, undef, $FH_HR);
-    ofile_TableHumanOutput(\@data_alc_AA, \@head_alc_AA, \@clj_alc_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"alc"}, undef, $FH_HR);
     ofile_TableHumanOutput(\@data_mdl_AA, \@head_mdl_AA, \@clj_mdl_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"mdl"}, undef, $FH_HR);
-    ofile_TableHumanOutput(\@data_dcr_AA, \@head_dcr_AA, \@clj_dcr_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"dcr"}, undef, $FH_HR);
-    if($do_sda) {
-      ofile_TableHumanOutput(\@data_sda_AA, \@head_sda_AA, \@clj_sda_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sda"}, undef, $FH_HR);
-    }
-    if($do_rpn) {
-      ofile_TableHumanOutput(\@data_rpn_AA, \@head_rpn_AA, \@clj_rpn_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"rpn"}, undef, $FH_HR);
+    ofile_TableHumanOutput(\@data_cls_AA, \@head_cls_AA, \@clj_cls_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"cls"}, undef, $FH_HR);
+    if(! $do_clsonly) { 
+      ofile_TableHumanOutput(\@data_ant_AA, \@head_ant_AA, \@clj_ant_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ant"}, undef, $FH_HR);
+      ofile_TableHumanOutput(\@data_ftr_AA, \@head_ftr_AA, \@clj_ftr_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ftr"}, undef, $FH_HR);
+      ofile_TableHumanOutput(\@data_sgm_AA, \@head_sgm_AA, \@clj_sgm_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sgm"}, undef, $FH_HR);
+      ofile_TableHumanOutput(\@data_alt_AA, \@head_alt_AA, \@clj_alt_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"alt"}, undef, $FH_HR);
+      ofile_TableHumanOutput(\@data_alc_AA, \@head_alc_AA, \@clj_alc_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"alc"}, undef, $FH_HR);
+      ofile_TableHumanOutput(\@data_dcr_AA, \@head_dcr_AA, \@clj_dcr_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"dcr"}, undef, $FH_HR);
+      if($do_sda) {
+        ofile_TableHumanOutput(\@data_sda_AA, \@head_sda_AA, \@clj_sda_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sda"}, undef, $FH_HR);
+      }
+      if($do_rpn) {
+        ofile_TableHumanOutput(\@data_rpn_AA, \@head_rpn_AA, \@clj_rpn_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"rpn"}, undef, $FH_HR);
+      }
     }
   }
   else { 
     # if we are not doing headers, we only call ofile_TableHumanOutput() if we have data, because ofile_TableHumanOutput() requires at least one of header and data arrays be non-empty
-    if(scalar(@data_ant_AA) > 0) { ofile_TableHumanOutput(\@data_ant_AA, undef, \@clj_ant_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ant"}, undef, $FH_HR); }
     if(scalar(@data_cls_AA) > 0) { ofile_TableHumanOutput(\@data_cls_AA, undef, \@clj_cls_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"cls"}, undef, $FH_HR); }
-    if(scalar(@data_ftr_AA) > 0) { ofile_TableHumanOutput(\@data_ftr_AA, undef, \@clj_ftr_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ftr"}, undef, $FH_HR); }
-    if(scalar(@data_sgm_AA) > 0) { ofile_TableHumanOutput(\@data_sgm_AA, undef, \@clj_sgm_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sgm"}, undef, $FH_HR); }
-    if(scalar(@data_alt_AA) > 0) { ofile_TableHumanOutput(\@data_alt_AA, undef, \@clj_alt_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"alt"}, undef, $FH_HR); }
-    if(scalar(@data_alc_AA) > 0) { ofile_TableHumanOutput(\@data_alc_AA, undef, \@clj_alc_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"alc"}, undef, $FH_HR); }
     if(scalar(@data_mdl_AA) > 0) { ofile_TableHumanOutput(\@data_mdl_AA, undef, \@clj_mdl_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"mdl"}, undef, $FH_HR); }
-    if(scalar(@data_dcr_AA) > 0) { ofile_TableHumanOutput(\@data_dcr_AA, undef, \@clj_dcr_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"dcr"}, undef, $FH_HR); }
-    if(($do_sda) && (scalar(@data_sda_AA) > 0)) {
-      ofile_TableHumanOutput(\@data_sda_AA, undef, \@clj_sda_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sda"}, undef, $FH_HR);
-    }
-    if(($do_rpn) && (scalar(@data_rpn_AA) > 0)) {
-      ofile_TableHumanOutput(\@data_rpn_AA, undef, \@clj_rpn_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"rpn"}, undef, $FH_HR);
-    }
+    if(! $do_clsonly) { 
+      if(scalar(@data_ant_AA) > 0) { ofile_TableHumanOutput(\@data_ant_AA, undef, \@clj_ant_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ant"}, undef, $FH_HR); }
+      if(scalar(@data_ftr_AA) > 0) { ofile_TableHumanOutput(\@data_ftr_AA, undef, \@clj_ftr_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ftr"}, undef, $FH_HR); }
+      if(scalar(@data_sgm_AA) > 0) { ofile_TableHumanOutput(\@data_sgm_AA, undef, \@clj_sgm_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sgm"}, undef, $FH_HR); }
+      if(scalar(@data_alt_AA) > 0) { ofile_TableHumanOutput(\@data_alt_AA, undef, \@clj_alt_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"alt"}, undef, $FH_HR); }
+      if(scalar(@data_alc_AA) > 0) { ofile_TableHumanOutput(\@data_alc_AA, undef, \@clj_alc_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"alc"}, undef, $FH_HR); }
+      if(scalar(@data_dcr_AA) > 0) { ofile_TableHumanOutput(\@data_dcr_AA, undef, \@clj_dcr_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"dcr"}, undef, $FH_HR); }
+      if(($do_sda) && (scalar(@data_sda_AA) > 0)) {
+        ofile_TableHumanOutput(\@data_sda_AA, undef, \@clj_sda_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sda"}, undef, $FH_HR);
+      }
+      if(($do_rpn) && (scalar(@data_rpn_AA) > 0)) {
+        ofile_TableHumanOutput(\@data_rpn_AA, undef, \@clj_rpn_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"rpn"}, undef, $FH_HR);
+      }
+    }      
   }
   return ($zero_classifications, $zero_alerts);
 }
@@ -14206,9 +14273,13 @@ sub output_mdl_and_alc_files_and_remove_temp_files {
 
   my ($zero_alt, $to_remove_AR, $opt_HHR, $ofile_info_HHR) = (@_);
 
+  my $do_clsonly    = opt_Get("--cls_only", $opt_HHR);
+
   # close the two files we may output to stdout and the log
   close($ofile_info_HHR->{"FH"}{"mdl"}); 
-  close($ofile_info_HHR->{"FH"}{"alc"}); 
+  if(! $do_clsonly) { 
+    close($ofile_info_HHR->{"FH"}{"alc"});
+  }
   
   my $FH_HR  = $ofile_info_HH{"FH"};
   
@@ -14220,7 +14291,10 @@ sub output_mdl_and_alc_files_and_remove_temp_files {
   utl_FileLinesToArray($ofile_info_HHR->{"fullpath"}{"mdl"}, 1, \@file_A, $FH_HR);
   push(@conclude_A, @file_A);
   push(@conclude_A, "#");
-  if($zero_alt) { 
+  if($do_clsonly) {
+    push(@conclude_A, "# Only classification-related alerts detected due to --cls_only.");
+  }
+  elsif($zero_alt) { 
     push(@conclude_A, "# Zero alerts were reported.");
   }
   else { 
@@ -14235,7 +14309,7 @@ sub output_mdl_and_alc_files_and_remove_temp_files {
     ofile_OutputString($FH_HR->{"log"}, 1, $line . "\n");
   }
   
-# remove unwanted files, unless --keep
+  # remove unwanted files, unless --keep
   if(! opt_Get("--keep", $opt_HHR)) { 
     my @to_actually_remove_A = (); # sanity check: make sure the files we're about to remove actually exist
     my %to_actually_remove_H = (); # sanity check: to make sure we don't try to delete 
