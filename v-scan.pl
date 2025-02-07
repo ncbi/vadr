@@ -226,12 +226,14 @@ my %mkey_mdir_H = (); # hash of model directories for each model library key, re
 my %mkey_opts_H = (); # hash of options for each model library key, read from config file, key is model key
 parse_config_file($in_config_file, \@mkey_A, \%mkey_mdir_H, \%mkey_opts_H, \%opt_HH, $FH_HR);
 
+ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
 # foreach model key, run v-annotate.pl --cls_only
 my %out_dir_H = (); # hash of output directories
 my %sqc_H = ();     # hash of sqc files
 my $mkey;
 foreach $mkey (@mkey_A) {
-  $out_dir_H{$mkey} = $out_root . "/" . $mkey . ".0";
+  $out_dir_H{$mkey} = $dir_tail . "/" . $mkey . ".0";
   $sqc_H{$mkey} = $out_dir_H{$mkey} . "/" . $mkey . ".0.vadr.sqc";
   $cmd = $execs_H{"v-annotate.pl"} . " -f -s --cls_only --mkey $mkey --mdir $mkey_mdir_H{$mkey} $orig_in_fa_file $out_dir_H{$mkey}";
   if(! $do_verbose) { $cmd .= " > /dev/null"; }
@@ -247,7 +249,7 @@ my %seq_mkey_H = ();
 my %seq_mdl_H  = ();
 my %seq_sc_H   = ();
 foreach $mkey (@mkey_A) {
-  parse_sqc_clsonly_file($sqc_H{$mkey}, \%seq_H, \@seq_A, \%seq_mkey_H, \%seq_mdl_H, \%seq_sc_H, $FH_HR);
+  parse_sqc_clsonly_file($sqc_H{$mkey}, \%seq_H, \@seq_A, \%seq_mkey_H, \%seq_mdl_H, \%seq_sc_H, \%opt_HH, $FH_HR);
 }
 
 #################################################################
