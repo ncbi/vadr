@@ -214,14 +214,14 @@ foreach $cmd (@early_cmd_A) {
   print $cmd_FH $cmd . "\n";
 }
 
+##############################################
+# Validate that we have all the files we need
+##############################################
 my $progress_w = 60; # the width of the left hand column in our progress output, hard-coded
 my $start_secs = ofile_OutputProgressPrior("Validating input", $progress_w, $log_FH, *STDOUT);
 
 my @to_remove_A   = (); # list of files to remove at end of subroutine, if --keep not used
 
-###########################################
-# Validate that we have all the files we need:
-# fasta file
 utl_FileValidateExistsAndNonEmpty($orig_in_fa_file, "input fasta sequence file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 utl_FileValidateExistsAndNonEmpty($in_config_file,  "input config file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 
@@ -253,8 +253,9 @@ else {
 }
 my $in_sqfile = Bio::Easel::SqFile->new({ fileLocation => $in_fa_file }); # the sequence file object
 
-#################################################
-# foreach model key, run v-annotate.pl --cls_only
+##################################################
+# For each model key, run v-annotate.pl --cls_only
+##################################################
 my %out_dir_H = (); # hash of output directories
 my %sqc_H = ();     # hash of sqc files
 my $mkey;
@@ -268,56 +269,53 @@ foreach $mkey (@mkey_A) {
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 
+##################################################
 # Parse sqc files to determine which seqs match best to each library, need
 # to look at all sqc files before assigning sequences to a mkey
 # because we may be determining best library based on score
+##################################################
 my %seq_H         = ();   # 'exists' hash, key is sequence name, value is always '1' 
 my @seq_A         = ();   # array of sequence names
 my %seq_mkey_H    = ();   # key is seq name, value is best mkey for this sequence
 my %seq_mdl_H     = ();   # key is seq name, value is best model for this sequence
-my %seq_grp_H     = ();   # key is seq name, value is group of best model for this sequence
-my %seq_subgrp_H  = ();   # key is seq name, value is subgroup of best model for this sequence
 my %seq_sc_H      = ();   # key is seq name, value is score for best model for this sequence
 foreach $mkey (@mkey_A) {
-  parse_sqc_clsonly_file($sqc_H{$mkey}, $mkey, \%seq_H, \@seq_A, \%seq_mkey_H, \%seq_mdl_H, \%seq_grp_H, \%seq_subgrp_H, \%seq_sc_H, \%opt_HH, $FH_HR);
+  parse_sqc_clsonly_file($sqc_H{$mkey}, $mkey, \%seq_H, \@seq_A, \%seq_mkey_H, \%seq_mdl_H, \%seq_sc_H, \%opt_HH, $FH_HR);
 }
 
 # Fill per-mkey lists of sequences
 my %seqlist_HA = (); # key is mkey, value is array of sequences that match to this mkey
 my $nmkey = 0;       # number of mkey (libraries) we have at least one sequence to rerun v-annotate.pl for
 
-my %mkey_mdl_ct_HH = ();
-my %mkey_mdl_order_HA = ();
-my %grp_H    = (); # key is mdl name, value is group
-my %subgrp_H = (); # key is mdl name, value is subgroup
+my %mkey_ct_H   = (); # key is mkey, value is number of seqs assigned to that mkey, 'undef' if 0
+my @mkey_used_A = (); # array of the mkeys with at least one sequence 
 foreach my $seqname (@seq_A) {
   if(defined $seq_mkey_H{$seqname}) {
     my $mkey   = $seq_mkey_H{$seqname};
     my $mdl    = $seq_mdl_H{$seqname};
-    my $grp    = $seq_grp_H{$seqname};
-    my $subgrp = $seq_subgrp_H{$seqname};
     if(! defined $seqlist_HA{$mkey}) {
       @{$seqlist_HA{$mkey}} = ();
-      %{$mkey_mdl_ct_HH{$mkey}} = ();
-      @{$mkey_mdl_order_HA{$mkey}} = ();
+      $mkey_ct_H{$mkey} = 0;
       $nmkey++;
-    }
-    if(! defined $mkey_mdl_ct_HH{$mkey}{$mdl}) {
-      $mkey_mdl_ct_HH{$mkey}{$mdl} = 0;
-      push(@{$mkey_mdl_order_HA{$mkey}}, $mdl);
-      $grp_H{$mdl}    = $grp;
-      $subgrp_H{$mdl} = $subgrp;
+      push(@mkey_used_A, $mkey);
     }
     push(@{$seqlist_HA{$mkey}}, $seqname);
-    $mkey_mdl_ct_HH{$mkey}{$mdl}++;
+    $mkey_ct_H{$mkey}++;
   }
 } 
 
+###########################################################################
+# Re-run v-annotate.pl for each model key that at least one seq matched to
+###########################################################################
+my @mdl_file_A = ();
+my @alc_file_A = ();
 if($nmkey > 0) { 
   foreach $mkey (@mkey_A) {
     if(defined $seqlist_HA{$mkey}) {
       my $mkey_fasta_file = $dir_tail . "/" . $mkey . ".fa";
       my $out_dir = $dir_tail . "/" . $mkey;
+      push(@mdl_file_A, $dir_tail . "/" . $mkey . "/" . $mkey . ".vadr.mdl");
+      push(@alc_file_A, $dir_tail . "/" . $mkey . "/" . $mkey . ".vadr.alc");
       $in_sqfile->fetch_seqs_given_names(\@{$seqlist_HA{$mkey}}, 60, $mkey_fasta_file);
       $cmd = $execs_H{"v-annotate.pl"} . " --mkey $mkey --mdir $mkey_mdir_H{$mkey} $mkey_opts_H{$mkey} $mkey_fasta_file $out_dir";
       if(! $do_verbose) { $cmd .= " > /dev/null"; }
@@ -339,22 +337,12 @@ ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "lib", $out_root . ".lib", 1, 
 my @head_lib_AA = ();
 my @data_lib_AA = ();
 my @clj_lib_A   = ();
-@{$head_lib_AA[0]} = ("",    "",        "",      "",      "",         "num");
-@{$head_lib_AA[1]} = ("idx", "library", "model", "group", "subgroup", "seqs");
-@clj_lib_A         = (1,     1,         1,       1,       1,          0);
+@{$head_lib_AA[0]} = ("",    "",        "num");
+@{$head_lib_AA[1]} = ("idx", "library", "seqs");
+@clj_lib_A         = (1,     1,         0);
 
 foreach $mkey (@mkey_A) {
-  my $mdl_idx = 1;
-  my $mkey_mdl_idx = sprintf("%d.%d", $mkey_idx, $mdl_idx);
-  if(! defined $mkey_mdl_ct_HH{$mkey}) {
-    push(@data_lib_AA, [$mkey_mdl_idx, $mkey, "-", "-", "-", 0 ]);
-  }
-  else {
-    foreach my $mdl (@{$mkey_mdl_order_HA{$mkey}}) {
-      push(@data_lib_AA, [$mkey_mdl_idx, $mkey, $mdl, $grp_H{$mdl}, $subgrp_H{$mdl}, $mkey_mdl_ct_HH{$mkey}{$mdl} ]);
-      $mdl_idx++;
-    }
-  }
+  push(@data_lib_AA, [$mkey_idx, $mkey, (defined $mkey_ct_H{$mkey} ? $mkey_ct_H{$mkey} : 0) ]);
   $mkey_idx++;
 }
 
@@ -364,29 +352,8 @@ ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 ############
 # Conclude #
 ############
-output_lib_file_and_remove_temp_files($zero_mdl, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
+output_lib_mdl_and_alc_files_and_remove_temp_files(\@mkey_used_A, \@mdl_file_A, \@alc_file_A, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
                                       
-# remove unwanted files, unless --keep
-if(! opt_Get("--keep", \%opt_HH)) { 
-  my @to_actually_remove_A = (); # sanity check: make sure the files we're about to remove actually exist
-  my %to_actually_remove_H = (); # sanity check: to make sure we don't try to delete 
-  foreach my $to_remove_file (@to_remove_A) { 
-    if((defined $to_remove_file) && (-e $to_remove_file) && (! defined $to_actually_remove_H{$to_remove_file})) { 
-      push(@to_actually_remove_A, $to_remove_file); 
-      $to_actually_remove_H{$to_remove_file} = 1; 
-    }
-  }
-  utl_FileRemoveList(\@to_actually_remove_A, "v-scan.pl", \%opt_HH, $FH_HR);
-}
-
-# output lib file to stdout
-my @file_A = ();
-my $line;
-utl_FileLinesToArray($ofile_info_HH{"fullpath"}{"lib"}, 0, \@file_A, $FH_HR);
-foreach $line (@file_A) {
-  print $line . "\n";
-}
-
 $total_seconds += ofile_SecondsSinceEpoch();
 ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
 
@@ -460,8 +427,6 @@ sub parse_config_file {
 #  $seq_AR:        REF to array of sequence names, to fill here
 #  $seq_mkey_HR:   REF to hash, key is sequence name, value is winning mkey, to fill here
 #  $seq_mdl_HR:    REF to hash, key is sequence name, value is winning model, to fill here
-#  $seq_grp_HR:    REF to hash, key is sequence name, value is group of winning model, "-" if undef, to fill here
-#  $seq_subgrp_HR: REF to hash, key is sequence name, value is subgroup of winning model, "-" if undef, to fill here
 #  $seq_sc_HR:     REF to hash, key is sequence name, value is winning score, to fill here
 #  $opt_HHR:       REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $FH_HR:         REF to hash of file handles
@@ -473,10 +438,10 @@ sub parse_config_file {
 #################################################################
 sub parse_sqc_clsonly_file { 
   my $sub_name = "parse_sqc_clsonly_file"; 
-  my $nargs_exp = 11;
+  my $nargs_exp = 9;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($sqc_file, $mkey, $seq_HR, $seq_AR, $seq_mkey_HR, $seq_mdl_HR, $seq_grp_HR, $seq_subgrp_HR, $seq_sc_HR, $opt_HHR, $FH_HR) = (@_);
+  my ($sqc_file, $mkey, $seq_HR, $seq_AR, $seq_mkey_HR, $seq_mdl_HR, $seq_sc_HR, $opt_HHR, $FH_HR) = (@_);
 
   my $do_lone  = opt_Get("--lone", $opt_HHR);
   my $do_first = opt_Get("--first", $opt_HHR);
@@ -494,7 +459,7 @@ sub parse_sqc_clsonly_file {
       if(scalar(@el_A) != 21) { 
         ofile_FAIL("ERROR problem parsing sqc file $sqc_H{$mkey}", 1, $FH_HR);
       }
-      my ($seqname, $pf, $mdl, $grp, $subgrp, $score) = ($el_A[1], $el_A[3], $el_A[5], $el_A[6], $el_A[7], $el_A[8]);
+      my ($seqname, $pf, $mdl, $score) = ($el_A[1], $el_A[3], $el_A[5], $el_A[8]);
 
       if(! defined $seq_HR->{$seqname}) {
         push(@seq_A, $seqname);
@@ -519,11 +484,9 @@ sub parse_sqc_clsonly_file {
           }
         }
         if($keep_flag) {
-          $seq_mkey_HR->{$seqname}   = $mkey;
-          $seq_mdl_HR->{$seqname}    = $mdl;
-          $seq_grp_HR->{$seqname}    = $grp;
-          $seq_subgrp_HR->{$seqname} = $subgrp;
-          $seq_sc_HR->{$seqname}     = $score;
+          $seq_mkey_HR->{$seqname} = $mkey;
+          $seq_mdl_HR->{$seqname}  = $mdl;
+          $seq_sc_HR->{$seqname}   = $score;
         }
       }
     }
@@ -534,13 +497,18 @@ sub parse_sqc_clsonly_file {
 }
 
 #################################################################
-# Subroutine: output_lib_and_remove_temp_files()
+# Subroutine: output_lib_mdl_and_alc_files_and_remove_temp_files()
 # Incept:     EPN, Mon Feb 10 14:13:25 2025
 #             based on v-annotate.pl:output_mdl_and_alc_files_and_remove_temp_files()
-# Purpose:    Output the lib file and remove all files
-#             if (@{$to_remove_A}) unless --keep. 
+# Purpose:    Output the lib file and then for any library
+#             with at least one sequence annotated, output the
+#             mdl and alc files, then remove all files
+#             in (@{$to_remove_A}), unless --keep. 
 #
 # Arguments:
+#  $mkey_used_AR:   ref to array of model keys we want to output .mdl and .alc files for
+#  $mdl_file_AR:    ref to array of .mdl files to output
+#  $alc_file_AR:    ref to array of .alc files to output
 #  $to_remove_AR:   ref to array of files to remove
 #  $opt_HHR:        ref to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR: ref to 2D hash of output file information, added to here
@@ -548,40 +516,63 @@ sub parse_sqc_clsonly_file {
 # Returns:  void
 #
 #################################################################
-sub output_lib_file_and_remove_temp_files { 
-  my $sub_name = "output_lib_file_and_remove_temp_files";
-  my $nargs_exp = 3;
+sub output_lib_mdl_and_alc_files_and_remove_temp_files { 
+  my $sub_name = "output_lib_mdl_and_alc_files_and_remove_temp_files";
+  my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($to_remove_AR, $opt_HHR, $ofile_info_HHR) = (@_);
+  my ($mkey_used_AR, $mdl_file_AR, $alc_file_AR, $to_remove_AR, $opt_HHR, $ofile_info_HHR) = (@_);
 
   # close the two files we may output to stdout and the log
   close($ofile_info_HHR->{"FH"}{"lib"});
   
   my $FH_HR  = $ofile_info_HH{"FH"};
-  
+
+  my $nmkey = scalar(@{$mkey_used_AR});
+  if($nmkey != scalar(@{$mdl_file_AR})) {
+    ofile_FAIL("ERROR, in $sub_name, unexpected number of mdl files", 1, $FH_HR);
+  }
+  if(scalar(@{$mdl_file_AR}) != (scalar(@{$alc_file_AR}))) {
+    ofile_FAIL("ERROR, in $sub_name, number of mdl and alc files differ", 1, $FH_HR);
+  }
+
   my @conclude_A = ();
-  push(@conclude_A, "#");
-  push(@conclude_A, "# Summary of classified sequences:");
-  push(@conclude_A, "#");
   my @file_A = ();
-  utl_FileLinesToArray($ofile_info_HHR->{"fullpath"}{"mdl"}, 1, \@file_A, $FH_HR);
+  my ($mkey, $mdl_file, $alc_file) = (undef, undef, undef);
+  push(@conclude_A, "#");
+  push(@conclude_A, "# Summary of sequences matching each library:");
+  push(@conclude_A, "#");
+  utl_FileLinesToArray($ofile_info_HHR->{"fullpath"}{"lib"}, 1, \@file_A, $FH_HR);
   push(@conclude_A, @file_A);
   push(@conclude_A, "#");
-  if($do_clsonly) {
-    push(@conclude_A, "# Only classification-related alerts detected due to --cls_only.");
-  }
-  elsif($zero_alt) { 
-    push(@conclude_A, "# Zero alerts were reported.");
-  }
-  else { 
-    push(@conclude_A, "# Summary of reported alerts:");
+
+  for(my $m = 0; $m < $nmkey; $m++) {
+    $mkey     = $mkey_used_AR->[$m];
+    $mdl_file = $mdl_file_AR->[$m];
+    $alc_file = $alc_file_AR->[$m];
+
     push(@conclude_A, "#");
-    my @file_A = ();
-    utl_FileLinesToArray($ofile_info_HHR->{"fullpath"}{"alc"}, 1, \@file_A, $FH_HR);
+    push(@conclude_A, "# Summary of sequences matching the $mkey model library:");
+    push(@conclude_A, "#");
+
+    @file_A = ();
+    utl_FileLinesToArray($mdl_file, 1, \@file_A, $FH_HR);
     push(@conclude_A, @file_A);
+    push(@conclude_A, "#");
+
+    @file_A = ();
+    utl_FileLinesToArray($alc_file, 1, \@file_A, $FH_HR);
+    if(scalar(@file_A == 3)) {
+      push(@conclude_A, "# Zero alerts reported for seqs matching to the $mkey library.");
+    }
+    else {
+      push(@conclude_A, "# Summary of reported alerts for seqs matching the $mkey library:");
+      push(@conclude_A, "#");
+      push(@conclude_A, @file_A);
+    }
+    push(@conclude_A, "#");
   }
-  
+
   foreach my $line (@conclude_A) { 
     ofile_OutputString($FH_HR->{"log"}, 1, $line . "\n");
   }
