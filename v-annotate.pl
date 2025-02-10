@@ -648,7 +648,6 @@ my $releasedate   = "Jun 2024";
 my $pkgname       = "VADR";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
-# it is printed to
 select *STDOUT;
 $| = 1;
 
