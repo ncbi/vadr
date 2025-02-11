@@ -264,7 +264,7 @@ foreach $mkey (@mkey_A) {
   $sqc_H{$mkey} = $out_dir_H{$mkey} . "/" . $mkey . ".0.vadr.sqc";
   $cmd = $execs_H{"v-annotate.pl"} . " -f -s --origfa --cls_only --mkey $mkey --mdir $mkey_mdir_H{$mkey} $in_fa_file $out_dir_H{$mkey}";
   if(! $do_verbose) { $cmd .= " > /dev/null"; }
-  my $start_secs = ofile_OutputProgressPrior(sprintf("Scanning for %s sequences ... ", $mkey), $progress_w, $log_FH, *STDOUT);
+  my $start_secs = ofile_OutputProgressPrior(sprintf("Scanning sequences against %s library ... ", $mkey), $progress_w, $log_FH, *STDOUT);
   utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
@@ -286,18 +286,15 @@ foreach $mkey (@mkey_A) {
 # Fill per-mkey lists of sequences
 my %seqlist_HA = (); # key is mkey, value is array of sequences that match to this mkey
 my $nmkey = 0;       # number of mkey (libraries) we have at least one sequence to rerun v-annotate.pl for
-
-my %mkey_ct_H   = (); # key is mkey, value is number of seqs assigned to that mkey, 'undef' if 0
-my @mkey_used_A = (); # array of the mkeys with at least one sequence 
+my %mkey_ct_H = (); # key is mkey, value is number of seqs assigned to that mkey, 'undef' if 0
 foreach my $seqname (@seq_A) {
   if(defined $seq_mkey_H{$seqname}) {
-    my $mkey   = $seq_mkey_H{$seqname};
-    my $mdl    = $seq_mdl_H{$seqname};
+    my $mkey = $seq_mkey_H{$seqname};
+    my $mdl  = $seq_mdl_H{$seqname};
     if(! defined $seqlist_HA{$mkey}) {
       @{$seqlist_HA{$mkey}} = ();
       $mkey_ct_H{$mkey} = 0;
       $nmkey++;
-      push(@mkey_used_A, $mkey);
     }
     push(@{$seqlist_HA{$mkey}}, $seqname);
     $mkey_ct_H{$mkey}++;
@@ -307,13 +304,15 @@ foreach my $seqname (@seq_A) {
 ###########################################################################
 # Re-run v-annotate.pl for each model key that at least one seq matched to
 ###########################################################################
-my @mdl_file_A = ();
-my @alc_file_A = ();
+my @mkey_used_A = (); # array of the mkeys with at least one sequence 
+my @mdl_file_A  = (); # array of mdl files to output before exiting
+my @alc_file_A  = (); # array of alc files to output before exiting
 if($nmkey > 0) { 
   foreach $mkey (@mkey_A) {
     if(defined $seqlist_HA{$mkey}) {
       my $mkey_fasta_file = $dir_tail . "/" . $mkey . ".fa";
       my $out_dir = $dir_tail . "/" . $mkey;
+      push(@mkey_used_A, $mkey);
       push(@mdl_file_A, $dir_tail . "/" . $mkey . "/" . $mkey . ".vadr.mdl");
       push(@alc_file_A, $dir_tail . "/" . $mkey . "/" . $mkey . ".vadr.alc");
       $in_sqfile->fetch_seqs_given_names(\@{$seqlist_HA{$mkey}}, 60, $mkey_fasta_file);
