@@ -41,8 +41,9 @@ require "sqp_utils.pm";
 #######################################################################################
 
 # make sure required environment variables are set
-my $env_vadr_scripts_dir  = utl_DirEnvVarValid("VADRSCRIPTSDIR");
-my $env_vadr_easel_dir    = utl_DirEnvVarValid("VADREASELDIR");
+my $env_vadr_scripts_dir = utl_DirEnvVarValid("VADRSCRIPTSDIR");
+my $env_vadr_easel_dir   = utl_DirEnvVarValid("VADREASELDIR");
+my $env_vadr_config_file = (exists $ENV{"VADRCONFIGFILE"}) ? $ENV{"VADRCONFIGFILE"} : undef;
 
 my %execs_H = (); # hash with paths to all required executables
 $execs_H{"v-annotate.pl"} = $env_vadr_scripts_dir  . "/v-annotate.pl";
@@ -84,6 +85,7 @@ opt_Add("-h",           "boolean", 0,          0,    undef, undef,      undef,  
 $opt_group_desc_H{++$g} = "basic options";
 #     option            type       default group   requires incompat    preamble-output                                                                            help-output    
 opt_Add("-f",           "boolean", 0,         $g,    undef, undef,      "force directory overwrite",                                                               "force; if output dir exists, overwrite it",   \%opt_HH, \@opt_order_A);
+opt_Add("-c",           "string",  0,         $g,    undef, undef,      "use config file <s> instead of default in \$VADRCONFIGFILE",                              "use config file <s> instead of default in \$VADRCONFIGFILE", \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,         $g,    undef, undef,      "be verbose",                                                                              "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
 opt_Add("--one",        "boolean", 0,         $g,    undef, undef,      "only allow matches to a single model library, exit if multiple libraries are matched",    "only allow matches to a single model library, exit if multiple libraries are matched", \%opt_HH, \@opt_order_A);
 opt_Add("--lone",       "boolean", 0,         $g,    undef, undef,      "exit if at least one sequence matches to multiple libraries",                             "exit if at least one sequence matches to multiple libraries", \%opt_HH, \@opt_order_A);
@@ -102,6 +104,7 @@ my $options_okay =
     &GetOptions('h'        => \$GetOptions_H{"-h"}, 
 # basic options
                 'f'        => \$GetOptions_H{"-f"},
+                'c=s'      => \$GetOptions_H{"-c"},
                 'v'        => \$GetOptions_H{"-v"},
                 'one'      => \$GetOptions_H{"--one"}, 
                 'lone'     => \$GetOptions_H{"--lone"}, 
@@ -109,9 +112,9 @@ my $options_okay =
                 'origfa'   => \$GetOptions_H{"--origfa"},
                 'keep'     => \$GetOptions_H{"--keep"}, 
                 'p'        => \$GetOptions_H{"-p"}, 
-                'p_nseq'   => \$GetOptions_H{"--p_nseq"},
+                'p_nseq=s' => \$GetOptions_H{"--p_nseq"},
                 'p_rand'   => \$GetOptions_H{"--p_rand"},
-                'p_seed'   => \$GetOptions_H{"--p_seed"});
+                'p_seed=s' => \$GetOptions_H{"--p_seed"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
@@ -150,14 +153,14 @@ my $do_peek_rand = opt_Get("--p_rand", \%opt_HH);
 my $rand_seed    = opt_Get("--p_seed", \%opt_HH);
 
 # check that number of command line args is correct
-if(scalar(@ARGV) != 3) {   
+if(scalar(@ARGV) != 2) {   
   print "Incorrect number of command line arguments.\n";
   print $usage;
   print "\nTo see more help on available options, do $executable -h\n\n";
   exit(1);
 }
 
-my ($orig_in_fa_file, $dir, $in_config_file) = (@ARGV);
+my ($orig_in_fa_file, $dir) = (@ARGV);
 
 #############################
 # create the output directory
@@ -192,10 +195,11 @@ my $out_root = $dir . "/" . $dir_tail . ".vadr";
 # output program banner and open output files
 #############################################
 # output preamble
-my @arg_desc_A = ("sequence file", "output directory", "config file");
-my @arg_A      = ($orig_in_fa_file, $dir, $in_config_file);
+my @arg_desc_A = ("sequence file", "output directory");
+my @arg_A      = ($orig_in_fa_file, $dir);
 my %extra_H    = ();
 $extra_H{"\$VADRSCRIPTSDIR"}  = $env_vadr_scripts_dir;
+$extra_H{"\$VADRCONFIGFILE"}  = (defined $env_vadr_config_file) ? $env_vadr_config_file : "undef";
 ofile_OutputBanner(*STDOUT, $pkgname, $version, $releasedate, $synopsis, $date, \%extra_H);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
@@ -240,12 +244,22 @@ my $start_secs = ofile_OutputProgressPrior("Validating input", $progress_w, $log
 my @to_remove_A   = (); # list of files to remove at end of subroutine, if --keep not used
 
 utl_FileValidateExistsAndNonEmpty($orig_in_fa_file, "input fasta sequence file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
-utl_FileValidateExistsAndNonEmpty($in_config_file,  "input config file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+my $config_file = $env_vadr_config_file; # this may be undef
+if(opt_IsUsed("-c", \%opt_HH)) {
+  $config_file = opt_Get("-c", \%opt_HH);
+  utl_FileValidateExistsAndNonEmpty($config_file, "config file specified with -c", undef, 1, undef); # '1' says: die if it doesn't exist or is empty
+}
+else {
+  if(! defined $config_file) {
+    die "\nERROR, the environment variable \$VADRCONFIGFILE is not set,\neither set it as the path to the v-scan.pl config file or use the -c option\n";
+  }
+  utl_FileValidateExistsAndNonEmpty($config_file, "config file defined by env variable \$VADRCONFIGFILE", undef, 1, undef); # '1' says: die if it doesn't exist or is empty
+}
 
 my @mkey_A = ();      # array of model library keys, read from config file
 my %mkey_mdir_H = (); # hash of model directories for each model library key, read from config file, key is model key
 my %mkey_opts_H = (); # hash of options for each model library key, read from config file, key is model key
-parse_config_file($in_config_file, \@mkey_A, \%mkey_mdir_H, \%mkey_opts_H, \%opt_HH, $FH_HR);
+parse_config_file($config_file, \@mkey_A, \%mkey_mdir_H, \%mkey_opts_H, \%opt_HH, $FH_HR);
 
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
