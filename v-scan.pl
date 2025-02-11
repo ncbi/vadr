@@ -8,6 +8,7 @@ use warnings;
 use Getopt::Long qw(:config no_auto_abbrev);
 use Time::HiRes qw(gettimeofday);
 use Bio::Easel::MSA;
+use Bio::Easel::Random;
 use Bio::Easel::SqFile;
 
 require "vadr.pm"; 
@@ -84,10 +85,16 @@ $opt_group_desc_H{++$g} = "basic options";
 #     option            type       default group   requires incompat    preamble-output                                                                            help-output    
 opt_Add("-f",           "boolean", 0,         $g,    undef, undef,      "force directory overwrite",                                                               "force; if output dir exists, overwrite it",   \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,         $g,    undef, undef,      "be verbose",                                                                              "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
+opt_Add("--one",        "boolean", 0,         $g,    undef, undef,      "only allow matches to a single model library, exit if multiple libraries are matched",    "only allow matches to a single model library, exit if multiple libraries are matched", \%opt_HH, \@opt_order_A);
 opt_Add("--lone",       "boolean", 0,         $g,    undef, undef,      "exit if at least one sequence matches to multiple libraries",                             "exit if at least one sequence matches to multiple libraries", \%opt_HH, \@opt_order_A);
 opt_Add("--first",      "boolean", 0,         $g,    undef,"--lone",    "if a seq matches > 1 model library use first one [df: use best scoring]",                 "if a seq matches > 1 model library use first one [df: use best scoring]", \%opt_HH, \@opt_order_A);
 opt_Add("--origfa",     "boolean", 0,         $g,    undef,   undef,    "do not copy fasta file prior to analysis, use original",                 "do not copy fasta file prior to analysis, use original", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,         $g,    undef, undef,      "leaving intermediate files on disk",                                                      "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
+#     option            type       default group   requires incompat    preamble-output                                                                            help-output    
+opt_Add("-p",           "boolean", 0,         $g, "--one",  undef,      "peek only at the first few seqs for picking model library to use, requires --one",        "peek only at the first few seqs for picking model library to use, requires --one",   \%opt_HH, \@opt_order_A);
+opt_Add("--p_nseq",     "integer", 3,         $g,    "-p", undef,       "with -p, set the number of sequences to peek at to <n>",                                  "with -p, set the number of sequences to peek at to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--p_rand",     "boolean", 0,         $g,    "-p", undef,       "with -p, select seqs randomly instead of from beginning of file",                         "with -p, select seqs randomly instead of from beginning of file", \%opt_HH, \@opt_order_A);
+opt_Add("--p_seed",     "integer", 181,       $g,    "-p", undef,       "with --p_rand, set the random number generator seed to <n>",                              "with -p, set the random number generator seed to <n>", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -96,10 +103,15 @@ my $options_okay =
 # basic options
                 'f'        => \$GetOptions_H{"-f"},
                 'v'        => \$GetOptions_H{"-v"},
+                'one'      => \$GetOptions_H{"--one"}, 
                 'lone'     => \$GetOptions_H{"--lone"}, 
                 'first'    => \$GetOptions_H{"--first"},
                 'origfa'   => \$GetOptions_H{"--origfa"},
-                'keep'     => \$GetOptions_H{"--keep"});
+                'keep'     => \$GetOptions_H{"--keep"}, 
+                'p'        => \$GetOptions_H{"-p"}, 
+                'p_nseq'   => \$GetOptions_H{"--p_nseq"},
+                'p_rand'   => \$GetOptions_H{"--p_rand"},
+                'p_seed'   => \$GetOptions_H{"--p_seed"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
@@ -129,8 +141,13 @@ opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
 # validate options (check for conflicts)
 opt_ValidateSet(\%opt_HH, \@opt_order_A);
 
-my $do_verbose = opt_Get("-v",     \%opt_HH);
-my $do_keep    = opt_Get("--keep", \%opt_HH);
+my $do_verbose   = opt_Get("-v",       \%opt_HH);
+my $do_one       = opt_Get("--one",    \%opt_HH);
+my $do_keep      = opt_Get("--keep",   \%opt_HH);
+my $do_peek      = opt_Get("-p",       \%opt_HH);
+my $peek_nseq    = opt_Get("--p_nseq", \%opt_HH);
+my $do_peek_rand = opt_Get("--p_rand", \%opt_HH);
+my $rand_seed    = opt_Get("--p_seed", \%opt_HH);
 
 # check that number of command line args is correct
 if(scalar(@ARGV) != 3) {   
@@ -158,7 +175,7 @@ if(-d $dir) {
 }
 if(-e $dir) { 
   $cmd = "rm $dir";
- if(opt_Get("-f", \%opt_HH)) { utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
+  if(opt_Get("-f", \%opt_HH)) { utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
   else                       { die "ERROR a file named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 
@@ -251,7 +268,47 @@ else {
   push(@to_remove_A, $in_fa_file);
   push(@to_remove_A, $in_fa_file . ".ssi");
 }
+
 my $in_sqfile = Bio::Easel::SqFile->new({ fileLocation => $in_fa_file }); # the sequence file object
+my $in_nseq   = $in_sqfile->nseq_ssi;
+my $peek_in_fa_file = undef;
+my $rand = undef;
+
+# if $do_peek, create the smaller file we'll 
+if($do_peek) {
+  if($peek_nseq >= $in_nseq) {
+    # num to peek meets or exceeds number of seqs in file, look at all of them in original file
+    $peek_in_fa_file = $in_fa_file;
+    $peek_nseq = $in_nseq;
+  }
+  else { # we'll take a subset of all files
+    $peek_in_fa_file = $out_root . ".peek.in.fa";
+    if($do_peek_rand) {
+      $rand = Bio::Easel::Random->new({ seed => $rand_seed }); # the RNG
+      my %chosen_H = ();
+      open(FA, ">", $peek_in_fa_file) || ofile_FileOpenFailure($peek_in_fa_file, "v-scan", $!, "writing", $FH_HR);
+      my $nchosen = 0;
+      my $nrolls  = 0;
+      while($nchosen < $peek_nseq) {
+        my $j = $rand->roll($in_nseq);
+        if(! defined $chosen_H{$j}) {
+          print FA $in_sqfile->fetch_seq_to_fasta_string_given_ssi_number($j, 60) . "\n";
+          $chosen_H{$j} = 1; # so we don't pick same seq twice
+          $nchosen++;
+        }
+        $nrolls++;
+        if($nrolls > (100 * $peek_nseq)) {
+          ofile_FAIL("ERROR, unexpectedly taking too many random rolls to pick $peek_nseq seqs, try a different strategy", 1, $FH_HR);
+        }
+      }
+    }
+    else { # ! $do_peek_rand
+      $in_sqfile->fetch_consecutive_seqs($peek_nseq, "", 60, $peek_in_fa_file);
+    }
+    #push(@to_remove_A, $peek_in_fa_file);
+    #push(@to_remove_A, $peek_in_fa_file . ".ssi");
+  } # end of else entered if ($peek_nseq < $in_nseq)
+}
 
 ##################################################
 # For each model key, run v-annotate.pl --cls_only
@@ -259,10 +316,11 @@ my $in_sqfile = Bio::Easel::SqFile->new({ fileLocation => $in_fa_file }); # the 
 my %out_dir_H = (); # hash of output directories
 my %sqc_H = ();     # hash of sqc files
 my $mkey;
+my $clsonly_fa_file = ($do_peek) ? $peek_in_fa_file : $in_fa_file;
 foreach $mkey (@mkey_A) {
   $out_dir_H{$mkey} = $dir_tail . "/" . $mkey . ".0";
   $sqc_H{$mkey} = $out_dir_H{$mkey} . "/" . $mkey . ".0.vadr.sqc";
-  $cmd = $execs_H{"v-annotate.pl"} . " -f -s --origfa --cls_only --mkey $mkey --mdir $mkey_mdir_H{$mkey} $in_fa_file $out_dir_H{$mkey}";
+  $cmd = $execs_H{"v-annotate.pl"} . " -f -s --origfa --cls_only --mkey $mkey --mdir $mkey_mdir_H{$mkey} $clsonly_fa_file $out_dir_H{$mkey}";
   if(! $do_verbose) { $cmd .= " > /dev/null"; }
   my $start_secs = ofile_OutputProgressPrior(sprintf("Scanning sequences against %s library ... ", $mkey), $progress_w, $log_FH, *STDOUT);
   utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
@@ -301,24 +359,43 @@ foreach my $seqname (@seq_A) {
   }
 } 
 
+if($do_one && ($nmkey > 1)) {
+  my $mkey_str = "";
+  foreach $mkey (sort keys %seqlist_HA) {
+    if($mkey_str ne "") { $mkey_str .= ", "; }
+    $mkey_str .= $mkey;
+  }
+  ofile_FAIL("ERROR, --one enabled but found matches to multiple libraries: $mkey_str", 1, $FH_HR);
+}
+
 ###########################################################################
 # Re-run v-annotate.pl for each model key that at least one seq matched to
 ###########################################################################
 my @mkey_used_A = (); # array of the mkeys with at least one sequence 
 my @mdl_file_A  = (); # array of mdl files to output before exiting
 my @alc_file_A  = (); # array of alc files to output before exiting
+my $mkey_fa_file = undef;
+my $progress_str = undef;
 if($nmkey > 0) { 
   foreach $mkey (@mkey_A) {
     if(defined $seqlist_HA{$mkey}) {
-      my $mkey_fasta_file = $dir_tail . "/" . $mkey . ".fa";
+      if($do_one) {
+        $mkey_fa_file = $in_fa_file;
+        $progress_str = "Annotating all sequences with $mkey model library ... ";
+      }
+      else {
+        $mkey_fa_file = $dir_tail . "/" . $mkey . ".fa";
+        $in_sqfile->fetch_seqs_given_names(\@{$seqlist_HA{$mkey}}, 60, $mkey_fa_file);
+        $progress_str = sprintf("Annotating %s sequences (%d) ... ", $mkey, scalar(@{$seqlist_HA{$mkey}}));
+      }
       my $out_dir = $dir_tail . "/" . $mkey;
       push(@mkey_used_A, $mkey);
       push(@mdl_file_A, $dir_tail . "/" . $mkey . "/" . $mkey . ".vadr.mdl");
       push(@alc_file_A, $dir_tail . "/" . $mkey . "/" . $mkey . ".vadr.alc");
-      $in_sqfile->fetch_seqs_given_names(\@{$seqlist_HA{$mkey}}, 60, $mkey_fasta_file);
-      $cmd = $execs_H{"v-annotate.pl"} . " --mkey $mkey --mdir $mkey_mdir_H{$mkey} $mkey_opts_H{$mkey} $mkey_fasta_file $out_dir";
+
+      $cmd = $execs_H{"v-annotate.pl"} . " --mkey $mkey --mdir $mkey_mdir_H{$mkey} $mkey_opts_H{$mkey} $mkey_fa_file $out_dir";
       if(! $do_verbose) { $cmd .= " > /dev/null"; }
-      my $start_secs = ofile_OutputProgressPrior(sprintf("Annotating %s sequences (%d) ... ", $mkey, scalar(@{$seqlist_HA{$mkey}})), $progress_w, $FH_HR->{"log"}, *STDOUT);
+      my $start_secs = ofile_OutputProgressPrior($progress_str, $progress_w, $FH_HR->{"log"}, *STDOUT);
       utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
       ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
     }
@@ -351,8 +428,12 @@ ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 ############
 # Conclude #
 ############
-output_lib_mdl_and_alc_files_and_remove_temp_files(\@mkey_used_A, \@mdl_file_A, \@alc_file_A, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
-                                      
+output_lib_mdl_and_alc_files_and_remove_temp_files($in_nseq, $peek_nseq, \@mkey_used_A, \@mdl_file_A, \@alc_file_A, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
+
+if($nmkey == 0) { # matches were found to zero libraries
+  ofile_OutputString($FH_HR->{"log"}, 1, "# Zero sequences matched a model library so no annotations were performed.\n");
+}
+
 $total_seconds += ofile_SecondsSinceEpoch();
 ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
 
@@ -505,6 +586,8 @@ sub parse_sqc_clsonly_file {
 #             in (@{$to_remove_A}), unless --keep. 
 #
 # Arguments:
+#  $in_nseq;        number of sequences in input file
+#  $peek_nseq:      number of sequences peeked at, only relevant if -p
 #  $mkey_used_AR:   ref to array of model keys we want to output .mdl and .alc files for
 #  $mdl_file_AR:    ref to array of .mdl files to output
 #  $alc_file_AR:    ref to array of .alc files to output
@@ -517,16 +600,25 @@ sub parse_sqc_clsonly_file {
 #################################################################
 sub output_lib_mdl_and_alc_files_and_remove_temp_files { 
   my $sub_name = "output_lib_mdl_and_alc_files_and_remove_temp_files";
-  my $nargs_exp = 6;
+  my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($mkey_used_AR, $mdl_file_AR, $alc_file_AR, $to_remove_AR, $opt_HHR, $ofile_info_HHR) = (@_);
+  my ($in_nseq, $peek_nseq, $mkey_used_AR, $mdl_file_AR, $alc_file_AR, $to_remove_AR, $opt_HHR, $ofile_info_HHR) = (@_);
 
   # close the two files we may output to stdout and the log
   close($ofile_info_HHR->{"FH"}{"lib"});
   
-  my $FH_HR  = $ofile_info_HH{"FH"};
+  my $FH_HR   = $ofile_info_HH{"FH"};
+  my $do_peek = opt_Get("-p", $opt_HHR);
+  my $sum_str = "";
 
+  if(($do_peek) && ($peek_nseq < $in_nseq)) {
+    $sum_str = sprintf("# Summary of seqs matching each library (only %d of %d seqs scanned due to -p):", $peek_nseq, $in_nseq);
+  }
+  else {
+    $sum_str = "# Summary of sequences matching each library:";
+  }
+  
   my $nmkey = scalar(@{$mkey_used_AR});
   if($nmkey != scalar(@{$mdl_file_AR})) {
     ofile_FAIL("ERROR, in $sub_name, unexpected number of mdl files", 1, $FH_HR);
@@ -539,7 +631,7 @@ sub output_lib_mdl_and_alc_files_and_remove_temp_files {
   my @file_A = ();
   my ($mkey, $mdl_file, $alc_file) = (undef, undef, undef);
   push(@conclude_A, "#");
-  push(@conclude_A, "# Summary of sequences matching each library:");
+  push(@conclude_A, $sum_str);
   push(@conclude_A, "#");
   utl_FileLinesToArray($ofile_info_HHR->{"fullpath"}{"lib"}, 1, \@file_A, $FH_HR);
   push(@conclude_A, @file_A);
