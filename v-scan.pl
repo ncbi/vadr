@@ -93,6 +93,11 @@ opt_Add("--first",      "boolean", 0,         $g,    undef,"--lone",    "if a se
 opt_Add("--origfa",     "boolean", 0,         $g,    undef,   undef,    "do not copy fasta file prior to analysis, use original",                 "do not copy fasta file prior to analysis, use original", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,         $g,    undef, undef,      "leaving intermediate files on disk",                                                      "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 #     option            type       default group   requires incompat    preamble-output                                                                            help-output    
+$opt_group_desc_H{++$g} = "options for specifying which model libraries to use:";
+opt_Add("--only",        "string", 0,         $g,   undef,"--skip",     "only use the model library(ies) in comma separated string <s>",                           "only use the model library(ies) in comma separated string <s>",   \%opt_HH, \@opt_order_A);
+opt_Add("--skip",        "string", 0,         $g,   undef,"--only",     "do not use the model library(ies) in comma separated string <s>",                         "do nout use the model library(ies) in comma separated string <s>", \%opt_HH, \@opt_order_A);
+#     option            type       default group   requires incompat    preamble-output                                                                            help-output    
+$opt_group_desc_H{++$g} = "options for choosing a model library based on only a subset of input sequences:";
 opt_Add("-p",           "boolean", 0,         $g, "--one",  undef,      "peek only at the first few seqs for picking model library to use, requires --one",        "peek only at the first few seqs for picking model library to use, requires --one",   \%opt_HH, \@opt_order_A);
 opt_Add("--p_nseq",     "integer", 3,         $g,    "-p", undef,       "with -p, set the number of sequences to peek at to <n>",                                  "with -p, set the number of sequences to peek at to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--p_rand",     "boolean", 0,         $g,    "-p", undef,       "with -p, select seqs randomly instead of from beginning of file",                         "with -p, select seqs randomly instead of from beginning of file", \%opt_HH, \@opt_order_A);
@@ -111,6 +116,8 @@ my $options_okay =
                 'first'    => \$GetOptions_H{"--first"},
                 'origfa'   => \$GetOptions_H{"--origfa"},
                 'keep'     => \$GetOptions_H{"--keep"}, 
+                'only=s'   => \$GetOptions_H{"--only"}, 
+                'skip=s'   => \$GetOptions_H{"--skip"}, 
                 'p'        => \$GetOptions_H{"-p"}, 
                 'p_nseq=s' => \$GetOptions_H{"--p_nseq"},
                 'p_rand'   => \$GetOptions_H{"--p_rand"},
@@ -162,6 +169,7 @@ if(scalar(@ARGV) != 2) {
 
 my ($orig_in_fa_file, $dir) = (@ARGV);
 
+       
 #############################
 # create the output directory
 #############################
@@ -260,6 +268,11 @@ my @mkey_A = ();      # array of model library keys, read from config file
 my %mkey_mdir_H = (); # hash of model directories for each model library key, read from config file, key is model key
 my %mkey_opts_H = (); # hash of options for each model library key, read from config file, key is model key
 parse_config_file($config_file, \@mkey_A, \%mkey_mdir_H, \%mkey_opts_H, \%opt_HH, $FH_HR);
+
+# enforce that --only and --skip options are valid
+if((opt_IsUsed("--only", \%opt_HH)) || (opt_IsUsed("--skip", \%opt_HH))) { 
+  only_skip_options(\@mkey_A, \%mkey_mdir_H, \%mkey_opts_H, \%opt_HH);
+}
 
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -695,5 +708,96 @@ sub output_lib_mdl_and_alc_files_and_remove_temp_files {
     utl_FileRemoveList(\@to_actually_remove_A, $sub_name, $opt_HHR, $FH_HR);
   }
 
+  return;
+}
+
+#################################################################
+# Subroutine:  only_skip_options()
+# Incept:      EPN, Wed Feb 12 10:48:27 2025
+#
+# Purpose:    Handle the --only and --skip options by 
+#             parsing their strings, determining if they are valid
+#             and updating the @{$mkey_AR}, %{$mkey_mdir_HR}
+#             and %{$mkey_opts_HR} data structures.
+#
+# Arguments: 
+#  $mkey_AR:      REF to array of all mkeys read from config file, modified here
+#  $mkey_mdir_HR: REF to hash of directories for each model key, modified here
+#  $mkey_opts_HR: REF to hash of options for each model key, modified here
+#  $opt_HHR:      REF to 2D hash of option values
+#
+# Returns:    void
+#
+# Dies:       if --only or --skip option strings are invalid
+#
+#################################################################
+sub only_skip_options { 
+  my $sub_name = "only_skip_options()"; 
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($mkey_AR, $mkey_mdir_HR, $mkey_opts_HR, $opt_HHR) = @_;
+  
+  my @only_A = ();  # array of values in --only arg
+  my @skip_A = ();  # array of values in --skip arg
+  my %only_H = ();  # 'exists' hash for values in --only arg
+  my %skip_H = ();  # 'exists' hash for values in --skip arg
+  my @new_mkey_A = ();      # new array of mkeys we will replace @{$mkey_AR} with before returning
+  my %new_mkey_mdir_H = (); # new hash  we will replace %{$mkey_mdir_HR} with before returning
+  my %new_mkey_opts_H = (); # new hash  we will replace %{$mkey_opts_HR} with before returning
+
+  my $die_str = "";
+  if(opt_IsUsed("--only", $opt_HHR)) { 
+    @only_A = split(",", opt_Get("--only", $opt_HHR));
+    foreach my $only_mkey (@only_A) {
+      $only_H{$only_mkey} = 1;
+      if(! defined $mkey_mdir_HR->{$only_mkey}) {
+        $die_str .= "\t$only_mkey specified in --only option but not listed in config file\n";
+      }
+    }
+    foreach my $mkey (@{$mkey_AR}) {
+      if(defined $only_H{$mkey}) {
+        push(@new_mkey_A, $mkey);
+        $new_mkey_mdir_H{$mkey} = $mkey_mdir_H{$mkey};
+        $new_mkey_opts_H{$mkey} = $mkey_opts_H{$mkey};
+      }
+    }
+  }
+  if(opt_IsUsed("--skip", $opt_HHR)) { 
+    if(scalar(@only_A) != 0) {
+      # this should have been enforced by opt_ValidateSet() 
+      ofile_FAIL("ERROR, in $sub_name, --only and --skip both used, pick one", 1, $FH_HR);
+    }
+    @skip_A = split(",", opt_Get("--skip", $opt_HHR));
+    foreach my $skip_mkey (@skip_A) {
+      $skip_H{$skip_mkey} = 1;
+      if(! defined $mkey_mdir_HR->{$skip_mkey}) {
+        $die_str .= "\t$skip_mkey specified in --skip option but not listed in config file\n";
+      }
+    }
+    foreach my $mkey (@{$mkey_AR}) {
+      if(! defined $skip_H{$mkey}) {
+        push(@new_mkey_A, $mkey);
+        $new_mkey_mdir_H{$mkey} = $mkey_mdir_H{$mkey};
+        $new_mkey_opts_H{$mkey} = $mkey_opts_H{$mkey};
+      }
+    }
+  }
+
+  if($die_str ne "") {
+      ofile_FAIL("ERROR, in $sub_name:\n$die_str\n", 1, $FH_HR);
+  }
+  
+  @{$mkey_AR} = ();
+  %{$mkey_mdir_HR} = ();
+  %{$mkey_opts_HR} = ();
+
+  # copy values
+  @{$mkey_AR} = @new_mkey_A;
+  foreach $mkey (@{$mkey_AR}) {
+    $mkey_mdir_HR->{$mkey} = $new_mkey_mdir_H{$mkey};
+    $mkey_opts_HR->{$mkey} = $new_mkey_opts_H{$mkey};
+  }
+  
   return;
 }
