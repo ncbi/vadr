@@ -343,17 +343,19 @@ if($do_peek) {
 my %out_dir_H = (); # hash of output directories
 my %sqc_H = ();     # hash of sqc files
 my $mkey;
+my $nmkey = scalar(@mkey_A);
 my $clsonly_fa_file = ($do_peek) ? $peek_in_fa_file : $in_fa_file;
-foreach $mkey (@mkey_A) {
-  $out_dir_H{$mkey} = $dir_tail . "/" . $mkey . ".0";
-  $sqc_H{$mkey} = $out_dir_H{$mkey} . "/" . $mkey . ".0.vadr.sqc";
-  $cmd = $execs_H{"v-annotate.pl"} . " -f -s --origfa --cls_only --mkey $mkey --mdir $mkey_mdir_H{$mkey} $clsonly_fa_file $out_dir_H{$mkey}";
-  if(! $do_verbose) { $cmd .= " > /dev/null"; }
-  my $start_secs = ofile_OutputProgressPrior(sprintf("Scanning sequences against %s library ... ", $mkey), $progress_w, $log_FH, *STDOUT);
-  utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
-  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+if($nmkey > 1) { 
+  foreach $mkey (@mkey_A) {
+    $out_dir_H{$mkey} = $dir_tail . "/" . $mkey . ".0";
+    $sqc_H{$mkey} = $out_dir_H{$mkey} . "/" . $mkey . ".0.vadr.sqc";
+    $cmd = $execs_H{"v-annotate.pl"} . " -f -s --origfa --cls_only --mkey $mkey --mdir $mkey_mdir_H{$mkey} $clsonly_fa_file $out_dir_H{$mkey}";
+    if(! $do_verbose) { $cmd .= " > /dev/null"; }
+    my $start_secs = ofile_OutputProgressPrior(sprintf("Scanning sequences against %s library ... ", $mkey), $progress_w, $log_FH, *STDOUT);
+    utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+    ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  }
 }
-
 ##################################################
 # Parse sqc files to determine which seqs match best to each library, need
 # to look at all sqc files before assigning sequences to a mkey
@@ -364,35 +366,42 @@ my @seq_A         = ();   # array of sequence names
 my %seq_mkey_H    = ();   # key is seq name, value is best mkey for this sequence
 my %seq_mdl_H     = ();   # key is seq name, value is best model for this sequence
 my %seq_sc_H      = ();   # key is seq name, value is score for best model for this sequence
-foreach $mkey (@mkey_A) {
-  parse_sqc_clsonly_file($sqc_H{$mkey}, $mkey, \%seq_H, \@seq_A, \%seq_mkey_H, \%seq_mdl_H, \%seq_sc_H, \%opt_HH, $FH_HR);
+if($nmkey > 1) { 
+  foreach $mkey (@mkey_A) {
+    parse_sqc_clsonly_file($sqc_H{$mkey}, $mkey, \%seq_H, \@seq_A, \%seq_mkey_H, \%seq_mdl_H, \%seq_sc_H, \%opt_HH, $FH_HR);
+  }
 }
 
 # Fill per-mkey lists of sequences
 my %seqlist_HA = (); # key is mkey, value is array of sequences that match to this mkey
-my $nmkey = 0;       # number of mkey (libraries) we have at least one sequence to rerun v-annotate.pl for
-my %mkey_ct_H = (); # key is mkey, value is number of seqs assigned to that mkey, 'undef' if 0
-foreach my $seqname (@seq_A) {
-  if(defined $seq_mkey_H{$seqname}) {
-    my $mkey = $seq_mkey_H{$seqname};
-    my $mdl  = $seq_mdl_H{$seqname};
-    if(! defined $seqlist_HA{$mkey}) {
-      @{$seqlist_HA{$mkey}} = ();
-      $mkey_ct_H{$mkey} = 0;
-      $nmkey++;
+my $nmkey_used = 0;  # number of mkey (libraries) we have at least one sequence to rerun v-annotate.pl for
+my %mkey_ct_H  = (); # key is mkey, value is number of seqs assigned to that mkey, 'undef' if 0
+if($nmkey > 1) {
+  foreach my $seqname (@seq_A) {
+    if(defined $seq_mkey_H{$seqname}) {
+      my $mkey = $seq_mkey_H{$seqname};
+      my $mdl  = $seq_mdl_H{$seqname};
+      if(! defined $seqlist_HA{$mkey}) {
+        @{$seqlist_HA{$mkey}} = ();
+        $mkey_ct_H{$mkey} = 0;
+        $nmkey_used++;
+      }
+      push(@{$seqlist_HA{$mkey}}, $seqname);
+      $mkey_ct_H{$mkey}++;
     }
-    push(@{$seqlist_HA{$mkey}}, $seqname);
-    $mkey_ct_H{$mkey}++;
+  } 
+  
+  if($do_one && ($nmkey_used > 1)) {
+    my $mkey_str = "";
+    foreach $mkey (sort keys %seqlist_HA) {
+      if($mkey_str ne "") { $mkey_str .= ", "; }
+      $mkey_str .= $mkey;
+    }
+    ofile_FAIL("ERROR, --one enabled but found matches to multiple libraries: $mkey_str", 1, $FH_HR);
   }
-} 
-
-if($do_one && ($nmkey > 1)) {
-  my $mkey_str = "";
-  foreach $mkey (sort keys %seqlist_HA) {
-    if($mkey_str ne "") { $mkey_str .= ", "; }
-    $mkey_str .= $mkey;
-  }
-  ofile_FAIL("ERROR, --one enabled but found matches to multiple libraries: $mkey_str", 1, $FH_HR);
+}
+else {
+  $nmkey_used = 1; # we didn't run in clsonly because we only have 1 library
 }
 
 ###########################################################################
@@ -403,10 +412,10 @@ my @mdl_file_A  = (); # array of mdl files to output before exiting
 my @alc_file_A  = (); # array of alc files to output before exiting
 my $mkey_fa_file = undef;
 my $progress_str = undef;
-if($nmkey > 0) { 
+if($nmkey_used > 0) { 
   foreach $mkey (@mkey_A) {
-    if(defined $seqlist_HA{$mkey}) {
-      if($do_one) {
+    if((defined $seqlist_HA{$mkey}) || ($nmkey == 1)) { # if $nmkey == 1, we didn't run --clsonly mode
+      if($nmkey_used == 1) { 
         $mkey_fa_file = $in_fa_file;
         $progress_str = "Annotating all sequences with $mkey model library ... ";
       }
@@ -445,7 +454,11 @@ my @clj_lib_A   = ();
 @clj_lib_A         = (1,     1,         0);
 
 foreach $mkey (@mkey_A) {
-  push(@data_lib_AA, [$mkey_idx, $mkey, (defined $mkey_ct_H{$mkey} ? $mkey_ct_H{$mkey} : 0) ]);
+  my $nseq2print = (defined $mkey_ct_H{$mkey}) ? $mkey_ct_H{$mkey} : 0;
+  if(scalar(@mkey_A) == 1) { # we didn't run clsonly mode, set nseq to '-'
+    $nseq2print = "-";
+  }
+  push(@data_lib_AA, [$mkey_idx, $mkey, $nseq2print]);
   $mkey_idx++;
 }
 
@@ -457,7 +470,7 @@ ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 ############
 output_lib_mdl_and_alc_files_and_remove_temp_files($in_nseq, $peek_nseq, \@mkey_used_A, \@mdl_file_A, \@alc_file_A, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
 
-if($nmkey == 0) { # matches were found to zero libraries
+if($nmkey_used == 0) { # matches were found to zero libraries
   ofile_OutputString($FH_HR->{"log"}, 1, "# Zero sequences matched a model library so no annotations were performed.\n");
 }
 
