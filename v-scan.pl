@@ -86,6 +86,7 @@ $opt_group_desc_H{++$g} = "basic options";
 #     option            type       default group   requires incompat    preamble-output                                                                            help-output    
 opt_Add("-f",           "boolean", 0,         $g,    undef, undef,      "force directory overwrite",                                                               "force; if output dir exists, overwrite it",   \%opt_HH, \@opt_order_A);
 opt_Add("-c",           "string",  0,         $g,    undef, undef,      "use config file <s> instead of default in \$VADRCONFIGFILE",                              "use config file <s> instead of default in \$VADRCONFIGFILE", \%opt_HH, \@opt_order_A);
+opt_Add("-l",           "boolean", 0,         $g,    undef, undef,      "list all model libraries in the config file and exit",                                    "list all model libraries in the config file and exit", \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,         $g,    undef, undef,      "be verbose",                                                                              "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
 opt_Add("--one",        "boolean", 0,         $g,    undef, undef,      "only allow matches to a single model library, exit if multiple libraries are matched",    "only allow matches to a single model library, exit if multiple libraries are matched", \%opt_HH, \@opt_order_A);
 opt_Add("--lone",       "boolean", 0,         $g,    undef, undef,      "exit if at least one sequence matches to multiple libraries",                             "exit if at least one sequence matches to multiple libraries", \%opt_HH, \@opt_order_A);
@@ -110,6 +111,7 @@ my $options_okay =
 # basic options
                 'f'        => \$GetOptions_H{"-f"},
                 'c=s'      => \$GetOptions_H{"-c"},
+                'l'        => \$GetOptions_H{"-l"},
                 'v'        => \$GetOptions_H{"-v"},
                 'one'      => \$GetOptions_H{"--one"}, 
                 'lone'     => \$GetOptions_H{"--lone"}, 
@@ -159,6 +161,55 @@ my $peek_nseq    = opt_Get("--p_nseq", \%opt_HH);
 my $do_peek_rand = opt_Get("--p_rand", \%opt_HH);
 my $rand_seed    = opt_Get("--p_seed", \%opt_HH);
 
+# parse config file, we do this early so we can handle -l      
+my $config_file = $env_vadr_config_file; # this may be undef
+if(opt_IsUsed("-c", \%opt_HH)) {
+  $config_file = opt_Get("-c", \%opt_HH);
+  utl_FileValidateExistsAndNonEmpty($config_file, "config file specified with -c", undef, 1, undef); # '1' says: die if it doesn't exist or is empty
+}
+else {
+  if(! defined $config_file) {
+    die "\nERROR, the environment variable \$VADRCONFIGFILE is not set,\neither set it as the path to the v-scan.pl config file or use the -c option\n";
+  }
+  utl_FileValidateExistsAndNonEmpty($config_file, "config file defined by env variable \$VADRCONFIGFILE", undef, 1, undef); # '1' says: die if it doesn't exist or is empty
+}
+
+my @mkey_A = ();      # array of model library keys, read from config file
+my %mkey_mdir_H = (); # hash of model directories for each model library key, read from config file, key is model key
+my %mkey_opts_H = (); # hash of options for each model library key, read from config file, key is model key
+parse_config_file($config_file, \@mkey_A, \%mkey_mdir_H, \%mkey_opts_H, \%opt_HH, undef);
+
+# enforce that --only and --skip options are valid
+if((opt_IsUsed("--only", \%opt_HH)) || (opt_IsUsed("--skip", \%opt_HH))) { 
+  only_skip_options(\@mkey_A, \%mkey_mdir_H, \%mkey_opts_H, \%opt_HH);
+}
+
+if(opt_Get("-l", \%opt_HH)) {
+  my @head_AA = ();
+  my @data_AA = ();
+  my @clj_A   = ();
+
+  # model dir table:
+  print("#\n");
+  @{$head_AA[0]} = ("model key", "model dir");
+  @clj_A         = (1,     1);
+  foreach my $mkey (@mkey_A) {
+    push(@data_AA, [$mkey, $mkey_mdir_H{$mkey}]);
+  }
+  ofile_TableHumanOutput(\@data_AA, \@head_AA, \@clj_A, undef, undef, "  ", "-", "#", "#", "", 0, *STDOUT, undef, undef);
+  print("#\n");
+
+  # model options table:
+  @data_AA = ();
+  @{$head_AA[0]} = ("model key", "v-annotate.pl options");
+  @clj_A         = (1,     1);
+  foreach my $mkey (@mkey_A) {
+    push(@data_AA, [$mkey, $mkey_opts_H{$mkey}]);
+  }
+  ofile_TableHumanOutput(\@data_AA, \@head_AA, \@clj_A, undef, undef, "  ", "-", "#", "#", "", 0, *STDOUT, undef, undef);
+  exit 0;
+}
+
 # check that number of command line args is correct
 if(scalar(@ARGV) != 2) {   
   print "Incorrect number of command line arguments.\n";
@@ -169,7 +220,6 @@ if(scalar(@ARGV) != 2) {
 
 my ($orig_in_fa_file, $dir) = (@ARGV);
 
-       
 #############################
 # create the output directory
 #############################
@@ -249,30 +299,8 @@ foreach $cmd (@early_cmd_A) {
 my $progress_w = 60; # the width of the left hand column in our progress output, hard-coded
 my $start_secs = ofile_OutputProgressPrior("Validating input", $progress_w, $log_FH, *STDOUT);
 
-my @to_remove_A   = (); # list of files to remove at end of subroutine, if --keep not used
-
 utl_FileValidateExistsAndNonEmpty($orig_in_fa_file, "input fasta sequence file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
-my $config_file = $env_vadr_config_file; # this may be undef
-if(opt_IsUsed("-c", \%opt_HH)) {
-  $config_file = opt_Get("-c", \%opt_HH);
-  utl_FileValidateExistsAndNonEmpty($config_file, "config file specified with -c", undef, 1, undef); # '1' says: die if it doesn't exist or is empty
-}
-else {
-  if(! defined $config_file) {
-    die "\nERROR, the environment variable \$VADRCONFIGFILE is not set,\neither set it as the path to the v-scan.pl config file or use the -c option\n";
-  }
-  utl_FileValidateExistsAndNonEmpty($config_file, "config file defined by env variable \$VADRCONFIGFILE", undef, 1, undef); # '1' says: die if it doesn't exist or is empty
-}
-
-my @mkey_A = ();      # array of model library keys, read from config file
-my %mkey_mdir_H = (); # hash of model directories for each model library key, read from config file, key is model key
-my %mkey_opts_H = (); # hash of options for each model library key, read from config file, key is model key
-parse_config_file($config_file, \@mkey_A, \%mkey_mdir_H, \%mkey_opts_H, \%opt_HH, $FH_HR);
-
-# enforce that --only and --skip options are valid
-if((opt_IsUsed("--only", \%opt_HH)) || (opt_IsUsed("--skip", \%opt_HH))) { 
-  only_skip_options(\@mkey_A, \%mkey_mdir_H, \%mkey_opts_H, \%opt_HH);
-}
+my @to_remove_A   = (); # list of files to remove at end of subroutine, if --keep not used
 
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
