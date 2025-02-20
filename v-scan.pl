@@ -98,10 +98,10 @@ opt_Add("--only",        "string", 0,         $g,   undef,"--skip",     "only us
 opt_Add("--skip",        "string", 0,         $g,   undef,"--only",     "do not use the model library(ies) in comma separated string <s>",                         "do nout use the model library(ies) in comma separated string <s>", \%opt_HH, \@opt_order_A);
 #     option            type       default group   requires incompat    preamble-output                                                                            help-output    
 $opt_group_desc_H{++$g} = "options for choosing a model library based on only a subset of input sequences:";
-opt_Add("-p",           "boolean", 0,         $g, "--one",  undef,      "peek only at the first few seqs for picking model library to use, requires --one",        "peek only at the first few seqs for picking model library to use, requires --one",   \%opt_HH, \@opt_order_A);
+opt_Add("-p",           "boolean", 0,         $g, "--one",  undef,      "peek only at a few seqs for picking model library to use, requires --one",                "peek only at a few seqs for picking model library to use, requires --one",   \%opt_HH, \@opt_order_A);
 opt_Add("--p_nseq",     "integer", 3,         $g,    "-p", undef,       "with -p, set the number of sequences to peek at to <n>",                                  "with -p, set the number of sequences to peek at to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--p_rand",     "boolean", 0,         $g,    "-p", undef,       "with -p, select seqs randomly instead of from beginning of file",                         "with -p, select seqs randomly instead of from beginning of file", \%opt_HH, \@opt_order_A);
-opt_Add("--p_seed",     "integer", 181,       $g,    "-p", undef,       "with --p_rand, set the random number generator seed to <n>",                              "with -p, set the random number generator seed to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--p_beg",      "boolean", 0,         $g,    "-p", undef,       "with -p, do not select seqs randomly, use seqs from beginning of file",                   "with -p, do not select seqs randomly, use seqs from beginning of file", \%opt_HH, \@opt_order_A);
+opt_Add("--p_seed",     "integer", 181,       $g,    "-p","--p_beg",    "with -p, set the random number generator seed to <n>",                                    "with -p, set the random number generator seed to <n>", \%opt_HH, \@opt_order_A);
 #     option            type       default group   requires incompat    preamble-output                                                                            help-output    
 $opt_group_desc_H{++$g} = "options for listing information on models and exiting:";
 opt_Add("--l_all",        "boolean", 0,         $g,    undef, undef,    "list all info about all model libraries in the config file and exit",                     "list all info about all model libraries in the config file and exit", \%opt_HH, \@opt_order_A);
@@ -129,7 +129,7 @@ my $options_okay =
                 'skip=s'   => \$GetOptions_H{"--skip"}, 
                 'p'        => \$GetOptions_H{"-p"}, 
                 'p_nseq=s' => \$GetOptions_H{"--p_nseq"},
-                'p_rand'   => \$GetOptions_H{"--p_rand"},
+                'p_beg'    => \$GetOptions_H{"--p_beg"},
                 'p_seed=s' => \$GetOptions_H{"--p_seed"},
                 'l_all'    => \$GetOptions_H{"--l_all"},
                 'l_lib=s'  => \$GetOptions_H{"--l_lib"},
@@ -171,7 +171,7 @@ my $do_one       = opt_Get("--one",    \%opt_HH);
 my $do_keep      = opt_Get("--keep",   \%opt_HH);
 my $do_peek      = opt_Get("-p",       \%opt_HH);
 my $peek_nseq    = opt_Get("--p_nseq", \%opt_HH);
-my $do_peek_rand = opt_Get("--p_rand", \%opt_HH);
+my $do_peek_beg  = opt_Get("--p_beg",  \%opt_HH);
 my $rand_seed    = opt_Get("--p_seed", \%opt_HH);
 
 # parse config file, we do this early so we can handle -l      
@@ -336,7 +336,10 @@ if($do_peek) {
   }
   else { # we'll take a subset of all files
     $peek_in_fa_file = $out_root . ".peek.in.fa";
-    if($do_peek_rand) {
+    if($do_peek_beg) {
+      $in_sqfile->fetch_consecutive_seqs($peek_nseq, "", 60, $peek_in_fa_file);
+    }
+    else { # ! $do_peek_beg
       $rand = Bio::Easel::Random->new({ seed => $rand_seed }); # the RNG
       my %chosen_H = ();
       open(FA, ">", $peek_in_fa_file) || ofile_FileOpenFailure($peek_in_fa_file, "v-scan", $!, "writing", $FH_HR);
@@ -354,9 +357,6 @@ if($do_peek) {
           ofile_FAIL("ERROR, unexpectedly taking too many random rolls to pick $peek_nseq seqs, try a different strategy", 1, $FH_HR);
         }
       }
-    }
-    else { # ! $do_peek_rand
-      $in_sqfile->fetch_consecutive_seqs($peek_nseq, "", 60, $peek_in_fa_file);
     }
     #push(@to_remove_A, $peek_in_fa_file);
     #push(@to_remove_A, $peek_in_fa_file . ".ssi");
