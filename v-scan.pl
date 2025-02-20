@@ -86,7 +86,6 @@ $opt_group_desc_H{++$g} = "basic options";
 #     option            type       default group   requires incompat    preamble-output                                                                            help-output    
 opt_Add("-f",           "boolean", 0,         $g,    undef, undef,      "force directory overwrite",                                                               "force; if output dir exists, overwrite it",   \%opt_HH, \@opt_order_A);
 opt_Add("-c",           "string",  0,         $g,    undef, undef,      "use config file <s> instead of default in \$VADRCONFIGFILE",                              "use config file <s> instead of default in \$VADRCONFIGFILE", \%opt_HH, \@opt_order_A);
-opt_Add("-l",           "boolean", 0,         $g,    undef, undef,      "list all model libraries in the config file and exit",                                    "list all model libraries in the config file and exit", \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,         $g,    undef, undef,      "be verbose",                                                                              "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
 opt_Add("--one",        "boolean", 0,         $g,    undef, undef,      "only allow matches to a single model library, exit if multiple libraries are matched",    "only allow matches to a single model library, exit if multiple libraries are matched", \%opt_HH, \@opt_order_A);
 opt_Add("--lone",       "boolean", 0,         $g,    undef, undef,      "exit if at least one sequence matches to multiple libraries",                             "exit if at least one sequence matches to multiple libraries", \%opt_HH, \@opt_order_A);
@@ -103,6 +102,14 @@ opt_Add("-p",           "boolean", 0,         $g, "--one",  undef,      "peek on
 opt_Add("--p_nseq",     "integer", 3,         $g,    "-p", undef,       "with -p, set the number of sequences to peek at to <n>",                                  "with -p, set the number of sequences to peek at to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--p_rand",     "boolean", 0,         $g,    "-p", undef,       "with -p, select seqs randomly instead of from beginning of file",                         "with -p, select seqs randomly instead of from beginning of file", \%opt_HH, \@opt_order_A);
 opt_Add("--p_seed",     "integer", 181,       $g,    "-p", undef,       "with --p_rand, set the random number generator seed to <n>",                              "with -p, set the random number generator seed to <n>", \%opt_HH, \@opt_order_A);
+#     option            type       default group   requires incompat    preamble-output                                                                            help-output    
+$opt_group_desc_H{++$g} = "options for listing information on models and exiting:";
+opt_Add("--l_all",        "boolean", 0,         $g,    undef, undef,    "list all info about all model libraries in the config file and exit",                     "list all info about all model libraries in the config file and exit", \%opt_HH, \@opt_order_A);
+opt_Add("--l_lib",        "string", 0,          $g,    undef, undef,    "list all info about model library with key <s> in the config file and exit",              "list all info about model library with key <s> in the config file and exit", \%opt_HH, \@opt_order_A);
+opt_Add("--l_dir",        "boolean", 0,         $g,    undef, undef,    "list all model library directories in the config file and exit",                          "list all model library directories in the config file and exit", \%opt_HH, \@opt_order_A);
+opt_Add("--l_opt",        "boolean", 0,         $g,    undef, undef,    "list all model library v-annotate.pl options in the config file and exit",                "list all model library v-annotate.pl options in the config file and exit", \%opt_HH, \@opt_order_A);
+opt_Add("--l_mdl",        "boolean", 0,         $g,    undef, undef,    "list all models in the model libraries in the config file and exit",                      "list all models in the model libraries in the config file and exit", \%opt_HH, \@opt_order_A);
+
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -123,7 +130,13 @@ my $options_okay =
                 'p'        => \$GetOptions_H{"-p"}, 
                 'p_nseq=s' => \$GetOptions_H{"--p_nseq"},
                 'p_rand'   => \$GetOptions_H{"--p_rand"},
-                'p_seed=s' => \$GetOptions_H{"--p_seed"});
+                'p_seed=s' => \$GetOptions_H{"--p_seed"},
+                'l_all'    => \$GetOptions_H{"--l_all"},
+                'l_lib=s'  => \$GetOptions_H{"--l_lib"},
+                'l_dir'    => \$GetOptions_H{"--l_dir"},
+                'l_opt'    => \$GetOptions_H{"--l_opt"},
+                'l_mdl'    => \$GetOptions_H{"--l_mdl"});
+                
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
@@ -184,29 +197,14 @@ if((opt_IsUsed("--only", \%opt_HH)) || (opt_IsUsed("--skip", \%opt_HH))) {
   only_skip_options(\@mkey_A, \%mkey_mdir_H, \%mkey_opts_H, \%opt_HH);
 }
 
-if(opt_Get("-l", \%opt_HH)) {
-  my @head_AA = ();
-  my @data_AA = ();
-  my @clj_A   = ();
-
-  # model dir table:
-  print("#\n");
-  @{$head_AA[0]} = ("model key", "model dir");
-  @clj_A         = (1,     1);
-  foreach my $mkey (@mkey_A) {
-    push(@data_AA, [$mkey, $mkey_mdir_H{$mkey}]);
-  }
-  ofile_TableHumanOutput(\@data_AA, \@head_AA, \@clj_A, undef, undef, "  ", "-", "#", "#", "", 0, *STDOUT, undef, undef);
-  print("#\n");
-
-  # model options table:
-  @data_AA = ();
-  @{$head_AA[0]} = ("model key", "v-annotate.pl options");
-  @clj_A         = (1,     1);
-  foreach my $mkey (@mkey_A) {
-    push(@data_AA, [$mkey, $mkey_opts_H{$mkey}]);
-  }
-  ofile_TableHumanOutput(\@data_AA, \@head_AA, \@clj_A, undef, undef, "  ", "-", "#", "#", "", 0, *STDOUT, undef, undef);
+# handle --l (list) options, if any of these are selected we just output info and exit
+# we do not run v-annotate.pl on any sequences
+if(opt_IsUsed("--l_all", \%opt_HH) ||
+   opt_IsUsed("--l_lib", \%opt_HH) ||
+   opt_IsUsed("--l_dir", \%opt_HH) ||
+   opt_IsUsed("--l_opt", \%opt_HH) ||
+   opt_IsUsed("--l_mdl", \%opt_HH)) {
+  list_options($config_file, \@mkey_A, \%mkey_mdir_H, \%mkey_opts_H, $pkgname, $version, $releasedate, \%opt_HH);
   exit 0;
 }
 
@@ -840,5 +838,156 @@ sub only_skip_options {
     $mkey_opts_HR->{$mkey} = $new_mkey_opts_H{$mkey};
   }
   
+  return;
+}
+
+
+#################################################################
+# Subroutine:  list_options()
+# Incept:      EPN, Wed Feb 19 16:50:35 2025
+#
+# Purpose:    Handle the --l_* options by printing out information
+#             on the model libraries and exiting.
+#
+# Arguments: 
+#  $config_file:  path to config file
+#  $mkey_AR:      REF to array of all mkeys read from config file, modified here
+#  $mkey_mdir_HR: REF to hash of directories for each model key, modified here
+#  $mkey_opts_HR: REF to hash of options for each model key, modified here
+#  $pkgname:      package name
+#  $version:      version
+#  $releasedate:  release date for the package
+#  $opt_HHR:      REF to 2D hash of option values
+#
+# Returns:    void
+#
+# Dies:       if --only or --skip option strings are invalid
+#
+#################################################################
+sub list_options { 
+
+  my $sub_name = "list_options()"; 
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($config_file, $mkey_AR, $mkey_mdir_HR, $mkey_opts_HR, , $pkgname, $version, $releasedate, $opt_HHR) = @_;
+
+  my $div_line = utl_StringMonoChar(60, "#", undef) . "\n";
+
+  print $div_line;
+  print "#\n";
+  print "# $pkgname $version ($releasedate)\n";
+  print "#\n";
+  print "# config file: $config_file\n";
+  print "#\n";
+
+  my $do_lib = opt_IsUsed("--l_lib", $opt_HHR) ? 1 : 0;
+  my $out_lib = undef;
+  my $mkey = undef;
+
+  # if --l_lib doesn't exist, exit
+  if($do_lib)  {
+    $out_lib = opt_Get("--l_lib", $opt_HHR);
+    if(! defined $mkey_mdir_HR->{$out_lib}) {
+      my $die_str = "ERROR, model library $out_lib specified with --l_lib does not exist in config file.\nExisting libraries are:\n";
+      foreach $mkey (@mkey_A) {
+        $die_str .= "\t$mkey\n";
+      }
+      die $die_str;
+    }
+  }
+    
+  my @head_AA = ();
+  my @data_AA = ();
+  my @clj_A   = ();
+
+  # model dir table:
+  if(opt_IsUsed("--l_all", $opt_HHR) ||
+     opt_IsUsed("--l_dir", $opt_HHR) || 
+     opt_IsUsed("--l_lib", $opt_HHR)) { 
+    if($do_lib) { 
+      #print("# $out_lib library directory information:\n");
+    }
+    else { 
+      print("# Model library directory information:\n#\n");
+    }
+
+    @{$head_AA[0]} = ("model key", "model dir");
+    @clj_A         = (1,     1);
+    foreach my $mkey (@{$mkey_AR}) {
+      if((! $do_lib) || ($mkey eq $out_lib)) { 
+        push(@data_AA, [$mkey, $mkey_mdir_HR->{$mkey}]);
+      }
+    }
+    ofile_TableHumanOutput(\@data_AA, \@head_AA, \@clj_A, undef, undef, "  ", "-", "#", "#", "", 0, *STDOUT, undef, undef);
+    print("#\n");
+  }
+
+  # model options table:
+  if(opt_IsUsed("--l_all", $opt_HHR) ||
+     opt_IsUsed("--l_opt", $opt_HHR) ||
+     opt_IsUsed("--l_lib", $opt_HHR)) { 
+    if($do_lib) { 
+      #print("# $out_lib library options information:\n");
+    }
+    else {
+      print("# Model library options information:\n#\n");
+    }
+
+    @data_AA = ();
+    @{$head_AA[0]} = ("model key", "v-annotate.pl options");
+    @clj_A         = (1,     1);
+    foreach my $mkey (@{$mkey_AR}) {
+      if((! $do_lib) || ($mkey eq $out_lib)) { 
+        push(@data_AA, [$mkey, $mkey_opts_HR->{$mkey}]);
+      }
+    }
+    ofile_TableHumanOutput(\@data_AA, \@head_AA, \@clj_A, undef, undef, "  ", "-", "#", "#", "", 0, *STDOUT, undef, undef);
+    print("#\n");
+  }
+
+  # models table
+  my @reqd_mdl_keys_A = ("name", "length");
+  if(opt_IsUsed("--l_all", $opt_HHR) ||
+     opt_IsUsed("--l_mdl", $opt_HHR) ||
+     opt_IsUsed("--l_lib", $opt_HHR)) { 
+    if($do_lib) { 
+      #print("# List of models in $out_lib model library:\n");
+    }
+    else {
+      print("# List of models in each model library:\n#\n");
+    }
+
+    @data_AA = ();
+    @{$head_AA[0]} = ("idx", "model key", "model name", "length", "group", "subgroup");
+    @clj_A         = (0,     1,           1,            0,        1,       1);
+    my @reqd_ftr_keys_A = ("type", "coords");
+    my $minfo_file = undef;
+    my @mdl_info_AH = ();
+    my %ftr_info_HAH = ();
+    for(my $k = 0; $k < scalar(@{$mkey_AR}); $k++) {
+      my $mkey = $mkey_A[$k];
+      $minfo_file = $mkey_mdir_HR->{$mkey} . "/" . $mkey . ".minfo";
+      @mdl_info_AH = ();
+      %ftr_info_HAH = ();
+      utl_FileValidateExistsAndNonEmpty($minfo_file, "$mkey model info file", undef, 1, undef);
+      vdr_ModelInfoFileParse($minfo_file, \@reqd_mdl_keys_A, \@reqd_ftr_keys_A, \@mdl_info_AH, \%ftr_info_HAH, undef);
+      my $nmdl = scalar(@mdl_info_AH);
+      if((! $do_lib) && ($k > 0)) { push(@data_AA, []); } # blank line
+      for(my $m = 0; $m < $nmdl; $m++) {
+        if((! $do_lib) || ($mkey eq $out_lib)) { 
+          push(@data_AA,
+               [(sprintf("%d.%d", ($do_lib ? 1 : ($k+1)), ($m+1))), 
+                $mkey,
+                $mdl_info_AH[$m]{"name"},
+                $mdl_info_AH[$m]{"length"},
+                ((defined $mdl_info_AH[$m]{"group"})    ? $mdl_info_AH[$m]{"group"} : "-"), 
+                ((defined $mdl_info_AH[$m]{"subgroup"}) ? $mdl_info_AH[$m]{"subgroup"} : "-")]);
+        }
+      }
+    }    
+    ofile_TableHumanOutput(\@data_AA, \@head_AA, \@clj_A, undef, undef, "  ", "-", "#", "#", "", 0, *STDOUT, undef, undef);
+  }
+
   return;
 }
