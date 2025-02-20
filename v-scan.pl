@@ -731,35 +731,39 @@ sub output_lib_mdl_and_alc_files_and_remove_temp_files {
   close($ofile_info_HHR->{"FH"}{"lib"});
   
   my $FH_HR     = $ofile_info_HH{"FH"};
-  my $do_all    = ($do_multi || opt_Get("--all", \%opt_HH)) ? 1 : 0;
+  my $do_multi  = opt_Get("-m", $opt_HHR);
+  my $do_all    = ($do_multi || opt_Get("--all", $opt_HHR)) ? 1 : 0;
   my $do_sample = ($do_all) ? 0 : 1;
-  my $sum_str = "";
+  my $sum_str   = "";
 
-  if(($do_sample) && ($sample_nseq < $in_nseq)) {
-    $sum_str = sprintf("# Summary of seqs matching each library (only %d of %d seqs scanned):", $sample_nseq, $in_nseq);
-  }
-  else {
-    $sum_str = "# Summary of sequences matching each library:";
-  }
-  
-  my $nmkey = scalar(@{$mkey_used_AR});
-  if($nmkey != scalar(@{$mdl_file_AR})) {
-    ofile_FAIL("ERROR, in $sub_name, unexpected number of mdl files", 1, $FH_HR);
-  }
-  if(scalar(@{$mdl_file_AR}) != (scalar(@{$alc_file_AR}))) {
-    ofile_FAIL("ERROR, in $sub_name, number of mdl and alc files differ", 1, $FH_HR);
-  }
-
+  # only output the lib file if -m was used 
   my @conclude_A = ();
   my @file_A = ();
   my ($mkey, $mdl_file, $alc_file) = (undef, undef, undef);
-  push(@conclude_A, "#");
-  push(@conclude_A, $sum_str);
-  push(@conclude_A, "#");
-  utl_FileLinesToArray($ofile_info_HHR->{"fullpath"}{"lib"}, 1, \@file_A, $FH_HR);
-  push(@conclude_A, @file_A);
-  push(@conclude_A, "#");
-
+  my $nmkey = scalar(@{$mkey_used_AR});
+  if($do_multi) { 
+    if(($do_sample) && ($sample_nseq < $in_nseq)) {
+      $sum_str = sprintf("# Summary of seqs matching each library (only %d of %d seqs scanned):", $sample_nseq, $in_nseq);
+    }
+    else {
+      $sum_str = "# Summary of sequences matching each library:";
+    }
+    
+    if($nmkey != scalar(@{$mdl_file_AR})) {
+      ofile_FAIL("ERROR, in $sub_name, unexpected number of mdl files", 1, $FH_HR);
+    }
+    if(scalar(@{$mdl_file_AR}) != (scalar(@{$alc_file_AR}))) {
+      ofile_FAIL("ERROR, in $sub_name, number of mdl and alc files differ", 1, $FH_HR);
+    }
+    
+    push(@conclude_A, "#");
+    push(@conclude_A, $sum_str);
+    push(@conclude_A, "#");
+    utl_FileLinesToArray($ofile_info_HHR->{"fullpath"}{"lib"}, 1, \@file_A, $FH_HR);
+    push(@conclude_A, @file_A);
+    push(@conclude_A, "#");
+  }
+  
   for(my $m = 0; $m < $nmkey; $m++) {
     $mkey     = $mkey_used_AR->[$m];
     $mdl_file = $mdl_file_AR->[$m];
