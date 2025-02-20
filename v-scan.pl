@@ -453,8 +453,16 @@ my @mkey_used_A  = (); # array of the mkeys with at least one sequence
 my @ant_outdir_A = (); # array of output directories we will create 
 my @mdl_file_A   = (); # array of mdl files to output before exiting
 my @alc_file_A   = (); # array of alc files to output before exiting
+my @log_file_A   = (); # array of log files to process before exiting
 my $mkey_fa_file = undef;
 my $progress_str = undef;
+my $ant_mkey_width = 0;   # max length of any model key we will annotate for
+# first get max width of mkey used
+foreach $mkey (@mkey_A) {
+  if(defined $seqlist_HA{$mkey}) {
+    if(length($mkey) > $ant_mkey_width) { $ant_mkey_width = length($mkey); }
+  }
+}
 if($nmkey_used > 0) { 
   foreach $mkey (@mkey_A) {
     if((defined $seqlist_HA{$mkey}) || ($nmkey == 1)) { # if $nmkey == 1, we didn't run --clsonly mode
@@ -465,13 +473,14 @@ if($nmkey_used > 0) {
       else {
         $mkey_fa_file = $dir_tail . "/" . $dir_tail . "." . $mkey . ".fa";
         $in_sqfile->fetch_seqs_given_names(\@{$seqlist_HA{$mkey}}, 60, $mkey_fa_file);
-        $progress_str = sprintf("Annotating %*d %-*s sequences ", length($in_nseq), scalar(@{$seqlist_HA{$mkey}}), $mkey_width, $mkey);
+        $progress_str = sprintf("Annotating %*d %-*s sequences ", length($in_nseq), scalar(@{$seqlist_HA{$mkey}}), $ant_mkey_width, $mkey);
       }
       my $ant_outdir = $dir_tail . "/" . $dir_tail . "." . $mkey;
       push(@mkey_used_A, $mkey);
       push(@ant_outdir_A, $ant_outdir);
       push(@mdl_file_A, $ant_outdir . "/" . $dir_tail . "." . $mkey . ".vadr.mdl");
       push(@alc_file_A, $ant_outdir . "/" . $dir_tail . "." . $mkey . ".vadr.alc");
+      push(@log_file_A, $ant_outdir . "/" . $dir_tail . "." . $mkey . ".vadr.log");
 
       $cmd = $execs_H{"v-annotate.pl"} . " --mkey $mkey --mdir $mkey_mdir_H{$mkey} $mkey_opts_H{$mkey} $keep_opt $mkey_fa_file $ant_outdir";
       if(! $do_verbose) { $cmd .= " > /dev/null"; }
@@ -521,7 +530,7 @@ if($do_keep) {
     ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# All %-*s library --clsonly  output files can be found in directory $cls_outdir_A[$z]\n", $mkey_width, $mkey_A[$z]));
   }
   for($z = 0; $z < scalar(@mkey_used_A); $z++) {
-    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# All %-*s library annotation output files can be found in directory $ant_outdir_A[$z]\n", $mkey_width, $mkey_used_A[$z]));
+    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# All %-*s library annotation output files can be found in directory $ant_outdir_A[$z]\n", $ant_mkey_width, $mkey_used_A[$z]));
   }
 }
 else {
@@ -531,7 +540,12 @@ else {
     utl_RunCommand("rm $cls_outdir_A[$z]/*; rmdir $cls_outdir_A[$z]", opt_Get("-v", \%opt_HH), 0, $FH_HR);
   }
   for($z = 0; $z < scalar(@mkey_used_A); $z++) {
+    # parse the .log file to determine which output files we want to list
+    parse_log_file_for_out_files($log_file_A[$z], $mkey_used_A[$z], $ant_mkey_width, $FH_HR);
     utl_RunCommand("mv $ant_outdir_A[$z]/* ./$dir/; rmdir $ant_outdir_A[$z]", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+    if($z < (scalar(@mkey_used_A) - 1)) {
+      ofile_OutputString($FH_HR->{"log"}, 1, "#\n");
+    }
   }
 }
 if($nmkey_used == 0) { # matches were found to zero libraries
@@ -1032,5 +1046,70 @@ sub list_options {
     ofile_TableHumanOutput(\@data_AA, \@head_AA, \@clj_A, undef, undef, "  ", "-", "#", "#", "", 0, *STDOUT, undef, undef);
   }
 
+  return;
+}
+
+#################################################################
+# Subroutine:  parse_log_file_for_out_files()
+# Incept:      EPN, Thu Feb 20 13:30:54 2025
+#
+# Purpose:    Parse a log file and output the lines that list
+#             the output files that were created.
+#
+# Arguments: 
+#  $log_file:     path to config file
+#  $FH_HR:        REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies:       if there's a problem parsing the log file
+#
+#################################################################
+sub parse_log_file_for_out_files { 
+  my $sub_name = "parse_log_file_for_out_files";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($log_file, $mkey, $mkey_width, $FH_HR) = (@_);
+  #
+  # Zero alerts were reported.
+  #
+  # Output printed to screen saved in:                              vs-test.flu.vadr.log
+  # List of executed commands saved in:                             vs-test.flu.vadr.cmd
+  # List and description of all output files saved in:              vs-test.flu.vadr.filelist
+  # esl-seqstat -a output for input fasta file saved in:            vs-test.flu.vadr.seqstat
+  # 5 column feature table output for passing sequences saved in:   vs-test.flu.vadr.pass.tbl
+  # 5 column feature table output for failing sequences saved in:   vs-test.flu.vadr.fail.tbl
+  # list of passing sequences saved in:                             vs-test.flu.vadr.pass.list
+  # list of failing sequences saved in:                             vs-test.flu.vadr.fail.list
+  # list of alerts in the feature tables saved in:                  vs-test.flu.vadr.alt.list
+  # alignment doctoring tabular summary file saved in:              vs-test.flu.vadr.dcr
+  # replaced stretches of Ns summary file (-r) saved in:            vs-test.flu.vadr.rpn
+  #
+  # All output files created in directory ./vs-test/vs-test.flu/
+  open(LOG, $log_file) || ofile_FileOpenFailure($log_file, $sub_name, $!, "reading", $FH_HR);
+
+  my $print_flag = 0;
+  my $did_print = 0;
+  while(my $line = <LOG>) {
+    chomp $line;
+    if($line =~ m/^# Output printed to screen saved in/) {
+      $print_flag = 1;
+    }
+    if(($print_flag) && ($line =~ m/^#\s*$/)) {
+      $print_flag = 0;
+    }
+    if($print_flag) {
+      $line =~ s/^# //;
+      $line = sprintf("# %-*s library ", $mkey_width, $mkey) . lcfirst($line);
+      ofile_OutputString($FH_HR->{"log"}, 1, $line . "\n");
+      $did_print = 1;
+    }
+  }
+  close(LOG);
+
+  if(! $did_print) {
+    ofile_FAIL("ERROR in $sub_name, unable to find any output files listed in $log_file\n", 1, $FH_HR);
+  }
   return;
 }
