@@ -374,18 +374,25 @@ else {
 ##################################################
 # For each model key, run v-annotate.pl --cls_only
 ##################################################
-my %out_dir_H = (); # hash of output directories
+my %cls_outdir_H = (); # hash of output directories
 my %sqc_H = ();     # hash of sqc files
 my $mkey;
 my $nmkey = scalar(@mkey_A);
 my $clsonly_fa_file = ($do_sample) ? $sample_in_fa_file : $in_fa_file;
+my @cls_outdir_A = ();
+my $mkey_width = 0;
+foreach $mkey (@mkey_A) {
+  if(length($mkey) > $mkey_width) { $mkey_width = length($mkey); }
+}
 if($nmkey > 1) { 
   foreach $mkey (@mkey_A) {
-    $out_dir_H{$mkey} = $dir_tail . "/" . $mkey . ".0";
-    $sqc_H{$mkey} = $out_dir_H{$mkey} . "/" . $mkey . ".0.vadr.sqc";
-    $cmd = $execs_H{"v-annotate.pl"} . " -f -s --origfa --cls_only --mkey $mkey --mdir $mkey_mdir_H{$mkey} $clsonly_fa_file $out_dir_H{$mkey}";
+    if(length($mkey) > $mkey_width) { $mkey_width = length($mkey); }
+    $cls_outdir_H{$mkey} = $dir_tail . "/" . $dir_tail . ".clsonly." . $mkey;
+    push(@cls_outdir_A, $cls_outdir_H{$mkey});
+    $sqc_H{$mkey} = $cls_outdir_H{$mkey} . "/" . $dir_tail . ".clsonly." . $mkey . ".vadr.sqc";
+    $cmd = $execs_H{"v-annotate.pl"} . " -f -s --origfa --cls_only --mkey $mkey --mdir $mkey_mdir_H{$mkey} $clsonly_fa_file $cls_outdir_H{$mkey}";
     if(! $do_verbose) { $cmd .= " > /dev/null"; }
-    my $start_secs = ofile_OutputProgressPrior(sprintf("Scanning $sample_nseq sequences against %s library ", $mkey), $progress_w, $log_FH, *STDOUT);
+    my $start_secs = ofile_OutputProgressPrior(sprintf("Scanning $sample_nseq sequences against %-*s library ", $mkey_width, $mkey), $progress_w, $log_FH, *STDOUT);
     utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
     ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
@@ -441,9 +448,10 @@ else {
 ###########################################################################
 # Re-run v-annotate.pl for each model key that at least one seq matched to
 ###########################################################################
-my @mkey_used_A = (); # array of the mkeys with at least one sequence 
-my @mdl_file_A  = (); # array of mdl files to output before exiting
-my @alc_file_A  = (); # array of alc files to output before exiting
+my @mkey_used_A  = (); # array of the mkeys with at least one sequence 
+my @ant_outdir_A = (); # array of output directories we will create 
+my @mdl_file_A   = (); # array of mdl files to output before exiting
+my @alc_file_A   = (); # array of alc files to output before exiting
 my $mkey_fa_file = undef;
 my $progress_str = undef;
 if($nmkey_used > 0) { 
@@ -451,19 +459,20 @@ if($nmkey_used > 0) {
     if((defined $seqlist_HA{$mkey}) || ($nmkey == 1)) { # if $nmkey == 1, we didn't run --clsonly mode
       if($nmkey_used == 1) { 
         $mkey_fa_file = $in_fa_file;
-        $progress_str = "Annotating $in_nseq sequences with $mkey model library ... ";
+        $progress_str = "Annotating $in_nseq sequences with $mkey model library ";
       }
       else {
-        $mkey_fa_file = $dir_tail . "/" . $mkey . ".fa";
+        $mkey_fa_file = $dir_tail . "/" . $dir_tail . "." . $mkey . ".fa";
         $in_sqfile->fetch_seqs_given_names(\@{$seqlist_HA{$mkey}}, 60, $mkey_fa_file);
-        $progress_str = sprintf("Annotating %d %s sequences ", scalar(@{$seqlist_HA{$mkey}}), $mkey);
+        $progress_str = sprintf("Annotating %*d %-*s sequences ", length($in_nseq), scalar(@{$seqlist_HA{$mkey}}), $mkey_width, $mkey);
       }
-      my $out_dir = $dir_tail . "/" . $mkey;
+      my $ant_outdir = $dir_tail . "/" . $dir_tail . "." . $mkey;
       push(@mkey_used_A, $mkey);
-      push(@mdl_file_A, $dir_tail . "/" . $mkey . "/" . $mkey . ".vadr.mdl");
-      push(@alc_file_A, $dir_tail . "/" . $mkey . "/" . $mkey . ".vadr.alc");
+      push(@ant_outdir_A, $ant_outdir);
+      push(@mdl_file_A, $ant_outdir . "/" . $dir_tail . "." . $mkey . ".vadr.mdl");
+      push(@alc_file_A, $ant_outdir . "/" . $dir_tail . "." . $mkey . ".vadr.alc");
 
-      $cmd = $execs_H{"v-annotate.pl"} . " --mkey $mkey --mdir $mkey_mdir_H{$mkey} $mkey_opts_H{$mkey} $mkey_fa_file $out_dir";
+      $cmd = $execs_H{"v-annotate.pl"} . " --mkey $mkey --mdir $mkey_mdir_H{$mkey} $mkey_opts_H{$mkey} $mkey_fa_file $ant_outdir";
       if(! $do_verbose) { $cmd .= " > /dev/null"; }
       my $start_secs = ofile_OutputProgressPrior($progress_str, $progress_w, $FH_HR->{"log"}, *STDOUT);
       utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
@@ -504,12 +513,33 @@ ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 ############
 output_lib_mdl_and_alc_files_and_remove_temp_files($in_nseq, $sample_nseq, \@mkey_used_A, \@mdl_file_A, \@alc_file_A, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
 
+my $z = 0;
+if($do_keep) {
+  # with --keep leave the files where they are
+  for($z = 0; $z < scalar(@mkey_A); $z++) {
+    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# All %-*s library --clsonly  output files can be found in directory $cls_outdir_A[$z]\n", $mkey_width, $mkey_A[$z]));
+  }
+  for($z = 0; $z < scalar(@mkey_used_A); $z++) {
+    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# All %-*s library annotation output files can be found in directory $ant_outdir_A[$z]\n", $mkey_width, $mkey_used_A[$z]));
+  }
+}
+else {
+  # --keep not used, move all files in *annotation* subdirectories into $dir and remove subdirs
+  # remove clsonly directories
+  for($z = 0; $z < scalar(@mkey_A); $z++) {
+    utl_RunCommand("rm $cls_outdir_A[$z]/*; rmdir $cls_outdir_A[$z]", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+  }
+  for($z = 0; $z < scalar(@mkey_used_A); $z++) {
+    utl_RunCommand("mv $ant_outdir_A[$z]/* ./$dir/; rmdir $ant_outdir_A[$z]", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+  }
+}
 if($nmkey_used == 0) { # matches were found to zero libraries
   ofile_OutputString($FH_HR->{"log"}, 1, "# Zero sequences matched a model library so no annotations were performed.\n");
 }
 
 $total_seconds += ofile_SecondsSinceEpoch();
 ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
+
 
 #################################################################
 # Subroutine: parse_config_file
