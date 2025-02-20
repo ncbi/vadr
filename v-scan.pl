@@ -380,6 +380,7 @@ my $mkey;
 my $nmkey = scalar(@mkey_A);
 my $clsonly_fa_file = ($do_sample) ? $sample_in_fa_file : $in_fa_file;
 my @cls_outdir_A = ();
+my $keep_opt   = ($do_keep) ? "--keep" : "";
 my $mkey_width = 0;
 foreach $mkey (@mkey_A) {
   if(length($mkey) > $mkey_width) { $mkey_width = length($mkey); }
@@ -390,7 +391,7 @@ if($nmkey > 1) {
     $cls_outdir_H{$mkey} = $dir_tail . "/" . $dir_tail . ".clsonly." . $mkey;
     push(@cls_outdir_A, $cls_outdir_H{$mkey});
     $sqc_H{$mkey} = $cls_outdir_H{$mkey} . "/" . $dir_tail . ".clsonly." . $mkey . ".vadr.sqc";
-    $cmd = $execs_H{"v-annotate.pl"} . " -f -s --origfa --cls_only --mkey $mkey --mdir $mkey_mdir_H{$mkey} $clsonly_fa_file $cls_outdir_H{$mkey}";
+    $cmd = $execs_H{"v-annotate.pl"} . " -f -s --origfa --cls_only --mkey $mkey --mdir $mkey_mdir_H{$mkey} $keep_opt $clsonly_fa_file $cls_outdir_H{$mkey}";
     if(! $do_verbose) { $cmd .= " > /dev/null"; }
     my $start_secs = ofile_OutputProgressPrior(sprintf("Scanning $sample_nseq sequences against %-*s library ", $mkey_width, $mkey), $progress_w, $log_FH, *STDOUT);
     utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
@@ -472,7 +473,7 @@ if($nmkey_used > 0) {
       push(@mdl_file_A, $ant_outdir . "/" . $dir_tail . "." . $mkey . ".vadr.mdl");
       push(@alc_file_A, $ant_outdir . "/" . $dir_tail . "." . $mkey . ".vadr.alc");
 
-      $cmd = $execs_H{"v-annotate.pl"} . " --mkey $mkey --mdir $mkey_mdir_H{$mkey} $mkey_opts_H{$mkey} $mkey_fa_file $ant_outdir";
+      $cmd = $execs_H{"v-annotate.pl"} . " --mkey $mkey --mdir $mkey_mdir_H{$mkey} $mkey_opts_H{$mkey} $keep_opt $mkey_fa_file $ant_outdir";
       if(! $do_verbose) { $cmd .= " > /dev/null"; }
       my $start_secs = ofile_OutputProgressPrior($progress_str, $progress_w, $FH_HR->{"log"}, *STDOUT);
       utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
