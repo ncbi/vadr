@@ -87,7 +87,7 @@ $opt_group_desc_H{++$g} = "basic options";
 opt_Add("-f",           "boolean", 0,         $g,    undef, undef,      "force directory overwrite",                                                               "force; if output dir exists, overwrite it",   \%opt_HH, \@opt_order_A);
 opt_Add("-c",           "string",  0,         $g,    undef, undef,      "use config file <s> instead of default in \$VADRCONFIGFILE",                              "use config file <s> instead of default in \$VADRCONFIGFILE", \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,         $g,    undef, undef,      "be verbose",                                                                              "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("--one",        "boolean", 0,         $g,    undef, undef,      "only allow matches to a single model library, exit if multiple libraries are matched",    "only allow matches to a single model library, exit if multiple libraries are matched", \%opt_HH, \@opt_order_A);
+opt_Add("-m",           "boolean", 0,         $g,    undef, undef,      "allow matches to multiple model libraries",                                               "allow matches to multiple model libraries", \%opt_HH, \@opt_order_A);
 opt_Add("--lone",       "boolean", 0,         $g,    undef, undef,      "exit if at least one sequence matches to multiple libraries",                             "exit if at least one sequence matches to multiple libraries", \%opt_HH, \@opt_order_A);
 opt_Add("--first",      "boolean", 0,         $g,    undef,"--lone",    "if a seq matches > 1 model library use first one [df: use best scoring]",                 "if a seq matches > 1 model library use first one [df: use best scoring]", \%opt_HH, \@opt_order_A);
 opt_Add("--origfa",     "boolean", 0,         $g,    undef,   undef,    "do not copy fasta file prior to analysis, use original",                 "do not copy fasta file prior to analysis, use original", \%opt_HH, \@opt_order_A);
@@ -98,7 +98,7 @@ opt_Add("--only",        "string", 0,         $g,   undef,"--skip",     "only us
 opt_Add("--skip",        "string", 0,         $g,   undef,"--only",     "do not use the model library(ies) in comma separated string <s>",                         "do nout use the model library(ies) in comma separated string <s>", \%opt_HH, \@opt_order_A);
 #     option            type       default group   requires incompat    preamble-output                                                                            help-output    
 $opt_group_desc_H{++$g} = "options for choosing a model library based on only a subset of input sequences:";
-opt_Add("-p",           "boolean", 0,         $g, "--one",  undef,      "peek only at a few seqs for picking model library to use, requires --one",                "peek only at a few seqs for picking model library to use, requires --one",   \%opt_HH, \@opt_order_A);
+opt_Add("-p",           "boolean", 0,         $g,   undef,  "-m",       "peek only at a few seqs for picking model library to use",                               "peek only at a few seqs for picking model library to use",   \%opt_HH, \@opt_order_A);
 opt_Add("--p_nseq",     "integer", 3,         $g,    "-p", undef,       "with -p, set the number of sequences to peek at to <n>",                                  "with -p, set the number of sequences to peek at to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--p_beg",      "boolean", 0,         $g,    "-p", undef,       "with -p, do not select seqs randomly, use seqs from beginning of file",                   "with -p, do not select seqs randomly, use seqs from beginning of file", \%opt_HH, \@opt_order_A);
 opt_Add("--p_seed",     "integer", 181,       $g,    "-p","--p_beg",    "with -p, set the random number generator seed to <n>",                                    "with -p, set the random number generator seed to <n>", \%opt_HH, \@opt_order_A);
@@ -120,7 +120,7 @@ my $options_okay =
                 'c=s'      => \$GetOptions_H{"-c"},
                 'l'        => \$GetOptions_H{"-l"},
                 'v'        => \$GetOptions_H{"-v"},
-                'one'      => \$GetOptions_H{"--one"}, 
+                'm'        => \$GetOptions_H{"-m"}, 
                 'lone'     => \$GetOptions_H{"--lone"}, 
                 'first'    => \$GetOptions_H{"--first"},
                 'origfa'   => \$GetOptions_H{"--origfa"},
@@ -167,7 +167,7 @@ opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
 opt_ValidateSet(\%opt_HH, \@opt_order_A);
 
 my $do_verbose   = opt_Get("-v",       \%opt_HH);
-my $do_one       = opt_Get("--one",    \%opt_HH);
+my $do_multi     = opt_Get("-m",       \%opt_HH);
 my $do_keep      = opt_Get("--keep",   \%opt_HH);
 my $do_peek      = opt_Get("-p",       \%opt_HH);
 my $peek_nseq    = opt_Get("--p_nseq", \%opt_HH);
@@ -417,13 +417,13 @@ if($nmkey > 1) {
     }
   } 
   
-  if($do_one && ($nmkey_used > 1)) {
+  if((! $do_multi) && ($nmkey_used > 1)) {
     my $mkey_str = "";
     foreach $mkey (sort keys %seqlist_HA) {
       if($mkey_str ne "") { $mkey_str .= ", "; }
       $mkey_str .= $mkey;
     }
-    ofile_FAIL("ERROR, --one enabled but found matches to multiple libraries: $mkey_str", 1, $FH_HR);
+    ofile_FAIL("ERROR, -m not used but found matches to multiple libraries: $mkey_str", 1, $FH_HR);
   }
 }
 else {
