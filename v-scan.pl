@@ -190,14 +190,23 @@ else {
   utl_FileValidateExistsAndNonEmpty($config_file, "config file defined by env variable \$VADRCONFIGFILE", undef, 1, undef); # '1' says: die if it doesn't exist or is empty
 }
 
-my @mkey_A = ();      # array of model library keys, read from config file
-my %mkey_mdir_H = (); # hash of model directories for each model library key, read from config file, key is model key
-my %mkey_opts_H = (); # hash of options for each model library key, read from config file, key is model key
-parse_config_file($config_file, \@mkey_A, \%mkey_mdir_H, \%mkey_opts_H, \%opt_HH, undef);
+my @okey_A = ();      # array of model library keys, read from config file
+my %okey_mdir_H   = (); # hash of model directories for each options key, read from config file, key is options key
+my %okey_opts_H   = (); # hash of options for each option key, read from config file, key is model key
+my %okey_mkey_H   = (); # hash of options for each option key, read from config file, key is model key
+my %other_okey_HA = (); # hash of arrays, key is option key $okey, value is array of other okeys ($okey2) that
+                        # use $okey as mkey, e.g. $okey = "flavi", @{$other_okey_HA{"flavi"} = ("dengue", "hcv")
+
+parse_config_file($config_file, \@okey_A, \%okey_mdir_H, \%okey_opts_H, \%okey_mkey_H, \%opt_HH, undef);
+validate_okey_mkey_values_and_fill_other_okey_HA(\@okey_A, \%okey_mdir_H, \%okey_mkey_H, \%other_okey_HA);
+
+utl_HDump("okey_mkey_H",    \%okey_mkey_H, *STDOUT);
+utl_HADump("other_okey_HA", \%other_okey_HA, *STDOUT);
+exit 0;
 
 # enforce that --only and --skip options are valid
 if((opt_IsUsed("--only", \%opt_HH)) || (opt_IsUsed("--skip", \%opt_HH))) { 
-  only_skip_options(\@mkey_A, \%mkey_mdir_H, \%mkey_opts_H, \%opt_HH);
+  only_skip_options(\@okey_A, \%okey_mdir_H, \%okey_opts_H, \%opt_HH);
 }
 
 # handle --l (list) options, if any of these are selected we just output info and exit
@@ -207,7 +216,7 @@ if(opt_IsUsed("--l_all", \%opt_HH) ||
    opt_IsUsed("--l_dir", \%opt_HH) ||
    opt_IsUsed("--l_opt", \%opt_HH) ||
    opt_IsUsed("--l_mdl", \%opt_HH)) {
-  list_options($config_file, \@mkey_A, \%mkey_mdir_H, \%mkey_opts_H, $pkgname, $version, $releasedate, \%opt_HH);
+  list_options($config_file, \@okey_A, \%okey_mdir_H, \%okey_opts_H, $pkgname, $version, $releasedate, \%opt_HH);
   exit 0;
 }
 
@@ -376,26 +385,30 @@ else {
 ##################################################
 my %cls_outdir_H = (); # hash of output directories
 my %sqc_H = ();     # hash of sqc files
-my $mkey;
-my $nmkey = scalar(@mkey_A);
+my $okey;
+my $n_okey = scalar(@okey_A);
 my $clsonly_fa_file = ($do_sample) ? $sample_in_fa_file : $in_fa_file;
 my @cls_outdir_A = ();
 my $keep_opt   = ($do_keep) ? "--keep" : "";
-my $mkey_width = 0;
-foreach $mkey (@mkey_A) {
-  if(length($mkey) > $mkey_width) { $mkey_width = length($mkey); }
+my $okey_width = 0;
+my $mkey_opt2use = "";
+foreach $okey (@okey_A) {
+  if(length($okey) > $okey_width) { $okey_width = length($okey); }
 }
-if($nmkey > 1) { 
-  foreach $mkey (@mkey_A) {
-    if(length($mkey) > $mkey_width) { $mkey_width = length($mkey); }
-    $cls_outdir_H{$mkey} = $dir_tail . "/" . $dir_tail . ".clsonly." . $mkey;
-    push(@cls_outdir_A, $cls_outdir_H{$mkey});
-    $sqc_H{$mkey} = $cls_outdir_H{$mkey} . "/" . $dir_tail . ".clsonly." . $mkey . ".vadr.sqc";
-    $cmd = $execs_H{"v-annotate.pl"} . " -f -s --origfa --cls_only --mkey $mkey --mdir $mkey_mdir_H{$mkey} $keep_opt $clsonly_fa_file $cls_outdir_H{$mkey}";
-    if(! $do_verbose) { $cmd .= " > /dev/null"; }
-    my $start_secs = ofile_OutputProgressPrior(sprintf("Scanning $sample_nseq sequences against %-*s library ", $mkey_width, $mkey), $progress_w, $log_FH, *STDOUT);
-    utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
-    ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+if($n_okey > 1) { 
+  foreach $okey (@okey_A) {
+    if($okey_mkey_H{$okey} eq $okey) { # we don't need to rerun clsonly mode when okey != mkey
+      $cls_outdir_H{$okey} = $dir_tail . "/" . $dir_tail . ".clsonly." . $okey;
+      push(@cls_outdir_A, $cls_outdir_H{$okey});
+      $sqc_H{$okey} = $cls_outdir_H{$okey} . "/" . $dir_tail . ".clsonly." . $okey . ".vadr.sqc";
+      # determine --okey option to use, this is --mkey $mkey unless specified in config file options string
+      $mkey_opt2use = "--mkey " . mkey_from_opts($okey, $okey_opts_H{$okey});
+      $cmd = $execs_H{"v-annotate.pl"} . " -f -s --origfa --cls_only $mkey_opt2use --mdir $okey_mdir_H{$okey} $keep_opt $clsonly_fa_file $cls_outdir_H{$okey}";
+      if(! $do_verbose) { $cmd .= " > /dev/null"; }
+      my $start_secs = ofile_OutputProgressPrior(sprintf("Scanning $sample_nseq sequences against %-*s library ", $okey_width, $okey), $progress_w, $log_FH, *STDOUT);
+      utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+      ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+    }
   }
 }
 ##################################################
@@ -405,84 +418,88 @@ if($nmkey > 1) {
 ##################################################
 my %seq_H         = ();   # 'exists' hash, key is sequence name, value is always '1' 
 my @seq_A         = ();   # array of sequence names
-my %seq_mkey_H    = ();   # key is seq name, value is best mkey for this sequence
+my %seq_okey_H    = ();   # key is seq name, value is best okey for this sequence
 my %seq_mdl_H     = ();   # key is seq name, value is best model for this sequence
 my %seq_sc_H      = ();   # key is seq name, value is score for best model for this sequence
-if($nmkey > 1) { 
-  foreach $mkey (@mkey_A) {
-    parse_sqc_clsonly_file($sqc_H{$mkey}, $mkey, \%seq_H, \@seq_A, \%seq_mkey_H, \%seq_mdl_H, \%seq_sc_H, \%opt_HH, $FH_HR);
+if($n_okey > 1) { 
+  foreach $okey (@okey_A) {
+    if($okey_mkey_H{$okey} eq $okey) { 
+      parse_sqc_clsonly_file($sqc_H{$okey}, $okey, \%seq_H, \@seq_A, \%seq_okey_H, \%seq_mdl_H, \%seq_sc_H, \%opt_HH, $FH_HR);
+    }
   }
 }
-
+utl_HDump("seq_okey_H", \%seq_okey_H, *STDOUT);
+exit 0;
+    
 # Fill per-mkey lists of sequences
 my %seqlist_HA = (); # key is mkey, value is array of sequences that match to this mkey
-my $nmkey_used = 0;  # number of mkey (libraries) we have at least one sequence to rerun v-annotate.pl for
-my %mkey_ct_H  = (); # key is mkey, value is number of seqs assigned to that mkey, 'undef' if 0
-if($nmkey > 1) {
+my $n_okey_used = 0; # number of mkey (libraries) we have at least one sequence to rerun v-annotate.pl for
+my %okey_ct_H  = (); # key is okey, value is number of seqs assigned to that okey, 'undef' if 0
+if($n_okey > 1) {
   foreach my $seqname (@seq_A) {
-    if(defined $seq_mkey_H{$seqname}) {
-      my $mkey = $seq_mkey_H{$seqname};
+    if(defined $seq_okey_H{$seqname}) {
+      my $okey = $seq_okey_H{$seqname};
       my $mdl  = $seq_mdl_H{$seqname};
-      if(! defined $seqlist_HA{$mkey}) {
-        @{$seqlist_HA{$mkey}} = ();
-        $mkey_ct_H{$mkey} = 0;
-        $nmkey_used++;
+      if(! defined $seqlist_HA{$okey}) {
+        @{$seqlist_HA{$okey}} = ();
+        $okey_ct_H{$okey} = 0;
+        $n_okey_used++;
       }
-      push(@{$seqlist_HA{$mkey}}, $seqname);
-      $mkey_ct_H{$mkey}++;
+      push(@{$seqlist_HA{$okey}}, $seqname);
+      $okey_ct_H{$okey}++;
     }
   } 
   
-  if((! $do_multi) && ($nmkey_used > 1)) {
-    my $mkey_str = "";
-    foreach $mkey (sort keys %seqlist_HA) {
-      if($mkey_str ne "") { $mkey_str .= ", "; }
-      $mkey_str .= $mkey;
+  if((! $do_multi) && ($n_okey_used > 1)) {
+    my $okey_str = "";
+    foreach $okey (sort keys %seqlist_HA) {
+      if($okey_str ne "") { $okey_str .= ", "; }
+      $okey_str .= $okey;
     }
-    ofile_FAIL("ERROR, -m not used but found matches to multiple libraries: $mkey_str", 1, $FH_HR);
+    ofile_FAIL("ERROR, -m not used but found matches to multiple libraries: $okey_str", 1, $FH_HR);
   }
 }
 else {
-  $nmkey_used = 1; # we didn't run in clsonly because we only have 1 library
+  $n_okey_used = 1; # we didn't run in clsonly because we only have 1 library
 }
 
 ###########################################################################
 # Re-run v-annotate.pl for each model key that at least one seq matched to
 ###########################################################################
-my @mkey_used_A  = (); # array of the mkeys with at least one sequence 
+my @okey_used_A  = (); # array of the okeys with at least one sequence 
 my @ant_outdir_A = (); # array of output directories we will create 
 my @mdl_file_A   = (); # array of mdl files to output before exiting
 my @alc_file_A   = (); # array of alc files to output before exiting
 my @log_file_A   = (); # array of log files to process before exiting
-my $mkey_fa_file = undef;
+my $okey_fa_file = undef;
 my $progress_str = undef;
-my $ant_mkey_width = 0;   # max length of any model key we will annotate for
-# first get max width of mkey used
-foreach $mkey (@mkey_A) {
-  if(defined $seqlist_HA{$mkey}) {
-    if(length($mkey) > $ant_mkey_width) { $ant_mkey_width = length($mkey); }
+my $ant_okey_width = 0;   # max length of any okey we will annotate for
+# first get max width of okey used
+foreach $okey (@okey_A) {
+  if(defined $seqlist_HA{$okey}) {
+    if(length($okey) > $ant_okey_width) { $ant_okey_width = length($okey); }
   }
 }
-if($nmkey_used > 0) { 
-  foreach $mkey (@mkey_A) {
-    if((defined $seqlist_HA{$mkey}) || ($nmkey == 1)) { # if $nmkey == 1, we didn't run --clsonly mode
-      if($nmkey_used == 1) { 
-        $mkey_fa_file = $in_fa_file;
-        $progress_str = "Annotating $in_nseq sequences with $mkey model library ";
+if($n_okey_used > 0) { 
+  foreach $okey (@okey_A) {
+    if((defined $seqlist_HA{$okey}) || ($n_okey == 1)) { # if $n_okey == 1, we didn't run --clsonly mode
+      if($n_okey_used == 1) { 
+        $okey_fa_file = $in_fa_file;
+        $progress_str = "Annotating $in_nseq sequences with $okey model library ";
       }
       else {
-        $mkey_fa_file = $dir_tail . "/" . $dir_tail . "." . $mkey . ".fa";
-        $in_sqfile->fetch_seqs_given_names(\@{$seqlist_HA{$mkey}}, 60, $mkey_fa_file);
-        $progress_str = sprintf("Annotating %*d %-*s sequences ", length($in_nseq), scalar(@{$seqlist_HA{$mkey}}), $ant_mkey_width, $mkey);
+        $okey_fa_file = $dir_tail . "/" . $dir_tail . "." . $okey . ".fa";
+        $in_sqfile->fetch_seqs_given_names(\@{$seqlist_HA{$okey}}, 60, $okey_fa_file);
+        $progress_str = sprintf("Annotating %*d %-*s sequences ", length($in_nseq), scalar(@{$seqlist_HA{$okey}}), $ant_okey_width, $okey);
       }
-      my $ant_outdir = $dir_tail . "/" . $dir_tail . "." . $mkey;
-      push(@mkey_used_A, $mkey);
+      my $ant_outdir = $dir_tail . "/" . $dir_tail . "." . $okey;
+      push(@okey_used_A, $okey);
       push(@ant_outdir_A, $ant_outdir);
-      push(@mdl_file_A, $ant_outdir . "/" . $dir_tail . "." . $mkey . ".vadr.mdl");
-      push(@alc_file_A, $ant_outdir . "/" . $dir_tail . "." . $mkey . ".vadr.alc");
-      push(@log_file_A, $ant_outdir . "/" . $dir_tail . "." . $mkey . ".vadr.log");
-
-      $cmd = $execs_H{"v-annotate.pl"} . " --mkey $mkey --mdir $mkey_mdir_H{$mkey} $mkey_opts_H{$mkey} $keep_opt $mkey_fa_file $ant_outdir";
+      push(@mdl_file_A, $ant_outdir . "/" . $dir_tail . "." . $okey . ".vadr.mdl");
+      push(@alc_file_A, $ant_outdir . "/" . $dir_tail . "." . $okey . ".vadr.alc");
+      push(@log_file_A, $ant_outdir . "/" . $dir_tail . "." . $okey . ".vadr.log");
+      $mkey_opt2use = "--mkey " . mkey_from_opts($okey, $okey_opts_H{$okey});
+      $cmd = $execs_H{"v-annotate.pl"} . " $mkey_opt2use --mdir $okey_mdir_H{$okey} $okey_opts_H{$okey} $keep_opt $okey_fa_file $ant_outdir";
       if(! $do_verbose) { $cmd .= " > /dev/null"; }
       my $start_secs = ofile_OutputProgressPrior($progress_str, $progress_w, $FH_HR->{"log"}, *STDOUT);
       utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
@@ -494,7 +511,7 @@ if($nmkey_used > 0) {
 $start_secs = ofile_OutputProgressPrior("Generating tabular output", $progress_w, $log_FH, *STDOUT);
 
 # create the @data_lib_AA
-my $mkey_idx = 1;
+my $okey_idx = 1;
 my $mdl_idx = 1;
 
 # open files for writing
@@ -506,13 +523,15 @@ my @clj_lib_A   = ();
 @{$head_lib_AA[1]} = ("idx", "library", "seqs");
 @clj_lib_A         = (1,     1,         0);
 
-foreach $mkey (@mkey_A) {
-  my $nseq2print = (defined $mkey_ct_H{$mkey}) ? $mkey_ct_H{$mkey} : 0;
-  if(scalar(@mkey_A) == 1) { # we didn't run clsonly mode, set nseq to '-'
-    $nseq2print = "-";
+foreach $okey (@okey_A) {
+  if($okey_mkey_H{$okey} ne $okey) { 
+    my $nseq2print = (defined $okey_ct_H{$okey}) ? $okey_ct_H{$okey} : 0;
+    if(scalar(@okey_A) == 1) { # we didn't run clsonly mode, set nseq to '-'
+      $nseq2print = "-";
+    }
+    push(@data_lib_AA, [$okey_idx, $okey, $nseq2print]);
+    $okey_idx++;
   }
-  push(@data_lib_AA, [$mkey_idx, $mkey, $nseq2print]);
-  $mkey_idx++;
 }
 
 ofile_TableHumanOutput(\@data_lib_AA, \@head_lib_AA, \@clj_lib_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"lib"}, undef, $FH_HR);
@@ -521,34 +540,34 @@ ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 ############
 # Conclude #
 ############
-output_lib_mdl_and_alc_files_and_remove_temp_files($in_nseq, $sample_nseq, \@mkey_used_A, \@mdl_file_A, \@alc_file_A, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
+output_lib_mdl_and_alc_files_and_remove_temp_files($in_nseq, $sample_nseq, \@okey_used_A, \@mdl_file_A, \@alc_file_A, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
 
 my $z = 0;
 if($do_keep) {
   # with --keep leave the files where they are
-  for($z = 0; $z < scalar(@mkey_A); $z++) {
-    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# All %-*s library --clsonly  output files can be found in directory $cls_outdir_A[$z]\n", $mkey_width, $mkey_A[$z]));
+  for($z = 0; $z < scalar(@okey_A); $z++) {
+    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# All %-*s library --clsonly  output files can be found in directory $cls_outdir_A[$z]\n", $okey_width, $okey_A[$z]));
   }
-  for($z = 0; $z < scalar(@mkey_used_A); $z++) {
-    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# All %-*s library annotation output files can be found in directory $ant_outdir_A[$z]\n", $ant_mkey_width, $mkey_used_A[$z]));
+  for($z = 0; $z < scalar(@okey_used_A); $z++) {
+    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# All %-*s library annotation output files can be found in directory $ant_outdir_A[$z]\n", $ant_okey_width, $okey_used_A[$z]));
   }
 }
 else {
   # --keep not used, move all files in *annotation* subdirectories into $dir and remove subdirs
   # remove clsonly directories
-  for($z = 0; $z < scalar(@mkey_A); $z++) {
+  for($z = 0; $z < scalar(@okey_A); $z++) {
     utl_RunCommand("rm $cls_outdir_A[$z]/*; rmdir $cls_outdir_A[$z]", opt_Get("-v", \%opt_HH), 0, $FH_HR);
   }
-  for($z = 0; $z < scalar(@mkey_used_A); $z++) {
+  for($z = 0; $z < scalar(@okey_used_A); $z++) {
     # parse the .log file to determine which output files we want to list
-    parse_log_file_for_out_files($log_file_A[$z], $mkey_used_A[$z], $ant_mkey_width, $FH_HR);
+    parse_log_file_for_out_files($log_file_A[$z], $okey_used_A[$z], $ant_okey_width, $FH_HR);
     utl_RunCommand("mv $ant_outdir_A[$z]/* ./$dir/; rmdir $ant_outdir_A[$z]", opt_Get("-v", \%opt_HH), 0, $FH_HR);
-    if($z < (scalar(@mkey_used_A) - 1)) {
+    if($z < (scalar(@okey_used_A) - 1)) {
       ofile_OutputString($FH_HR->{"log"}, 1, "#\n");
     }
   }
 }
-if($nmkey_used == 0) { # matches were found to zero libraries
+if($n_okey_used == 0) { # matches were found to zero libraries
   ofile_OutputString($FH_HR->{"log"}, 1, "# Zero sequences matched a model library so no annotations were performed.\n");
 }
 
@@ -563,13 +582,13 @@ ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
 # Purpose:    Parse the special v-scan.pl config file and store
 #             the relevant info in 
 # Arguments:
-#  $config_file:  path to config file
-#  $mkey_AR:      REF to array of model library keys, one per model library hashes with
-#                 information on the features, PRE-FILLED
-#  $mkey_mdir_HR: REF to array of hashes with information on the features, PRE-FILLED
-#  $mkey_opts_HR: REF to array of hashes with information on the features, PRE-FILLED
-#  $opt_HHR:      REF to 2D hash of option values, see top of sqp_opts.pm for description
-#  $FH_HR:        REF to hash of file handles
+#  $config_file:   path to config file
+#  $okey_AR:       REF to array of model library option keys
+#  $okey_mdir_HR:  REF to hash, key is okey, value is model directory for this okey, filled here
+#  $okey_opts_HR:  REF to hash, key is okey, value is options string to use when annotation for this okey, filled here
+#  $okey_mkey_HR:  REF to hash, key is okey, value is --mkey used for annotation, filled here
+#  $opt_HHR:       REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $FH_HR:         REF to hash of file handles
 #
 # Returns:  void
 #           
@@ -578,38 +597,50 @@ ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
 #################################################################
 sub parse_config_file { 
   my $sub_name = "parse_config_file"; 
-  my $nargs_exp = 6;
+  my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($config_file, $mkey_AR, $mkey_mdir_HR, $mkey_opts_HR, $opt_HHR, $FH_HR) = (@_);
+  my ($config_file, $okey_AR, $okey_mdir_HR, $okey_opts_HR, $okey_mkey_HR, $opt_HHR, $FH_HR) = (@_);
 
   open(CONFIG, $config_file) || ofile_FileOpenFailure($config_file, $sub_name, $!, "reading", $FH_HR);
 
   my $line;
-  my ($mkey, $mdir, $opts);
+  my ($okey, $mdir, $opts);
   while($line = <CONFIG>) {
     chomp $line;
     if(($line =~ m/\w/) && ($line !~ m/^\#/)) {
       my @el_A = split(/\s+/, $line);
       if(scalar(@el_A) < 2) {
-        ofile_FAIL("ERROR all non-comment lines should include at least two white space delimited fields: <modemkey> <modeldir>\nread line:\n$line", 1, $FH_HR);
+        ofile_FAIL("ERROR all non-comment lines should include at least two white space delimited fields: <outkey> <modeldir>\nread line:\n$line", 1, $FH_HR);
       }
-      my ($mkey, $mdir) = ($el_A[0], $el_A[1]);
+      my ($okey, $mdir) = ($el_A[0], $el_A[1]);
+      my $test_okey = $okey;
+      $test_okey =~ s/[^a-z0-9]//g;
+      if($test_okey ne $okey) { 
+        ofile_FAIL("ERROR ready okey $okey, which includes some characters that are not lowercase or numeric, all okey values in field 1 must be all lowercase without any special non-alphanumeric characters", 1, $FH_HR);
+      }
       my $opts = "";
       for(my $i = 2; $i < scalar(@el_A); $i++) {
         if($opts ne "") { $opts .= " "; }
         $opts .= $el_A[$i];
       }
-      if(defined $mkey_mdir_H{$mkey}) {
-        ofile_FAIL("ERROR read model key $mkey twice in config file", 1, $FH_HR);
+      if(defined $okey_mdir_H{$okey}) {
+        ofile_FAIL("ERROR read output model key $okey twice in config file", 1, $FH_HR);
       }
-      push(@{$mkey_AR}, $mkey);
-      $mkey_mdir_HR->{$mkey} = $mdir;
-      $mkey_opts_HR->{$mkey} = $opts;
+      push(@{$okey_AR}, $okey);
+      $okey_mdir_HR->{$okey} = $mdir;
+      $okey_opts_HR->{$okey} = $opts;
+      $okey_mkey_HR->{$okey}  = mkey_from_opts($okey, $opts);
     }
   }
   close(CONFIG);
 
+  # make sure all %{$okey_mkey_HR} values are valid mkeys
+  foreach $okey (@{$okey_AR}) {
+    if(! defined $okey_mdir_HR->{($okey_mkey_HR->{$okey})}) {
+      ofile_FAIL("ERROR, in config file for okey $okey, options string includes --mkey $okey_mkey_HR->{$okey}\nbut $okey_mkey_HR->{$okey} does not have an entry in the config file.", 1, $FH_HR);
+    }
+  }
   return;
 }
 
@@ -621,10 +652,12 @@ sub parse_config_file {
 #
 # Arguments:
 #  $sqc_file:      name of sqc file to parse
-#  $mkey:          REF model key (e.g. flu) that this sqc file pertains to
+#  $okey:          options key (e.g. flu) that this sqc file pertains to
+#  $other_okey_AR: REF to array of other option keys that use this model library
+#                  e.g. if $okey is 'flavi', @{$other_okey_AR} might be ('dengue', 'hcv')
 #  $seq_HR:        REF to hash of sequence names, key is seq name, value is 1, to fill here
 #  $seq_AR:        REF to array of sequence names, to fill here
-#  $seq_mkey_HR:   REF to hash, key is sequence name, value is winning mkey, to fill here
+#  $seq_okey_HR:   REF to hash, key is sequence name, value is winning mkey, to fill here
 #  $seq_mdl_HR:    REF to hash, key is sequence name, value is winning model, to fill here
 #  $seq_sc_HR:     REF to hash, key is sequence name, value is winning score, to fill here
 #  $opt_HHR:       REF to 2D hash of option values, see top of sqp_opts.pm for description
@@ -637,10 +670,10 @@ sub parse_config_file {
 #################################################################
 sub parse_sqc_clsonly_file { 
   my $sub_name = "parse_sqc_clsonly_file"; 
-  my $nargs_exp = 9;
+  my $nargs_exp = 10;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($sqc_file, $mkey, $seq_HR, $seq_AR, $seq_mkey_HR, $seq_mdl_HR, $seq_sc_HR, $opt_HHR, $FH_HR) = (@_);
+  my ($sqc_file, $okey, $other_okey_AR, $seq_HR, $seq_AR, $seq_okey_HR, $seq_mdl_HR, $seq_sc_HR, $opt_HHR, $FH_HR) = (@_);
 
   my $do_lone  = opt_Get("--lone", $opt_HHR);
   my $do_first = opt_Get("--first", $opt_HHR);
@@ -656,27 +689,49 @@ sub parse_sqc_clsonly_file {
     if($line !~ m/^\#/) {
       my @el_A = split(/\s+/, $line);
       if(scalar(@el_A) != 21) { 
-        ofile_FAIL("ERROR problem parsing sqc file $sqc_H{$mkey}", 1, $FH_HR);
+        ofile_FAIL("ERROR problem parsing sqc file $sqc_file", 1, $FH_HR);
       }
-      my ($seqname, $pf, $mdl, $score) = ($el_A[1], $el_A[3], $el_A[5], $el_A[8]);
-
+      my ($seqname, $pf, $mdl, $grp, $subgrp, $score) = ($el_A[1], $el_A[3], $el_A[5], $el_A[6], $el_A[7], $el_A[8]);
+      my $okey2use = $okey;
+      my $mdl2use = $mdl;
+      if(defined $other_okey_AR) {
+        $grp     =~ tr/A-Z/a-z/;
+        $subgrp  =~ tr/A-Z/a-z/;
+        $mdl2use =~ tr/A-Z/a-z/;
+        $grp     =~ s/[^a-z0-9]//g;
+        $subgrp  =~ s/[^a-z0-9]//g;
+        $mdl2use =~ s/[^a-z0-9]//g;
+        foreach my $other_okey (@{$other_okey_AR}) {
+          # other_okey will be lowercase without special characters, parse_config_file makes sure of this
+          if($mdl2use eq $other_okey) { 
+            $okey2use = $mdl2use;
+          }
+          elsif($grp eq $other_okey) { 
+            $okey2use = $grp;
+          }
+          elsif($subgrp eq $other_okey) { 
+            $okey2use = $subgrp
+          }
+        }
+      }
+      
       if(! defined $seq_HR->{$seqname}) {
         push(@seq_A, $seqname);
         $seq_HR->{$seqname} = 1;
       }
       if($el_A[3] eq "PASS") {
         my $keep_flag = 1;
-        if(defined $seq_mkey_HR->{$seqname}) {
-          # this sequence already matched a model for a different $mkey
+        if(defined $seq_okey_HR->{$seqname}) {
+          # this sequence already matched a model for a different $okey
           # we either:
           # 1) die with error message
-          # 2) figure out best model for this sequence
-          #    either first mkey seen, or top scoring mkey
+          # 2) figure out best okey for this sequence
+          #    either first okey seen, or okey that gave top scoring hit
           if($do_lone) {
-            ofile_FAIL("ERROR sequence $seqname matched to two libraries: $seq_mkey_HR->{$seqname} and $mkey, omit --lone to allow this", 1, $FH_HR);
+            ofile_FAIL("ERROR sequence $seqname matched to two libraries: $seq_okey_HR->{$seqname} and $okey, omit --lone to allow this", 1, $FH_HR);
           }
           if($do_first) {
-            $keep_flag = 0; # keep existing value in $seq_mkey_HR->{$seqname}
+            $keep_flag = 0; # keep existing value in $seq_okey_HR->{$seqname}
           }
           else {
             # does it score better? it has to be better by at least 1
@@ -686,7 +741,7 @@ sub parse_sqc_clsonly_file {
           }
         }
         if($keep_flag) {
-          $seq_mkey_HR->{$seqname} = $mkey;
+          $seq_okey_HR->{$seqname} = $okey2use;
           $seq_mdl_HR->{$seqname}  = $mdl;
           $seq_sc_HR->{$seqname}   = $score;
         }
@@ -710,7 +765,7 @@ sub parse_sqc_clsonly_file {
 # Arguments:
 #  $in_nseq;        number of sequences in input file
 #  $sample_nseq:    number of sequences sampled
-#  $mkey_used_AR:   ref to array of model keys we want to output .mdl and .alc files for
+#  $okey_used_AR:   ref to array of option keys we want to output .mdl and .alc files for
 #  $mdl_file_AR:    ref to array of .mdl files to output
 #  $alc_file_AR:    ref to array of .alc files to output
 #  $to_remove_AR:   ref to array of files to remove
@@ -725,7 +780,7 @@ sub output_lib_mdl_and_alc_files_and_remove_temp_files {
   my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($in_nseq, $sample_nseq, $mkey_used_AR, $mdl_file_AR, $alc_file_AR, $to_remove_AR, $opt_HHR, $ofile_info_HHR) = (@_);
+  my ($in_nseq, $sample_nseq, $okey_used_AR, $mdl_file_AR, $alc_file_AR, $to_remove_AR, $opt_HHR, $ofile_info_HHR) = (@_);
 
   # close the two files we may output to stdout and the log
   close($ofile_info_HHR->{"FH"}{"lib"});
@@ -739,8 +794,8 @@ sub output_lib_mdl_and_alc_files_and_remove_temp_files {
   # only output the lib file if -m was used 
   my @conclude_A = ();
   my @file_A = ();
-  my ($mkey, $mdl_file, $alc_file) = (undef, undef, undef);
-  my $nmkey = scalar(@{$mkey_used_AR});
+  my ($okey, $mdl_file, $alc_file) = (undef, undef, undef);
+  my $n_okey = scalar(@{$okey_used_AR});
   if($do_multi) { 
     if(($do_sample) && ($sample_nseq < $in_nseq)) {
       $sum_str = sprintf("# Summary of seqs matching each library (only %d of %d seqs scanned):", $sample_nseq, $in_nseq);
@@ -749,7 +804,7 @@ sub output_lib_mdl_and_alc_files_and_remove_temp_files {
       $sum_str = "# Summary of sequences matching each library:";
     }
     
-    if($nmkey != scalar(@{$mdl_file_AR})) {
+    if($n_okey != scalar(@{$mdl_file_AR})) {
       ofile_FAIL("ERROR, in $sub_name, unexpected number of mdl files", 1, $FH_HR);
     }
     if(scalar(@{$mdl_file_AR}) != (scalar(@{$alc_file_AR}))) {
@@ -764,13 +819,13 @@ sub output_lib_mdl_and_alc_files_and_remove_temp_files {
     push(@conclude_A, "#");
   }
   
-  for(my $m = 0; $m < $nmkey; $m++) {
-    $mkey     = $mkey_used_AR->[$m];
+  for(my $m = 0; $m < $n_okey; $m++) {
+    $okey     = $okey_used_AR->[$m];
     $mdl_file = $mdl_file_AR->[$m];
     $alc_file = $alc_file_AR->[$m];
 
     push(@conclude_A, "#");
-    push(@conclude_A, "# Summary of sequences matching the $mkey model library:");
+    push(@conclude_A, "# Summary of sequences matching $okey:");
     push(@conclude_A, "#");
 
     @file_A = ();
@@ -781,10 +836,10 @@ sub output_lib_mdl_and_alc_files_and_remove_temp_files {
     @file_A = ();
     utl_FileLinesToArray($alc_file, 1, \@file_A, $FH_HR);
     if(scalar(@file_A == 3)) {
-      push(@conclude_A, "# Zero alerts reported for seqs matching to the $mkey library.");
+      push(@conclude_A, "# Zero alerts reported for seqs matching $okey.");
     }
     else {
-      push(@conclude_A, "# Summary of reported alerts for seqs matching the $mkey library:");
+      push(@conclude_A, "# Summary of reported alerts for seqs matching $okey:");
       push(@conclude_A, "#");
       push(@conclude_A, @file_A);
     }
@@ -817,13 +872,14 @@ sub output_lib_mdl_and_alc_files_and_remove_temp_files {
 #
 # Purpose:    Handle the --only and --skip options by 
 #             parsing their strings, determining if they are valid
-#             and updating the @{$mkey_AR}, %{$mkey_mdir_HR}
-#             and %{$mkey_opts_HR} data structures.
+#             and updating the @{$okey_AR}, %{$okey_mdir_HR}
+#             and %{$okey_opts_HR} data structures.
 #
 # Arguments: 
-#  $mkey_AR:      REF to array of all mkeys read from config file, modified here
-#  $mkey_mdir_HR: REF to hash of directories for each model key, modified here
-#  $mkey_opts_HR: REF to hash of options for each model key, modified here
+#  $okey_AR:      REF to array of all okeys read from config file, modified here
+#  $okey_mdir_HR: REF to hash of directories for each option key, modified here
+#  $okey_opts_HR: REF to hash of options for each option key, modified here
+#  $okey_mkey_HR: REF to hash of mkeys to use for each option key, modified here
 #  $opt_HHR:      REF to 2D hash of option values
 #
 # Returns:    void
@@ -836,30 +892,32 @@ sub only_skip_options {
   my $nargs_exp = 4;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($mkey_AR, $mkey_mdir_HR, $mkey_opts_HR, $opt_HHR) = @_;
+  my ($okey_AR, $okey_mdir_HR, $okey_opts_HR, $okey_mkey_HR, $opt_HHR) = @_;
   
   my @only_A = ();  # array of values in --only arg
   my @skip_A = ();  # array of values in --skip arg
   my %only_H = ();  # 'exists' hash for values in --only arg
   my %skip_H = ();  # 'exists' hash for values in --skip arg
-  my @new_mkey_A = ();      # new array of mkeys we will replace @{$mkey_AR} with before returning
-  my %new_mkey_mdir_H = (); # new hash  we will replace %{$mkey_mdir_HR} with before returning
-  my %new_mkey_opts_H = (); # new hash  we will replace %{$mkey_opts_HR} with before returning
+  my @new_okey_A = ();      # new array of mkeys we will replace @{$mkey_AR} with before returning
+  my %new_okey_mdir_H = (); # new hash we will replace %{$mkey_mdir_HR} with before returning
+  my %new_okey_opts_H = (); # new hash we will replace %{$mkey_opts_HR} with before returning
+  my %new_okey_mkey_H = (); # new hash we will replace %{$mkey_mkey_HR} with before returning
 
   my $die_str = "";
   if(opt_IsUsed("--only", $opt_HHR)) { 
     @only_A = split(",", opt_Get("--only", $opt_HHR));
-    foreach my $only_mkey (@only_A) {
-      $only_H{$only_mkey} = 1;
-      if(! defined $mkey_mdir_HR->{$only_mkey}) {
-        $die_str .= "\t$only_mkey specified in --only option but not listed in config file\n";
+    foreach my $only_okey (@only_A) {
+      $only_H{$only_okey} = 1;
+      if(! defined $okey_mdir_HR->{$only_okey}) {
+        $die_str .= "\t$only_okey specified in --only option but not listed in config file\n";
       }
     }
-    foreach my $mkey (@{$mkey_AR}) {
-      if(defined $only_H{$mkey}) {
-        push(@new_mkey_A, $mkey);
-        $new_mkey_mdir_H{$mkey} = $mkey_mdir_H{$mkey};
-        $new_mkey_opts_H{$mkey} = $mkey_opts_H{$mkey};
+    foreach my $okey (@{$okey_AR}) {
+      if(defined $only_H{$okey}) {
+        push(@new_okey_A, $okey);
+        $new_okey_mdir_H{$okey} = $okey_mdir_H{$okey};
+        $new_okey_opts_H{$okey} = $okey_opts_H{$okey};
+        $new_okey_mkey_H{$okey} = $okey_mkey_H{$okey};
       }
     }
   }
@@ -869,17 +927,18 @@ sub only_skip_options {
       ofile_FAIL("ERROR, in $sub_name, --only and --skip both used, pick one", 1, $FH_HR);
     }
     @skip_A = split(",", opt_Get("--skip", $opt_HHR));
-    foreach my $skip_mkey (@skip_A) {
-      $skip_H{$skip_mkey} = 1;
-      if(! defined $mkey_mdir_HR->{$skip_mkey}) {
-        $die_str .= "\t$skip_mkey specified in --skip option but not listed in config file\n";
+    foreach my $skip_okey (@skip_A) {
+      $skip_H{$skip_okey} = 1;
+      if(! defined $okey_mdir_HR->{$skip_okey}) {
+        $die_str .= "\t$skip_okey specified in --skip option but not listed in config file\n";
       }
     }
-    foreach my $mkey (@{$mkey_AR}) {
-      if(! defined $skip_H{$mkey}) {
-        push(@new_mkey_A, $mkey);
-        $new_mkey_mdir_H{$mkey} = $mkey_mdir_H{$mkey};
-        $new_mkey_opts_H{$mkey} = $mkey_opts_H{$mkey};
+    foreach my $okey (@{$okey_AR}) {
+      if(! defined $skip_H{$okey}) {
+        push(@new_okey_A, $okey);
+        $new_okey_mdir_H{$okey} = $okey_mdir_H{$okey};
+        $new_okey_opts_H{$okey} = $okey_opts_H{$okey};
+        $new_okey_mkey_H{$okey} = $okey_mkey_H{$okey};
       }
     }
   }
@@ -888,15 +947,17 @@ sub only_skip_options {
       ofile_FAIL("ERROR, in $sub_name:\n$die_str\n", 1, $FH_HR);
   }
   
-  @{$mkey_AR} = ();
-  %{$mkey_mdir_HR} = ();
-  %{$mkey_opts_HR} = ();
+  @{$okey_AR} = ();
+  %{$okey_mdir_HR} = ();
+  %{$okey_opts_HR} = ();
+  %{$okey_mkey_HR} = ();
 
   # copy values
-  @{$mkey_AR} = @new_mkey_A;
-  foreach $mkey (@{$mkey_AR}) {
-    $mkey_mdir_HR->{$mkey} = $new_mkey_mdir_H{$mkey};
-    $mkey_opts_HR->{$mkey} = $new_mkey_opts_H{$mkey};
+  @{$okey_AR} = @new_okey_A;
+  foreach $okey (@{$okey_AR}) {
+    $okey_mdir_HR->{$okey} = $new_okey_mdir_H{$okey};
+    $okey_opts_HR->{$okey} = $new_okey_opts_H{$okey};
+    $okey_opts_HR->{$okey} = $new_okey_mkey_H{$okey};
   }
   
   return;
@@ -912,9 +973,10 @@ sub only_skip_options {
 #
 # Arguments: 
 #  $config_file:  path to config file
-#  $mkey_AR:      REF to array of all mkeys read from config file, modified here
-#  $mkey_mdir_HR: REF to hash of directories for each model key, modified here
-#  $mkey_opts_HR: REF to hash of options for each model key, modified here
+#  $okey_AR:      REF to array of all mkeys read from config file, modified here
+#  $okey_mdir_HR: REF to hash of directories for each output key, modified here
+#  $okey_opts_HR: REF to hash of options for each output key, modified here
+#  $okey_mkey_HR: REF to hash of mkeys for each output key, modified here
 #  $pkgname:      package name
 #  $version:      version
 #  $releasedate:  release date for the package
@@ -931,7 +993,7 @@ sub list_options {
   my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($config_file, $mkey_AR, $mkey_mdir_HR, $mkey_opts_HR, , $pkgname, $version, $releasedate, $opt_HHR) = @_;
+  my ($config_file, $okey_AR, $okey_mdir_HR, $okey_opts_HR, $okey_mkey_HR, $pkgname, $version, $releasedate, $opt_HHR) = @_;
 
   my $div_line = utl_StringMonoChar(60, "#", undef) . "\n";
 
@@ -944,15 +1006,15 @@ sub list_options {
 
   my $do_lib = opt_IsUsed("--l_lib", $opt_HHR) ? 1 : 0;
   my $out_lib = undef;
-  my $mkey = undef;
+  my $okey = undef;
 
   # if --l_lib doesn't exist, exit
   if($do_lib)  {
     $out_lib = opt_Get("--l_lib", $opt_HHR);
-    if(! defined $mkey_mdir_HR->{$out_lib}) {
-      my $die_str = "ERROR, model library $out_lib specified with --l_lib does not exist in config file.\nExisting libraries are:\n";
-      foreach $mkey (@mkey_A) {
-        $die_str .= "\t$mkey\n";
+    if(! defined $okey_mdir_HR->{$out_lib}) {
+      my $die_str = "ERROR, library key $out_lib specified with --l_lib does not exist in config file.\nExisting library keys are:\n";
+      foreach $okey (@okey_A) {
+        $die_str .= "\t$okey\n";
       }
       die $die_str;
     }
@@ -975,9 +1037,9 @@ sub list_options {
 
     @{$head_AA[0]} = ("model key", "model dir");
     @clj_A         = (1,     1);
-    foreach my $mkey (@{$mkey_AR}) {
-      if((! $do_lib) || ($mkey eq $out_lib)) { 
-        push(@data_AA, [$mkey, $mkey_mdir_HR->{$mkey}]);
+    foreach my $okey (@{$okey_AR}) {
+      if((! $do_lib) || ($okey eq $out_lib)) { 
+        push(@data_AA, [$okey, $okey_mdir_HR->{$okey}]);
       }
     }
     ofile_TableHumanOutput(\@data_AA, \@head_AA, \@clj_A, undef, undef, "  ", "-", "#", "#", "", 0, *STDOUT, undef, undef);
@@ -998,9 +1060,9 @@ sub list_options {
     @data_AA = ();
     @{$head_AA[0]} = ("model key", "v-annotate.pl options");
     @clj_A         = (1,     1);
-    foreach my $mkey (@{$mkey_AR}) {
-      if((! $do_lib) || ($mkey eq $out_lib)) { 
-        push(@data_AA, [$mkey, $mkey_opts_HR->{$mkey}]);
+    foreach my $okey (@{$okey_AR}) {
+      if((! $do_lib) || ($okey eq $out_lib)) { 
+        push(@data_AA, [$okey, $okey_opts_HR->{$okey}]);
       }
     }
     ofile_TableHumanOutput(\@data_AA, \@head_AA, \@clj_A, undef, undef, "  ", "-", "#", "#", "", 0, *STDOUT, undef, undef);
@@ -1026,20 +1088,20 @@ sub list_options {
     my $minfo_file = undef;
     my @mdl_info_AH = ();
     my %ftr_info_HAH = ();
-    for(my $k = 0; $k < scalar(@{$mkey_AR}); $k++) {
-      my $mkey = $mkey_A[$k];
-      $minfo_file = $mkey_mdir_HR->{$mkey} . "/" . $mkey . ".minfo";
+    for(my $k = 0; $k < scalar(@{$okey_AR}); $k++) {
+      my $okey = $okey_A[$k];
+      $minfo_file = $okey_mdir_HR->{$okey} . "/" . $okey . ".minfo";
       @mdl_info_AH = ();
       %ftr_info_HAH = ();
-      utl_FileValidateExistsAndNonEmpty($minfo_file, "$mkey model info file", undef, 1, undef);
+      utl_FileValidateExistsAndNonEmpty($minfo_file, "$okey model info file", undef, 1, undef);
       vdr_ModelInfoFileParse($minfo_file, \@reqd_mdl_keys_A, \@reqd_ftr_keys_A, \@mdl_info_AH, \%ftr_info_HAH, undef);
       my $nmdl = scalar(@mdl_info_AH);
       if((! $do_lib) && ($k > 0)) { push(@data_AA, []); } # blank line
       for(my $m = 0; $m < $nmdl; $m++) {
-        if((! $do_lib) || ($mkey eq $out_lib)) { 
+        if((! $do_lib) || ($okey eq $out_lib)) { 
           push(@data_AA,
                [(sprintf("%d.%d", ($do_lib ? 1 : ($k+1)), ($m+1))), 
-                $mkey,
+                $okey,
                 $mdl_info_AH[$m]{"name"},
                 $mdl_info_AH[$m]{"length"},
                 ((defined $mdl_info_AH[$m]{"group"})    ? $mdl_info_AH[$m]{"group"} : "-"), 
@@ -1074,7 +1136,7 @@ sub parse_log_file_for_out_files {
   my $nargs_exp = 4;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($log_file, $mkey, $mkey_width, $FH_HR) = (@_);
+  my ($log_file, $okey, $okey_width, $FH_HR) = (@_);
   #
   # Zero alerts were reported.
   #
@@ -1105,7 +1167,7 @@ sub parse_log_file_for_out_files {
     }
     if($print_flag) {
       $line =~ s/^# //;
-      $line = sprintf("# %-*s library ", $mkey_width, $mkey) . lcfirst($line);
+      $line = sprintf("# %-*s library ", $okey_width, $okey) . lcfirst($line);
       ofile_OutputString($FH_HR->{"log"}, 1, $line . "\n");
       $did_print = 1;
     }
@@ -1117,3 +1179,144 @@ sub parse_log_file_for_out_files {
   }
   return;
 }
+
+#################################################################
+# Subroutine:  mkey_from_opts()
+# Incept:      EPN, Fri Feb 21 14:10:57 2025
+#
+# Purpose:    Return the mkey set in an options string, if none
+#             is set, return $mkey.
+#
+# Arguments: 
+#  $mkey:     path to config file
+#  $opts:     REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies:       if there's a problem parsing the log file
+#
+#################################################################
+sub mkey_from_opts {
+  my $sub_name = "mkey_from_opts";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mkey, $opts) = (@_);
+
+  if($opts =~ /\s+\-\-mkey\s+(\S+)/) {
+    return $1;
+  }
+  return $mkey;
+}
+
+#################################################################
+# Subroutine:  validate_okey_mkey_values_and_fill_other_okey_HA()
+# Incept:      EPN, Fri Feb 21 14:25:32 2025
+#
+# Purpose:    For any $okey_mkey_HR->{$okey}=$mkey values that do not equal
+#             $okey, read the minfo file for $mkey and make sure at
+#             least one model exists with a name, group or subgroup
+#             that, when lowercased and had specials removed, equals
+#             $okey. If not, exit with an error.
+#
+# Arguments: 
+#  $okey_AR:        ref to array of okeys
+#  $okey_mdir_HR:   hash with mdir values for each okey
+#  $okey_mkey_HR:   hash with mkey used for classifying/annotating
+#                   for this okey
+#  $other_okey_HAR: ref to hash of arrays, key is $okey, value is
+#                   array of all $okey2 != $okey for which
+#                   $okey_mkey_HR{$okey2} = $okey. For example
+#                   if $okey is "flavi", $other_okey_HAR->{"flavi"}
+#                   could be ("dengue", "hcv").
+#
+# Returns:    void
+#
+# Dies:       see 'Purpose'
+#
+#################################################################
+sub validate_okey_mkey_values_and_fill_other_okey_HA {
+  my $sub_name = "validate_okey_mkey_values_and_fill_other_okey_HA";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($okey_AR, $okey_mdir_HR, $okey_mkey_HR, $other_okey_HAR) = (@_);
+
+  my $k; 
+  my $die_str = "";
+  for($k = 0; $k < scalar(@{$okey_AR}); $k++) {
+    my $okey = $okey_A[$k];
+    my $mkey = $okey_mkey_HR->{$okey};
+    if($okey ne $mkey) { 
+      if(! defined $other_okey_HAR->{$mkey}) {
+        $other_okey_HAR->{$mkey} = ();
+      }
+      push(@{$other_okey_HAR->{$mkey}}, $okey);
+    }
+  }
+
+  my @mdl_info_AH = ();
+  my %ftr_info_HAH = ();
+  my @reqd_mdl_keys_A = ("name", "length");
+  my @reqd_ftr_keys_A = ("type", "coords");
+  my $other_okey;
+  my %found_match_H = (); # key is $okey2 from @{$other_okey_HAR->{$okey}}, value is 1 if found match to $okey2
+  for($k = 0; $k < scalar(@{$okey_AR}); $k++) {
+    if(defined $other_okey_HAR->{$okey}) {
+      # we need to find at least one model with name/group/subgroup that matches $other_okey
+      foreach $other_okey (@{$other_okey_HAR->{$okey}}) {
+        $found_match_H{$other_okey} = 0;
+      }
+
+      my $minfo_file = $okey_mdir_HR->{$okey} . "/" . $okey . ".minfo";
+      @mdl_info_AH = ();
+      %ftr_info_HAH = ();
+      utl_FileValidateExistsAndNonEmpty($minfo_file, "$okey model info file", undef, 1, undef);
+      vdr_ModelInfoFileParse($minfo_file, \@reqd_mdl_keys_A, \@reqd_ftr_keys_A, \@mdl_info_AH, \%ftr_info_HAH, undef);
+      my $nmdl = scalar(@mdl_info_AH);
+      for(my $m = 0; $m < $nmdl; $m++) {
+        # this model may only match to 0 or 1 of the $other_okey_HAR->{$okey} values
+        my $nmatch_this_model = 0;
+        my $okey_matches_this_model = "";
+        my $mdl2use    = $mdl_info_AH[$m]{"name"};
+        my $grp2use    = (defined $mdl_info_AH[$m]{"group"})    ? $mdl_info_AH[$m]{"group"}    : undef; 
+        my $subgrp2use = (defined $mdl_info_AH[$m]{"subgroup"}) ? $mdl_info_AH[$m]{"subgroup"} : undef; 
+        $mdl2use =~ tr/A-Z/a-z/;
+        $mdl2use =~ s/[^a-z0-9]//g;
+        if(defined $grp2use) {
+          $grp2use =~ tr/A-Z/a-z/;
+          $grp2use =~ s/[^a-z0-9]//g;
+        }
+        if(defined $subgrp2use) { 
+          $subgrp2use =~ tr/A-Z/a-z/;
+          $subgrp2use =~ s/[^a-z0-9]//g;
+        }
+        foreach $other_okey (@{$other_okey_HAR->{$okey}}) {
+          if(($mdl2use    eq $okey) ||
+             ((defined $grp2use)    && ($grp2use    eq $okey)) ||
+             ((defined $subgrp2use) && ($subgrp2use eq $okey))) { 
+            if($nmatch_this_model > 0) { 
+              $nmatch_this_model++;
+              if($okey_matches_this_model ne "") { $okey_matches_this_model .= ", "; }
+              $okey_matches_this_model .= $other_okey;
+            }
+            $found_match_H{$other_okey} = 1;
+          }
+        }
+        if($nmatch_this_model > 1) {
+          $die_str .= sprintf("Model %s with group: %s and subgroup: %s in library $okey\nmatches more than one other mkey that uses $okey library: $okey_matches_this_model\n\n",
+                              $mdl_info_AH[$m]{"name"},
+                              (defined $mdl_info_AH[$m]{"group"}    ? $mdl_info_AH[$m]{"group"}    : "undef"),
+                              (defined $mdl_info_AH[$m]{"subgroup"} ? $mdl_info_AH[$m]{"subgroup"} : "undef"));
+        }
+      } # end of (for(my $m = 0; $m < $nmdl; $m++)
+    } # end of if(defined $other_okey_HAR->{$okey}
+  } # end of for ($k = 0; $k < scalar(@{$okey_AR})    
+
+  if($die_str ne "") {
+    die "ERROR in $sub_name:\n$die_str"; 
+  }
+  
+  return;
+}
+
