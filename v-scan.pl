@@ -357,7 +357,7 @@ if($do_sample) {
   else { # we'll take a subset of all sequences for classification
     ofile_OutputProgressPrior("Sampling $sample_nseq sequences to use for classification", $progress_w, $log_FH, *STDOUT);
     $sample_in_fa_file = $out_root . ".sample.in.fa";
-    if($do_sample_beg) {
+    if($do_sample_beg) { # takes first $sample_nseq sequences
       $in_sqfile->fetch_consecutive_seqs($sample_nseq, "", 60, $sample_in_fa_file);
     }
     else { # ! $do_sample_beg, sample randomly
@@ -379,8 +379,8 @@ if($do_sample) {
         }
       }
     }
-    #push(@to_remove_A, $sample_in_fa_file);
-    #push(@to_remove_A, $sample_in_fa_file . ".ssi");
+    push(@to_remove_A, $sample_in_fa_file);
+    push(@to_remove_A, $sample_in_fa_file . ".ssi");
     ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   } # end of else entered if ($sample_nseq < $in_nseq)
 } # end of 'if($do_sample)'
@@ -391,9 +391,9 @@ else {
 ##################################################
 # For each model key, run v-annotate.pl --cls_only
 ##################################################
-my %clsonly_outdir_H = (); # hash of output directories
-my %sqc_H = ();     # hash of sqc files
-my $n_okey = scalar(@okey_A);
+my %clsonly_outdir_H = (); # hash of --cls_only output directories
+my %sqc_H = ();            # hash of --cls_only sqc files
+my $n_okey_clsonly = 0;            # 
 my $clsonly_fa_file = ($do_sample) ? $sample_in_fa_file : $in_fa_file;
 my @clsonly_outdir_A = ();
 my $keep_opt   = ($do_keep) ? "--keep" : "";
@@ -403,17 +403,18 @@ my $mkey_opt2use = "";
 # determine which okeys we will run clsonly mode for, and get the max length
 my @okey_clsonly_used_A = ();
 foreach $okey (@okey_A) {
-  if(($okey_mkey_H{$okey} eq $okey) && (! $okey2skip_clsonly_H{$okey})) { # we don't run clsonly mode when okey != mkey
+  if(($okey_mkey_H{$okey} eq $okey) && (! $okey2skip_clsonly_H{$okey})) { # we don't run clsonly mode when okey != mkey, and skip any due to --skip or --only
     push(@okey_clsonly_used_A, $okey);
     if(length($okey) > $okey_width) { $okey_width = length($okey); }
+    $n_okey_clsonly++;
   }
 }
-if($n_okey > 1) { 
+if($n_okey_clsonly > 1) { # if we only have 1 model library, we skip the --cls_only stage
   foreach $okey (@okey_clsonly_used_A) {
     $clsonly_outdir_H{$okey} = $dir_tail . "/" . $dir_tail . ".clsonly." . $okey;
     push(@clsonly_outdir_A, $clsonly_outdir_H{$okey});
     $sqc_H{$okey} = $clsonly_outdir_H{$okey} . "/" . $dir_tail . ".clsonly." . $okey . ".vadr.sqc";
-    # determine --okey option to use, this is --mkey $mkey unless specified in config file options string
+    # determine --mkey option to use, this is --mkey $okey unless specified in config file options string
     $mkey_opt2use = "--mkey " . mkey_from_opts($okey, $okey_opts_H{$okey});
     $cmd = $execs_H{"v-annotate.pl"} . " -f -s --origfa --cls_only $mkey_opt2use --mdir $okey_mdir_H{$okey} $keep_opt $clsonly_fa_file $clsonly_outdir_H{$okey}";
     if(! $do_verbose) { $cmd .= " > /dev/null"; }
@@ -423,11 +424,12 @@ if($n_okey > 1) {
   }
 }
 
-##################################################
-# Parse sqc files to determine which seqs match best to each library, need
-# to look at all sqc files before assigning sequences to a mkey
-# because we may be determining best library based on score
-##################################################
+#######################################################################
+# Parse --cls_only sqc files to determine which seqs match best to
+# each library, need to look at all sqc files before assigning
+# sequences to a mkey because we may be determining best library based
+# on score
+#######################################################################
 my %seq_H         = ();   # 'exists' hash, key is sequence name, value is always '1' 
 my @seq_A         = ();   # array of sequence names
 my %seq_okey_H    = ();   # key is seq name, value is best okey for this sequence
@@ -439,11 +441,11 @@ if($n_okey > 1) {
   }
 }
     
-# Fill per-mkey lists of sequences
-my %seqlist_HA = ();     # key is mkey, value is array of sequences that match to this mkey
-my $n_okey_ant_used = 0; # number of mkey (libraries) we have at least one sequence to rerun v-annotate.pl for
+# Fill per-okey lists of sequences that match best to each okey
+my %seqlist_HA = ();     # key is okey, value is array of sequences that match to (and will be annotated with) this okey
+my $n_okey_ant_used = 0; # number of okeys we have at least one sequence to rerun v-annotate.pl for
 my %okey_ct_H  = ();     # key is okey, value is number of seqs assigned to that okey, 'undef' if 0
-if($n_okey > 1) {
+if($n_okey_clsonly > 1) {
   foreach my $seqname (@seq_A) {
     if(defined $seq_okey_H{$seqname}) {
       my $okey = $seq_okey_H{$seqname};
@@ -457,7 +459,8 @@ if($n_okey > 1) {
       $okey_ct_H{$okey}++;
     }
   } 
-  
+
+  # exit if we have more than one okeys to annotate with, and -m not used
   if((! $do_multi) && ($n_okey_ant_used > 1)) {
     my $okey_str = "";
     foreach $okey (sort keys %seqlist_HA) {
@@ -490,7 +493,7 @@ foreach $okey (@okey_A) {
 }
 if($n_okey_ant_used > 0) { 
   foreach $okey (@okey_A) {
-    if((defined $seqlist_HA{$okey}) || ($n_okey == 1)) { # if $n_okey == 1, we didn't run --cls_only mode
+    if((defined $seqlist_HA{$okey}) || ($n_okey_clsonly == 1)) { # if $n_okey_clsonly == 1, we didn't run --cls_only mode
       if($n_okey_ant_used == 1) { 
         $okey_fa_file = $in_fa_file;
         $progress_str = "Annotating $in_nseq sequences with $okey model library ";
@@ -516,39 +519,44 @@ if($n_okey_ant_used > 0) {
   }
 }
 
-$start_secs = ofile_OutputProgressPrior("Generating tabular output", $progress_w, $log_FH, *STDOUT);
+#################################
+# Output tabular cls_only summary
+#################################
 
-# create the @data_lib_AA
-my $okey_idx = 1;
-my $mdl_idx = 1;
+if($n_okey_clsonly > 1) {
+  $start_secs = ofile_OutputProgressPrior("Generating tabular output", $progress_w, $log_FH, *STDOUT);
 
-# open files for writing
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "lib", $out_root . ".lib", 1, 1, "per-model library tabular summary file");
-my @head_lib_AA = ();
-my @data_lib_AA = ();
-my @clj_lib_A   = ();
-@{$head_lib_AA[0]} = ("",    "",        "num");
-@{$head_lib_AA[1]} = ("idx", "library", "seqs");
-@clj_lib_A         = (1,     1,         0);
+  # create the @data_lib_AA
+  my $okey_idx = 1;
+  my $mdl_idx = 1;
 
-foreach $okey (@okey_A) {
-  if($okey_mkey_H{$okey} ne $okey) { 
-    my $nseq2print = (defined $okey_ct_H{$okey}) ? $okey_ct_H{$okey} : 0;
-    if(scalar(@okey_A) == 1) { # we didn't run clsonly mode, set nseq to '-'
-      $nseq2print = "-";
+  # open files for writing
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "lib", $out_root . ".lib", 1, 1, "per-model library tabular summary file");
+  my @head_lib_AA = ();
+  my @data_lib_AA = ();
+  my @clj_lib_A   = ();
+  @{$head_lib_AA[0]} = ("",    "",        "num");
+  @{$head_lib_AA[1]} = ("idx", "library", "seqs");
+  @clj_lib_A         = (1,     1,         0);
+  
+  foreach $okey (@okey_A) {
+    if($okey_mkey_H{$okey} ne $okey) { 
+      my $nseq2print = (defined $okey_ct_H{$okey}) ? $okey_ct_H{$okey} : 0;
+      if(scalar(@okey_A) == 1) { # we didn't run clsonly mode, set nseq to '-'
+        $nseq2print = "-";
+      }
+      push(@data_lib_AA, [$okey_idx, $okey, $nseq2print]);
+      $okey_idx++;
     }
-    push(@data_lib_AA, [$okey_idx, $okey, $nseq2print]);
-    $okey_idx++;
   }
+  ofile_TableHumanOutput(\@data_lib_AA, \@head_lib_AA, \@clj_lib_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"lib"}, undef, $FH_HR);
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 
-ofile_TableHumanOutput(\@data_lib_AA, \@head_lib_AA, \@clj_lib_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"lib"}, undef, $FH_HR);
-ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-############
-# Conclude #
-############
-output_lib_mdl_and_alc_files_and_remove_temp_files($in_nseq, $sample_nseq, \@okey_ant_used_A, \@mdl_file_A, \@alc_file_A, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
+###############################################
+# Output lib, mdl and alc files, and conclude #
+###############################################
+output_lib_mdl_and_alc_files_and_remove_temp_files($in_nseq, $sample_nseq, $n_okey_clsonly, \@okey_ant_used_A, \@mdl_file_A, \@alc_file_A, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
 
 my $z = 0;
 if($do_keep) {
@@ -643,7 +651,7 @@ sub parse_config_file {
   }
   close(CONFIG);
 
-  # make sure all %{$okey_mkey_HR} values are valid mkeys
+  # make sure all %{$okey_mkey_HR} values are valid mkeys (with model directories defined in %{$okey_mdir_H})
   foreach $okey (@{$okey_AR}) {
     if(! defined $okey_mdir_HR->{($okey_mkey_HR->{$okey})}) {
       ofile_FAIL("ERROR, in config file for okey $okey, options string includes --mkey $okey_mkey_HR->{$okey}\nbut $okey_mkey_HR->{$okey} does not have an entry in the config file.", 1, $FH_HR);
@@ -772,6 +780,7 @@ sub parse_sqc_clsonly_file {
 # Arguments:
 #  $in_nseq;           number of sequences in input file
 #  $sample_nseq:       number of sequences sampled
+#  $n_okey_clsonly:    number of okeys used for classification, if 1, we skipped classification
 #  $okey_ant_used_AR:  ref to array of option keys we want to output .mdl and .alc files for
 #  $mdl_file_AR:       ref to array of .mdl files to output
 #  $alc_file_AR:       ref to array of .alc files to output
@@ -784,13 +793,15 @@ sub parse_sqc_clsonly_file {
 #################################################################
 sub output_lib_mdl_and_alc_files_and_remove_temp_files { 
   my $sub_name = "output_lib_mdl_and_alc_files_and_remove_temp_files";
-  my $nargs_exp = 8;
+  my $nargs_exp = 9;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($in_nseq, $sample_nseq, $okey_ant_used_AR, $mdl_file_AR, $alc_file_AR, $to_remove_AR, $opt_HHR, $ofile_info_HHR) = (@_);
+  my ($in_nseq, $sample_nseq, $n_okey_clsonly, $okey_ant_used_AR, $mdl_file_AR, $alc_file_AR, $to_remove_AR, $opt_HHR, $ofile_info_HHR) = (@_);
 
-  # close the two files we may output to stdout and the log
-  close($ofile_info_HHR->{"FH"}{"lib"});
+  # close the file we may output to stdout and the log
+  if($n_okey_clsonly > 1) {
+    close($ofile_info_HHR->{"FH"}{"lib"});
+  }
   
   my $FH_HR     = $ofile_info_HH{"FH"};
   my $do_multi  = opt_Get("-m", $opt_HHR);
@@ -803,7 +814,7 @@ sub output_lib_mdl_and_alc_files_and_remove_temp_files {
   my @file_A = ();
   my ($okey, $mdl_file, $alc_file) = (undef, undef, undef);
   my $n_okey = scalar(@{$okey_ant_used_AR});
-  if($do_multi) { 
+  if(($do_multi) && ($n_okey_clsonly > 1)) { 
     if(($do_sample) && ($sample_nseq < $in_nseq)) {
       $sum_str = sprintf("# Summary of seqs matching each library (only %d of %d seqs scanned):", $sample_nseq, $in_nseq);
     }
@@ -824,8 +835,9 @@ sub output_lib_mdl_and_alc_files_and_remove_temp_files {
     utl_FileLinesToArray($ofile_info_HHR->{"fullpath"}{"lib"}, 1, \@file_A, $FH_HR);
     push(@conclude_A, @file_A);
     push(@conclude_A, "#");
-  }
-  
+  } # end of 'if(($do_multi) && ($n_okey_clsonly > 1))'
+
+  # for each model we ran v-annotate.pl for, output the mdl and alc files
   for(my $m = 0; $m < $n_okey; $m++) {
     $okey     = $okey_ant_used_AR->[$m];
     $mdl_file = $mdl_file_AR->[$m];
@@ -979,7 +991,6 @@ sub only_skip_options {
 
   return;
 }
-
 
 #################################################################
 # Subroutine:  list_options()
@@ -1358,7 +1369,6 @@ sub validate_okey_mkey_values_and_fill_other_okey_HA {
     } # end of if(defined $other_okey_HAR->{$okey}
   } # end of for ($k = 0; $k < scalar(@{$okey_AR}; $k++)    
 
-  
   if($die_str ne "") {
     die "ERROR: $die_str"; 
   }
