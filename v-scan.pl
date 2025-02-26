@@ -31,11 +31,14 @@ require "sqp_utils.pm";
 #
 # - Runs v-annotate.pl with --cls_only for each model library
 #   listed in config file
+#
 # - Parses --cls_only output to determine which sequences to
-#   annotate with each model library
-# - For each model library with at least one sequence to annotate,
+#   annotate with each defined model library
+#
+# - For each model library with at least one sequence to annotate:
 #   o fetches sequences to new fasta file
 #   o runs v-annotate.pl again using options specified in config file
+# 
 # - Summarizes results and exits
 #
 #######################################################################################
@@ -85,31 +88,30 @@ opt_Add("-h",           "boolean", 0,          0,    undef, undef,      undef,  
 $opt_group_desc_H{++$g} = "basic options";
 #     option            type       default group   requires incompat    preamble-output                                                                            help-output    
 opt_Add("-f",           "boolean", 0,         $g,    undef, undef,      "force directory overwrite",                                                               "force; if output dir exists, overwrite it",   \%opt_HH, \@opt_order_A);
+opt_Add("-m",           "boolean", 0,         $g,    undef, undef,      "allow matches to multiple model libraries",                                               "allow matches to multiple model libraries", \%opt_HH, \@opt_order_A);
 opt_Add("-c",           "string",  0,         $g,    undef, undef,      "use config file <s> instead of default in \$VADRCONFIGFILE",                              "use config file <s> instead of default in \$VADRCONFIGFILE", \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,         $g,    undef, undef,      "be verbose",                                                                              "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("-m",           "boolean", 0,         $g,    undef, undef,      "allow matches to multiple model libraries",                                               "allow matches to multiple model libraries", \%opt_HH, \@opt_order_A);
+opt_Add("--first",      "boolean", 0,         $g,    undef,"--lone",    "if a seq matches > 1 model library, use first one [df: use best scoring]",                 "if a seq matches > 1 model library, use first one [df: use best scoring]", \%opt_HH, \@opt_order_A);
 opt_Add("--lone",       "boolean", 0,         $g,    undef, undef,      "exit if at least one sequence matches to multiple libraries",                             "exit if at least one sequence matches to multiple libraries", \%opt_HH, \@opt_order_A);
-opt_Add("--first",      "boolean", 0,         $g,    undef,"--lone",    "if a seq matches > 1 model library use first one [df: use best scoring]",                 "if a seq matches > 1 model library use first one [df: use best scoring]", \%opt_HH, \@opt_order_A);
-opt_Add("--origfa",     "boolean", 0,         $g,    undef,   undef,    "do not copy fasta file prior to analysis, use original",                 "do not copy fasta file prior to analysis, use original", \%opt_HH, \@opt_order_A);
+opt_Add("--origfa",     "boolean", 0,         $g,    undef,   undef,    "do not copy fasta file prior to analysis, use original",                                  "do not copy fasta file prior to analysis, use original", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,         $g,    undef, undef,      "leaving intermediate files on disk",                                                      "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 #     option            type       default group   requires incompat    preamble-output                                                                            help-output    
-$opt_group_desc_H{++$g} = "options for specifying which model libraries to use:";
+$opt_group_desc_H{++$g} = "options for specifying which model libraries to use";
 opt_Add("--only",        "string", 0,         $g,   undef,"--skip",     "only use the model library(ies) in comma separated string <s>",                           "only use the model library(ies) in comma separated string <s>",   \%opt_HH, \@opt_order_A);
-opt_Add("--skip",        "string", 0,         $g,   undef,"--only",     "do not use the model library(ies) in comma separated string <s>",                         "do nout use the model library(ies) in comma separated string <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--skip",        "string", 0,         $g,   undef,"--only",     "do not use the model library(ies) in comma separated string <s>",                         "do not use the model library(ies) in comma separated string <s>", \%opt_HH, \@opt_order_A);
 #     option            type       default group   requires incompat    preamble-output                                                                            help-output    
-$opt_group_desc_H{++$g} = "options related to the sampling of sequences for determining model library to use:";
+$opt_group_desc_H{++$g} = "options related to the sampling of sequences for determining model library to use";
 opt_Add("--all",        "boolean", 0,         $g,   undef, undef,       "do not sample, pick model library(ies) based on all sequences (auto turned on if -m used)", "do not sample, pick model library(ies) based on all sequences (auto turned on if -m used)", \%opt_HH, \@opt_order_A);
 opt_Add("--s_nseq",     "integer", 3,         $g,   undef, "--all",     "set the number of sequences to sample to <n>",                                            "set the number of sequences to sample to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--s_beg",      "boolean", 0,         $g,   undef, "--all",     "sample sequences from the beginning of the file, not randomly",                           "sample sequences from the beginning of the file, not randomly", \%opt_HH, \@opt_order_A);
 opt_Add("--s_seed",     "integer", 181,       $g,undef,"--all,--s_beg", "set the random number generator seed to <n>",                                             "set the random number generator seed to <n>", \%opt_HH, \@opt_order_A);
 #     option            type       default group   requires incompat    preamble-output                                                                            help-output    
-$opt_group_desc_H{++$g} = "options for listing information on models and exiting:";
+$opt_group_desc_H{++$g} = "options for listing information on models and exiting";
 opt_Add("--l_all",        "boolean", 0,         $g,    undef, undef,    "list all info about all model libraries in the config file and exit",                     "list all info about all model libraries in the config file and exit", \%opt_HH, \@opt_order_A);
 opt_Add("--l_lib",        "string", 0,          $g,    undef, undef,    "list all info about model library with key <s> in the config file and exit",              "list all info about model library with key <s> in the config file and exit", \%opt_HH, \@opt_order_A);
 opt_Add("--l_dir",        "boolean", 0,         $g,    undef, undef,    "list all model library directories in the config file and exit",                          "list all model library directories in the config file and exit", \%opt_HH, \@opt_order_A);
 opt_Add("--l_opt",        "boolean", 0,         $g,    undef, undef,    "list all model library v-annotate.pl options in the config file and exit",                "list all model library v-annotate.pl options in the config file and exit", \%opt_HH, \@opt_order_A);
 opt_Add("--l_mdl",        "boolean", 0,         $g,    undef, undef,    "list all models in the model libraries in the config file and exit",                      "list all models in the model libraries in the config file and exit", \%opt_HH, \@opt_order_A);
-
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -117,12 +119,11 @@ my $options_okay =
     &GetOptions('h'        => \$GetOptions_H{"-h"}, 
 # basic options
                 'f'        => \$GetOptions_H{"-f"},
-                'c=s'      => \$GetOptions_H{"-c"},
-                'l'        => \$GetOptions_H{"-l"},
-                'v'        => \$GetOptions_H{"-v"},
                 'm'        => \$GetOptions_H{"-m"}, 
-                'lone'     => \$GetOptions_H{"--lone"}, 
+                'c=s'      => \$GetOptions_H{"-c"},
+                'v'        => \$GetOptions_H{"-v"},
                 'first'    => \$GetOptions_H{"--first"},
+                'lone'     => \$GetOptions_H{"--lone"}, 
                 'origfa'   => \$GetOptions_H{"--origfa"},
                 'keep'     => \$GetOptions_H{"--keep"}, 
                 'only=s'   => \$GetOptions_H{"--only"}, 
@@ -136,7 +137,6 @@ my $options_okay =
                 'l_dir'    => \$GetOptions_H{"--l_dir"},
                 'l_opt'    => \$GetOptions_H{"--l_opt"},
                 'l_mdl'    => \$GetOptions_H{"--l_mdl"});
-                
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
@@ -190,28 +190,19 @@ else {
   utl_FileValidateExistsAndNonEmpty($config_file, "config file defined by env variable \$VADRCONFIGFILE", undef, 1, undef); # '1' says: die if it doesn't exist or is empty
 }
 
-my @okey_A = ();      # array of model library keys, read from config file
+my @okey_A = ();        # array of option keys, read from config file
 my %okey_mdir_H   = (); # hash of model directories for each options key, read from config file, key is options key
-my %okey_opts_H   = (); # hash of options for each option key, read from config file, key is model key
-my %okey_mkey_H   = (); # hash of options for each option key, read from config file, key is model key
+my %okey_opts_H   = (); # hash of options for each option key, read from config file, key is options key
+my %okey_mkey_H   = (); # hash of options for each option key, read from config file, key is options key
 my %other_okey_HA = (); # hash of arrays, key is option key $okey, value is array of other okeys ($okey2) that
                         # use $okey as mkey, e.g. $okey = "flavi", @{$other_okey_HA{"flavi"} = ("dengue", "hcv")
 
 parse_config_file($config_file, \@okey_A, \%okey_mdir_H, \%okey_opts_H, \%okey_mkey_H, \%opt_HH, undef);
 validate_okey_mkey_values_and_fill_other_okey_HA(\@okey_A, \%okey_mdir_H, \%okey_mkey_H, \%other_okey_HA);
 
-utl_HDump("okey_mkey_H",    \%okey_mkey_H, *STDOUT);
-foreach my $tmp_key (sort keys (%other_okey_HA)) {
-  if(defined $other_okey_HA{$tmp_key}) {
-    foreach my $tmp_val (@{$other_okey_HA{$tmp_key}}) {
-      printf("$tmp_key $tmp_val\n");
-    }
-  }
-}
-
 # enforce that --only and --skip options are valid
 if((opt_IsUsed("--only", \%opt_HH)) || (opt_IsUsed("--skip", \%opt_HH))) { 
-  only_skip_options(\@okey_A, \%okey_mdir_H, \%okey_opts_H, \%opt_HH);
+  only_skip_options(\@okey_A, \%okey_mdir_H, \%okey_opts_H, \%okey_mkey_H, \%opt_HH);
 }
 
 # handle --l (list) options, if any of these are selected we just output info and exit
@@ -887,7 +878,7 @@ sub output_lib_mdl_and_alc_files_and_remove_temp_files {
 #################################################################
 sub only_skip_options { 
   my $sub_name = "only_skip_options()"; 
-  my $nargs_exp = 4;
+  my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
   my ($okey_AR, $okey_mdir_HR, $okey_opts_HR, $okey_mkey_HR, $opt_HHR) = @_;
@@ -955,7 +946,7 @@ sub only_skip_options {
   foreach $okey (@{$okey_AR}) {
     $okey_mdir_HR->{$okey} = $new_okey_mdir_H{$okey};
     $okey_opts_HR->{$okey} = $new_okey_opts_H{$okey};
-    $okey_opts_HR->{$okey} = $new_okey_mkey_H{$okey};
+    $okey_mkey_HR->{$okey} = $new_okey_mkey_H{$okey};
   }
   
   return;
@@ -1108,7 +1099,6 @@ sub list_options {
         @mdl_info_AH = ();
         %ftr_info_HAH = ();
         utl_FileValidateExistsAndNonEmpty($minfo_file, "$okey model info file", undef, 1, undef);
-        printf("reading $minfo_file in $sub_name\n");
         vdr_ModelInfoFileParse($minfo_file, \@reqd_mdl_keys_A, \@reqd_ftr_keys_A, \@mdl_info_AH, \%ftr_info_HAH, undef);
         my $nmdl = scalar(@mdl_info_AH);
         for(my $m = 0; $m < $nmdl; $m++) {
@@ -1285,10 +1275,13 @@ sub validate_okey_mkey_values_and_fill_other_okey_HA {
   for($k = 0; $k < scalar(@{$okey_AR}); $k++) {
     my $okey = $okey_AR->[$k];
     my $mkey = $okey_mkey_HR->{$okey};
-    printf("HEYA okey:$okey mkey:$mkey\n");
     if($okey ne $mkey) { 
       if(! defined $other_okey_HAR->{$mkey}) {
         @{$other_okey_HAR->{$mkey}} = ();
+      }
+      # ensure that they have the same exact model directory
+      if($okey_mdir_HR->{$okey} ne $okey_mdir_HR->{$mkey}) {
+        $die_str .= "Option keys $okey and $mkey are set up to use the same model library but their model library directories differ:\n$okey: $okey_mdir_HR->{$okey}\n$mkey: $okey_mdir_HR->{$mkey}\n\n"; 
       }
       push(@{$other_okey_HAR->{$mkey}}, $okey);
     }
@@ -1312,7 +1305,6 @@ sub validate_okey_mkey_values_and_fill_other_okey_HA {
       @mdl_info_AH = ();
       %ftr_info_HAH = ();
       utl_FileValidateExistsAndNonEmpty($minfo_file, "$okey model info file", undef, 1, undef);
-      printf("reading $minfo_file in $sub_name\n");
       vdr_ModelInfoFileParse($minfo_file, \@reqd_mdl_keys_A, \@reqd_ftr_keys_A, \@mdl_info_AH, \%ftr_info_HAH, undef);
       my $nmdl = scalar(@mdl_info_AH);
       for(my $m = 0; $m < $nmdl; $m++) {
@@ -1322,7 +1314,7 @@ sub validate_okey_mkey_values_and_fill_other_okey_HA {
                             $mdl_info_AH[$m]{"name"}, $mdl_info_AH[$m]{"group"}, $mdl_info_AH[$m]{"subgroup"},
                             \@matching_other_okey_A);
         if(scalar(@matching_other_okey_A) > 1) {
-          my $fail_str = "ERROR, in $sub_name, model " . $mdl_info_AH[$m]{"name"} . " matches multiple alternative option keys:\n";
+          my $fail_str = "ERROR, model " . $mdl_info_AH[$m]{"name"} . " matches multiple alternative option keys:\n";
           foreach my $matching_other_okey (@matching_other_okey_A) { $fail_str .= $matching_other_okey . "\n"; }
           ofile_FAIL($fail_str, 1, undef);
         }
@@ -1332,14 +1324,15 @@ sub validate_okey_mkey_values_and_fill_other_okey_HA {
       } # end of (for(my $m = 0; $m < $nmdl; $m++)
       foreach $other_okey (@{$other_okey_HAR->{$okey}}) {
         if($found_match_H{$other_okey} != 1) {
-          $die_str .= "When examining $okey library, found no models with names, groups or subgroups that match $other_okey\n"; 
+          $die_str .= "When examining $okey library, found no models with names, groups or subgroups that match $other_okey\n\n"; 
         }
       }
     } # end of if(defined $other_okey_HAR->{$okey}
   } # end of for ($k = 0; $k < scalar(@{$okey_AR}; $k++)    
 
+  
   if($die_str ne "") {
-    die "ERROR in $sub_name:\n$die_str"; 
+    die "ERROR: $die_str"; 
   }
   
   return;
