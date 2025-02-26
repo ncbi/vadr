@@ -221,7 +221,7 @@ if(opt_IsUsed("--l_all", \%opt_HH) ||
    opt_IsUsed("--l_dir", \%opt_HH) ||
    opt_IsUsed("--l_opt", \%opt_HH) ||
    opt_IsUsed("--l_mdl", \%opt_HH)) {
-  list_options($config_file, \@okey_A, \%okey_mdir_H, \%okey_opts_H, $pkgname, $version, $releasedate, \%opt_HH);
+  list_options($config_file, \@okey_A, \%okey_mdir_H, \%okey_opts_H, \%okey_mkey_H, \%other_okey_HA, $pkgname, $version, $releasedate, \%opt_HH);
   exit 0;
 }
 
@@ -420,6 +420,7 @@ if($n_okey > 1) {
     ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
 }
+
 ##################################################
 # Parse sqc files to determine which seqs match best to each library, need
 # to look at all sqc files before assigning sequences to a mkey
@@ -431,10 +432,8 @@ my %seq_okey_H    = ();   # key is seq name, value is best okey for this sequenc
 my %seq_mdl_H     = ();   # key is seq name, value is best model for this sequence
 my %seq_sc_H      = ();   # key is seq name, value is score for best model for this sequence
 if($n_okey > 1) { 
-  foreach $okey (@okey_A) {
-    if($okey_mkey_H{$okey} eq $okey) { 
-      parse_sqc_clsonly_file($sqc_H{$okey}, $okey, \@{$other_okey_HA{$okey}}, \%seq_H, \@seq_A, \%seq_okey_H, \%seq_mdl_H, \%seq_sc_H, \%opt_HH, $FH_HR);
-    }
+  foreach $okey (@okey_clsonly_used_A) {
+    parse_sqc_clsonly_file($sqc_H{$okey}, $okey, \@{$other_okey_HA{$okey}}, \%seq_H, \@seq_A, \%seq_okey_H, \%seq_mdl_H, \%seq_sc_H, \%opt_HH, $FH_HR);
   }
 }
     
@@ -553,7 +552,7 @@ my $z = 0;
 if($do_keep) {
   # with --keep leave the files where they are
   for($z = 0; $z < scalar(@okey_clsonly_used_A); $z++) {
-      ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# All %-*s library --cls_only  output files can be found in directory $clsonly_outdir_A[$z]\n", $okey_width, $okey_A[$z]));
+    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# All %-*s library --cls_only  output files can be found in directory $clsonly_outdir_A[$z]\n", $okey_width, $okey_clsonly_used_A[$z]));
   }
   for($z = 0; $z < scalar(@okey_ant_used_A); $z++) {
     ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# All %-*s library annotation output files can be found in directory $ant_outdir_A[$z]\n", $ant_okey_width, $okey_ant_used_A[$z]));
@@ -703,26 +702,17 @@ sub parse_sqc_clsonly_file {
       my $okey2use = $okey;
       my $mdl2use = $mdl;
       if(defined $other_okey_AR) {
-        $grp     =~ tr/A-Z/a-z/;
-        $subgrp  =~ tr/A-Z/a-z/;
-        $mdl2use =~ tr/A-Z/a-z/;
-        $grp     =~ s/[^a-z0-9]//g;
-        $subgrp  =~ s/[^a-z0-9]//g;
-        $mdl2use =~ s/[^a-z0-9]//g;
-        foreach my $other_okey (@{$other_okey_AR}) {
-          # other_okey will be lowercase without special characters, parse_config_file makes sure of this
-          if($mdl2use eq $other_okey) { 
-            $okey2use = $mdl2use;
-          }
-          elsif($grp eq $other_okey) { 
-            $okey2use = $grp;
-          }
-          elsif($subgrp eq $other_okey) { 
-            $okey2use = $subgrp
-          }
+        my @matching_other_okey_A = (); # array of other okeys that match to current model
+        find_matching_okeys($other_okey_AR, $mdl, $grp, $subgrp, \@matching_other_okey_A);
+        if(scalar(@matching_other_okey_A) > 1) {
+          my $fail_str = "ERROR, in $sub_name, hit from line:\n$line\nmatches multiple alternative option keys:\n";
+          foreach my $matching_other_okey (@matching_other_okey_A) { $fail_str .= $matching_other_okey . "\n"; }
+          ofile_FAIL($fail_str, 1, $FH_HR);
+        }
+        elsif(scalar(@matching_other_okey_A) == 1) {
+          $okey2use = $matching_other_okey_A[0];
         }
       }
-      
       if(! defined $seq_HR->{$seqname}) {
         push(@seq_A, $seqname);
         $seq_HR->{$seqname} = 1;
@@ -980,15 +970,20 @@ sub only_skip_options {
 #             on the libraries and exiting.
 #
 # Arguments: 
-#  $config_file:  path to config file
-#  $okey_AR:      REF to array of all mkeys read from config file, modified here
-#  $okey_mdir_HR: REF to hash of directories for each output key, modified here
-#  $okey_opts_HR: REF to hash of options for each output key, modified here
-#  $okey_mkey_HR: REF to hash of mkeys for each output key, modified here
-#  $pkgname:      package name
-#  $version:      version
-#  $releasedate:  release date for the package
-#  $opt_HHR:      REF to 2D hash of option values
+#  $config_file:    path to config file
+#  $okey_AR:        REF to array of all mkeys read from config file, modified here
+#  $okey_mdir_HR:   REF to hash of directories for each output key, modified here
+#  $okey_opts_HR:   REF to hash of options for each output key, modified here
+#  $okey_mkey_HR:   REF to hash of mkeys for each output key, modified here
+#  $other_okey_HAR: REF to hash of arrays, key is $okey, value is
+#                   array of all $okey2 != $okey for which
+#                   $okey_mkey_HR{$okey2} = $okey. For example
+#                   if $okey is "flavi", $other_okey_HAR->{"flavi"}
+#                   could be ("dengue", "hcv").
+#  $pkgname:        package name
+#  $version:        version
+#  $releasedate:    release date for the package
+#  $opt_HHR:        REF to 2D hash of option values
 #
 # Returns:    void
 #
@@ -998,13 +993,14 @@ sub only_skip_options {
 sub list_options { 
 
   my $sub_name = "list_options()"; 
-  my $nargs_exp = 8;
+  my $nargs_exp = 10;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($config_file, $okey_AR, $okey_mdir_HR, $okey_opts_HR, $okey_mkey_HR, $pkgname, $version, $releasedate, $opt_HHR) = @_;
+  my ($config_file, $okey_AR, $okey_mdir_HR, $okey_opts_HR, $okey_mkey_HR, $other_okey_HAR, $pkgname, $version, $releasedate, $opt_HHR) = @_;
 
   my $div_line = utl_StringMonoChar(60, "#", undef) . "\n";
-
+  my $fail_str = "";
+  
   print $div_line;
   print "#\n";
   print "# $pkgname $version ($releasedate)\n";
@@ -1021,7 +1017,7 @@ sub list_options {
     $out_lib = opt_Get("--l_lib", $opt_HHR);
     if(! defined $okey_mdir_HR->{$out_lib}) {
       my $die_str = "ERROR, library key $out_lib specified with --l_lib does not exist in config file.\nExisting library keys are:\n";
-      foreach $okey (@okey_A) {
+      foreach $okey (@{$okey_AR}) {
         $die_str .= "\t$okey\n";
       }
       die $die_str;
@@ -1043,11 +1039,13 @@ sub list_options {
       print("# Model library directory information:\n#\n");
     }
 
-    @{$head_AA[0]} = ("model key", "model dir");
-    @clj_A         = (1,     1);
+    @{$head_AA[0]} = ("options key", "model key", "model dir");
+    @clj_A         = (1,             1,           1);
     foreach my $okey (@{$okey_AR}) {
       if((! $do_lib) || ($okey eq $out_lib)) { 
-        push(@data_AA, [$okey, $okey_mdir_HR->{$okey}]);
+        my $mkey = mkey_from_opts($okey, $okey_opts_HR->{$okey});
+        if($mkey eq $okey) { $mkey = "\""; }
+        push(@data_AA, [$okey, $mkey, $okey_mdir_HR->{$okey}]);
       }
     }
     ofile_TableHumanOutput(\@data_AA, \@head_AA, \@clj_A, undef, undef, "  ", "-", "#", "#", "", 0, *STDOUT, undef, undef);
@@ -1066,7 +1064,7 @@ sub list_options {
     }
 
     @data_AA = ();
-    @{$head_AA[0]} = ("model key", "v-annotate.pl options");
+    @{$head_AA[0]} = ("options key", "v-annotate.pl options");
     @clj_A         = (1,     1);
     foreach my $okey (@{$okey_AR}) {
       if((! $do_lib) || ($okey eq $out_lib)) { 
@@ -1083,43 +1081,75 @@ sub list_options {
      opt_IsUsed("--l_mdl", $opt_HHR) ||
      opt_IsUsed("--l_lib", $opt_HHR)) { 
     if($do_lib) { 
-      #print("# List of models in $out_lib model library:\n");
+      ;#print("# List of models in $out_lib model library:\n");
     }
     else {
       print("# List of models in each library:\n#\n");
     }
 
     @data_AA = ();
-    @{$head_AA[0]} = ("idx", "model key", "model name", "length", "group", "subgroup");
-    @clj_A         = (0,     1,           1,            0,        1,       1);
+    @{$head_AA[0]} = ("idx", "model key", "options key", "model name", "length", "group", "subgroup");
+    @clj_A         = (0,     1,           1,             1,            0,        1,       1);
     my @reqd_ftr_keys_A = ("type", "coords");
     my $minfo_file = undef;
     my @mdl_info_AH = ();
     my %ftr_info_HAH = ();
+    my $mkey_idx = 0;
+    my @matching_other_okey_A = (); # array of other okeys that match to current model
     for(my $k = 0; $k < scalar(@{$okey_AR}); $k++) {
-      my $okey = $okey_A[$k];
-      $minfo_file = $okey_mdir_HR->{$okey} . "/" . $okey . ".minfo";
-      @mdl_info_AH = ();
-      %ftr_info_HAH = ();
-      utl_FileValidateExistsAndNonEmpty($minfo_file, "$okey model info file", undef, 1, undef);
-      vdr_ModelInfoFileParse($minfo_file, \@reqd_mdl_keys_A, \@reqd_ftr_keys_A, \@mdl_info_AH, \%ftr_info_HAH, undef);
-      my $nmdl = scalar(@mdl_info_AH);
-      if((! $do_lib) && ($k > 0)) { push(@data_AA, []); } # blank line
-      for(my $m = 0; $m < $nmdl; $m++) {
-        if((! $do_lib) || ($okey eq $out_lib)) { 
+      my $okey = $okey_AR->[$k];
+      my $mkey = $okey_mkey_HR->{$okey};
+      my $orig_okey = $okey;
+      # will we output data for this library?
+      if(($okey eq $mkey) || ($do_lib && $okey eq $out_lib)) { 
+        if((! $do_lib) && ($k > 0)) { push(@data_AA, []); } # blank line
+        $mkey_idx++;
+        $minfo_file = $okey_mdir_HR->{$okey} . "/" . $mkey . ".minfo";
+        @mdl_info_AH = ();
+        %ftr_info_HAH = ();
+        utl_FileValidateExistsAndNonEmpty($minfo_file, "$okey model info file", undef, 1, undef);
+        printf("reading $minfo_file in $sub_name\n");
+        vdr_ModelInfoFileParse($minfo_file, \@reqd_mdl_keys_A, \@reqd_ftr_keys_A, \@mdl_info_AH, \%ftr_info_HAH, undef);
+        my $nmdl = scalar(@mdl_info_AH);
+        for(my $m = 0; $m < $nmdl; $m++) {
+          $okey = $orig_okey;
+          @matching_other_okey_A = ();
+          find_matching_okeys((((defined $out_lib) && ($okey eq $out_lib)) ?
+                                $other_okey_HAR->{$mkey} : $other_okey_HAR->{$okey}),
+                              $mdl_info_AH[$m]{"name"}, $mdl_info_AH[$m]{"group"}, $mdl_info_AH[$m]{"subgroup"},
+                              \@matching_other_okey_A);
+          if(scalar(@matching_other_okey_A) == 1) {
+            $okey = $matching_other_okey_A[0];
+          }
+          elsif(scalar(@matching_other_okey_A) == 0) {
+            $okey = "\"";
+          }
+          else {
+            $okey = "";
+            my $fail_str = "$okey model " . $mdl_info_AH[$m]{"name"} . " matches multiple alternative option keys:\n";
+            foreach my $matching_other_okey (@matching_other_okey_A) {
+              $okey .= $matching_other_okey . ",";
+              $fail_str .= $matching_other_okey . "\n";
+            }
+            $okey =~ s/\,$/\*/; # remove last comma, replace with '*'
+          }
           push(@data_AA,
-               [(sprintf("%d.%d", ($do_lib ? 1 : ($k+1)), ($m+1))), 
-                $okey,
+               [(sprintf("%d.%d", ($do_lib ? 1 : $mkey_idx), ($m+1))), 
+                $mkey, 
+                ($okey eq $mkey) ? "\"" : $okey, 
                 $mdl_info_AH[$m]{"name"},
                 $mdl_info_AH[$m]{"length"},
                 ((defined $mdl_info_AH[$m]{"group"})    ? $mdl_info_AH[$m]{"group"} : "-"), 
                 ((defined $mdl_info_AH[$m]{"subgroup"}) ? $mdl_info_AH[$m]{"subgroup"} : "-")]);
-        }
+        } # end of for($m = 0; $m < $nmdl; $m++)
       }
-    }    
+    }
     ofile_TableHumanOutput(\@data_AA, \@head_AA, \@clj_A, undef, undef, "  ", "-", "#", "#", "", 0, *STDOUT, undef, undef);
   }
 
+  if($fail_str ne "") {
+    ofile_FAIL("ERROR in $sub_name:\n$fail_str", 1, undef);
+  }
   return;
 }
 
@@ -1270,6 +1300,7 @@ sub validate_okey_mkey_values_and_fill_other_okey_HA {
   my @reqd_ftr_keys_A = ("type", "coords");
   my $other_okey;
   my %found_match_H = (); # key is $okey2 from @{$other_okey_HAR->{$okey}}, value is 1 if found match to $okey2
+  my @matching_other_okey_A = (); # array of matching okeys for this mdl
   for($k = 0; $k < scalar(@{$okey_AR}); $k++) {
     $okey = $okey_AR->[$k];
     if(defined $other_okey_HAR->{$okey}) {
@@ -1281,47 +1312,22 @@ sub validate_okey_mkey_values_and_fill_other_okey_HA {
       @mdl_info_AH = ();
       %ftr_info_HAH = ();
       utl_FileValidateExistsAndNonEmpty($minfo_file, "$okey model info file", undef, 1, undef);
+      printf("reading $minfo_file in $sub_name\n");
       vdr_ModelInfoFileParse($minfo_file, \@reqd_mdl_keys_A, \@reqd_ftr_keys_A, \@mdl_info_AH, \%ftr_info_HAH, undef);
       my $nmdl = scalar(@mdl_info_AH);
       for(my $m = 0; $m < $nmdl; $m++) {
         # this model may only match to 0 or 1 of the $other_okey_HAR->{$okey} values
-        my $nmatch_this_model = 0;
-        my $okey_matches_this_model = "";
-        my $mdl2use    = $mdl_info_AH[$m]{"name"};
-        my $grp2use    = (defined $mdl_info_AH[$m]{"group"})    ? $mdl_info_AH[$m]{"group"}    : undef; 
-        my $subgrp2use = (defined $mdl_info_AH[$m]{"subgroup"}) ? $mdl_info_AH[$m]{"subgroup"} : undef; 
-        $mdl2use =~ tr/A-Z/a-z/;
-        $mdl2use =~ s/[^a-z0-9]//g;
-        if(defined $grp2use) {
-          $grp2use =~ tr/A-Z/a-z/;
-          $grp2use =~ s/[^a-z0-9]//g;
+        @matching_other_okey_A = ();
+        find_matching_okeys(\@{$other_okey_HAR->{$okey}},
+                            $mdl_info_AH[$m]{"name"}, $mdl_info_AH[$m]{"group"}, $mdl_info_AH[$m]{"subgroup"},
+                            \@matching_other_okey_A);
+        if(scalar(@matching_other_okey_A) > 1) {
+          my $fail_str = "ERROR, in $sub_name, model " . $mdl_info_AH[$m]{"name"} . " matches multiple alternative option keys:\n";
+          foreach my $matching_other_okey (@matching_other_okey_A) { $fail_str .= $matching_other_okey . "\n"; }
+          ofile_FAIL($fail_str, 1, undef);
         }
-        if(defined $subgrp2use) { 
-          $subgrp2use =~ tr/A-Z/a-z/;
-          $subgrp2use =~ s/[^a-z0-9]//g;
-        }
-        foreach $other_okey (@{$other_okey_HAR->{$okey}}) {
-          if(($mdl2use eq $other_okey) ||
-             ((defined $grp2use)    && ($grp2use    eq $other_okey)) ||
-             ((defined $subgrp2use) && ($subgrp2use eq $other_okey))) { 
-            if($nmatch_this_model > 0) { 
-              $nmatch_this_model++;
-              if($okey_matches_this_model ne "") { $okey_matches_this_model .= ", "; }
-              $okey_matches_this_model .= $other_okey;
-            }
-            $found_match_H{$other_okey} = 1;
-          }
-        }
-        if($nmatch_this_model > 1) {
-          $die_str .= sprintf("Model %s with group: %s and subgroup: %s in library $okey\nmatches more than one other mkey that uses $okey library: $okey_matches_this_model\n\n",
-                              $mdl_info_AH[$m]{"name"},
-                              (defined $mdl_info_AH[$m]{"group"}    ? $mdl_info_AH[$m]{"group"}    : "undef"),
-                              (defined $mdl_info_AH[$m]{"subgroup"} ? $mdl_info_AH[$m]{"subgroup"} : "undef"));
-        }
-        if($nmatch_this_model == 1) {
-          printf("\tmodel $mdl2use grp: %s subgrp: %s matches $okey_matches_this_model\n",
-                 (defined $grp2use)    ? $grp2use    : "undef",
-                 (defined $subgrp2use) ? $subgrp2use : "undef");
+        elsif(scalar(@matching_other_okey_A) == 1) {
+          $found_match_H{$matching_other_okey_A[0]} = 1;
         }
       } # end of (for(my $m = 0; $m < $nmdl; $m++)
       foreach $other_okey (@{$other_okey_HAR->{$okey}}) {
@@ -1334,6 +1340,58 @@ sub validate_okey_mkey_values_and_fill_other_okey_HA {
 
   if($die_str ne "") {
     die "ERROR in $sub_name:\n$die_str"; 
+  }
+  
+  return;
+}
+
+#################################################################
+# Subroutine:  find_matching_okeys
+# Incept:      EPN, Tue Feb 25 13:33:31 2025
+#
+# Purpose:    Given a list of possible matching okeys, check if
+#             $mdl, $grp, or $subgrp matches any of those okeys
+#             and fill the return @{$matching_other_okey_AR} with
+#             all matches. We should have zero or 1 match, but
+#             we return all matches, caller can decide what to do
+#             if there are more than one.
+#
+# Arguments: 
+#  $other_okey_AR:  ref to array of okeys to check
+#  $mdl:            model name, will not be undef
+#  $grp:            group name, may be undef
+#  $subgrp:         subgroup name, may be undef
+#  $matching_other_okey_AR: ref to array of matching okeys, filled here
+#
+# Returns:    void
+#
+#################################################################
+sub find_matching_okeys { 
+  my $sub_name = "find_matching_keys";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($other_okey_AR, $mdl, $grp, $subgrp, $matching_other_okey_AR) = (@_);
+
+  @{$matching_other_okey_AR} = ();
+  
+  $mdl =~ tr/A-Z/a-z/;
+  $mdl =~ s/[^a-z0-9]//g;
+  if(defined $grp) { 
+    $grp =~ tr/A-Z/a-z/;
+    $grp =~ s/[^a-z0-9]//g;
+  }
+  if(defined $subgrp) { 
+    $subgrp  =~ tr/A-Z/a-z/;
+    $subgrp  =~ s/[^a-z0-9]//g;
+  }
+  foreach my $other_okey (@{$other_okey_AR}) {
+    # other_okey will be lowercase without special characters, parse_config_file makes sure of this
+    if(($mdl eq $other_okey) || 
+       ((defined $grp)    && ($grp    eq $other_okey)) ||
+       ((defined $subgrp) && ($subgrp eq $other_okey))) { 
+      push(@{$matching_other_okey_AR}, $other_okey);
+    }
   }
   
   return;
