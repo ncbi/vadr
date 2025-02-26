@@ -200,10 +200,22 @@ my %other_okey_HA = (); # hash of arrays, key is option key $okey, value is arra
 parse_config_file($config_file, \@okey_A, \%okey_mdir_H, \%okey_opts_H, \%okey_mkey_H, \%opt_HH, undef);
 validate_okey_mkey_values_and_fill_other_okey_HA(\@okey_A, \%okey_mdir_H, \%okey_mkey_H, \%other_okey_HA);
 
-# enforce that --only and --skip options are valid
-if((opt_IsUsed("--only", \%opt_HH)) || (opt_IsUsed("--skip", \%opt_HH))) { 
-  only_skip_options(\@okey_A, \%okey_mdir_H, \%okey_opts_H, \%okey_mkey_H, \%opt_HH);
+# enforce that --only and --skip options are valid, and update hashes to remove unwanted keys
+my $okey;
+my %okey2skip_clsonly_H = (); # key is okey, value is '1' if we should skip this okey in
+                              # clsonly stage due to --only --skip options, else 0
+my %okey2skip_ant_H     = (); # key is okey, value is '1' if we should skip this okey in
+                              # annotation stage due to --only --skip options, else 0
+foreach $okey (@okey_A) {
+  $okey2skip_clsonly_H{$okey} = 0;
+  $okey2skip_ant_H{$okey}     = 0;
 }
+if((opt_IsUsed("--only", \%opt_HH)) || (opt_IsUsed("--skip", \%opt_HH))) { 
+  only_skip_options(\@okey_A, \%other_okey_HA, \%okey2skip_clsonly_H, \%okey2skip_ant_H, \%opt_HH);
+}
+
+#utl_HDump("okey2skip_clsonly_H", \%okey2skip_clsonly_H, *STDOUT);
+#utl_HDump("okey2skip_ant_H",     \%okey2skip_ant_H,     *STDOUT);
 
 # handle --l (list) options, if any of these are selected we just output info and exit
 # we do not run v-annotate.pl on any sequences
@@ -381,7 +393,6 @@ else {
 ##################################################
 my %clsonly_outdir_H = (); # hash of output directories
 my %sqc_H = ();     # hash of sqc files
-my $okey;
 my $n_okey = scalar(@okey_A);
 my $clsonly_fa_file = ($do_sample) ? $sample_in_fa_file : $in_fa_file;
 my @clsonly_outdir_A = ();
@@ -392,7 +403,7 @@ my $mkey_opt2use = "";
 # determine which okeys we will run clsonly mode for, and get the max length
 my @okey_clsonly_used_A = ();
 foreach $okey (@okey_A) {
-  if($okey_mkey_H{$okey} eq $okey) { # we don't run clsonly mode when okey != mkey
+  if(($okey_mkey_H{$okey} eq $okey) && (! $okey2skip_clsonly_H{$okey})) { # we don't run clsonly mode when okey != mkey
     push(@okey_clsonly_used_A, $okey);
     if(length($okey) > $okey_width) { $okey_width = length($okey); }
   }
@@ -424,7 +435,7 @@ my %seq_mdl_H     = ();   # key is seq name, value is best model for this sequen
 my %seq_sc_H      = ();   # key is seq name, value is score for best model for this sequence
 if($n_okey > 1) { 
   foreach $okey (@okey_clsonly_used_A) {
-    parse_sqc_clsonly_file($sqc_H{$okey}, $okey, \@{$other_okey_HA{$okey}}, \%seq_H, \@seq_A, \%seq_okey_H, \%seq_mdl_H, \%seq_sc_H, \%opt_HH, $FH_HR);
+    parse_sqc_clsonly_file($sqc_H{$okey}, $okey, \@{$other_okey_HA{$okey}}, \%okey2skip_ant_H, \%seq_H, \@seq_A, \%seq_okey_H, \%seq_mdl_H, \%seq_sc_H, \%opt_HH, $FH_HR);
   }
 }
     
@@ -565,7 +576,7 @@ else {
   }
 }
 if($n_okey_ant_used == 0) { # matches were found to zero libraries
-  ofile_OutputString($FH_HR->{"log"}, 1, "# Zero sequences matched a library so no annotations were performed.\n");
+  ofile_OutputString($FH_HR->{"log"}, 1, "#\n# Zero sequences matched a library so no annotations were performed.\n");
 }
 
 $total_seconds += ofile_SecondsSinceEpoch();
@@ -649,17 +660,19 @@ sub parse_config_file {
 # Purpose:    Parse the .sqc file output from v-annotate.pl --cls_only
 #
 # Arguments:
-#  $sqc_file:      name of sqc file to parse
-#  $okey:          options key (e.g. flu) that this sqc file pertains to
-#  $other_okey_AR: REF to array of other option keys that use this library
-#                  e.g. if $okey is 'flavi', @{$other_okey_AR} might be ('dengue', 'hcv')
-#  $seq_HR:        REF to hash of sequence names, key is seq name, value is 1, to fill here
-#  $seq_AR:        REF to array of sequence names, to fill here
-#  $seq_okey_HR:   REF to hash, key is sequence name, value is winning mkey, to fill here
-#  $seq_mdl_HR:    REF to hash, key is sequence name, value is winning model, to fill here
-#  $seq_sc_HR:     REF to hash, key is sequence name, value is winning score, to fill here
-#  $opt_HHR:       REF to 2D hash of option values, see top of sqp_opts.pm for description
-#  $FH_HR:         REF to hash of file handles
+#  $sqc_file:         name of sqc file to parse
+#  $okey:             options key (e.g. flu) that this sqc file pertains to
+#  $other_okey_AR:    REF to array of other option keys that use this library
+#                     e.g. if $okey is 'flavi', @{$other_okey_AR} might be ('dengue', 'hcv')
+#  $okey2skip_ant_HR: REF to hash, key is okey, value is '1' if we should not annotate
+#                     seqs matching this okey, else '0'
+#  $seq_HR:           REF to hash of sequence names, key is seq name, value is 1, to fill here
+#  $seq_AR:           REF to array of sequence names, to fill here
+#  $seq_okey_HR:      REF to hash, key is sequence name, value is winning mkey, to fill here
+#  $seq_mdl_HR:       REF to hash, key is sequence name, value is winning model, to fill here
+#  $seq_sc_HR:        REF to hash, key is sequence name, value is winning score, to fill here
+#  $opt_HHR:          REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $FH_HR:            REF to hash of file handles
 #
 # Returns:  void
 #           
@@ -668,10 +681,10 @@ sub parse_config_file {
 #################################################################
 sub parse_sqc_clsonly_file { 
   my $sub_name = "parse_sqc_clsonly_file"; 
-  my $nargs_exp = 10;
+  my $nargs_exp = 11;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($sqc_file, $okey, $other_okey_AR, $seq_HR, $seq_AR, $seq_okey_HR, $seq_mdl_HR, $seq_sc_HR, $opt_HHR, $FH_HR) = (@_);
+  my ($sqc_file, $okey, $other_okey_AR, $okey2skip_ant_HR, $seq_HR, $seq_AR, $seq_okey_HR, $seq_mdl_HR, $seq_sc_HR, $opt_HHR, $FH_HR) = (@_);
 
   my $do_lone  = opt_Get("--lone", $opt_HHR);
   my $do_first = opt_Get("--first", $opt_HHR);
@@ -690,7 +703,7 @@ sub parse_sqc_clsonly_file {
         ofile_FAIL("ERROR problem parsing sqc file $sqc_file", 1, $FH_HR);
       }
       my ($seqname, $pf, $mdl, $grp, $subgrp, $score) = ($el_A[1], $el_A[3], $el_A[5], $el_A[6], $el_A[7], $el_A[8]);
-      my $okey2use = $okey;
+      my $okey2use = $okey2skip_ant_HR->{$okey} ? undef : $okey;
       my $mdl2use = $mdl;
       if(defined $other_okey_AR) {
         my @matching_other_okey_A = (); # array of other okeys that match to current model
@@ -701,7 +714,9 @@ sub parse_sqc_clsonly_file {
           ofile_FAIL($fail_str, 1, $FH_HR);
         }
         elsif(scalar(@matching_other_okey_A) == 1) {
-          $okey2use = $matching_other_okey_A[0];
+          if(! $okey2skip_ant_HR->{$matching_other_okey_A[0]}) { 
+            $okey2use = $matching_other_okey_A[0];
+          }
         }
       }
       if(! defined $seq_HR->{$seqname}) {
@@ -729,10 +744,13 @@ sub parse_sqc_clsonly_file {
             $keep_flag = (($score-1.) > $seq_sc_HR->{$seqname}) ? 1 : 0;
           }
         }
-        if($keep_flag) {
+        if(($keep_flag) && (defined $okey2use)) {
           $seq_okey_HR->{$seqname} = $okey2use;
           $seq_mdl_HR->{$seqname}  = $mdl;
           $seq_sc_HR->{$seqname}   = $score;
+          #printf("seq_okey_HR->{$seqname}: $seq_okey_HR->{$seqname}\n");
+          #printf("seq_mdl_HR->{$seqname}:  $seq_mdl_HR->{$seqname}\n");
+          #printf("seq_sc_HR->{$seqname}:   $seq_sc_HR->{$seqname}\n");
         }
       }
     }
@@ -861,15 +879,22 @@ sub output_lib_mdl_and_alc_files_and_remove_temp_files {
 #
 # Purpose:    Handle the --only and --skip options by 
 #             parsing their strings, determining if they are valid
-#             and updating the @{$okey_AR}, %{$okey_mdir_HR}
-#             and %{$okey_opts_HR} data structures.
+#             and updating the @{$okey_AR}, and %{$other_okey_HAR}
+#             data structures.
 #
 # Arguments: 
-#  $okey_AR:      REF to array of all okeys read from config file, modified here
-#  $okey_mdir_HR: REF to hash of directories for each option key, modified here
-#  $okey_opts_HR: REF to hash of options for each option key, modified here
-#  $okey_mkey_HR: REF to hash of mkeys to use for each option key, modified here
-#  $opt_HHR:      REF to 2D hash of option values
+#  $okey_AR:              ref to array of all okeys read from config file, not modified here
+#  $other_okey_HAR:       ref to hash of arrays, key is $okey, value is
+#                         array of all $okey2 != $okey for which
+#                         $okey_mkey_HR{$okey2} = $okey. For example
+#                         if $okey is "flavi", $other_okey_HAR->{"flavi"}
+#                         could be ("dengue", "hcv").
+#  $okey2skip_clsonly_HR: ref to hash with value = 1 if we should skip this okey
+#                         for --clsonly stage, 0 if not, filled here
+#  $okey2skip_ant_HR:     ref to hash with value = 1 if we should skip this okey
+#                         for --clsonly stage, 0 if not, filled here
+
+#  $opt_HHR:        REF to 2D hash of option values
 #
 # Returns:    void
 #
@@ -881,33 +906,33 @@ sub only_skip_options {
   my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($okey_AR, $okey_mdir_HR, $okey_opts_HR, $okey_mkey_HR, $opt_HHR) = @_;
+  my ($okey_AR, $other_okey_HAR, $okey2skip_clsonly_HR, $okey2skip_ant_HR, $opt_HHR) = @_;
   
   my @only_A = ();  # array of values in --only arg
   my @skip_A = ();  # array of values in --skip arg
   my %only_H = ();  # 'exists' hash for values in --only arg
   my %skip_H = ();  # 'exists' hash for values in --skip arg
-  my @new_okey_A = ();      # new array of mkeys we will replace @{$mkey_AR} with before returning
-  my %new_okey_mdir_H = (); # new hash we will replace %{$mkey_mdir_HR} with before returning
-  my %new_okey_opts_H = (); # new hash we will replace %{$mkey_opts_HR} with before returning
-  my %new_okey_mkey_H = (); # new hash we will replace %{$mkey_mkey_HR} with before returning
+  my @new_okey_A        = (); # new array of mkeys we will replace @{$mkey_AR} with before returning
+  my %new_other_okey_HA = (); # new hash we will replace %{$other_okey_HAR} with before returning
+  my %okey_exists_H     = ();
+  my %new_okey_exists_H = ();
+
+  foreach my $okey (@{$okey_AR}) {
+    $okey_exists_H{$okey} = 1;
+  }
 
   my $die_str = "";
   if(opt_IsUsed("--only", $opt_HHR)) { 
     @only_A = split(",", opt_Get("--only", $opt_HHR));
     foreach my $only_okey (@only_A) {
       $only_H{$only_okey} = 1;
-      if(! defined $okey_mdir_HR->{$only_okey}) {
+      if(! defined $okey_exists_H{$only_okey}) {
         $die_str .= "\t$only_okey specified in --only option but not listed in config file\n";
       }
     }
     foreach my $okey (@{$okey_AR}) {
-      if(defined $only_H{$okey}) {
-        push(@new_okey_A, $okey);
-        $new_okey_mdir_H{$okey} = $okey_mdir_H{$okey};
-        $new_okey_opts_H{$okey} = $okey_opts_H{$okey};
-        $new_okey_mkey_H{$okey} = $okey_mkey_H{$okey};
-      }
+      $okey2skip_clsonly_HR->{$okey} = (defined $only_H{$okey}) ? 0 : 1;
+      $okey2skip_ant_HR->{$okey}     = (defined $only_H{$okey}) ? 0 : 1;
     }
   }
   if(opt_IsUsed("--skip", $opt_HHR)) { 
@@ -918,37 +943,40 @@ sub only_skip_options {
     @skip_A = split(",", opt_Get("--skip", $opt_HHR));
     foreach my $skip_okey (@skip_A) {
       $skip_H{$skip_okey} = 1;
-      if(! defined $okey_mdir_HR->{$skip_okey}) {
+      if(! defined $okey_exists_H{$skip_okey}) {
         $die_str .= "\t$skip_okey specified in --skip option but not listed in config file\n";
       }
     }
     foreach my $okey (@{$okey_AR}) {
-      if(! defined $skip_H{$okey}) {
-        push(@new_okey_A, $okey);
-        $new_okey_mdir_H{$okey} = $okey_mdir_H{$okey};
-        $new_okey_opts_H{$okey} = $okey_opts_H{$okey};
-        $new_okey_mkey_H{$okey} = $okey_mkey_H{$okey};
-      }
+      $okey2skip_clsonly_HR->{$okey} = (defined $skip_H{$okey}) ? 1 : 0;
+      $okey2skip_ant_HR->{$okey}     = (defined $skip_H{$okey}) ? 1 : 0;
     }
   }
 
+  # now go back and potentially update okey2skip_clsonly_HR by
+  # switching okeys that are to be skipped to *not* be skipped
+  # if they are the mkey for another okey that is not skipped
+  # e.g. if --only norovirus is used, then okey2skip_clsonly_HR->{"calici"}
+  # may be '1', but we want to change it to '0' so that calici
+  # gets run in clsonly mode. We don't modify okey2skip_ant_HR
+  # values because we still don't want to annotate calici matches
+  # (only norovirus matches).
+  foreach my $okey (@okey_A) {
+    if($okey2skip_clsonly_HR->{$okey}) { 
+      if(defined $other_okey_HAR->{$okey}) {
+        foreach my $other_okey (@{$other_okey_HAR->{$okey}}) {
+          if(! $okey2skip_clsonly_HR->{$other_okey}) {
+            $okey2skip_clsonly_HR->{$okey} = 0;
+          }
+        }
+      }
+    }
+  }
+        
   if($die_str ne "") {
-      ofile_FAIL("ERROR, in $sub_name:\n$die_str\n", 1, $FH_HR);
+    ofile_FAIL("ERROR, in $sub_name:\n$die_str\n", 1, $FH_HR);
   }
-  
-  @{$okey_AR} = ();
-  %{$okey_mdir_HR} = ();
-  %{$okey_opts_HR} = ();
-  %{$okey_mkey_HR} = ();
 
-  # copy values
-  @{$okey_AR} = @new_okey_A;
-  foreach $okey (@{$okey_AR}) {
-    $okey_mdir_HR->{$okey} = $new_okey_mdir_H{$okey};
-    $okey_opts_HR->{$okey} = $new_okey_opts_H{$okey};
-    $okey_mkey_HR->{$okey} = $new_okey_mkey_H{$okey};
-  }
-  
   return;
 }
 
