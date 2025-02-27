@@ -193,10 +193,32 @@ else {
 my @okey_A = ();        # array of option keys, read from config file
 my %okey_mdir_H   = (); # hash of model directories for each options key, read from config file, key is options key
 my %okey_opts_H   = (); # hash of options for each option key, read from config file, key is options key
-my %okey_mkey_H   = (); # hash of options for each option key, read from config file, key is options key
+my %okey_mkey_H   = (); # hash of model keys for each option key, read from config file, key is options key
 my %other_okey_HA = (); # hash of arrays, key is option key $okey, value is array of other okeys ($okey2) that
                         # use $okey as mkey, e.g. $okey = "flavi", @{$other_okey_HA{"flavi"} = ("dengue", "hcv")
 
+# Some notes on the config file
+# Format of the config file:
+# - one line per 'options key': specific set of v-annotate.pl options to use for a set of models
+# - 3 fields: 'options_key' 'model_dir' 'options'
+# - First two fields are white space delimited, all remaining text is 
+#   combined to make field 3 (that is, field 3 contains whitespace)
+#
+# Rule for how we determine <s> value for --mkey <s> to pass to v-annotate.pl:
+# 1. It is <s> from --mkey <s> if --mkey <s> exists in the 'options' string (field 3)
+# 2. Else it is 'options_key'
+# 
+# This means that multiple, different 'options_key' values can use the same model directory.
+# This allows us to have a different line for 'options_key' values 'norovirus' and 'calici'.
+# for example, but have them both use --mkey calici for the --cls_only classification stage.
+# Any sequences that match best to 'norovirus' will be rerun using v-annotate.pl with the
+# options string for 'norovirus'. For sequences to 'match best' to norovirus, they must
+# match to a model in the 'calici' library that has either a name, group or subgroup that
+# is 'norovirus' (*after removing special characters and converting to lowercase*).
+# The validate_okey_mkey_values_and_fill_other_okey_HA() subroutine checks that at least
+# one model in each library $okey (e.g. 'caliici') meets this criteria for every $okey2
+# that uses $okey as its model key (e.g. 'norovirus').
+# 
 parse_config_file($config_file, \@okey_A, \%okey_mdir_H, \%okey_opts_H, \%okey_mkey_H, \%opt_HH, undef);
 validate_okey_mkey_values_and_fill_other_okey_HA(\@okey_A, \%okey_mdir_H, \%okey_mkey_H, \%other_okey_HA);
 
@@ -418,7 +440,7 @@ if($n_okey_clsonly > 1) { # if we only have 1 model library, we skip the --cls_o
     $mkey_opt2use = "--mkey " . mkey_from_opts($okey, $okey_opts_H{$okey});
     $cmd = $execs_H{"v-annotate.pl"} . " -f -s --origfa --cls_only $mkey_opt2use --mdir $okey_mdir_H{$okey} $keep_opt $clsonly_fa_file $clsonly_outdir_H{$okey}";
     if(! $do_verbose) { $cmd .= " > /dev/null"; }
-    my $start_secs = ofile_OutputProgressPrior(sprintf("Scanning $sample_nseq sequences against %-*s library ", $okey_width, $okey), $progress_w, $log_FH, *STDOUT);
+    my $start_secs = ofile_OutputProgressPrior(sprintf("Scanning $sample_nseq sequence%s against %-*s library ", ($sample_nseq == 1) ? "" : "s", $okey_width, $okey), $progress_w, $log_FH, *STDOUT);
     utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
     ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
@@ -435,7 +457,7 @@ my @seq_A         = ();   # array of sequence names
 my %seq_okey_H    = ();   # key is seq name, value is best okey for this sequence
 my %seq_mdl_H     = ();   # key is seq name, value is best model for this sequence
 my %seq_sc_H      = ();   # key is seq name, value is score for best model for this sequence
-if($n_okey > 1) { 
+if($n_okey_clsonly > 1) { 
   foreach $okey (@okey_clsonly_used_A) {
     parse_sqc_clsonly_file($sqc_H{$okey}, $okey, \@{$other_okey_HA{$okey}}, \%okey2skip_ant_H, \%seq_H, \@seq_A, \%seq_okey_H, \%seq_mdl_H, \%seq_sc_H, \%opt_HH, $FH_HR);
   }
@@ -462,12 +484,19 @@ if($n_okey_clsonly > 1) {
 
   # exit if we have more than one okeys to annotate with, and -m not used
   if((! $do_multi) && ($n_okey_ant_used > 1)) {
+    my $die_str = "";
     my $okey_str = "";
     foreach $okey (sort keys %seqlist_HA) {
       if($okey_str ne "") { $okey_str .= ", "; }
       $okey_str .= $okey;
+      ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "$okey.seqlist", $out_root . "." . $okey . ".seqlist", 1, 1, "list of sequences matching $okey");
+      $die_str .= sprintf("List of " . scalar(@{$seqlist_HA{$okey}}) . " sequence%s matching $okey listed in " . $out_root . "." . $okey . ".seqlist\n", (scalar(@{$seqlist_HA{$okey}}) == 1) ? "" : "s");
+      foreach my $seqname (@{$seqlist_HA{$okey}}) { 
+        ofile_OutputString($ofile_info_HH{"FH"}{"$okey.seqlist"}, 0, $seqname . "\n");
+      }
     }
-    ofile_FAIL("ERROR, -m not used but found matches to multiple libraries: $okey_str", 1, $FH_HR);
+    # ofile_FAIL will close all open FHs in %ofile_info_HH
+    ofile_FAIL("ERROR, -m not used but found matches to multiple libraries: $okey_str\n$die_str", 1, $FH_HR);
   }
 }
 else {
@@ -535,19 +564,17 @@ if($n_okey_clsonly > 1) {
   my @head_lib_AA = ();
   my @data_lib_AA = ();
   my @clj_lib_A   = ();
-  @{$head_lib_AA[0]} = ("",    "",        "num");
-  @{$head_lib_AA[1]} = ("idx", "library", "seqs");
-  @clj_lib_A         = (1,     1,         0);
+  @{$head_lib_AA[0]} = ("",    "options", "model", "num");
+  @{$head_lib_AA[1]} = ("idx", "key",     "key",   "seqs");
+  @clj_lib_A         = (1,     1,         1,       0);
   
   foreach $okey (@okey_A) {
-    if($okey_mkey_H{$okey} ne $okey) { 
-      my $nseq2print = (defined $okey_ct_H{$okey}) ? $okey_ct_H{$okey} : 0;
-      if(scalar(@okey_A) == 1) { # we didn't run clsonly mode, set nseq to '-'
-        $nseq2print = "-";
-      }
-      push(@data_lib_AA, [$okey_idx, $okey, $nseq2print]);
-      $okey_idx++;
+    my $nseq2print = (defined $okey_ct_H{$okey}) ? $okey_ct_H{$okey} : 0;
+    if(scalar(@okey_A) == 1) { # we didn't run clsonly mode, set nseq to '-'
+      $nseq2print = "-";
     }
+    push(@data_lib_AA, [$okey_idx, $okey, $okey_mkey_H{$okey}, $nseq2print]);
+    $okey_idx++;
   }
   ofile_TableHumanOutput(\@data_lib_AA, \@head_lib_AA, \@clj_lib_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"lib"}, undef, $FH_HR);
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
