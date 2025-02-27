@@ -216,7 +216,7 @@ my %other_okey_HA = (); # hash of arrays, key is option key $okey, value is arra
 # match to a model in the 'calici' library that has either a name, group or subgroup that
 # is 'norovirus' (*after removing special characters and converting to lowercase*).
 # The validate_okey_mkey_values_and_fill_other_okey_HA() subroutine checks that at least
-# one model in each library $okey (e.g. 'caliici') meets this criteria for every $okey2
+# one model in each library $okey (e.g. 'calici') meets this criteria for every $okey2
 # that uses $okey as its model key (e.g. 'norovirus').
 # 
 parse_config_file($config_file, \@okey_A, \%okey_mdir_H, \%okey_opts_H, \%okey_mkey_H, \%opt_HH, undef);
@@ -235,9 +235,6 @@ foreach $okey (@okey_A) {
 if((opt_IsUsed("--only", \%opt_HH)) || (opt_IsUsed("--skip", \%opt_HH))) { 
   only_skip_options(\@okey_A, \%other_okey_HA, \%okey2skip_clsonly_H, \%okey2skip_ant_H, \%opt_HH);
 }
-
-#utl_HDump("okey2skip_clsonly_H", \%okey2skip_clsonly_H, *STDOUT);
-#utl_HDump("okey2skip_ant_H",     \%okey2skip_ant_H,     *STDOUT);
 
 # handle --l (list) options, if any of these are selected we just output info and exit
 # we do not run v-annotate.pl on any sequences
@@ -370,6 +367,19 @@ my $sample_in_fa_file = undef;
 my $rand = undef;
 
 # if $do_sample, create the smaller file we'll use for classifying
+my @okey_clsonly_used_A = ();
+my $n_okey_clsonly = 0;            
+my $okey_width = 0;
+foreach $okey (@okey_A) {
+  if(($okey_mkey_H{$okey} eq $okey) && (! $okey2skip_clsonly_H{$okey})) { # we don't run clsonly mode when okey != mkey, and skip any due to --skip or --only
+    push(@okey_clsonly_used_A, $okey);
+    if(length($okey) > $okey_width) { $okey_width = length($okey); }
+    $n_okey_clsonly++;
+  }
+}
+# if we only have one model, we don't need to sample
+if($n_okey_clsonly == 1) { $do_sample = 0; }
+
 if($do_sample) {
   if($sample_nseq >= $in_nseq) {
     # num to sample meets or exceeds number of seqs in file, look at all of them in original file
@@ -415,22 +425,11 @@ else {
 ##################################################
 my %clsonly_outdir_H = (); # hash of --cls_only output directories
 my %sqc_H = ();            # hash of --cls_only sqc files
-my $n_okey_clsonly = 0;            # 
 my $clsonly_fa_file = ($do_sample) ? $sample_in_fa_file : $in_fa_file;
 my @clsonly_outdir_A = ();
 my $keep_opt   = ($do_keep) ? "--keep" : "";
-my $okey_width = 0;
 my $mkey_opt2use = "";
 
-# determine which okeys we will run clsonly mode for, and get the max length
-my @okey_clsonly_used_A = ();
-foreach $okey (@okey_A) {
-  if(($okey_mkey_H{$okey} eq $okey) && (! $okey2skip_clsonly_H{$okey})) { # we don't run clsonly mode when okey != mkey, and skip any due to --skip or --only
-    push(@okey_clsonly_used_A, $okey);
-    if(length($okey) > $okey_width) { $okey_width = length($okey); }
-    $n_okey_clsonly++;
-  }
-}
 if($n_okey_clsonly > 1) { # if we only have 1 model library, we skip the --cls_only stage
   foreach $okey (@okey_clsonly_used_A) {
     $clsonly_outdir_H{$okey} = $dir_tail . "/" . $dir_tail . ".clsonly." . $okey;
@@ -522,7 +521,7 @@ foreach $okey (@okey_A) {
 }
 if($n_okey_ant_used > 0) { 
   foreach $okey (@okey_A) {
-    if((defined $seqlist_HA{$okey}) || ($n_okey_clsonly == 1)) { # if $n_okey_clsonly == 1, we didn't run --cls_only mode
+    if((defined $seqlist_HA{$okey}) || (($n_okey_clsonly == 1) && (! $okey2skip_ant_H{$okey}))) { # if $n_okey_clsonly == 1, we didn't run --cls_only mode
       if($n_okey_ant_used == 1) { 
         $okey_fa_file = $in_fa_file;
         $progress_str = "Annotating $in_nseq sequences with $okey model library ";
@@ -598,14 +597,18 @@ if($do_keep) {
 else {
   # --keep not used, move all files in *annotation* subdirectories into $dir and remove subdirs
   # remove clsonly directories
-  for($z = 0; $z < scalar(@okey_clsonly_used_A); $z++) {
-    utl_RunCommand("rm $clsonly_outdir_A[$z]/*; rmdir $clsonly_outdir_A[$z]", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+  for($z = 0; $z < scalar(@clsonly_outdir_A); $z++) {
+    if((defined $clsonly_outdir_A[$z]) && ($clsonly_outdir_A[$z] ne "")) { 
+      utl_RunCommand("rm $clsonly_outdir_A[$z]/*; rmdir $clsonly_outdir_A[$z]", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+    }
   }
-  for($z = 0; $z < scalar(@okey_ant_used_A); $z++) {
+  for($z = 0; $z < scalar(@ant_outdir_A); $z++) {
     # parse the .log file to determine which output files we want to list
     parse_log_file_for_out_files($log_file_A[$z], $okey_ant_used_A[$z], $ant_okey_width, $FH_HR);
-    utl_RunCommand("mv $ant_outdir_A[$z]/* ./$dir/; rmdir $ant_outdir_A[$z]", opt_Get("-v", \%opt_HH), 0, $FH_HR);
-    if($z < (scalar(@okey_ant_used_A) - 1)) {
+    if((defined $ant_outdir_A[$z]) && ($ant_outdir_A[$z] ne "")) { 
+      utl_RunCommand("mv $ant_outdir_A[$z]/* ./$dir/; rmdir $ant_outdir_A[$z]", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+    }
+    if($z < (scalar(@ant_outdir_A) - 1)) {
       ofile_OutputString($FH_HR->{"log"}, 1, "#\n");
     }
   }
