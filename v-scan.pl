@@ -668,7 +668,9 @@ sub parse_config_file {
       my $opts = "";
       for(my $i = 2; $i < scalar(@el_A); $i++) {
         if($opts ne "") { $opts .= " "; }
-        $opts .= $el_A[$i];
+        my $toadd = $el_A[$i];
+        $toadd =~ s/\$MDIR/$mdir/g;
+        $opts .= $toadd;
       }
       if(defined $okey_mdir_H{$okey}) {
         ofile_FAIL("ERROR read output model key $okey twice in config file", 1, $FH_HR);
