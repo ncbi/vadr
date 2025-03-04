@@ -6,7 +6,8 @@ VADR is a suite of tools for classifying and analyzing sequences
 homologous to a set of reference models of viral genomes or gene
 families. It has been mainly tested for analysis of Norovirus, Dengue,
 and SARS-CoV-2 virus sequences in preparation for submission to the
-GenBank database.
+GenBank database. It can also be used for the analysis of influenza, RSV,
+Mpox, and [other viruses](#models).
 
 The VADR `v-annotate.pl` script is used to classify a sequence, by
 determining which in a set of reference models it is most similar to,
@@ -17,19 +18,16 @@ Example usage of `v-annotate.pl` can be found
 or from input multiple sequence alignments, potentially with secondary
 structure annotation. `v-build.pl` stores the RefSeq feature
 annotation in the model, and `v-annotate.pl` maps that annotation
-(e.g. CDS coordinates) onto the sequences it annotates.  
-
-VADR includes 205 prebuilt models of *Flaviviridae* and
-*Caliciviridae* viral RefSeq genomes, created with a process similar
-to the one described
-[here](documentation/build.md#1.0library). Example usage of
+(e.g. CDS coordinates) onto the sequences it annotates.  Example usage of
 `v-build.pl` can be found [here](documentation/build.md#top). An
 advanced tutorial on building VADR models using RSV as an example can
-be found [here](documentation/advbuild.md#top). To use `v-annotate.pl`
-with viruses other than the default set of 205, see ['Available VADR
-models'](#models). For instructions on using VADR for SARS-CoV-2
-annotation see [this
-page](https://github.com/ncbi/vadr/wiki/Coronavirus-annotation).
+be found [here](documentation/advbuild.md#top).
+
+If you have multiple model libraries installed, the `v-scan.pl` script
+allows you to run one simple command to annotate sequences using any
+of those libraries. `v-scan.pl` will determine which library to use
+for each sequence and call `v-annotate.pl` using that library with
+pre-defined options read from an input 'config' file. 
 
 `v-annotate.pl` identifies unexpected or divergent attributes of the
 sequences it annotates (e.g. invalid or early stop codons in CDS
@@ -61,7 +59,11 @@ more information on using VADR to annotate SARS-CoV-2 sequences.
 
 VADR installation includes a default set of *Caliciviridae* models
 including Norovirus virus. The installation also includes a set of
-*Flaviviridae* models including Dengue virus.  You can download
+*Flaviviridae* models including Dengue virus. These models were
+created with a process similar to the one described [here](documentation/build.md#1.0library).
+
+
+You can download
 additional pre-built models to use to validate and annotate viruses,
 including SARS-CoV-2, RSV, or cox1 genes. Importantly, to
 use a set of models other than the default *Caliciviridae* set, you
