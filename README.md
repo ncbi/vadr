@@ -10,7 +10,7 @@ GenBank database. It can also be used for the analysis of influenza, RSV,
 Mpox, and [other viruses](#models).
 
 The VADR `v-annotate.pl` script is used to classify a sequence, by
-determining which in a set of reference models it is most similar to,
+determining which in a library of reference models it is most similar to,
 and then annotate that sequence based on that most similar model.
 Example usage of `v-annotate.pl` can be found
 [here](documentation/annotate.md#top).  Another VADR script,
@@ -27,7 +27,8 @@ If you have multiple model libraries installed, the `v-scan.pl` script
 allows you to run one simple command to annotate sequences using any
 of those libraries. `v-scan.pl` will determine which library to use
 for each sequence and call `v-annotate.pl` using that library with
-pre-defined options read from an input 'config' file. 
+pre-defined options read from an input 'config' file. Example usage of
+`v-scan.pl` can be found [here](documentation/scan.md#top).
 
 `v-annotate.pl` identifies unexpected or divergent attributes of the
 sequences it annotates (e.g. invalid or early stop codons in CDS
