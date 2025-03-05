@@ -1,8 +1,9 @@
 # <a name="top"></a> `v-scan.pl` example usage and command-line options
 
 * [Quickstart `v-scan.pl` examples](#quickstart)
+* [The `v-scan.pl` config file](#config)
+  * adding libraries to the config file(#add2config")
 * [Walk-throughs of `v-scan.pl` examples](#longwalk)
-  * [config file](#config)
   * [running `v-scan.pl` when all sequences are expected to match one unknown model library (mode 1)](#mode1)
   * [running `v-scan.pl` when sequences may match multiple models libraries (mode 2)](#mode2)
   * [running `v-scan.pl` when all sequences are expected to match one known model library (mode 3)](#mode3)
@@ -14,7 +15,7 @@
 
 ---
 
-## Quickstart `v-scan.pl` examples <a name="quickexamples"></a>
+## Quickstart `v-scan.pl` examples <a name="quickstart"></a>
 
 `v-scan.pl` can be run in 3 modes:
 
@@ -46,45 +47,7 @@ it, same as 1 but use the `--only` option:
 Another key option is the `-c <s>` option to specify a different config
 file `<s>` besides the default one. See [here](#config) for more on config files.
 
-## Walk-throughs of `v-scan.pl` examples <a name="longwalk"></a>
-
-This section includes more detailed information on how to use `v-scan.pl`.
-`v-scan.pl` is a wrapper script for `v-annotate.pl`. It first
-determines which model library to use for the input sequences and then
-calls `v-annotate.pl` for that model library. It will supply
-`v-annotate.pl` with the command-line options specific for that model
-library read from the input config file.
-
-To determine the command-line usage of 
-`v-scan.pl` (or any VADR script), use the `-h` option, like this:
-
-```
-v-scan.pl -h 
-```
-
-You'll see something like the following output:
-```
-# v-scan.pl :: scan and annotate sequences against VADR model libraries 
-# VADR 1.7 (Mar 2025)
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Wed Mar  5 10:39:19 2025
-#
-Usage: v-scan.pl [-options] <fasta file to annotate> <output directory to create>
-```
-
-The first few lines are the banner which show the name of the VADR
-script being run along with the version and release date. This is
-followed by the time and date the command was executed.  The `Usage:`
-line details the expected command line arguments.  `v-scan.pl` takes
-as input two command line arguments, a fasta file with sequences to
-analyze and annotate (`<fasta file to annotate>`) and the name of the
-output directory you want it to create (`<output directory to
-create>`) and populate with output files.
-
-After that comes a list of all available command-line options. These
-are explained in more detail [below](#options).
-
-#### `v-scan.pl` config file<a name="config"></a>
+## `v-scan.pl` config file<a name="config"></a>
 
 <a name="config"></a> `v-scan.pl` requires a 'config' file that lists information on the
 model libraries it will use. Here is the config file that is included
@@ -170,6 +133,44 @@ to the config file or make your own config file. To use a different
 config file `<s>` use the `-c <s>` option. The list of available VADR
 models and an example config file that uses them all is 
 [here](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files).
+
+## Walk-throughs of `v-scan.pl` examples <a name="longwalk"></a>
+
+This section includes more detailed information on how to use `v-scan.pl`.
+`v-scan.pl` is a wrapper script for `v-annotate.pl`. It first
+determines which model library to use for the input sequences and then
+calls `v-annotate.pl` for that model library. It will supply
+`v-annotate.pl` with the command-line options specific for that model
+library read from the input config file.
+
+To determine the command-line usage of 
+`v-scan.pl` (or any VADR script), use the `-h` option, like this:
+
+```
+v-scan.pl -h 
+```
+
+You'll see something like the following output:
+```
+# v-scan.pl :: scan and annotate sequences against VADR model libraries 
+# VADR 1.7 (Mar 2025)
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# date:    Wed Mar  5 10:39:19 2025
+#
+Usage: v-scan.pl [-options] <fasta file to annotate> <output directory to create>
+```
+
+The first few lines are the banner which show the name of the VADR
+script being run along with the version and release date. This is
+followed by the time and date the command was executed.  The `Usage:`
+line details the expected command line arguments.  `v-scan.pl` takes
+as input two command line arguments, a fasta file with sequences to
+analyze and annotate (`<fasta file to annotate>`) and the name of the
+output directory you want it to create (`<output directory to
+create>`) and populate with output files.
+
+After that comes a list of all available command-line options. These
+are explained in more detail [below](#options).
 
 ---
 
