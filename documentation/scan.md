@@ -2,7 +2,10 @@
 
 * [Quickstart `v-scan.pl` examples](#quickstart)
 * [Walk-throughs of `v-scan.pl` examples](#longwalk)
-  * config file
+  * [config file](#config)
+  * [running `v-scan.pl` when all sequences are expected to match one unknown model library (mode 1)](#mode1)
+  * [running `v-scan.pl` when sequences may match multiple models libraries (mode 2)](#mode2)
+  * [running `v-scan.pl` when all sequences are expected to match one known model library (mode 3)](#mode3)
 * [`v-scan.pl` command-line options](#options)
   * [basic options](#options-basic)
   * [options for specifying which model libraries to use](#options-libraries)
@@ -37,7 +40,7 @@ libraries, same as above but add the `-m` option:
 it, same as 1 but use the `--only` option:
 
    ```
-   v-scan.pl -m $VADRSCRIPTSDIR/documentation/scan-files/m5.fa vs-m5
+   v-scan.pl --only norovirus $VADRSCRIPTSDIR/documentation/scan-files/n5.fa vs-n5-only
    ```
 
 Another key option is the `-c <s>` option to specify a different config
@@ -66,20 +69,22 @@ You'll see something like the following output:
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # date:    Wed Mar  5 10:39:19 2025
 #
-Usage: v-scan.pl [-options] <fasta file to annotate> <output directory to create> <path to v-scan.pl config file>
+Usage: v-scan.pl [-options] <fasta file to annotate> <output directory to create>
 ```
 
 The first few lines are the banner which show the name of the VADR
 script being run along with the version and release date. This is
 followed by the time and date the command was executed.  The `Usage:`
 line details the expected command line arguments.  `v-scan.pl` takes
-as input two command line arguments, a fasta file with sequences to 
-analyze and annotate (`<fasta file to annotate>`) and the name of the output directory you
-want it to create (`<output directory to create>`) and
-populate with output files.
+as input two command line arguments, a fasta file with sequences to
+analyze and annotate (`<fasta file to annotate>`) and the name of the
+output directory you want it to create (`<output directory to
+create>`) and populate with output files.
 
 After that comes a list of all available command-line options. These
 are explained in more detail [below](#options).
+
+#### `v-scan.pl` config file<a name="config"></a>
 
 <a name="config"></a> `v-scan.pl` requires a 'config' file that lists information on the
 model libraries it will use. Here is the config file that is included
@@ -160,6 +165,16 @@ that is simply convenience: using a larger library like `flavi` for
 `dengue`, `hcv` and other flaviviruses can be more convenient because
 it requires less files, and less partitioning of files into separate
 model directories. 
+
+#### Adding libraries to the config file<a name="add2config"></a>
+
+You can download or build additional vadr model libraries and add them
+to the config file or make your own config file. To use a different
+config file `<s>` use the `-c <s>` option. The list of available VADR
+models and an example config file that uses them all is 
+[here](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files).
+
+#### Running `v-scan.pl` (mode 1)<a name="mode1"></a>
 
 <a name="examplebasic"></a>Below is an example `v-scan.pl` command
 run in mode 1, where all sequences are expected to match to a single
@@ -298,7 +313,7 @@ file](formats.md#filelist) which lists the output files created by
 which explains how many sequences matched to each library in the
 classification stage. 
 
-### Mode 2 example walkthrough
+#### Running `v-scan.pl` (mode 2)<a name="mode2"></a>
 
 If there may be sequences that match to multiple libraries in the
 input fasta file, use the `-m` option, like this:
@@ -340,7 +355,7 @@ Also, following the summary of sequences matching each library, you
 will see per-library summary statistics for each of the four libraries
 matched, and a list of output sequences for each library.
 
-### Mode 3 example walkthrough
+#### Running `v-scan.pl` (mode 3)<a name="mode3"></a>
 
 If you know which library your sequences will match to, you can use
 the `--only` option, like this:
