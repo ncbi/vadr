@@ -47,6 +47,7 @@ require "sqp_utils.pm";
 my $env_vadr_scripts_dir = utl_DirEnvVarValid("VADRSCRIPTSDIR");
 my $env_vadr_easel_dir   = utl_DirEnvVarValid("VADREASELDIR");
 my $env_vadr_config_file = (exists $ENV{"VADRCONFIGFILE"}) ? $ENV{"VADRCONFIGFILE"} : undef;
+my $env_vadr_install_dir = (exists $ENV{"VADRINSTALLDIR"}) ? $ENV{"VADRINSTALLDIR"} : undef;
 
 my %execs_H = (); # hash with paths to all required executables
 $execs_H{"v-annotate.pl"} = $env_vadr_scripts_dir  . "/v-annotate.pl";
@@ -141,7 +142,7 @@ my $options_okay =
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
 my $executable    = (defined $execname_opt) ? $execname_opt : "v-scan.pl";
-my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>"
+my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>";
 my $synopsis      = "$executable :: scan and annotate sequences against VADR model libraries ";
 my $date          = scalar localtime();
 my $version       = "1.7dev0";
@@ -219,7 +220,7 @@ my %other_okey_HA = (); # hash of arrays, key is option key $okey, value is arra
 # one model in each library $okey (e.g. 'calici') meets this criteria for every $okey2
 # that uses $okey as its model key (e.g. 'norovirus').
 # 
-parse_config_file($config_file, \@okey_A, \%okey_mdir_H, \%okey_opts_H, \%okey_mkey_H, \%opt_HH, undef);
+parse_config_file($config_file, $env_vadr_install_dir, \@okey_A, \%okey_mdir_H, \%okey_opts_H, \%okey_mkey_H, \%opt_HH, undef);
 validate_okey_mkey_values_and_fill_other_okey_HA(\@okey_A, \%okey_mdir_H, \%okey_mkey_H, \%other_okey_HA);
 
 # enforce that --only and --skip options are valid, and update hashes to remove unwanted keys
@@ -628,13 +629,14 @@ ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
 # Purpose:    Parse the special v-scan.pl config file and store
 #             the relevant info in 
 # Arguments:
-#  $config_file:   path to config file
-#  $okey_AR:       REF to array of library option keys
-#  $okey_mdir_HR:  REF to hash, key is okey, value is model directory for this okey, filled here
-#  $okey_opts_HR:  REF to hash, key is okey, value is options string to use when annotation for this okey, filled here
-#  $okey_mkey_HR:  REF to hash, key is okey, value is --mkey used for annotation, filled here
-#  $opt_HHR:       REF to 2D hash of option values, see top of sqp_opts.pm for description
-#  $FH_HR:         REF to hash of file handles
+#  $config_file:          path to config file
+#  $env_vadr_install_dir: path to replace $VADRINSTALLDIR with, can be undef (in which case we don't replace it)
+#  $okey_AR:              REF to array of library option keys
+#  $okey_mdir_HR:         REF to hash, key is okey, value is model directory for this okey, filled here
+#  $okey_opts_HR:         REF to hash, key is okey, value is options string to use when annotation for this okey, filled here
+#  $okey_mkey_HR:         REF to hash, key is okey, value is --mkey used for annotation, filled here
+#  $opt_HHR:              REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $FH_HR:                REF to hash of file handles
 #
 # Returns:  void
 #           
@@ -643,10 +645,10 @@ ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
 #################################################################
 sub parse_config_file { 
   my $sub_name = "parse_config_file"; 
-  my $nargs_exp = 7;
+  my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($config_file, $okey_AR, $okey_mdir_HR, $okey_opts_HR, $okey_mkey_HR, $opt_HHR, $FH_HR) = (@_);
+  my ($config_file, $env_vadr_install_dir, $okey_AR, $okey_mdir_HR, $okey_opts_HR, $okey_mkey_HR, $opt_HHR, $FH_HR) = (@_);
 
   open(CONFIG, $config_file) || ofile_FileOpenFailure($config_file, $sub_name, $!, "reading", $FH_HR);
 
@@ -660,6 +662,9 @@ sub parse_config_file {
         ofile_FAIL("ERROR all non-comment lines should include at least two white space delimited fields: <outkey> <modeldir>\nread line:\n$line", 1, $FH_HR);
       }
       my ($okey, $mdir) = ($el_A[0], $el_A[1]);
+      if(defined $env_vadr_install_dir) { # replace $VADRINSTALLDIR with passed in $env_vadr_install_dir (if defined)
+        $mdir =~ s/\$VADRINSTALLDIR/$env_vadr_install_dir/g;
+      }
       my $test_okey = $okey;
       $test_okey =~ s/[^a-z0-9]//g;
       if($test_okey ne $okey) { 
