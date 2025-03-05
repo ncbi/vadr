@@ -63,14 +63,12 @@ including Norovirus virus. The installation also includes a set of
 *Flaviviridae* models including Dengue virus. These models were
 created with a process similar to the one described [here](documentation/build.md#1.0library).
 
-
-You can download
-additional pre-built models to use to validate and annotate viruses,
-including SARS-CoV-2, RSV, or cox1 genes. Importantly, to
-use a set of models other than the default *Caliciviridae* set, you
-will need to use either the `--mdir` and `--mkey` options, or the the
-`-m`, `-i`, `-x` and possibly `-n` options as described
-[here](documentation/annotate.md#options).
+You can download additional pre-built models to use to validate and
+annotate viruses, including SARS-CoV-2, RSV, or cox1
+genes. Importantly, to use a set of models other than the default
+*Caliciviridae* set, you will need to use either the `--mdir` and
+`--mkey` options, or the the `-m`, `-i`, `-x` and possibly `-n`
+options as described [here](documentation/annotate.md#options).
 
 See [this
 page](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files)

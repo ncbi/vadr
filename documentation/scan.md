@@ -174,7 +174,9 @@ config file `<s>` use the `-c <s>` option. The list of available VADR
 models and an example config file that uses them all is 
 [here](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files).
 
-#### Running `v-scan.pl` (mode 1)<a name="mode1"></a>
+---
+
+### Running `v-scan.pl` (mode 1)<a name="mode1"></a>
 
 <a name="examplebasic"></a>Below is an example `v-scan.pl` command
 run in mode 1, where all sequences are expected to match to a single
@@ -313,7 +315,9 @@ file](formats.md#filelist) which lists the output files created by
 which explains how many sequences matched to each library in the
 classification stage. 
 
-#### Running `v-scan.pl` (mode 2)<a name="mode2"></a>
+---
+
+### Running `v-scan.pl` (mode 2)<a name="mode2"></a>
 
 If there may be sequences that match to multiple libraries in the
 input fasta file, use the `-m` option, like this:
@@ -355,7 +359,9 @@ Also, following the summary of sequences matching each library, you
 will see per-library summary statistics for each of the four libraries
 matched, and a list of output sequences for each library.
 
-#### Running `v-scan.pl` (mode 3)<a name="mode3"></a>
+---
+
+### Running `v-scan.pl` (mode 3)<a name="mode3"></a>
 
 If you know which library your sequences will match to, you can use
 the `--only` option, like this:
@@ -393,6 +399,7 @@ vs-n5-only2`. Alternatively, you can list libraries that you want
 `v-scan.pl --skip dengue,flavi`.
 
 ---
+
 ## `v-scan.pl` command-line options<a name="options"></a>
 
 To get a list of command-line options, execute:
