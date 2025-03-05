@@ -138,33 +138,30 @@ Then, when parsing the output for the the scan against the `flavi`
 library, sequences are matched to either `dengue`, `hcv` or `flavi` by
 checking if the best matching model for each sequence matches to
 `dengue` or `hcv` or `flavi`. A model matches to an `<options key>` if
-its name equals that `<options key>`, or its `group` or `subgroup`
-equals that `<options key>` *after lowercasing and removing all
-special characters from the name, group or subgroup. For example, if a
+its `model name`, `group` or `subgroup` equals that `<options key>`
+*after lowercasing and removing all
+special characters* from the name, group or subgroup. For example, if a
 sequence's best matching model is `NC_001477` which has `group` defined
 as `Dengue` in the `flavi.minfo` file (relevant line below)
 ```
 MODEL NC_001477 blastdb:"NC_001477.vadr.protein.fa" group:"Dengue" length:"10735" subgroup:"1"
 ```
-then that sequence will match to the `dengue` `<options string>` and
+then that sequence will match to `dengue` and
 that sequence will then be annotated with `v-annotate.pl` using the
 `dengue` `<options string>`. Or, if a sequence matched to a model
 named `HCV!` then it would match to `hcv` because `HCV!` becomes `hcv`
 after making it lowercase and removing all special (non-alphanumeric)
-characters.
+characters. Any sequence that matches best to a model in the `flavi`
+library that does not match either `dengue` or `hcv` in this way will
+match to `flavi` and `v-annotate.pl` will be used with the `flavi`
+options string to annotate it.
 
 Similarly, when parsing the output for the scan against the `calici`
 library, sequences are matched to either `norovirus` or `calici` in
 the same way. 
 
-You may be wondering why a user wouldn't just separate out all the
-`<options key>` models into their own libraries so that each one has
-its own unique `<model directory>` and model key. That will certainly
-work and it may be preferred by some users, but one reason not to do
-that is simply convenience: using a larger library like `flavi` for
-`dengue`, `hcv` and other flaviviruses can be more convenient because
-it requires less files, and less partitioning of files into separate
-model directories. 
+Model libraries do not have to be nested in this way. Each `<options
+key>` in the config file can pertain to its own unique model library. 
 
 #### Adding libraries to the config file<a name="add2config"></a>
 

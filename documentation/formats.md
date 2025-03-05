@@ -769,10 +769,11 @@ calici    $VADRINSTALLDIR/vadr-models-calici --split --cpu 1 -r --nomisc
 | idx      | field               | description |
 |----------|---------------------|-------------| 
 |   1      | `<options key>`     | name for this library, a unique key that will be used for naming `v-scan.pl` output files, cannot contain whitespace |
-|   2      | `<model directory>` | path to the model directory that includes all model files for this library, the same model directory can be used for multiple options keys, cannot contain whitespace |
-| 3 to end | `<options string>`  | the `v-annotate.pl` options that should be used for sequences matching this `<options key>` library during the annotation stage of `v-scan.pl`; this must contain `--mkey <s>` if the model files in the `<model directory>` are named with a key other than the `<options key>`, an example is the use of `--mkey calici` for the `norovirus` options key in the example file above; may contain whitespace |
+|   2      | `<model directory>` | path to the model directory that includes all model files for this library, the same model directory can be used for multiple `<options key>` values, cannot contain whitespace |
+| 3 to end | `<options string>`  | the `v-annotate.pl` options that should be used for sequences matching this `<opti ons key>` library during the annotation stage of `v-scan.pl`; this must contain `--mkey <s>` if the model files in the `<model directory>` are named with a key other than the `<options key>`, an example is the use of `--mkey calici` for the `norovirus` `<options key>` in the example file above; may contain whitespace |
 
 For more details on `v-scan.pl` config files see the detailed walkthrough of `v-scan.pl` [here.](scan.md#config)
+
 ---
 ### Explanation of `.lib`-suffixed output files<a name="lib"></a>
 
