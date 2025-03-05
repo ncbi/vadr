@@ -1,6 +1,6 @@
-# <a name="top"></a> `v-scan.pl` example usage, command-line options and alert information
+# <a name="top"></a> `v-scan.pl` example usage and command-line options
 
-* [`v-scan.pl` example usage](#exampleusage)
+* [Quickstart `v-scan.pl` examples](#quickstart)
   * [example annotation of norovirus sequences](#examplebasic)
   * [example of using `--alt_pass` to change alerts from fatal to non-fatal](#examplealtpass)
 * [`v-annotate.pl` command-line options](#options)
@@ -39,19 +39,19 @@
    the same library, run like: `v-scan.pl <fasta file to annotate>
    <output directory to create>`. For example:
 
-```
-v-scan.pl $VADRSCRIPTSDIR/documentation/scan-files/n5.fa vs-n5
-```
+   ```
+   v-scan.pl $VADRSCRIPTSDIR/documentation/scan-files/n5.fa vs-n5
+   ```
 
-After running the output files will be in the newly created directory
-`vs-n5`.
+   After running the output files will be in the newly created directory
+   `vs-n5`.
 
 2. model libraries are unknown and sequences may match to different
 libraries, same as above but add the `-m` option:
 
-```
-v-scan.pl -m $VADRSCRIPTSDIR/documentation/scan-files/m5.fa vs-m5
-```
+   ```
+   v-scan.pl -m $VADRSCRIPTSDIR/documentation/scan-files/m5.fa vs-m5
+   ```
 
 3. model library is known and all sequences are expected to match to
 it, same as 1 but use the `--only` option:
@@ -365,7 +365,7 @@ vs-n5-only2`. Alternatively, you can list libraries that you want
 `v-scan.pl` to skip (ignore) using the `--skip` option like this:
 `v-scan.pl --skip dengue,flavi`.
 
-
+### v-scan.pl output files
 
 ### A note on using the same model directory for multiple libraries, or
 option keys.
