@@ -19,14 +19,18 @@
   * [`.rpn` files](#rpn)
   * [`.dcr` files](#dcr)
   * [`.alt.list` files](#altlist)
-  * [extra output files saved with the `--keep` option](#annotate-keep)
+  * [additional output files saved with the `--keep` option](#annotate-keep)
+* [`v-scan.pl` input and output files](#scan)
+  * [input config file](#config)  
+  * [`.lib` files](#lib)
+
 * [VADR `coords` coordinate string format](#coords)
 * [VADR sequence naming conventions](#seqnames)
 
 ---
 ## Format of generic VADR output files created by all VADR scripts<a name="generic"></a>
 
-All VADR scripts (e.g. `v-build.pl` and `v-annotate.pl`) create a
+All VADR scripts (`v-build.pl`, `v-annotate.pl` and `v-scan.pl`) create a
 common set of three output files. These files are named
 `<outdir>.vadr.<suffix>` where `<suffix>` is either `log`, `cmd` or
 `filelist` and `<outdir>` is the command line argument
@@ -741,6 +745,124 @@ files be output. For example the `--out_stk` option specifies that stockholm ali
 | `.<model_name>.blastx.summary.txt` | summary of `blastx` output used internally by `v-annotate.pl` | no further documentation |
 
 ---
+## Format of `v-scan.pl` input and output files<a name="scan"></a>
+
+### Explanation of the `v-scan.pl` config file<a name="config"></a>
+
+The `v-scan.pl` script takes as input a config file that specifies the
+model libraries to use, including the directories the model files can
+be found in, and the options that should be passed to `v-annotate.pl`
+for each library. An example is the [default config
+file](../default.vadr.config) that is installed with VADR, which is
+shown below with **all comment lines removed**.
+
+```
+dengue    $VADRINSTALLDIR/vadr-models-flavi  --split --cpu 1 --group Dengue --nomisc --noprotid --mkey flavi -r
+hcv       $VADRINSTALLDIR/vadr-models-flavi  --split --cpu 4 -r --mkey flavi --group HCV
+flavi     $VADRINSTALLDIR/vadr-models-flavi  --split --cpu 1 -r --nomisc
+norovirus $VADRINSTALLDIR/vadr-models-calici --split --cpu 1 --group Norovirus --nomisc --noprotid --mkey calici -r
+calici    $VADRINSTALLDIR/vadr-models-calici --split --cpu 1 -r --nomisc 
+```
+(Each line prefixed with `#` is a comment line and is ignored by
+`v-scan.pl`.) All other lines have 3 or more fields:
+
+| idx      | field               | description |
+|----------|---------------------|-------------| 
+|   1      | `<options key>`     | name for this library, a unique key that will be used for naming `v-scan.pl` output files, cannot contain whitespace |
+|   2      | `<model directory>` | path to the model directory that includes all model files for this library, the same model directory can be used for multiple options keys, cannot contain whitespace |
+| 3 to end | `<options string>`  | the `v-annotate.pl` options that should be used for this library during the annotation stage of `v-scan.pl`, this must contain `--mkey <s>` if the model files in the `<model directory>` are named with a key other than the `<options key>`, an example is the use of `--mkey calici` for the `norovirus` options key in the file above. If the model files in the `<model directory>` use the `<options key>` as the model key, than `--mkey <s>` should not exist here (for example, for the `flavi` library, the file `flavi.minfo` should exist in the `<model directory>`), may contain whitespace |
+
+Note that in the above example config file, both `dengue` and `hcv`
+`<options key>` values use the `flavi` model library: `--mkey flavi`
+exists in the `<options string>` *and* the `<model directory>` is the
+same for all three of `dengue`, `hcv` and `flavi`. Similarly
+`norovirus` uses the `calici` library.
+
+Multiple `<options string>` values can use the same model libraries
+because sometimes we may want to use different `v-annotate.pl` options
+for different models within those libraries. In the example of
+`dengue`, `hcv`, and `flavi`, you can see that `dengue` uses the
+`--noprotid` and `--group Dengue` options, where as `hcv` and `flavi`
+use different options. All sequences that match to `dengue` will be
+annotated by `v-annotate.pl` using the `dengue` options, all sequences
+that match to `hcv` will be annotated using the `hcv` options, and all
+sequences that match to `flavi` will be annotated using the `flavi`
+options.
+
+The way that sequences are *matched* to an `<options key>` is as
+follows: in the `v-scan.pl` classification stage, each sequence is
+scanned against each unique model library from the config file. In
+the example config file, this is only two model libraries:
+
+1. the `flavi` model library, with files named with the key `flavi`
+(e.g. `flavi.minfo`) in the directory
+`$VADRINSTALLDIR/vadr-models-flavi`.
+
+2. the `calici` model library, with files named with the key `calici` 
+(e.g. `calici.minfo`) in the directory
+`$VADRINSTALLDIR/vadr-models-calici`.
+
+The `dengue` and `hcv` `<options key>` values use the `flavi` library due to
+the `--mkey flavi` in their `<options string>`, and `norovirus` 
+uses the `calici` library due to `--mkey calici` in its `<options string>`.
+
+Then, when parsing the output for the the scan against the `flavi`
+library, sequences are matched to either `dengue`, `hcv` or `flavi` by
+checking if the best matching model for each sequence matches to
+`dengue` or `hcv` or `flavi`. A model matches to an `<options key>` if
+its name equals that `<options key>`, or its `group` or `subgroup`
+equals that `<options key>` *after lowercasing and removing all
+special characters from the name, group or subgroup. For example, if a
+sequence's best matching model is `NC_001477` which has `group` defined
+as `Dengue` in the `flavi.minfo` file (relevant line below)
+```
+MODEL NC_001477 blastdb:"NC_001477.vadr.protein.fa" group:"Dengue" length:"10735" subgroup:"1"
+```
+then that sequence will match to the `dengue` `<options string>` and
+that sequence will then be annotated with `v-annotate.pl` using the
+`dengue` `<options string>`. Or, if a sequence matched to a model
+named `HCV!` then it would match to `hcv` because `HCV!` becomes `hcv`
+after making it lowercase and removing all special (non-alphanumeric)
+characters.
+
+Similarly, when parsing the output for the scan against the `calici`
+library, sequences are matched to either `norovirus` or `calici` in
+the same way. 
+
+You may be wondering why a user wouldn't just separate out all the
+`<options key>` models into their own libraries so that each one has
+its own unique `<model directory>` and model key. That will certainly
+work and it may be preferred by some users, but one reason not to do
+that is simply convenience: using a larger library like `flavi` for
+`dengue`, `hcv` and other flaviviruses can be more convenient because
+it requires less files, and less partitioning of files into separate
+model directories. 
+
+---
+### Explanation of `.lib`-suffixed output files<a name="lib"></a>
+
+The `v-scan.pl` script calls `v-annotate.pl` one or more times, and so
+generates all of the file types listed in the above
+[section](#annotate). Additionally, `v-scan.pl` will generate a file
+with a `lib` suffix named `<outdir>.vadr.lib`, but only when the
+classification stage is run. The classification stage will not be run
+if: the `--only` option is used with a single model library, or if
+`--skip` is used to exclude all but one library, or if there is only
+one libary in the config file.
+
+`.lib` data lines have 4 fields, the names of which appear in the first two
+comment lines in each file. There is one data line for each 'options
+key' that has a model library that was scanned against in the
+`v-scan.pl` classification stage. [Example file](scan-files/va-m5.vadr.lib).
+
+
+| idx | field                 | description |
+|-----|-----------------------|-------------|
+|   1 | `idx`                 | index of options key |
+|   2 | `options key`         | unique key for the specific set of options and associated model directory read from the config file, the first field of a line in the config file |
+|   3 | `model key`           | the model key used for this options key, multiple options keys can use the same model key |
+|   4 | `num seqs`            | the number of sequences in the input fasta file that matched to this options key, the total number in all rows will be lower than the total number of sequences in the file if sampling was performed
+
 ### Explanation of VADR `coords` coordinate strings <a name="coords"></a>
 
 VADR using its own format for specifying coordinates for features and
