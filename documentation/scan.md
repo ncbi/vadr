@@ -1,33 +1,13 @@
 # <a name="top"></a> `v-scan.pl` example usage and command-line options
 
 * [Quickstart `v-scan.pl` examples](#quickstart)
-  * [example annotation of norovirus sequences](#examplebasic)
-  * [example of using `--alt_pass` to change alerts from fatal to non-fatal](#examplealtpass)
-* [`v-annotate.pl` command-line options](#options)
+* [Walk-throughs of `v-scan.pl` examples](#longwalk)
+  * config file
+* [`v-scan.pl` command-line options](#options)
   * [basic options](#options-basic)
-  * [options for specifying expected sequence classification](#options-classification)
-  * [options for controlling which alerts are fatal](#options-fatal)
-  * [options related to model files](#options-modelfiles)
-  * [options for controlling output feature table](#options-featuretable)
-  * [options for controlling alert thresholds](#options-alerts)
-  * [options for controlling the alignment stage](#options-align)
-  * [options for controlling the blastx protein validation stage](#options-blastx)
-  * [options for using hmmer instead of blastx for protein validation](#options-hmmer)
-  * [options related to blastn-based seeded alignment acceleration strategy](#options-seed)
-  * [options for deriving seeds from minimap2 instead of blastn](#options-mm2)
-  * [options related to pre-processing to replace Ns with expected nucleotides](#options-replace)
-  * [options related to splitting input fasta file and multithreading](#options-split)
-  * [options related to parallelization on a compute farm/cluster](#options-parallel)
-  * [options related to both splitting input and parallelization on a compute farm/cluster](#options-split-and-parallel)
-  * [options for skipping stages](#options-skip)
-  * [options for additional output files](#options-output)
-  * [additional expert options](#options-expert)
-* [Basic Information on `v-annotate.pl` alerts](#alerts)
-* [Additional information on `v-annotate.pl` alerts](#alerts2)
-* [Non-essential features: allowing sequences to pass despite fatal alerts for specific features](#mnf)
-* [Alert *exceptions*: ignoring alerts in specific model position ranges](#exceptions)
-* [Limiting memory usage and multi-threading](#memory)
-* [Alternative parallelization using a cluster](#altparallel)
+  * [options for specifying which model libraries to use](#options-libraries)
+  * [options controlling the random sampling of sequences](#options-sampling)
+  * [options for listing information from the config model or about models and exiting(#options-listing)
 
 ---
 
@@ -56,15 +36,16 @@ libraries, same as above but add the `-m` option:
 3. model library is known and all sequences are expected to match to
 it, same as 1 but use the `--only` option:
 
-```
-v-scan.pl -m $VADRSCRIPTSDIR/documentation/scan-files/m5.fa vs-m5
-```
+   ```
+   v-scan.pl -m $VADRSCRIPTSDIR/documentation/scan-files/m5.fa vs-m5
+   ```
 
 Another key option is the `-c <s>` option to specify a different config
 file `<s>` besides the default one. See [here](#config) for more on config files.
 
-## Walk-throughs of `v-scan.pl` examples <a name="longexample"></a>
+## Walk-throughs of `v-scan.pl` examples <a name="longwalk"></a>
 
+This section includes more detailed information on how to use `v-scan.pl`.
 `v-scan.pl` is a wrapper script for `v-annotate.pl`. It first
 determines which model library to use for the input sequences and then
 calls `v-annotate.pl` for that model library. It will supply
@@ -100,54 +81,85 @@ populate with output files.
 After that comes a list of all available command-line options. These
 are explained in more detail [below](#options).
 
-`v-scan.pl` requires a 'config' file that lists information on the
+<a name="config"></a> `v-scan.pl` requires a 'config' file that lists information on the
 model libraries it will use. Here is the config file that is included
-with VADR in [vadr/default.vadr.config]:
+with VADR in [vadr/default.vadr.config](../default.vadr.config) with
+comment lines removed for brevity (all lines that begin with a `#` are
+comment lines):
 
 ```
-# Format of this config file:
-# - one line per 'options key': per specific set of v-annotate.pl options to
-#   use for a set of models
-# - each line has 3 fields: 'options_key' 'model_dir' 'options'
-# - first two fields are white space delimited, (that is, first token is
-#   'options key' (no spaces allowed) and second toen is 'model_dir' (no spaces allowed)
-#   All remaining text is combined to make field 3 (field 3 will contains whitespace)
-#
 dengue    $VADRINSTALLDIR/vadr-models-flavi  --split --cpu 1 --group Dengue --nomisc --noprotid --mkey flavi -r
 hcv       $VADRINSTALLDIR/vadr-models-flavi  --split --cpu 4 -r --mkey flavi --group HCV
 flavi     $VADRINSTALLDIR/vadr-models-flavi  --split --cpu 1 -r --nomisc
 norovirus $VADRINSTALLDIR/vadr-models-calici --split --cpu 1 --group Norovirus --nomisc --noprotid --mkey calici -r
 calici    $VADRINSTALLDIR/vadr-models-calici --split --cpu 1 -r --nomisc 
-#
-# Rule for how we determine <s> value for --mkey <s> to pass to v-annotate.pl
-# inside v-scan.pl:
-# 1. It is '--mkey <s>' if '--mkey <s>' exists in the 'options' string (field 3)
-# 2. Else it is 'options_key' value
-# 
-# This means that multiple, different 'options_key' values can use the
-# same model directory.  This allows us to have a different line for
-# 'options_key' values 'norovirus' and 'calici'.  for example, but
-# have them both use --mkey calici for the --cls_only classification
-# stage inside v-scan.pl. Any sequences that match best to 'norovirus'
-# will be rerun using v-annotate.pl with the options string for the
-# line starting with 'norovirus'. Any sequences matching to
-# non-norovirus models in the 'calici' library will be rerun using
-# v-annotate.pl with the options string for the line starting with
-# 'calici'.
-# 
-# For sequences to 'match best' to norovirus, they must
-# match to a model in the 'calici' library that has either a name,
-# group or subgroup value that is 'norovirus' (*after removing special
-# characters and converting to lowercase*).  The v-scan.pl program checks
-# that at least one model in each library $okey (e.g. 'calici') meets
-# this criteria for every $okey2 that uses $okey as its model key
-# (e.g. 'norovirus').
 ```
 
-All lines that begin with `#` are comment lines. All other lines are
-data lines each with 3 fields. These fields, as well as other
-information about the config file is included in the comment lines
-above.
+Note that in the above example config file, both `dengue` and `hcv`
+`<options key>` values use the `flavi` model library: `--mkey flavi`
+exists in the `<options string>` *and* the `<model directory>` is the
+same for all three of `dengue`, `hcv` and `flavi`. Similarly
+`norovirus` uses the `calici` library.
+
+Multiple `<options string>` values can use the same model libraries
+because sometimes we may want to use different `v-annotate.pl` options
+for different models within those libraries. In the example of
+`dengue`, `hcv`, and `flavi`, you can see that `dengue` uses the
+`--noprotid` and `--group Dengue` options, where as `hcv` and `flavi`
+use different options. All sequences that match to `dengue` will be
+annotated by `v-annotate.pl` using the `dengue` options, all sequences
+that match to `hcv` will be annotated using the `hcv` options, and all
+sequences that match to `flavi` will be annotated using the `flavi`
+options.
+
+The way that sequences are *matched* to an `<options key>` is as
+follows: in the `v-scan.pl` classification stage, each sequence is
+scanned against each unique model library from the config file. In
+the example config file, this is only two model libraries:
+
+1. the `flavi` model library, with files named with the key `flavi`
+(e.g. `flavi.minfo`) in the directory
+`$VADRINSTALLDIR/vadr-models-flavi`.
+
+2. the `calici` model library, with files named with the key `calici` 
+(e.g. `calici.minfo`) in the directory
+`$VADRINSTALLDIR/vadr-models-calici`.
+
+The `dengue` and `hcv` `<options key>` values use the `flavi` library due to
+the `--mkey flavi` in their `<options string>`, and `norovirus` 
+uses the `calici` library due to `--mkey calici` in its `<options string>`.
+
+Then, when parsing the output for the the scan against the `flavi`
+library, sequences are matched to either `dengue`, `hcv` or `flavi` by
+checking if the best matching model for each sequence matches to
+`dengue` or `hcv` or `flavi`. A model matches to an `<options key>` if
+its name equals that `<options key>`, or its `group` or `subgroup`
+equals that `<options key>` *after lowercasing and removing all
+special characters from the name, group or subgroup. For example, if a
+sequence's best matching model is `NC_001477` which has `group` defined
+as `Dengue` in the `flavi.minfo` file (relevant line below)
+```
+MODEL NC_001477 blastdb:"NC_001477.vadr.protein.fa" group:"Dengue" length:"10735" subgroup:"1"
+```
+then that sequence will match to the `dengue` `<options string>` and
+that sequence will then be annotated with `v-annotate.pl` using the
+`dengue` `<options string>`. Or, if a sequence matched to a model
+named `HCV!` then it would match to `hcv` because `HCV!` becomes `hcv`
+after making it lowercase and removing all special (non-alphanumeric)
+characters.
+
+Similarly, when parsing the output for the scan against the `calici`
+library, sequences are matched to either `norovirus` or `calici` in
+the same way. 
+
+You may be wondering why a user wouldn't just separate out all the
+`<options key>` models into their own libraries so that each one has
+its own unique `<model directory>` and model key. That will certainly
+work and it may be preferred by some users, but one reason not to do
+that is simply convenience: using a larger library like `flavi` for
+`dengue`, `hcv` and other flaviviruses can be more convenient because
+it requires less files, and less partitioning of files into separate
+model directories. 
 
 <a name="examplebasic"></a>Below is an example `v-scan.pl` command
 run in mode 1, where all sequences are expected to match to a single
@@ -199,7 +211,7 @@ The output of `v-scan.pl` lists the steps it takes:
 ```
 
 After validating the input, `v-scan.pl` samples 3 sequences to use for
-the classification stage Only 3 sequences are used to make this stage
+the classification stage. Only 3 sequences are used to make this stage
 more efficient based on the assumption is that all the sequences will
 be for the same model library. If `v-scan.pl` determines that more
 than one model library is matched by the sampled sequences, then it
@@ -365,1098 +377,60 @@ vs-n5-only2`. Alternatively, you can list libraries that you want
 `v-scan.pl` to skip (ignore) using the `--skip` option like this:
 `v-scan.pl --skip dengue,flavi`.
 
-### v-scan.pl output files
-
-### A note on using the same model directory for multiple libraries, or
-option keys.
-
-After that are two FASTA-formatted sequence files.
-One of these files includes all
-passing sequences (`va-noro.9.vadr.pass.fa`) and the other includes all
-failing sequences (`va-noro.9.vadr.fail.fa`).
-
-After these two FASTA files are eight tabular summary files that end
-with three letter suffixes:
-
-| suffix | description | reference | 
-|--------|-------------|-----------|
-| `.alc` | per-alert code information (counts)     | [description of format](formats.md#alc) |
-| `.alt` | per-alert instance information          | [description of format](formats.md#alt) |
-| `.ftr` | per-feature information                 | [description of format](formats.md#ftr) |
-| `.mdl` | per-model information                   | [description of format](formats.md#mdl) |
-| `.sgm` | per-segment information                 | [description of format](formats.md#sgm) |
-| `.sqa` | per-sequence annotation information     | [description of format](formats.md#sqa) |
-| `.sqc` | per-sequence classification information | [description of format](formats.md#sqc) |
-| `.dcr` | alignment doctoring information         | [description of format](formats.md#dcr) |
-
-The contents of the `.mdl` and `.alc` files were already output by
-`v-annotate.pl` as covered above. To get more information on each
-sequence, see the `.sqa` and `.sqc` files. The `.sqc` file
-(`va-noro.9.vadr.sqc`) includes
-information on the classification of each sequence:
-
-```
-#seq  seq          seq                                   sub                    seq    mdl         num                             sub     score  diff/  seq   
-#idx  name         len  p/f   ant  model1     grp1       grp1   score  sc/nt    cov    cov  bias  hits  str  model2     grp2       grp2     diff     nt  alerts
-#---  ----------  ----  ----  ---  ---------  ---------  ----  ------  -----  -----  -----  ----  ----  ---  ---------  ---------  -----  ------  -----  ------
-1     KY887602.1  7547  PASS  yes  NC_039477  Norovirus  GII   8142.8  1.079  1.000  0.997  12.5     1    +  NC_044046  Norovirus  GVIII  4348.2  0.576  -     
-2     KT818729.1   243  PASS  yes  NC_044854  Norovirus  GI     170.4  0.701  0.996  0.031     0     1    +  NC_044932  Norovirus  GII      90.0  0.370  -     
-3     EU437710.1   291  PASS  yes  NC_001959  Norovirus  GI     249.4  0.857  1.000  0.038     0     1    +  NC_044855  Norovirus  GIV     161.5  0.555  -     
-4     DQ288307.1  1094  PASS  yes  NC_029645  Norovirus  GIII   973.4  0.890  1.000  0.150   6.2     1    +  NC_001959  Norovirus  GI      671.1  0.613  -     
-5     AY237464.1   255  PASS  yes  NC_039477  Norovirus  GII    221.1  0.867  1.000  0.034     0     1    +  NC_044047  Norovirus  GVII    113.5  0.445  -     
-6     KF475958.1   275  PASS  yes  NC_044854  Norovirus  GI     248.0  0.902  1.000  0.036     0     1    +  NC_044932  Norovirus  GII     164.0  0.596  -     
-7     AB713840.1   347  PASS  yes  NC_008311  Norovirus  GV     330.6  0.953  1.000  0.047   0.2     1    +  NC_040876  Norovirus  GII     239.5  0.690  -     
-8     JN585032.1   286  PASS  yes  NC_029645  Norovirus  GIII   242.3  0.847  0.997  0.039   0.1     1    +  NC_039897  Norovirus  GI      154.8  0.541  -     
-9     JN975492.1  7286  FAIL  yes  NC_008311  Norovirus  GV    4666.2  0.640  1.000  0.987  16.8     1    +  NC_044047  Norovirus  GVII   3382.8  0.464  -     
-```
-
-This file includes per-sequence information on whether each sequence
-passed or failed, its best and second-best matching model, and scores
-and coverage. The difference in score between the best and second-best
-model gives an indication of how confidently classified the sequence
-is to the best-matching model. (The `qstgroup` and `qstsbgrp` alerts
-are reported if these scores are not sufficiently far apart to alert
-the user that a sequence is not confidently classified.) Note that the
-sequence `JN975492.1` is the only sequence that failed. It has no `seq
-alerts` listed in the final field, so the fatal alerts that caused it
-to fail must have been per-feature alerts. These can be seen in the
-`.ftr` and `.alt` files. An explanation of all fields in the `.sqc`
-file type is [here](formats.md#sqc).
-
-Next, take a look at the first few lines of the `.ftr` file (`va-noro.9.vadr.ftr`):
-
-```
-#     seq          seq                   ftr          ftr                         ftr  ftr  par                                                                                                        seq         model  ftr   
-#idx  name         len  p/f   model      type         name                        len  idx  idx  str  n_from  n_to  n_instp  trc    5'N  3'N  p_from  p_to           p_instp  p_sc  nsa  nsn        coords        coords  alerts
-#---  ----------  ----  ----  ---------  -----------  -------------------------  ----  ---  ---  ---  ------  ----  -------  -----  ---  ---  ------  ----  ----------------  ----  ---  ---  ------------  ------------  ------
-1.1   KY887602.1  7547  PASS  NC_039477  gene         ORF1                       5083    1   -1    +       1  5083        -  5'       0    0       -     -                 -     -    1    0     1..5083:+    22..5104:+  -     
-1.2   KY887602.1  7547  PASS  NC_039477  CDS          nonstructural_polyprotein  5083    2   -1    +       1  5083        -  5'       0    0       2  5080                 -  9094    1    0     1..5083:+    22..5104:+  -     
-1.3   KY887602.1  7547  PASS  NC_039477  gene         ORF2                       1623    3   -1    +    5064  6686        -  no       0    0       -     -                 -     -    1    0  5064..6686:+  5085..6707:+  -     
-1.4   KY887602.1  7547  PASS  NC_039477  CDS          VP1                        1623    4   -1    +    5064  6686        -  no       0    0    5064  6683                 -  2878    1    0  5064..6686:+  5085..6707:+  -     
-1.5   KY887602.1  7547  PASS  NC_039477  gene         ORF3                        807    5   -1    +    6686  7492        -  no       0    0       -     -                 -     -    1    0  6686..7492:+  6707..7513:+  -     
-1.6   KY887602.1  7547  PASS  NC_039477  CDS          VP2                         807    6   -1    +    6686  7492        -  no       0    0    6686  7486                 -  1393    1    0  6686..7492:+  6707..7513:+  -     
-1.7   KY887602.1  7547  PASS  NC_039477  mat_peptide  p48                         979    7    2    +       1   979        -  5'       0    0       -     -                 -     -    1    0      1..979:+    22..1000:+  -     
-1.8   KY887602.1  7547  PASS  NC_039477  mat_peptide  NTPase                     1098    8    2    +     980  2077        -  no       0    0       -     -                 -     -    1    0   980..2077:+  1001..2098:+  -     
-1.9   KY887602.1  7547  PASS  NC_039477  mat_peptide  p22                         531    9    2    +    2078  2608        -  no       0    0       -     -                 -     -    1    0  2078..2608:+  2099..2629:+  -     
-1.10  KY887602.1  7547  PASS  NC_039477  mat_peptide  VPg                         399   10    2    +    2609  3007        -  no       0    0       -     -                 -     -    1    0  2609..3007:+  2630..3028:+  -     
-1.11  KY887602.1  7547  PASS  NC_039477  mat_peptide  Pro                         543   11    2    +    3008  3550        -  no       0    0       -     -                 -     -    1    0  3008..3550:+  3029..3571:+  -     
-1.12  KY887602.1  7547  PASS  NC_039477  mat_peptide  RdRp                       1530   12    2    +    3551  5080        -  no       0    0       -     -                 -     -    1    0  3551..5080:+  3572..5101:+  -     
-#
-```
-
-This file includes information on each annotated feature, organized by
-sequence. The lines above show the annotated features for the first
-sequence `KY887602.1` and include information on the feature length,
-strand, positions in the sequence and in the reference model, whether
-it is truncated or not, and where the blastx protein validation stage
-predicted coordinates are. The `seq coords` and `mdl coords` lines
-near the end show the sequence and model coordinates of each feature
-in the VADR coordinate string format, described
-[here](formats.md#coords). 
-The final column lists any alerts
-pertaining to each feature. For the features in this sequence there
-are no alerts, but for the final sequence, some alerts are listed for the
-second CDS. An explanation of all fields in the `.ftr`
-file type is [here](formats.md#ftr).
-
-<a name="altexample"></a>Another important file is the `.alt` output file (`va-noro9.vadr.alt`)
-which includes one line per alert reported:
-
-```
-#      seq                    ftr   ftr   ftr  alert           alert                                 seq  seq           mdl  mdl  alert 
-#idx   name        model      type  name  idx  code      fail  description                        coords  len        coords  len  detail
-#----  ----------  ---------  ----  ----  ---  --------  ----  ---------------------------  ------------  ---  ------------  ---  ------
-9.1.1  JN975492.1  NC_008311  CDS   VF1     6  mutendcd  yes   MUTATION_AT_END              5683..5685:+    3  5708..5710:+    3  expected stop codon could not be identified, predicted CDS stop by homology is invalid [TCA]
-9.1.2  JN975492.1  NC_008311  CDS   VF1     6  cdsstopn  yes   CDS_HAS_STOP_CODON           5275..5277:+    3  5300..5302:+    3  in-frame stop codon exists 5' of stop position predicted by homology to reference [TGA, shifted S:408,M:408]
-9.1.3  JN975492.1  NC_008311  CDS   VF1     6  cdsstopp  yes   CDS_HAS_STOP_CODON           5275..5277:+    3  5300..5302:+    3  stop codon in protein-based alignment [-]
-9.1.4  JN975492.1  NC_008311  CDS   VF1     6  indf3pst  yes   INDEFINITE_ANNOTATION_END    5650..5685:+   36  5710..5710:+    1  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [36>5, no valid stop codon in nucleotide-based prediction]
-9.2.1  JN975492.1  NC_008311  CDS   VP2     8  indf5pst  yes   INDEFINITE_ANNOTATION_START  6656..6709:+   54  6681..6681:+    1  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [54>5]
-```     
-
-All alerts are for the `JN975492.1` sequence. Four are for the VF1 CDS
-and 1 is for the VP2 CDS. The alert codes are listed in the seventh
-column, along with a brief description in the eigth column. 
-Then the sequence and model coordinates pertaining to the alert and
-the lengths of those regions are listed in columns 9 to 12.
-A more detailed description of the problem can be found in the final column.
-All possible alerts are listed in the [alert
-table](#alerttable).
-For some examples of different types of alerts see 
-    [here](alerts.md#examples).
-
-##  <a name="examplealtpass"></a>Example of using the `v-annotate.pl` `--alt_pass` and `--alt_fail` to change alerts from fatal to non-fatal and vice versa
-
-One way to change the behavior of `v-annotate.pl` is to change which
-alerts are fatal or non-fatal.  Most alerts are fatal by default, but
-some are not, as shown in the [alert table](#alerts).  Some alerts are
-*always fatal* in that they cannot be changed, but all others can be
-toggled between fatal or non-fatal using the `--alt_pass` and `--alt_fail` options.
-
-For example, we can make the `JN976492.1` sequence above pass by
-making the five observed alerts (*mutendcd*, *cdsstopn*, *cdsstopp*,
-*indf3pst*, and *indf5pst*) by rerunning the `v-annotate.pl` above with this command: 
-
-```
-v-annotate.pl --alt_pass mutendcd,cdsstopn,cdsstopp,indf3pst,indf5pst $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-pass-noro.9
-```
-
-To supply multiple alerts with `--alt_pass` or `--alt_fail`, separate them by a `,` without any whitespace, like above.
-
-The output will look very similar to the earlier run, but the summary
-information printed at the end will show that no sequences fail this
-time, despite the same alerts being reported.
-
-```
-# Summary of classified sequences:
-#
-#                                      num   num   num
-#idx  model      group      subgroup  seqs  pass  fail
-#---  ---------  ---------  --------  ----  ----  ----
-1     NC_008311  Norovirus  GV           2     2     0
-2     NC_039477  Norovirus  GII          2     2     0
-3     NC_044854  Norovirus  GI           2     2     0
-4     NC_029645  Norovirus  GIII         2     2     0
-5     NC_001959  Norovirus  GI           1     1     0
-#---  ---------  ---------  --------  ----  ----  ----
--     *all*      -          -            9     9     0
--     *none*     -          -            0     0     0
-#---  ---------  ---------  --------  ----  ----  ----
-#
-# Summary of reported alerts:
-#
-#     alert     causes   short                            per    num   num  long
-#idx  code      failure  description                     type  cases  seqs  description
-#---  --------  -------  ---------------------------  -------  -----  ----  -----------
-1     mutendcd  no       MUTATION_AT_END              feature      1     1  expected stop codon could not be identified, predicted CDS stop by homology is invalid
-2     cdsstopn  no       CDS_HAS_STOP_CODON           feature      1     1  in-frame stop codon exists 5' of stop position predicted by homology to reference
-3     cdsstopp  no       CDS_HAS_STOP_CODON           feature      1     1  stop codon in protein-based alignment
-4     indf5pst  no       INDEFINITE_ANNOTATION_START  feature      1     1  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint
-5     indf3pst  no       INDEFINITE_ANNOTATION_END    feature      1     1  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
-#---  --------  -------  ---------------------------  -------  -----  ----  -----------
-```
-
-The `--alt_fail <s>` option works the same way as `alt_pass <s>` but alert codes
-in `<s>` should be [non-fatal by default](#nonfatal1).
-
-Alternatively, if you want to relax the stringency of alerts *only for
-specific features* you can do that by modifying the `modelinfo` input
-file as explained [below](#mnf).
-
 ---
-## `v-annotate.pl` command-line options<a name="options"></a>
+## `v-scan.pl` command-line options<a name="options"></a>
 
 To get a list of command-line options, execute:
 
-`v-annotate.pl -h`
+`v-scan.pl -h`
 
 This will output the usage and available command-line options. 
 Each option has a short description, but additional information on some
 of these options can be found below.
-For `v-annotate.pl` the available options are split into nine different categories, 
+For `v-scan.pl` the available options are split into four different categories, 
 each explained in their own subsection below.
 
 In the tables describing options below, `<s>` represents a string,
 `<x>` indicates a floating point number and `<n>` represents an
 integer. 
 
-### `v-annotate.pl` basic options<a name="options-basic"></a>
+### `v-scan.pl` basic options<a name="options-basic"></a>
 
 | ......option.... | explanation | 
 |------------------|-------------|
 | `-f`             | if `<output directory>` already exists, then using this option will cause it to be overwritten, otherwise the progam exits in error |
+| `-m`             | multiple-library mode, allow matches to multiple model libraries, without this option matches to only one library are allowed and the program will exit if matches to multiple libraries are found |
+| `-c <s>`         | use the config file `<s>` instead of the config file in $VADRCONFIGFILE |
 | `-v`             | *verbose* mode: all commands will be output to standard output as they are run | 
-| `--atgonly`      | only consider ATG as a valid start codon, regardless of model's translation table <a name="options-basic-atgonly"></a> |
-| `--minpvlen <n>` | set the minimum length in nucleotides for CDS/mat_peptide/gene features to be output to feature tables and for protein validation analysis to `<n>`, default `<n>` is 30 |
-| `--nkb <n>`      | set the target number of Kb of sequence for each alignment job and/or chunk (with --split) to `<n>` Kb (thousand nucleotides), default `<n>` is `300` |
-| `--keep`         | keep [additional output files](formats.md#annotate-keep) that are normally removed |
+| `--first`        | specify that if a sequence matches to more than one library, use the first one; by default the higher scoring match is used |
+| `--lone`         | exit if at least one sequence matches to multiple libraries |
+| `--origfa`       | do not copy the input fasta file into output directory prior to analysis, use the original |
+| `--keep`         | keep [additional `v-annotate.pl` output files](formats.md#annotate-keep) that are normally removed |
 
-### `v-annotate.pl` options for specifying expected sequence classification<a name="options-classification"></a>
-
+### `v-scan.pl` options for specifying which model libraries to use<a name="options-libraries"></a>
 | ..........option.......... | explanation | 
 |--------|-------------| 
-| `--group <s>`     | specify that the expected classification of all sequences is group `<s>`, sequences determined to *not* be in this group will trigger an *incgroup* alert |
-| `--subgroup <s2>` | specify that the expected classification of all sequences is subgroup `<s>` within group `<s2>` from `--group <s2>`, sequences determined to *not* be in this group will trigger an *incsubgrp* alert; requires `--group` |
+| `--only <s>`      | only use the model library(ies) with option keys (e.g. `flavi`) listed in the comma separated string `<s>`, all option keys must exist in config file | 
+| `--skip <s>`      | do not use the model library(ies) with option keys (e.g. `flavi`) listed in the comma separated string `<s>`,  all option keys must exist in config file | 
 
-### `v-annotate.pl` options for controlling which alerts are *fatal* and cause a sequence to FAIL <a name="options-fatal"></a>
-
-| ............option............ | explanation | 
-|----------------------------|-------------| 
-| `--alt_list`         | output [summary of all alerts](#alerts) and then exit | 
-| `--alt_pass <s>`     | specify that alert codes in comma-separated string `<s>` are non-fatal (do not cause a sequence to fail), all alert codes listed must be fatal by default |
-| `--alt_fail <s>`     | specify that alert codes in comma-separated string `<s>` are fatal (cause a sequence to fail), all alert codes listed must be non-fatal by default |
-| `--alt_mnf_yes <s>`  | specify that alert codes in comma-separated string `<s>` for 'misc_not_failure' features cause misc_feature-ization, not failure as explained more [here](#mnf) |
-| `--alt_mnf_no <s>`   | specify that alert codes in comma-separated string `<s>` for 'misc_not_failure' features cause failure, not misc-feature-ization as explained more [here](#mnf) |
-
-### `v-annotate.pl` options for ignoring specific keys in the input model info (.minfo) file <a name="options-ignore"></a>
+### <a name="options-sampling"></a> `v-scan.pl` options related to the random sampling of sequences for determining model library to use (sampling is turned off if `-m` is used or only one model library is being used)
 
 | ............option............ | explanation | 
 |----------------------------|-------------| 
-| `--ignore_mnf`       | ignore non-zero 'misc_not_feature' values in `modelinfo` file, set to 0 for all features/models |
-| `--ignore_isdel`     | ignore non-zero 'is_deletable' values in `modelinfo` file, set to 0 for all features/models |
-| `--ignore_afset`     | ignore non-zero 'alternative_ftr_set' and 'alternative_ftr_set_subn' values in `modelinfo` file |
-| `--ignore_afsetsubn` | ignore non-zero 'alternative_ftr_set_subn' values in `modelinfo` file |
-| `--ignore_canonss`   | ignore non-zero 'canon_splice_sites' values in `modelinfo` file |
-| `--force_canonss`    | force 'canon_splice_sites' value is 1 for all CDS with qualifying introns (gaps between segments >= `<n>` nucleotides from `--intlen` option, by default `<n>` is `40`), this will force a check for GT/AG splice sites in all introns |
-| `--ignore_exc`       | do not allow any exceptions, ignoring all exception keys (`*_exc`) in the model info file | 
-
-
-### `v-annotate.pl` options related to model files<a name="options-modelfiles"></a>
-
-| .......option....... | explanation | 
-|--------|-------------| 
-| `-m <s>` | use the CM file `<s>`, instead of the default CM file ($VADRMODELDIR/vadr.cm) |
-| `-a <s>` | use HMM file `<s>` instead of the default HMM file ($VADRMODELDIR/vadr.hmm) |
-| `-i <s>` | use the VADR model info file `<s>`, instead of the default model info file ($VADRMODELDIR/vadr.minfo) |
-| `-n <s>` | use the blastn DB file `<s>` when necessary, instead of the default blastn DB file ($VADRMODELDIR/vadr.fa), only used if `-s` or `-r` is also used |
-| `-x <s>` | specify that the blastx database files to use for protein validation are in dir `<s>`, instead of the default directory ($VADRMODELDIR) |
-| `--mkey <s>` | specify that .cm, .minfo, and blastn .fa files in $VADRMODELDIR start with key `<s>`, not 'vadr' |
-| `--mdir <s>` | specify that all model files to use are in the directory `<s>`, not in $VADRMODELDIR |
-| `--mlist <s>` | specify that only the subset of models listed in the file `<s>` be used |
-
-### `v-annotate.pl` options for controlling output feature table <a name="options-featuretable"></a>
-| .......option....... | explanation | 
-|--------|-------------| 
-| `--nomisc`        | in feature table, never change feature to `misc_feature` | 
-| `--notrim`        | <a name="options-alert-ambg"></a> in feature table, do not trim coordinate start and stops due to Ns at beginning or end of features for all feature types | 
-| `--noftrtrim <s>` | in feature table, do not trim coordinate start and stops due to Ns at beginning or end of features for feature types listed in the comma-delimited string `<s>` (no spaces) | 
-| `--noprotid`      | in feature table, don't add protein_id for CDS and mat_peptide features |
-| `--forceprotid`   | in feature table, force protein_id value to be sequence name, then idx |
-| `--forcegene`     | in feature table, add 'gene' qualifiers from model info file for CDS and mat_peptide features, normally these are omitted |
-| `--forcequal <s>` | in feature table, add qualifiers from model info file listed in comma-delimited string <s> |
-
-### `v-annotate.pl` options for controlling thresholds related to alerts <a name="options-alerts"></a>
-
-In the table below, `<n>` represents a positive interger argument and
-`<x>` represents a positive floating-point argument. 
-
-| ...........option........... | relevant alert code(s) | relevant error(s) | default value that triggers alert | explanation |
-|---------------------|---------------------|----------------|-----------------------------------|-------------|
-| `--lowsc <x>`       | [*lowscore*](#lowscore1)                             | LOW_SCORE                              | < 0.3  | <a name="options-alerts-lowsc"></a> set bits per nt threshold for alert to `<x>` | 
-| `--indefclass <x>`  | [*indfclas*](#indfclas1)                             | INDEFINITE_CLASSIFICATION              | < 0.03 | <a name="options-alerts-indefclas"></a> set bits per nt difference threshold for alert between top two models (not in same subgroup) to `<x>` |
-| `--incspec <x>`     | [*incgroup*](#incgroup1), [*incsubgrp*](#incsubgrp1) | INCORRECT_SPECIFIED_GROUP, INCORRECT_SPECIFIED_SUBGROUP | < 0.2   | <a name="options-alerts-incspec"></a> set bits per nt difference threshold for alert between best-matching model `<m>` and highest-scoring model in specified group `<s1>` (from `--group <s1>`) or subgroup `<s2>` (from `--subgroup <s2>`), where `<m>` is not in group/subgroup `<s1>`/`<s2>` to `<x>` |
-| `--lowcov <x>`      | [*lowcovrg*](#lowcovrg1)                             | LOW_COVERAGE                           | < 0.9  | <a name="options-alerts-lowcov"></a> set fractional coverage threshold for alert to `<x>` |
-| `--dupregolp <n>`   | [*dupregin*](#dupregin1)                             | DUPLICATE_REGIONS                      | >= 20  | <a name="options-alerts-dupreg"></a>set min number of model position overlap for alert to  `<n>` positions | 
-| `--dupregsc <x>`    | [*dupregin*](#dupregin1)                             | DUPLICATE_REGIONS                      | >= 10.0| <a name="options-alerts-dupreg"></a> set min bit score of weaker overlapping hit to  `<x>` bits | 
-| `--indefstr <x>`    | [*indfstrn*](#indfstrn1)                             | INDEFINITE_STRAND                      | >= 25.0| <a name="options-alerts-indefstr"></a> set bit score of weaker strand hit for alert to `<x>` |
-| `--lowsim5seq  <n>` | [*lowsim5s*](#lowsim5s1)                             | LOW_SIMILARITY_START                   | >= 15  | <a name="options-alerts-lowsim5seq"></a> set length (nt) threshold for alert to `<n>` |
-| `--lowsim3seq  <n>` | [*lowsim3s*](#lowsim3s1)                             | LOW_SIMILARITY_END                     | >= 15  | <a name="options-alerts-lowsim3seq"></a> set length (nt) threshold for alert to `<n>` |
-| `--lowsimiseq <n>`  | [*lowsimis*](#lowsimis1)                             | LOW_SIMILARITY                         | >= 1   | <a name="options-alerts-lowsimiseq"></a> set length (nt) threshold for alert to `<n>` |
-| `--lowsim5ftr  <n>` | [*lowsim5c*](#lowsim5c1), [*lowsim5n*](#lowsim5n1)   | LOW_FEATURE_SIMILARITY_START           | >= 5   | <a name="options-alerts-lowsim5ftr"></a> set length (nt) threshold for alert to `<n>` |
-| `--lowsim3ftr  <n>` | [*lowsim3c*](#lowsim3c1), [*lowsim3n*](#lowsim3n1)   | LOW_FEATURE_SIMILARITY_END             | >= 5   | <a name="options-alerts-lowsim3ftr"></a> set length (nt) threshold for alert to `<n>` |
-| `--lowsimiftr <n>`  | [*lowsimic*](#lowsimic1), [*lowsimin*](#lowsimin1)   | LOW_FEATURE_SIMILARITY                 | >= 1   | <a name="options-alerts-lowsimiftr"></a> set length (nt) threshold for alert to `<n>` |
-| `--lowsim5lftr  <n>`| [*lowsim5l*](#lowsim5l1)                             | LOW_FEATURE_SIMILARITY_START           | >= 30  | <a name="options-alerts-lowsim5lftr"></a> set length (nt) threshold for alert to `<n>` |
-| `--lowsim3lftr  <n>`| [*lowsim3l*](#lowsim3l1)                             | LOW_FEATURE_SIMILARITY_END             | >= 30  | <a name="options-alerts-lowsim3lftr"></a> set length (nt) threshold for alert to `<n>` |
-| `--lowsimilftr <n>` | [*lowsimil*](#lowsimil1)                             | LOW_FEATURE_SIMILARITY                 | >= 30  | <a name="options-alerts-lowsimilftr"></a> set length (nt) threshold for alert to `<n>` |
-| `--extrant5 <n>`    | [*extrant5*](#extrant51)                             | EXTRA_SEQUENCE_START                   | >= 1   | <a name="options-alerts-extrant5"></a> set length (nt) threshold for alert to `<n>` |
-| `--extrant3 <n>`    | [*extrant3*](#extrant31)                             | EXTRA_SEQUENCE_END                     | >= 1   | <a name="options-alerts-extrant3"></a> set length (nt) threshold for alert to `<n>` |
-| `--biasfrac <x>`    | [*biasdseq*](#biasdseq1)                             | BIASED_SEQUENCE                        | >= 0.25| <a name="options-alerts-biasfrac"></a>  set fractional bit score threshold for biased score/total score for alert to `<x>` |
-| `--nmiscftrthr <n>` | [*nmiscftr*](#nmiscftr1)                             | TOO_MANY_MISC_FEATURES                 | >= 4   | <a name="options-alerts-nmiscftr"></a>  set minimum number of misc_features per sequence for alert to `<n>` |
-| `--indefann <x>`    | [*indf5lcc*](#indf5lcc1), [*indf5lcn*](#indf5lcn1), [*indf3lcc*](#indf3lcc1), [*indf3lcn*](#indf3lcn1)   | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.8 | <a name="options-alerts-indefann"></a> set posterior probability threshold for non-mat_peptide features for alert to `<x>` |
-| `--indefann_mp <x>` | [*indf5lcc*](#indf5lcc1), [*indf5lcn*](#indf5lcn1), [*indf3lcc*](#indf3lcc1), [*indf3lcn*](#indf3lcn1) | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.6 | <a name="options-alerts-indefann_mp"></a> set posterior probability threshold for mat_peptide features for alert to `<x>` |
-| `--fstminntt <n>`   | [*fsthicft*](#fsthicft1), [*fstlocft*](#fstlocft1), [*fstukct5*](#fstukct51) | POSSIBLE_FRAMESHIFT_HIGH_CONF, POSSIBLE_FRAMESHIFT_LO_CONF, POSSIBLE_FRAMESHIFT | >= 4 | <a name="options-alerts-fstminntt"></a> set maximum allowed length of aligned region in different frame in which frame is not restored before CDS end to `<n>` |
-| `--fstminnti <n>`   | [*fsthicfi*](#fsthicfi1), [*fstlocfi*](#fstlocfi1), [*fstukcfi*](#fstukcfi1) | POSSIBLE_FRAMESHIFT_HIGH_CONF, POSSIBLE_FRAMESHIFT_LO_CONF, POSSIBLE_FRAMESHIFT | >= 6 | <a name="options-alerts-fstminnti"></a> set maximum allowed length of aligned region in different frame in which frame is restored before CDS end to `<n>` |
-| `--fsthighthr <x>`  | [*fsthicnf*](#fsthicnf1)                             | POSSIBLE_FRAMESHIFT_HIGH_CONF         | >= 0.8  | <a name="options-alerts-fsthighthr"></a> set average posterior probability threshold for potentially frameshifted region for high confidence alert to `<x>` |
-| `--fstlowthr <x>`   | [*fstlocnf*](#fstlocnf1)                             | POSSIBLE_FRAMESHIFT_LOW_CONF          | >= 0.0  | <a name="options-alerts-fstlowthr"></a> set average posterior probability threshold for potentially frameshifted region for low confidence alert to `<x>` |
-| `--xalntol <n>`     | [*indf5pst*](#indf5pst1), [*indf3pst*](#indf3pst1)   | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | > 5 | <a name="options-alerts-xalntol"></a> set maximum allowed difference in nucleotides between predicted blastx and CM start/end without alert to `<n>` (blastx coordinates must be internal to CM coordinates) |
-| `--xmaxins <n>`     | [*insertnp*](#insertnp1)                             | INSERTION_OF_NT                       | > 27    | <a name="options-alerts-xmaxins"></a> set maximum allowed nucleotide insertion length in blastx validation alignment without alert to `<n>` |
-| `--xmaxdel <n>`     | [*deletinp*](#deletinp1)                             | DELETION_OF_NT                        | > 27    | <a name="options-alerts-xmaxdel"></a> set maximum allowed nucleotide deletion length in blastx validation alignment without alert to `<n>` |
-| `--nmaxins <n>`     | [*insertnn*](#insertnn1)                             | INSERTION_OF_NT                       | > 27    | <a name="options-alerts-nmaxins"></a> set maximum allowed nucleotide insertion length in CDS nt alignment without alert to `<n>`  |
-| `--nmaxdel <n>`     | [*deletinn*](#deletinn1)                             | DELETION_OF_NT                        | > 27    | <a name="options-alerts-nmaxdel"></a> set maximum allowed nucleotide deletion length in CDS nt  alignment without alert to `<n>` |
-| `--xlonescore <n>`  | [*indfantp*](#indfantp1)                             | INDEFINITE_ANNOTATION                 | >= 80   | <a name="options-alerts-xlonescore"></a> set minimum blastx *raw* score for a lone blastx hit not supported by CM analysis for alert to `<n>` | 
-| `--hlonescore <n>`  | [*indfantp*](#indfantp1)                             | INDEFINITE_ANNOTATION                 | >= 10   | <a name="options-alerts-hlonescore"></a>  set minimum hmmer bit score for a lone hmmsearch hit not supported by CM analysis for alert to `<n>` | 
-
-### `v-annotate.pl` options for controlling cmalign alignment stage <a name="options-align"></a>
-
-Several options exist for controlling the command-line options that will be passed
-to Infernal's `cmalign` program in the alignment stage. For more information on these options and how 
-they control `cmalign`, see the Infernal 
-User's Guide manual page for `cmalign` (section 8 of http://eddylab.org/infernal/Userguide.pdf)
-
-| .........option......... | explanation |
-|---------------------|--------------------|
-| `--mxsize <n>`      | set maximum allowed cmalign DP matrix size to `<n>` Mb before triggering an unexpdivg alert, default `<n>` is `16000` | 
-| `--tau <x>`         | set the initial tau (probability loss) value to `<x>` (sets the `cmalign --tau` option), default `<x>` is `0.001` | 
-| `--nofixedtau`      | do not fix the tau value, allow it to increase if necessary (removes the `cmalign --fixedtau` option), default is to fix tau with `cmalign --fixedtau` |
-| `--nosub`           | use alternative alignment strategy for truncated sequences (removes the `cmalign --sub --notrunc` options), default is use sub-CM alignment strategy with `cmalign --sub --notrunc` |
-| `--noglocal`        | run in local mode instead of glocal mode (removes the `cmalign -g` option), default is to use glocal mode with `cmalign -g` |
-| `--cmindi`          | force cmalign to align one sequence at a time, mainly useful for debugging |
-| `--noflank`         | do not use flank* options to improve alignments at 5' and 3' ends |
-| `--flanktoins <x>`  | set CM transition probabilities to `ROOT_IL` and `ROOT_IR` that insert before first and after final reference position to `<x>`, default `<x>` is 0.1 |
-| `--flankselfins <x>`| set CM self-transition probabilities in `ROOT_IL` and `ROOT_IR` that insert before first and after final reference position to `<x>`, default `<x>` is 0.8 |
-
----
-
-### `v-annotate.pl` options for controlling glsearch alignment stage as alternative to cmalign
-
-The `glsearch` program from the [FASTA package](#https://fasta.bioch.virginia.edu/fasta_www2/fasta_list2.shtml)
-can be used as an alternative to the `cmalign` program.
-For more information on these options and how they control `glsearch`, see the FASTA documentation
-(https://fasta.bioch.virginia.edu/wrp_fasta/fasta_guide.pdf).
-
-| .........option......... | explanation |
-|----------------------|--------------------|
-| `--glsearch`         | align with glsearch instead of cmalign |
-| `--gls_match <n>`    | set glsearch match score to `<n> > 0` (-r option in glsearch), default is `5' |
-| `--gls_mismatch <n>` | set glsearch mismatch score to `<n> < 0` (-r option in glsearch), default is `-3` |
-| `--gls_gapopen <n>`  | set glsearch gap open score to `<n> < 0` (-f option in glsearch), default is `-17` |
-| `--gls_gapextend <n>`| set glsearch gap extend score to `<n> < 0` (-g option in glsearch), default is `-4` |
-
-### `v-annotate.pl` options for controlling blastx protein validation stage<a name="options-blastx"></a>
-
-Below is a list of options for controlling the blastx protein
-validaation stage. Several of these control command-line options that
-will be passed to `blastx`. For more information on these options and
-how they control `blastx`, see the NCBI BLAST documentation
-(tables C1 and C4 of https://www.ncbi.nlm.nih.gov/books/NBK279684/).
-
-| .........option......... | explanation |
-|---------------------|--------------------|
-| `--xmatrix <s>`     | use the substitution matrix `<s>` (sets the `blastx -matrix <s>` option), default is to use the default `blastx` matrix | 
-| `--xdrop <n>`       | set the xdrop options to `<n>` (sets the `blastx` `-xdrop_ungap <n>`, `-xdrop_gap <n>` and `-xdrop_gap_final <n>` with the same `<n>`), default is to use default `blastx` values |
-| `--xnumali <n>`     | specify that the top `<n>` alignments are output by `blastx` (sets the `blastx -num_alignments <n>` option), default `<n>` is 20 | 
-| `--xnolongest`      | do not consider the longest `blastx` alignment of those returned (controlled by `--xnumali <n>`), default is to consider both the longest or the highest scoring alignment, and use the one that results in the fewest alerts | 
-| `--xnocomp`         | do not use composition-based statistics for `blastx` |
-| `--xwordsize <n>`   | set the `blastx` word size value to `<n>` (`<n>` must be in the range `[2..7]`) |
-
-### `v-annotate.pl` options for using hmmer instead of blastx for protein validation <a name="options-hmmer"></a>
-
-Optionally, HMMER's hmmsearch program can be used instead of blastx for the protein validation stage.
-**CAUTION:** This feature is relatively new and untested.
-Several of these control command-line options that
-will be passed to `blastx`. For more information on HMMER, see
-the HMMER user's guide (http://eddylab.org/software/hmmer/Userguide.pdf).
-
-| ......option......  | explanation |
-|---------------------|--------------------|
-| `--pv_hmmer`           | use hmmer instead of blastx for protein validation |
-| `--h_max`           | use the `--max` option with hmmsearch |
-| `--h_minbit <x>`    | set the minimum hmmsearch bit score threshold to `<x>`, the default `<x>` is `-10`.
-
-### <a name="options-seed"></a>`v-annotate.pl` options related to blastn-derived seeded alignment acceleration
-
-The `-s` option turns on an acceleration heuristic based on a
-first-pass blastn alignment of each input sequence.  With `-s`, blastn
-is used instead of cmscan for sequence classification, and the largest
-ungapped alignment region, called the 'seed', is extracted from the
-top hit blastn hit, and fixed for the alignment stage, such that only
-the sequence before and after the fixed seed is aligned with
-cmalign. This option was originally developed for SARS-CoV-2, for
-which it offers significant acceleration for many sequences which are
-highly similar to the SARS-CoV-2 RefSeq model.  Seeds can also be
-derived by the very fast minimap2 program instead of blast using the
-`--minimap2` option (see more related options [here](#options-mm2) The
-minimap2-derived seeds tend to be longer than blastn-seeds, at least
-for monkeypox virus (mpxv) sequences for which `--minimap2` often
-results in significant acceleration.
-
-When `-s` option is used, an additional output file with suffix `.sda`
-is created, with format described [here](formats.md#sda).
-
-| .........option.........  | explanation |
-|---------------------|--------------------|
-| `-s`                | turn on the seed acceleration heuristic: use the max length ungapped region from blastn to seed the alignment |
-| `--s_blastnws <n>`  | for `-s`, set the blastn `-word_size` parameter to `<n>`, the default value for `<n>` is `7` |
-| `--s_blastnrw <n>`  | for `-s`, set the blastn `-reward` parameter to `<n>`, the default value for `<n>` is `1` |
-| `--s_blastnpn <n>`  | for `-s`, set the blastn `-penalty` parameter to `<n>`, the default value for `<n>` is `-2` |
-| `--s_blastngo <n>`  | for `-s`, set the blastn `-gapopen` parameter to `<n>`, the default value for `<n>` is `2` |
-| `--s_blastnge <n>`  | for `-s`, set the blastn `-gapextend` parameter to `<n>`, the default value for `<n>` is `1` |
-| `--s_blastndf`      | for `-s`, do not use -gapopen/-gapextend options with blastn, use default values for gap penalties |
-| `--s_blastnsc <x>`  | for `-s`, set the blastn minimum HSP score to consider to `<x>`, the default value for `<x>` is `50.0` |
-| `--s_blastntk`      | for `-s`, set blastn option `-task blastn` | 
-| `--s_blastnxd <n>`  | for `-s`, set the blastn `-xdrop_gap_final` parameter to `<n>`, the default value for `<n>` is `110` |
-| `--s_minsgmlen <n>` | for `-s`, set minimum length of ungapped region in HSP seed to `<n>`, the default value for `<n>` is `10` |
-| `--s_allsgm`        | for `-s`, keep full HSP as seed, do not enforce a minimum segment length |
-| `--s_ungapsgm`      | for `-s`, only keep max length ungapped segment of HSP, this was default behavior for vadr v1.1 to v1.3 |
-| `--s_startstop`     | for `-s`, allow seed to include gaps in start/stop codons |
-| `--s_overhang <n>`  | for `-s`, set the length, in nt, of overlap between the 5' and 3' regions that are aligned with cmalign and the seed region to `<n>`, the default value for `<n>` is `100` |
-
-### <a name="options-mm2"></a> `v-annotate.pl` options for deriving seeds from minimap2 as an alternative to blastn
-
-| .........option.........  | explanation |
-|---------------------|--------------------|
-| `--minimap2`  | use minimap2 insead of blastn to derive seeds, also requires `-s` and `--glsearch` |
-| `--mm2_asm5`  | use the option `-x asm5` with minimap2, instead of `-x asm20` which is used by default  |  
-| `--mm2_asm10` | use the option `-x asm10` with minimap2, instead of `-x asm20` which is used by default | 
-| `--mm2_k <n>` | use the option `-k <n>` with minimap2 to set the minimizer k-mer length to `<n>`, instead of using `-x asm20`, which is used by default and sets the k-mer length to 19 | 
-| `--mm2_w <n>` | use the option `-w <n>` with minimap2 to set the minimizer window size to `<n>`, instead of using `-x asm20`, which is used by default and sets the window size to 10 | 
-
-### <a name="options-replace"></a> `v-annotate.pl` options related to replacing Ns with expected nucleotides
-
-The `-r` option adds a pre-processing step to `v-annotate.pl` in which
-stretches of Ns are identified in each sequence and replaced with the
-expected nucleotides at the corresponding positions, when possible.
-This can sidestep problems with annotation that the Ns would normally
-cause.  However, this option should be used with caution because it is
-based on the assumption that the missing regions match exactly to the
-expected nucleotide sequence that correspond to those missing regions.
-
-Regions of Ns are identified using blastn and examining regions
-between hits for content of Ns. Ns in regions that satisfy the following three criteria
-are then replaced with the expected nucleotide at each corresponding position:
-
-* missing sequence region must be at least 5 nt
-  (controllable with `--r_minlen` option)
-
-* length of missing sequence region must equal length of
-   missing model region
-
-* missing sequence region must be `>= 0.25` fraction Ns if it includes
-  the 5' end or 3' end of the sequence, or `>= 0.50` fraction Ns if it
-  does not (controllable with `--r_minfract5`, `--r_minfract3` and
-  `--r_minfracti` options).
-
-Additionally, as of v1.4, regions for which the length of the missing
-sequence region and missing model region are not identical are also
-potentially replaced if the following criteria are met:
-
-* length of missing model region is `10` nt or less *longer* than the
-  length of missing sequence region (controllable with
-  `--r_diffmaxdel` option) OR length of missing model region is `10`
-  nt or less *shorter* than the length of missing sequence region
-  (controllable with `--r_diffmaxins` option)
-
-* at least `1` of the nt in the missing sequence region is *not* an N 
-  (controllable with `--r_diffminnonn` option)
-
-* fraction of non-N nt in sequence region that match expected nt after
-  "aligning" sequence region by flushing left or right with respect to
-  differently length model region is at least `0.75` (controllable
-  with `--r_diffminfract` option)
-
-* `--r_diffno` option is not used
-
-When `-r` is used, an additional output file with suffix `.rpn` is created,
-with format described [here](formats.md#rpn).
-
-| ...........option...........  | explanation |
-|---------------------|--------------------|
-| `-r`                | turn on the replace-N strategy: replace stretches of Ns with expected nucleotides, where possible |
-| `--r_minlen <n>`    | for `-r`, set minimum length subsequence to possibly replace Ns in to `<n>`, the default value for `<n>` is `5` |
-| `--r_minfract5 <f>` | for `-r`, set the minimum fraction of nucleotides in a subsequence at the 5' end to trigger N replacement to `<x>`, the default value for `<x>` is `0.25` |
-| `--r_minfract3 <f>` | for `-r`, set the minimum fraction of nucleotides in a subsequence at the 3' end to trigger N replacement to `<x>`, the default value for `<x>` is `0.25` |
-| `--r_minfracti <f>` | for `-r`, set the minimum fraction of nucleotides in an internal subsequence to trigger N replacement to `<x>`, the default value for `<x>` is `0.5` |
-| `--r_diffno`        | do not try replacement of N rich regions if sequence and model regions are of different lengths, the default is to try if criteria defined by other `--r_diff*` options are met | 
-| `--r_diffmaxdel`    | maxium allowed length difference b/t sequence and model regions (when model length > sequence length) to try replacement is `<n>` nt, the default value for `<n>` is `10` |
-| `--r_diffmaxins`    | maxium allowed length difference b/t sequence and model regions (when sequence length > model length) to try replacement is `<n>` nt, the default value for `<n>` is `10` |
-| `--r_diffminnonn`   | minimum number of non-N nts in replacement region when model and sequence region are different lengths to try replacement is `<n>`, the default value for `<n>` is `1` |
-| `--r_diffminfract`  | minimum allowed fraction of non-N nts that must match expected nt from reference model in replacement region when model and sequence region are different lengths is `<f>`, the default value for `<f>` is `0.75` |
-| `--r_fetchr`        | for `-r`, fetch features to fasta files from sequences *with Ns replaced*, instead of original input sequences *without Ns replaced* |
-| `--r_cdsmpr`        | for `-r`, identify CDS- and mat_peptide-specific alerts using subsequences fetched from sequences *with Ns replaced*, instead of original input sequences *without Ns replaced* |
-| `--r_pvorig`        | for `-r`, use original input sequences *without Ns replaced* in protein validation stage, instead of sequences *with Ns replaced* |
-| `--r_prof`          | for `-r`, use slower profile methods, not blastn, to identify Ns to replaced |
-| `--r_list`          | for `-r`, only use models listed in file `<s>` for N replacement stage |
-| `--r_only <s>`      | for `-r`, only use model named `<s>` for N replacement stage |
-| `--r_blastnws <n>`  | for `-r`, set the blastn `-word_size` parameter to `<n>`, the default value for `<n>` is `7` |
-| `--r_blastnrw <n>`  | for `-r`, set the blastn `-reward` parameter to `<n>`, the default value for `<n>` is `1` |
-| `--r_blastnpn <n>`  | for `-r`, set the blastn `-penalty` parameter to `<n>`, the default value for `<n>` is `-2` |
-| `--r_blastngo <n>`  | for `-r`, set the blastn `-gapopen` parameter to `<n>`, the default value for `<n>` is `2` |
-| `--r_blastnge <n>`  | for `-r`, set the blastn `-gapextend` parameter to `<n>`, the default value for `<n>` is `1` |
-| `--r_blastndf`      | for `-r`, do not use -gapopen/-gapextend options with blastn, use default values for gap penalties |
-| `--r_blastnsc <x>`  | for `-r`, set the blastn minimum HSP score to consider to `<x>`, the default value for `<x>` is `50.0` |
-| `--r_blastntk`      | for `-r`, set blastn option `-task blastn` | 
-| `--r_blastnxd <n>`  | for `-r`, set the blastn `-xdrop_gap_final` parameter to `<n>`, the default value for `<n>` is `110` |
-| `--r_lowsimok`      | for `-r`, do not report lowsim{5,3,i}s alerts for low similarity regions within N-rich regions that were identified during N-replacement (even for N-rich regions that were not replaced) |
-| `--r_lowsimmf`      | for `-r`, with `--r_lowsimok` lowsim{5,3,i}s must be within an N-rich region of at least `<x>` fraction Ns to not be reported, default value for `<x>` is `0.75` |
-| `--r_lowsimxl`      | for `-r`, with `--r_lowsimok` lowsim{5,3,i}s must be within an N-rich region with length of at most `<n>` nt to not be reported, default value for `<x>` is `5000` |
-| `--r_lowsimxd`      | for `-r`, with `--r_lowsimok` lowsim{5,3,i}s must be within an N-rich region that differs from expected length by at most `<n>` nt to not be reported, default value for `<x>` is `200` |
-
-### `v-annotate.pl` options related to splitting input sequence file into chunks and processing each chunk separately and potentially in parallel <a name="options-split"></a>
-
-The `--split` option specifies that `v-annotate.pl` should split up the input file into chunks and 
-processing each chunk separately and then combining results at the end after all chunks have been processed.
-This limits total memory usage for large input sequence files as
-explained more [here](#memory).
-
-| ........option........ | explanation |
-|---------------------|--------------------|
-| `--split`      | split input fasta sequence file into chunks of `<n>` Kb where `<n>` is from `--nkb <n>` (300 Kb, by default) and run each chunk separately |
-| `--cpu <n>`    | with --split or --glsearch, parallelize across `<n>` CPU threads/workers (requires --split oor --glsearch) |
-| `--sidx <n>`   | start sequence indexing at `<n>` for output files, not intended to be set by user except when debugging | 
-
-### `v-annotate.pl` options related to parallelization on a compute farm/cluster<a name="options-parallel"></a>
-
-| ........option........ | explanation |
-|---------------------|--------------------|
-| `-p`           | run in parallel mode so that classification, and each per-model coverage determination and alignment step is split into multiple jobs and run in parallel on a cluster | 
-| `-q <s>`       | read cluster information file from file `<s>` instead of from the default file `$VADRSCRIPTSDIR/vadr.qsubinfo` |
-| `--errcheck`   | consider any output to STDERR from a parallel job as an indication the job has failed, this will cause `v-annotate.pl` to exit, default is to ignore output to STDERR | 
-
-### `v-annotate.pl` options related to both splitting input and parallelization on compute farm<a name="options-split-and-parallel"></a>
-
-| ........option........ | explanation |
-|---------------------|--------------------|
-| `--wait <n>`   | set the total number of minutes to wait for all jobs to finish at each stage to `<n>`, if any job is not finished this many minutes after being *submitted* (as indicated by the existence of an expected output file) then `v-annotate.pl` will exit in error, default `<n>` is `500` | 
-| `--maxnjobs <n>` | set the maximum number of jobs at *each stage* to `<n>`, default `<n>` is 2500 | 
-
-### `v-annotate.pl` options for skipping stages<a name="options-skip"></a>
-
-| ......option...... | explanation | 
-|--------|-------------| 
-| `--pv_skip`    | do not perform protein validation stage for CDS |
-| `--align_skip` | skip the `cmalign` stage, use results from previous run, this is mostly useful for debugging purposes | 
-| `--val_only`   | validate CM and other input files and exit |
-
-### `v-annotate.pl` options for optional output files<a name="options-output"></a>
-
-| .......option....... | explanation | 
-|--------|-------------| 
-| `--out_stk`        | create additional per-model output [stockholm](formats.md#stockholmformat) alignments with `.stk` suffix |
-| `--out_afa`        | create additional per-model output aligned fasta alignments with `.afa` suffix |
-| `--out_rpstk`      | with `-r`, create additional per-model output [stockholm](formats.md#stockholmformat) alignments with sequences *with Ns replaced* with `.rpstk` suffix |
-| `--out_rpafa`      | create additional per-model output aligned fasta alignments with sequences *with Ns replaced* with `.rpafa` suffix |
-| `--out_fsstk`      | output frameshift [stockholm](formats.md#stockholmformat) alignment files with `.frameshift.stk` suffix |
-| `--out_allfasta`   | output fasta files of predicted features |
-| `--out_nofasta`    | minimize total size of output; do not output fasta files of all passing and all failing sequences |
-| `--out_noftrfasta` | with --keep, do not output fasta file for each feature | 
-| `--out_debug`      | create additional output files with information on various data structures |
-
-### Other `v-annotate.pl` expert options<a name="options-expert"></a>
-
-| .........option......... | explanation | 
-|--------|-------------| 
-| `--execname <s>` | in banner and usage output, replace `v-annotate.pl` with `<s>` |
-| `--alicheck`     | for debugging purposes, check aligned sequence versus input sequence for identity |
-| `--noseqnamemax` | do not enforce the GenBank maximum length of 50 characters for sequence names |
-| `--minbit <x>`   | set minimum cmsearch/cmscan bit score threshold to `<x>`, the default value for `<x>` is `-10` |
-| `--origfa`       | do not copy the input fasta file into output directory prior to analysis, use the original |
-| `--msub <s>`     | specify that file `<s>` lists models to substitute, each line should contain two space-delimited tokens, model listed in token 2 will substitute as best-matching model for all sequences classified as the model listed in token 1 |
-| `--xsub <s>`     | specify that file `<s>` lists blastx dbs to substitute, each line should contain two space-delimited tokens, blastx db for model listed in token 2 will substitute as blastx db for all sequences classified as the model listed in token 1 |
-| `--nodcr`        | never doctor alignments to shift gaps to correct start/stop codon annotation |
-| `--forcedcrins`  | force insert type alignment doctoring, requires `--cmindi`, mainly useful for debugging/testing |
-| `--xnoid`        | ignore blastx hits that are full length and 100% identical, mainly useful for testing |
-| `--intlen <n>`   | define intron as any gap >= `<n>` nucleotides between segments in a CDS, only relevant for identifying canonical splice sites, the default value for `<n>` is `40` |
-
-## Information on `v-annotate.pl` alerts <a name="alerts"></a>
-
-To see a table with information on alerts, use the `--alt_list` option, like this:
-
-```
-v-annotate.pl --alt_list 
-```
-
-The table below contains the same information as in the `--alt_list` output,
-with sequences organized according to whether they are fatal or not. 
-[*Always fatal*](#alertlist-always) alert codes are always fatal and cannot be changed using the 
-`--alt_pass` options. All other alert codes can be changed from *fatal* to *non-fatal*
-by using the `--alt_pass` option, or from *non-fatal* to *fatal* using the `--alt_fail` option.
-An example is included [below](#alerttoggle).
-
-In the table below, the **type** column reports if each alert pertains to an entire
-`sequence` or a specific annotated `feature` within a sequence. The
-**causes `misc_feature`, not failure (if in modelinfo file)** 
-shows which alerts are not fatal for non-essential
-features as described more [below](#mnf). The **exception key** and **exception value type** indicate the key string
-and type for defining exceptions in the model info file as described more [below](#exceptions). These columns will be `-` for any alert for which
-exception ranges are not allowed.
-
-#### Description of *always fatal* alert codes <a name="always1"></a>
-| alert code | type  | causes `misc_feature`, not failure (if in modelinfo file) |short description/error name | .........long_description......... | exception key (in modelinfo file) | exception value type |
-|------------|-------|-----------------------------------------------------------|-----------------------------|------------------|-----------------------------------|----------------------|
-| [*noannotn*](#noannotn2)  | sequence | never | NO_ANNOTATION                   | <a name="noannotn1"></a> no significant similarity detected  | - | - |
-| [*revcompl*](#revcompl2)  | sequence | never | REVCOMPLEM                      | <a name="revcompl1"></a> sequence appears to be reverse complemented  | - | - |
-| [*unexdivg*](#unexdivg2)  | sequence | never | UNEXPECTED_DIVERGENCE           | <a name="unexdivg1"></a> sequence is too divergent to confidently assign nucleotide-based annotation  | - | - |
-| [*noftrann*](#noftrann2)  | sequence | never | NO_FEATURES_ANNOTATED           | <a name="noftrann1"></a> sequence similarity to homology model does not overlap with any features | - | - |
-| [*noftrant*](#noftrant2)  | sequence | never | NO_FEATURES_ANNOTATED           | <a name="noftrant1"></a> all annotated features are too short to be output to feature table | - | - |
-| [*ftskipfl*](#ftskipfl2)  | sequence | never | UNREPORTED_FEATURE_PROBLEM      | <a name="ftskipfl1"></a> only fatal alerts are for feature(s) not output to feature table | - | - |
-
-#### Description of alerts that are *fatal* by default <a name="fatal1"></a>
-| alert code | type  | causes `misc_feature`, not failure (if in modelinfo file) |short description/error name | .........long_description......... | exception key (in modelinfo file) | exception value type |
-|------------|-------|-----------------------------------------------------------|-----------------------------|------------------|-----------------------------------|----------------------|
-| [*incsbgrp*](#incsbgrp2)  | sequence | never | INCORRECT_SPECIFIED_SUBGROUP    | <a name="incsbgrp1"></a> score difference too large between best overall model and best specified subgroup model |  - | - |
-| [*incgroup*](#incgroup2)  | sequence | never | INCORRECT_SPECIFIED_GROUP       | <a name="incgroup1"></a> score difference too large between best overall model and best specified group model | - | - |
-| [*lowcovrg*](#lowcovrg2)  | sequence | never | LOW_COVERAGE                    | <a name="lowcovrg1"></a> low sequence fraction with significant similarity to homology model | - | - |
-| [*dupregin*](#dupregin2)  | sequence | never | DUPLICATE_REGIONS               | <a name="dupregin1"></a> similarity to a model region occurs more than once | `dupregin_exc` | coords-only |
-| [*discontn*](#discontn2)  | sequence | never | DISCONTINUOUS_SIMILARITY        | <a name="discontn1"></a> not all hits are in the same order in the sequence and the homology model | - | - |
-| [*indfstrn*](#indfstrn2)  | sequence | never | INDEFINITE_STRAND               | <a name="indfstrn1"></a> significant similarity detected on both strands | `indfstr_exc` | coords-only |
-| [*lowsim5s*](#lowsim5s2)  | sequence | never | LOW_SIMILARITY_START            | <a name="lowsim5s1"></a> significant similarity not detected at 5' end of the sequence | `lowsim_exc` | coords-only |
-| [*lowsim3s*](#lowsim3s2)  | sequence | never | LOW_SIMILARITY_END              | <a name="lowsim3s1"></a> significant similarity not detected at 3' end of the sequence | `lowsim_exc` | coords-only |
-| [*lowsimis*](#lowsimis2)  | sequence | never | LOW_SIMILARITY                  | <a name="lowsimis1"></a> internal region without significant similarity | `lowsim_exc` | coords-only |
-| [*nmiscftr*](#nmiscftr2)  | sequence | never | TOO_MANY_MISC_FEATURES          | <a name="nmiscftr1"></a> too many features reported as misc_features | - | - |
-| [*deletins*](#deletins2)  | sequence | never | DELETION_OF_FEATURE             | <a name="deletins1"></a> internal deletion of a complete feature | - | - |
-| [*mutstart*](#mutstart2)  | feature  | yes   | MUTATION_AT_START               | <a name="mutstart1"></a> expected start codon could not be identified |  - | - |
-| [*mutendcd*](#mutendcd2)  | feature  | yes   | MUTATION_AT_END                 | <a name="mutendcd1"></a> expected stop codon could not be identified, predicted CDS stop by homology is invalid |  - | - |
-| [*mutendns*](#mutendns2)  | feature  | yes   | MUTATION_AT_END                 | <a name="mutendns1"></a> expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon |  - | - |
-| [*mutendex*](#mutendex2)  | feature  | yes   | MUTATION_AT_END                 | <a name="mutendex1"></a> expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position | - | - |
-| [*unexleng*](#unexleng2)  | feature  | yes   | UNEXPECTED_LENGTH               | <a name="unexleng1"></a> length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 |  - | - |
-| [*cdsstopn*](#cdsstopn2)  | feature  | yes   | CDS_HAS_STOP_CODON              | <a name="cdsstopn1"></a> in-frame stop codon exists 5' of stop position predicted by homology to reference |  - | - |
-| [*cdsstopp*](#cdsstopp2)  | feature  | yes   | CDS_HAS_STOP_CODON              | <a name="cdsstopp1"></a> stop codon in protein-based alignment | - | - |
-| [*fsthicft*](#fsthicft2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_HIGH_CONF   | <a name="fsthicft1"></a> high confidence possible frameshift in CDS (frame not restored before end) (not reported if `--glsearch`| `fst_exc` | coords-only |
-| [*fsthicfi*](#fsthicfi2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_HIGH_CONF   | <a name="fsthicfi1"></a> high confidence possible frameshift in CDS (frame restored before end) (not reported if `--glsearch`)| `fst_exc` | coords-only |
-| [*fstukcf3*](#fstukcft2)  | feature  | yes   | POSSIBLE_FRAMESHIFT             | <a name="fstukcft1"></a> possible frameshift in CDS (frame not restored before end) (only reported if `--glsearch`) | `fst_exc` | coords-only |
-| [*fstukcfi*](#fstukcfi2)  | feature  | yes   | POSSIBLE_FRAMESHIFT             | <a name="fstukcfi1"></a> possible frameshift in CDS (frame restored before end) (only reported if `--glsearch`) | `fst_exc` | coords-only |
-| [*mutspst5*](#mutspst52)  | feature  | yes   | MUTATION_AT_SPLICE_SITE         | <a name="mutspst51"></a> expected splice site at 5' end of intron (GT) could not be identified (only reported for CDS with `canon_splice_sites` set to 1 in `.minfo` file) | - | - |
-| [*mutspst3*](#mutspst32)  | feature  | yes   | MUTATION_AT_SPLICE_SITE         | <a name="mutspst31"></a> expected splice site at 3' end of intron (AG) could not be identified (only reported for CDS with `canon_splice_sites` set to 1 in `.minfo` file) | - | - |
-| [*peptrans*](#peptrans2)  | feature  | yes   | PEPTIDE_TRANSLATION_PROBLEM     | <a name="peptrans1"></a> mat_peptide may not be translated because its parent CDS has a problem | - | - |
-| [*pepadjcy*](#pepadjcy2)  | feature  | yes   | PEPTIDE_ADJACENCY_PROBLEM       | <a name="pepadjcy1"></a> predictions of two mat_peptides expected to be adjacent are not adjacent | - | - |
-| [*indfantp*](#indfantp2)  | feature  | no    | INDEFINITE_ANNOTATION           | <a name="indfantp1"></a> protein-based search identifies CDS not identified in nucleotide-based search | - | - |
-| [*indfantn*](#indfantn2)  | feature  | no    | INDEFINITE_ANNOTATION           | <a name="indfantn1"></a> nucleotide-based search identifies CDS not identified in protein-based search |  - | - |
-| [*indf5gap*](#indf5gap2)  | feature  | yes   | INDEFINITE_ANNOTATION_START     | <a name="indf5gap1"></a> alignment to homology model is a gap at 5' boundary | - | - |
-| [*indf5lcn*](#indf5lcn2)  | feature  | yes   | INDEFINITE_ANNOTATION_START     | <a name="indf5lcn1"></a> alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS | - | - |
-| [*indf5plg*](#indf5plg2)  | feature  | yes   | INDEFINITE_ANNOTATION_START     | <a name="indf5plg1"></a> protein-based alignment extends past nucleotide-based alignment at 5' end |  - | - |
-| [*indf5pst*](#indf5pst2)  | feature  | yes   | INDEFINITE_ANNOTATION_START     | <a name="indf5pst1"></a> protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint |  - | - |
-| [*indf3gap*](#indf3gap2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3gap1"></a> alignment to homology model is a gap at 3' boundary |  - | - |
-| [*indf3lcn*](#indf3lcn2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3lcn1"></a> alignment to homology model has low confidence at 3' boundary for feature that does not match a CDS |  - | - |
-| [*indf3plg*](#indf3plg2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3plg1"></a> protein-based alignment extends past nucleotide-based alignment at 3' end |  - | - |
-| [*indf3pst*](#indf3pst2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3pst1"></a> protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint |  - | - |
-| [*indfstrp*](#indfstrp2)  | feature  | no    | INDEFINITE_STRAND               | <a name="indfstrp1"></a> strand mismatch between protein-based and nucleotide-based predictions | `indfstr_exc` | coords-only |
-| [*insertnp*](#insertnp2)  | feature  | no    | INSERTION_OF_NT                 | <a name="insertnp1"></a> too large of an insertion in protein-based alignment | `insertn_exc` | coords-value |
-| [*deletinp*](#deletinp2)  | feature  | yes   | DELETION_OF_NT                  | <a name="deletinp1"></a> too large of a deletion in protein-based alignment |   `deletin_exc` | coords-value |
-| [*deletinf*](#deletinf2)  | feature  | no    | DELETION_OF_FEATURE_SECTION     | <a name="deletinf1"></a> internal deletion of a complete section in a multi-section feature with other section(s) annotated | - | - |
-| [*lowsim5n*](#lowsim5n2)  | feature  | yes   | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5n1"></a> region overlapping annotated feature that does not match a CDS at 5' end of sequence lacks significant similarity | `lowsim_exc` | coords-only |
-| [*lowsim5l*](#lowsim5l2)  | feature  | no    | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5l1"></a> long region overlapping annotated feature that does not match a CDS at 5' end of sequence lacks significant similarity | `lowsim_exc` | coords-only |
-| [*lowsim3n*](#lowsim3n2)  | feature  | yes   | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3n1"></a> region overlapping annotated feature that does not match a CDS at 3' end of sequence lacks significant similarity | `lowsim_exc` | coords-only |
-| [*lowsim3l*](#lowsim3l2)  | feature  | no    | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3l1"></a> long region overlapping annotated feature that does not match a CDS at 3' end of sequence lacks significant similarity | `lowsim_exc` | coords-only |
-| [*lowsimin*](#lowsimin2)  | feature  | yes   | LOW_FEATURE_SIMILARITY          | <a name="lowsimin1"></a> region overlapping annotated feature that does not match a CDS lacks significant similarity  | `lowsim_exc` | coords-only |
-| [*lowsimil*](#lowsimil2)  | feature  | no    | LOW_FEATURE_SIMILARITY          | <a name="lowsimil1"></a> long region overlapping annotated feature that does not match a CDS lacks significant similarity  | `lowsim_exc` | coords-only |
-
-#### Description of alerts that are *non-fatal* by default <a name="nonfatal1"></a>
-| alert code | type  | causes `misc_feature`, not failure (if in modelinfo file) |short description/error name | .........long_description......... | exception key (in modelinfo file) | exception value type |
-|------------|-------|-----------------------------------------------------------|-----------------------------|------------------|-----------------------------------|----------------------|
-| [*qstsbgrp*](#qstsbgrp2)  | sequence | never | QUESTIONABLE_SPECIFIED_SUBGROUP | <a name="qstsbgrp1"></a> best overall model is not from specified subgroup  | - | - |
-| [*qstgroup*](#qstgroup2)  | sequence | never | QUESTIONABLE_SPECIFIED_GROUP    | <a name="qstgroup1"></a> best overall model is not from specified group  | - | - |
-| [*ambgnt5s*](#ambgnt5s2)  | sequence | never | AMBIGUITY_AT_START              | <a name="ambgnt5s1"></a> first nucleotide of the sequence is an ambiguous nucleotide | - | - |
-| [*ambgnt3s*](#ambgnt3s2)  | sequence | never | AMBIGUITY_AT_END                | <a name="ambgnt3s2"></a> final nucleotide of the sequence is an ambiguous nucleotide | - | - |
-| [*indfclas*](#indfclas2)  | sequence | never | INDEFINITE_CLASSIFICATION       | <a name="indfclas1"></a> low score difference between best overall model and second best model (not in best model's subgroup)  | - | - |
-| [*lowscore*](#lowscore2)  | sequence | never | LOW_SCORE                       | <a name="lowscore1"></a> score to homology model below low threshold | - | - |
-| [*biasdseq*](#biasdseq2)  | sequence | never | BIASED_SEQUENCE                 | <a name="biasdseq1"></a> high fraction of score attributed to biased sequence composition  | - | - |
-| [*extrant5*](#extrant52)  | sequence | never | EXTRA_SEQUENCE_START            | <a name="extrant51"></a> extra sequence detected 5' of expected sequence start | - | - |
-| [*extrant3*](#extrant32)  | sequence | never | EXTRA_SEQUENCE_END              | <a name="extrant31"></a> extra sequence detected 3' of expected sequence end | - | - |
-| [*unjoinbl*](#unjoinbl2)  | sequence | never | UNJOINABLE_SUBSEQ_ALIGNMENTS    | <a name="unjoinbl1"></a> inconsistent alignment of overlapping region between ungapped seed and flanking region | - | - |
-| [*deletina*](#deletina2)  | sequence | never | DELETION_OF_FEATURE             | <a name="deletina1"></a> allowed internal deletion of a complete feature (feature with `is_deletable` flag set to `1` in `.minfo` file) | - | - |
-| [*ambgntrp*](#ambgntrp2)  | sequence | never | N_RICH_REGION_NOT_REPLACED      | <a name="ambgntrp1"></a> N-rich region of unexpected length not replaced during N replacement region (only possibly reported if `-r`) | - | - |
-| [*fstlocft*](#fstlocft2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_LOW_CONF    | <a name="fstlocft1"></a> low confidence possible frameshift in CDS (frame not restored before end) (not reported if `--glsearch`)| `fst_exc` | coords-only |
-| [*fstlocfi*](#fstlocfi2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_LOW_CONF    | <a name="fstlocfi1"></a> low confidence possible frameshift in CDS (frame restored before end) (not reported if `--glsearch`)| `fst_exc` | coords-only |
-| [*indf5lcc*](#indf5lcc2)  | feature  | yes   | INDEFINITE_ANNOTATION_START     | <a name="indf5lcc1"></a> alignment to homology model has low confidence at 5' boundary for feature that is or matches a CDS | - | - |
-| [*indf3lcc*](#indf3lcc2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3lcc1"></a> alignment to homology model has low confidence at 3' boundary for feature that is or matches a CDS |  - | - |
-| [*insertnn*](#insertnn2)  | feature  | no    | INSERTION_OF_NT                 | <a name="insertnn1"></a> too large of an insertion in nucleotide-based alignment of CDS feature | `insertn_exc` | coords-value |
-| [*deletinn*](#deletinn2)  | feature  | yes   | DELETION_OF_NT                  | <a name="deletinn1"></a> too large of a deletion in nucleotide-based alignment of CDS feature | `deletin_exc` | coords-value |
-| [*lowsim5c*](#lowsim5c2)  | feature  | no    | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5c1"></a> region overlapping annotated feature that is or matches a CDS at 5' end of sequence lacks significant similarity | `lowsim_exc` | coords-only |
-| [*lowsim3c*](#lowsim3c2)  | feature  | no    | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3c1"></a> region overlapping annotated feature that is or matches a CDS at 3' end of sequence lacks significant similarity | `lowsim_exc` | coords-only |
-| [*lowsimic*](#lowsimic2)  | feature  | no    | LOW_FEATURE_SIMILARITY          | <a name="lowsimic1"></a> region overlapping annotated feature that is or matches a CDS lacks significant similarity  |  `lowsim_exc` | coords-only |
-| [*ambgnt5f*](#ambgnt5f2)  | feature  | no    | AMBIGUITY_AT_FEATURE_START      | <a name="ambgnt5f1"></a> first nucleotide of non-CDS feature is an ambiguous nucleotide | - | - |
-| [*ambgnt3f*](#ambgnt3f2)  | feature  | no    | AMBIGUITY_AT_FEATURE_END        | <a name="ambgnt3f1"></a> final nucleotide of non-CDS feature is an ambiguous nucleotide | - | - |
-| [*ambgnt5c*](#ambgnt5c2)  | feature  | no    | AMBIGUITY_AT_CDS_START          | <a name="ambgnt5c1"></a> first nucleotide of CDS is an ambiguous nucleotide |  - | - |
-| [*ambgnt3c*](#ambgnt3c2)  | feature  | no    | AMBIGUITY_AT_CDS_END            | <a name="ambgnt3c1"></a> final nucleotide of CDS is an ambiguous nucleotide |  - | - |
-| [*ambgcd5c*](#ambgcd5c2)  | feature  | no    | AMBIGUITY_IN_START_CODON        | <a name="ambgcd5c1"></a> 5' complete CDS starts with canonical nt but includes ambiguous nt in its start codon | - | - |
-| [*ambgcd3c*](#ambgcd3c2)  | feature  | no    | AMBIGUITY_IN_STOP_CODON         | <a name="ambgcd3c1"></a> 3' complete CDS ends with canonical nt but includes ambiguous nt in its stop codon | - | - |
-
-### Additional information on `v-annotate.pl` alerts <a name="alerts2"></a> 
-
-The table below has additional information on the alerts 
-not contained in the `--alt_list` output.
-The **relevant_options** column lists command-line options that 
-pertain to each alert. The **relevant feature types** column
-shows which feature types each alert can be reported for (this field is "-" for 
-alerts that pertain to a sequence instead of a feature).  The
-**omitted in `.tbl` and `.alt.list` by** column lists other alerts
-that, if present, will cause this alert to be omitted in the `.tbl`
-and `.alt.list` files to reduce redundant information reported to
-user, this is "-" for alerts that are never omitted from those files.
-
-#### More information on *always fatal* alert codes <a name="always2"></a>
-| alert code | short description/error name | relevant options | relevant feature types | omitted in `.tbl` and `.alt.list` by | 
-|------------|------------------------------|------------------|------------------------|--------------------------------------|
-| [*noannotn*](#noannotn1)  | NO_ANNOTATION                | none | - | - <a name="noannotn2"></a> | 
-| [*revcompl*](#revcompl1)  | REVCOMPLEM                   | none | - | - <a name="revcompl2"></a> |  
-| [*unexdivg*](#unexdivg1)  | UNEXPECTED_DIVERGENCE        | none | - | - <a name="unexdivg2"></a> |  
-| [*noftrann*](#noftrann1)  | NO_FEATURES_ANNOTATED        | none | - | - <a name="noftrann2"></a> | 
-| [*noftrant*](#noftrant1)  | NO_FEATURES_ANNOTATED        | none | - | - <a name="noftrant2"></a> | 
-| [*ftskipfl*](#ftskipfl1)  | UNREPORTED_FEATURE_PROBLEM   | none | - | - <a name="ftskipfl2"></a> | 
-
-#### More information on alerts that are *fatal* by default <a name="fatal2"></a>
-| alert code | short description/error name | relevant_options | relevant feature types | omitted in `.tbl` and `.alt.list` by | 
-|------------|------------------------------|------------------|------------------------|--------------------------------------|
-| [*incsbgrp*](#incsbgrp1)  | INCORRECT_SPECIFIED_SUBGROUP    | [`--incspec`](#options-alerts-incspec) | - | - <a name="incsbgrp2"></a> | 
-| [*incgroup*](#incgroup1)  | INCORRECT_SPECIFIED_GROUP       | [`--incspec`](#options-alerts-incspec) | - | - <a name="incgroup2"></a> |
-| [*lowcovrg*](#lowcovrg1)  | LOW_COVERAGE                    | [`--lowcov`](#options-alerts-lowcov) | - | - <a name="lowcovrg2"></a> | 
-| [*dupregin*](#dupregin1)  | DUPLICATE_REGIONS               | [`--dupreg`](#options-alerts-dupreg) | - | - <a name="dupregin2"></a> | 
-| [*discontn*](#discontn1)  | DISCONTINUOUS_SIMILARITY        | none | - | - <a name="discontn2"></a> | 
-| [*indfstrn*](#indfstrn1)  | INDEFINITE_STRAND               | [`--indefstr`](#options-alerts-indefstr) | - | - <a name="indfstrn2"></a> | 
-| [*lowsim5s*](#lowsim5s1)  | LOW_SIMILARITY_START            | [`--lowsim5seq`](#options-alerts-lowsim5seq) | - | - <a name="lowsim5s2"></a> | 
-| [*lowsim3s*](#lowsim3s1)  | LOW_SIMILARITY_END              | [`--lowsim3seq`](#options-alerts-lowsim3seq) | - | - <a name="lowsim3s2"></a> | 
-| [*lowsimis*](#lowsimis1)  | LOW_SIMILARITY                  | [`--lowsimint`](#options-alerts-lowsimint) | - | - <a name="lowsimis2"></a> |
-| [*nmiscftr*](#nmiscftr1)  | TOO_MANY_MISC_FEATURES          | [`--nmiscftrthr`](#options-alerts-nmiscftr) | all | - <a name="nmiscftr2"></a> | 
-| [*deletins*](#deletins1)  | DELETION_OF_FEATURE             | none | all | - <a name="deletins2"></a> | 
-| [*mutstart*](#mutstart1)  | MUTATION_AT_START               | [`--atgonly`](#options-basic-atgonly) | CDS | - <a name="mutstart2"></a> | 
-| [*mutendcd*](#mutendcd1)  | MUTATION_AT_END                 | none | CDS | *cdsstopn*, *mutendex*, *mutendns* <a name="mutendcd2"></a> | 
-| [*mutendns*](#mutendns1)  | MUTATION_AT_END                 | none | CDS | - <a name="mutendns2"></a> | 
-| [*mutendex*](#mutendex1)  | MUTATION_AT_END                 | none | CDS | - <a name="mutendex2"></a> | 
-| [*unexleng*](#unexleng1)  | UNEXPECTED_LENGTH               | none | CDS, mat_peptide | - <a name="unexleng2"></a> | 
-| [*cdsstopn*](#cdsstopn1)  | CDS_HAS_STOP_CODON              | none | CDS | - <a name="2"></a> <a name="cdsstopn2"></a> | 
-| [*cdsstopp*](#cdsstopp1)  | CDS_HAS_STOP_CODON              | none | CDS | - <a name="cdsstopp2"></a> | 
-| [*fsthicft*](#fsthicft1)  | POSSIBLE_FRAMESHIFT_HIGH_CONF   | [`--fsthighthr`, `--fstminntt`](#options-alerts-fstminntt) | CDS | - <a name="fsthicft2"></a> |
-| [*fsthicfi*](#fsthicfi1)  | POSSIBLE_FRAMESHIFT_HIGH_CONF   | [`--fsthighthr`, `--fstminnti`](#options-alerts-fstminnti) | CDS | - <a name="fsthicfi2"></a> |
-| [*fstukcft*](#fstukcft1)  | POSSIBLE_FRAMESHIFT             | [`--glsearch`, `--fstminntt`](#options-alerts-fstminntt)   | CDS | - <a name="fstukcft2"></a> |
-| [*fstukcfi*](#fstukcfi1)  | POSSIBLE_FRAMESHIFT             | [`--glsearch`, `--fstminnti`](#options-alerts-fstminnti)   | CDS | - <a name="fstukcfi2"></a> |
-| [*mutspst5*](#mutspst51)  | MUTATION_AT_SPLICE_SITE         | [`--ignore_canonss`, `--force-canonss`, `--intlen`](#options-ignore) | CDS | - <a name="mutspst52"></a> |
-| [*mutspst3*](#mutspst31)  | MUTATION_AT_SPLICE_SITE         | [`--ignore_canonss`, `--force-canonss`, `--intlen`](#options-ignore) | CDS | - <a name="mutspst32"></a> |
-| [*peptrans*](#peptrans1)  | PEPTIDE_TRANSLATION_PROBLEM     | none | mat_peptide | - <a name="peptrans2"></a> | 
-| [*pepadjcy*](#pepadjcy1)  | PEPTIDE_ADJACENCY_PROBLEM       | none | mat_peptide | - <a name="pepadcy2"></a> | 
-| [*indfantp*](#indfantp1)  | INDEFINITE_ANNOTATION           | [`--xlonescore`](#options-alerts-xlonescore) | CDS | - <a name="indfantp2"></a> | 
-| [*indfantn*](#indfantn1)  | INDEFINITE_ANNOTATION           | none | CDS | - <a name="indfantn2"></a> | 
-| [*indf5gap*](#indf5gap1)  | INDEFINITE_ANNOTATION_START     | none | all | - <a name="indf5gap2"></a> | 
-| [*indf5lcn*](#indf5lcn1)  | INDEFINITE_ANNOTATION_START     | [`--indefann`, `--indefann_mp`](#options-alerts-indefann) | all except CDS and any gene or mat_peptide with identical start coordinate to a CDS | - <a name="indf5lcn2"></a> | 
-| [*indf5plg*](#indf5plg1)  | INDEFINITE_ANNOTATION_START     | none | CDS | - <a name="indf5plg2"></a> | 
-| [*indf5pst*](#indf5pst1)  | INDEFINITE_ANNOTATION_START     | [`--xalntol`](#options-alerts-xalntol) | CDS | - <a name="indf5pst2"></a> | 
-| [*indf3gap*](#indf3gap1)  | INDEFINITE_ANNOTATION_END       | none | all | - <a name="indf3gap2"></a> |  
-| [*indf3lcn*](#indf3lcn1)  | INDEFINITE_ANNOTATION_END       | [`--indefann`, `--indefann_mp`](#options-alerts-indefann) | all except CDS and any gene with identical stop coordinate to CDS | - <a name="indf3lcn2"></a> | 
-| [*indf3plg*](#indf3plg1)  | INDEFINITE_ANNOTATION_END       | none | CDS | - <a name="indf3plg2"></a> | 
-| [*indf3pst*](#indf3pst1)  | INDEFINITE_ANNOTATION_END       | [`--xalntol`](#options-alerts-xalntol) | CDS | - <a name="indf3pst2"></a> | 
-| [*indfstrp*](#indfstrp1)  | INDEFINITE_STRAND               | none | CDS | - <a name="indfstrp2"></a> | 
-| [*insertnp*](#insertnp1)  | INSERTION_OF_NT                 | [`--xmaxins`](#options-alerts-xmaxins) | CDS | - <a name="insertnp2"></a> | 
-| [*insertnn*](#insertnn1)  | INSERTION_OF_NT                 | [`--nmaxins`](#options-alerts-nmaxins) | CDS | - <a name="insertnn2"></a> | 
-| [*deletinp*](#deletinp1)  | DELETION_OF_NT                  | [`--xmaxdel`](#options-alerts-xmaxdel) | CDS | - <a name="deletinp2"></a> | 
-| [*deletinf*](#deletinf1)  | DELETION_OF_FEATURE_SECTION     | none | all | - <a name="deletinf2"></a> | 
-| [*lowsim5n*](#lowsim5n1)  | LOW_FEATURE_SIMILARITY_START    | [`--lowsim5ftr`](#options-alerts-lowsim5ftr) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim5n2"></a> | 
-| [*lowsim3n*](#lowsim3n1)  | LOW_FEATURE_SIMILARITY_END      | [`--lowsim3ftr`](#options-alerts-lowsim3ftr) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim3n2"></a> | 
-| [*lowsimin*](#lowsimin1)  | LOW_FEATURE_SIMILARITY          | [`--lowsimiftr`](#options-alerts-lowsimiftr)   | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsimin2"></a> | 
-| [*lowsim5l*](#lowsim5l1)  | LOW_FEATURE_SIMILARITY_START    | [`--lowsim5lftr`](#options-alerts-lowsim5lftr) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim5l2"></a> | 
-| [*lowsim3l*](#lowsim3l1)  | LOW_FEATURE_SIMILARITY_END      | [`--lowsim3lftr`](#options-alerts-lowsim3lftr) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim3l2"></a> | 
-| [*lowsimil*](#lowsimil1)  | LOW_FEATURE_SIMILARITY          | [`--lowsimilftr`](#options-alerts-lowsimilftr) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsimil2"></a> | 
-
-#### More information on alerts that are *non-fatal* by default <a name="nonfatal2"></a>
-| alert code | short description/error name | relevant_options | relevant feature types | omitted in `.tbl` and `.alt.list` by | 
-|------------|------------------------------|------------------|------------------------|--------------------------------------|
-| [*qstsbgrp*](#qstsbgrp1)  | QUESTIONABLE_SPECIFIED_SUBGROUP | none | - | - <a name="qstsbgrp2"></a> | 
-| [*qstgroup*](#qstgroup1)  | QUESTIONABLE_SPECIFIED_GROUP    | none | - | - <a name="qstgroup2"></a> | 
-| [*ambgnt5s*](#ambgnt5s1)  | AMBIGUITY_AT_START              | none | - | - <a name="ambgnt5s2"></a> | 
-| [*ambgnt3s*](#ambgnt3s1)  | AMBIGUITY_AT_END                | none | - | - <a name="ambgnt3s2"></a> | 
-| [*indfclas*](#indfclas1)  | INDEFINITE_CLASSIFICATION       | [`--indefclas`](#options-alerts-indefclas) | - | - <a name="indfclas2"></a> | 
-| [*lowscore*](#lowscore1)  | LOW_SCORE                       | [`--lowsc`](#options-alerts-lowscore) | - | - <a name="lowscore2"></a> | 
-| [*biasdseq*](#biasdseq1)  | BIASED_SEQUENCE                 | [`--biasfrac`](#options-alerts-biasfrac) | - | - <a name="biasdseq2"></a> | 
-| [*extrant5*](#extrant51)  | EXTRA_SEQUENCE_START            | [`--extrant5`](#options-alerts-extrant5) | - | - <a name="extrant52"></a> |
-| [*extrant3*](#extrant31)  | EXTRA_SEQUENCE_END              | [`--extrant3`](#options-alerts-extrant3) | - | - <a name="extrant32"></a> |<
-| [*unjoinbl*](#unjoinbl1)  | UNJOINABLE_SUBSEQ_ALIGNMENTS    | none | - | <a name="unjoinbl12"></a> |
-| [*deletina*](#deletina1)  | DELETION_OF_FEATURE             | [`--ignore_isdel`](#options-alerts-ignore) | all | - <a name="deletina2"></a> | 
-| [*ambgntrp*](#ambgntrp1)  | N_RICH_REGION_NOT_REPLACED      | [`--r_diffno`, `--r_diffmaxdel`, `--r_diffmaxins`, `--r_diffminnonn`, `--r_diffminfract`](#options-replace) | - | - <a name="ambgntrp2"></a> | 
-| [*fstlocft*](#fstlocft1)  | POSSIBLE_FRAMESHIFT_LOW_CONF    | [`--fstlothr`, `--fstminntt`](#options-alerts-fstminntt) | CDS | - <a name="fstlocft2"></a> |
-| [*fstlocfi*](#fstlocfi1)  | POSSIBLE_FRAMESHIFT_LOW_CONF    | [`--fstlothr`, `--fstminnti`](#options-alerts-fstminnti) | CDS | - <a name="fstlocfi2"></a> |
-| [*indf5lcc*](#indf5lcc1)  | INDEFINITE_ANNOTATION_START     | [`--indefann`, `--indefann_mp`](#options-alerts-indefann) | CDS and any gene or mat_peptide with identical start coordinate to a CDS | - <a name="indf5lcc2"></a> | 
-| [*indf3lcc*](#indf3lcc1)  | INDEFINITE_ANNOTATION_END       | [`--indefann`, `--indefann_mp`](#options-alerts-indefann) | CDS and any gene with identical stop coordinate to CDS | - <a name="indf3lcc2"></a> | 
-| [*insertnn*](#insertnn1)  | INSERTION_OF_NT                 | [`--nmaxins`](#options-alerts-nmaxins) | CDS | - <a name="insertnn2"></a> |
-| [*deletinn*](#deletinn1)  | DELETION_OF_NT                  | [`--nmaxdel`](#options-alerts-nmaxdel) | CDS | - <a name="deletinn2"></a> |
-| [*lowsim5c*](#lowsim5c1)  | LOW_FEATURE_SIMILARITY_START    | [`--lowsim5ftr`](#options-alerts-lowsim5ftr) | CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim5c2"></a> | 
-| [*lowsim3c*](#lowsim3c1)  | LOW_FEATURE_SIMILARITY_END      | [`--lowsim3ftr`](#options-alerts-lowsim3frt) | CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim3c2"></a> | 
-| [*lowsimic*](#lowsimic1)  | LOW_FEATURE_SIMILARITY          | [`--lowsimiftr`](#options-alerts-lowsimftr)  | CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsimic2"></a> | 
-| [*ambgnt5f*](#ambgnt5s1)  | AMBIGUITY_AT_FEATURE_START      | none | - | - <a name="ambgnt5s2"></a> | 
-| [*ambgnt3f*](#ambgnt3s1)  | AMBIGUITY_AT_FEATURE_END        | none | - | - <a name="ambgnt3s2"></a> | 
-| [*ambgnt5c*](#ambgnt5c1)  | AMBIGUITY_AT_CDS_START          | none | CDS | - <a name="ambgnt5c2"></a> | 
-| [*ambgnt3c*](#ambgnt3c1)  | AMBIGUITY_AT_CDS_END            | none | CDS | - <a name="ambgnt3c2"></a> | 
-| [*ambgcd5c*](#ambgcd5c1)  | AMBIGUITY_IN_START_CODON        | none | CDS | - <a name="ambgcd5c2"></a> | 
-| [*ambgcd3c*](#ambgcd3c1)  | AMBIGUITY_IN_STOP_CODON         | none | CDS | - <a name="ambgcd3c2"></a> | 
-
----
-
-## <a name="mnf"></a>Non-essential features: allowing sequences to pass despite fatal alerts for specific features
-
-It is possible to specify that certain features are *non-essential* and so
-have relaxed requirements. Some alerts that are normally fatal are not
-fatal for non-essential features. If any such alerts are reported for an
-non-essential feature that feature will be turned into a `misc_feature`
-in the output feature table `.pass.tbl` file, but the sequence will
-still pass, as long as it has zero fatal alerts for all other (essential)
-features and zero fatal sequence alerts.
-
-The default set of specific alerts that a non-essential feature can have
-without failing its sequence are listed with 'yes' in the 'causes
-`misc_feature`, not failure (if in modelinfo file)' column in the
-[tables describing alerts above](#alerts) as well as in the
-`--alt_list` output. This set can be changed using the `--alt_mnf_yes
-<s1>` option to specify that alert codes in the comma-separated string
-`<s1>` be added to the set, and the `--alt_mnf_no <s2>` option to
-specify that alert codes in the comma-separated string `<s2>` be
-removed from the set.
-
-Non-essential features are specified in the `.modelinfo` file, with a
-key/value pair string: `misc_not_feature:"1"` in the `FEATURE` line
-for the corresponding feature.
-
-For example, the sequence `JN975492.1` is the one sequence in the 
-[example above](#examplebasic) that fails. It matches best to the 
-`NC_008311` model. It fails due to the fatal alerts `mutendcd`,
-`cdsstopn`, `cdsstopp`, and `indf3pst` for the `VF1` CDS feature, and
-`indf5pst` fatal alert for the `VP2` CDS as shown
-[above](#altexample). If the `VF1` and `VP2` features were defined
-as non-essential using the `misc_not_failure:"1"` key/value pair in the
-`.minfo` file as they are in the included example file `vadr.mnf-example.minfo`, then
-the sequence would have passed. 
-
-The relevant excerpt from the
-`$VADRSCRIPTSDIR/documentation/annotate-files/vadr.mnf-example.minfo`
-file:
-
-```
-FEATURE NC_008311 type:"gene" coords:"5069..5710:+" parent_idx_str:"GBNULL" gene:"ORF4" misc_not_failure:"1"
-FEATURE NC_008311 type:"CDS" coords:"5069..5710:+" parent_idx_str:"GBNULL" gene:"ORF4" product:"VF1" misc_not_failure:"1"
-FEATURE NC_008311 type:"gene" coords:"6681..7307:+" parent_idx_str:"GBNULL" gene:"ORF3" misc_not_failure:"1"
-FEATURE NC_008311 type:"CDS" coords:"6681..7307:+" parent_idx_str:"GBNULL" gene:"ORF3" product:"VP2" misc_not_failure:"1"
-```
-
-Note that in addition to the two CDS features, the two gene features
-that correspond to them also have `misc_not_failure:"1"` key/value
-pairs. When a CDS is made non-essential, it often makes sense to make
-any corresponding gene features non-essential too. However, gene
-features are an exception in that they do not get turned into a
-`misc_feature` if they have alerts that are normally fatal, as per
-GenBank convention, but it is still relevant to mark them as
-non-essential because some alerts in them will not cause the sequence
-to fail.
-
-To rerun the example using this new `.minfo` file, execute:
-
-```
-v-annotate.pl -i $VADRSCRIPTSDIR/documentation/annotate-files/vadr.mnf-example.minfo $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-mnf-noro.9
-```
-
-The output will indicate that all sequences now pass:
-```
-# Summary of classified sequences:
-#
-#                                      num   num   num
-#idx  model      group      subgroup  seqs  pass  fail
-#---  ---------  ---------  --------  ----  ----  ----
-1     NC_008311  Norovirus  GV           2     2     0
-2     NC_029645  Norovirus  GIII         2     2     0
-3     NC_039477  Norovirus  GII          2     2     0
-4     NC_044854  Norovirus  GI           2     2     0
-5     NC_001959  Norovirus  GI           1     1     0
-#---  ---------  ---------  --------  ----  ----  ----
--     *all*      -          -            9     9     0
--     *none*     -          -            0     0     0
-#---  ---------  ---------  --------  ----  ----  ----
-```
-
-But the output `.pass.tbl` will not include the `VF1` and `VP2` 
-CDS features for `JN975492.1`, instead it will include `misc_feature`
-features with `note` qualifiers that indicate the regions are 
-`similar to` their respective CDS:
-
-
-Relevant excerpt from `va-mnf-noro.9.vadr.pass.tbl`:
-```
-5044	5685	gene
-			gene	ORF4
-5044	5685	misc_feature
-			note	similar to VF1
-6656	7282	gene
-			gene	ORF3
-6656	7282	misc_feature
-			note	similar to VP2
-
-```
-
-Note that if only the `VF1` CDS or `VP2` CDS feature lines included
-the `misc_not_failure:"1"` key/value pairs in the modelinfo file, 
-the sequence would have failed.
-
-Two important caveats above non-essential features and
-misc_feature-ization:
-
-1. As mentioned above, features with type `gene`, `5'UTR`, `3'UTR` or
-   `operon` are never converted to `misc_feature` values as per
-   GenBank convention.
-
-2. `misc_feature`-ization occurs in `.pass.tbl` output files
-   for non-essential features as explained above even when the
-   option `--nomisc` is used. (The `--nomisc` option causes
-   `misc_feature`s not to be reported in `.fail.tbl` files.)
-
----
-
-## <a name="exceptions"></a>Alert *exceptions*: ignoring alerts in specific model position ranges
-
-For some alerts, it is possible to specify model position ranges as
-*exceptions* - alert instances that occur within these regions will
-not be reported. This can be useful for alerts that are permissible,
-or even expected, in a given sequence region. For example, a known
-repeat region of a sequence may consistently trigger a *dupregin*
-(DUPLICATE_REGIONS) alert that we do not want to cause a sequence to
-fail. However, we may still want other *dupregin* alerts outside of
-the repeat region to be reported. To ignore (and not report) any
-*dupregin* alerts completely within the model position range `37` to
-`100` on the top (`+`) strand, add the string
-`dupregin_exc:"37..100:+"` to the relevant `MODEL` line of the model
-info file. In this case, `dupregin_exc` is the *exception key* and
-`"37..100:+"` is the *exception value*. You'll want the strand of the
-exception to match the strand of the alert, and for negative strand,
-the start position is greater than the stop position. To exclude
-positions 100 to 37 on the negative strand the exception value would
-be `"100..37:-"`. If you are able to have `v-annotate.pl` output
-an alert that you want to make an exception for using a test
-sequence, you can check the `mdl coords` field of the [`.alt` output file](formats.md#alt)
-to determine the relevant model coordinates to use for
-the exception value. 
-
-The table below lists all alert codes for which exceptions are allowed
-along with their specific exception keys and value types, and whether
-they pertain to a specific feature and should be added to the
-corresponding feature line (lines starting with
-`FEATURE`) in the model info file or are not specific to a feature and
-should be added to the model line (line starting with `MODEL`):
-
-| alert code   | short description              | exception key   | exception value type | model info file line type |
-|--------------|--------------------------------|-----------------|----------------------|---------------------------
-| *dupregin*   | DUPLICATE_REGIONS              | `dupregin_exc`  | coords-only          | model |
-| *indfstrn*   | INDEFINITE_STRAND              | `indfstr_exc`   | coords-only          | model | 
-| *indfstrp*   | INDEFINITE_STRAND              | `indfstr_exc`   | coords-only          | model | 
-| *insertnp*   | INSERTION_OF_NT                | `insertn_exc`   | coords-value         | feature (CDS)| 
-| *insertnn*   | INSERTION_OF_NT                | `insertn_exc`   | coords-value         | feature (CDS)| 
-| *deletinn*   | DELETION_OF_NT                 | `deletin_exc`   | coords-value         | feature (CDS)| 
-| *deletinp*   | DELETION_OF_NT                 | `deletin_exc`   | coords-value         | feature (CDS)| 
-| *lowsim5s*   | LOW_SIMILARITY_START           | `lowsim_exc`    | coords-only          | model | 
-| *lowsim3s*   | LOW_SIMILARITY_END             | `lowsim_exc`    | coords-only          | model |
-| *lowsimis*   | LOW_SIMILARITY                 | `lowsim_exc`    | coords-only          | model |
-| *lowsim5n*   | LOW_FEATURE_SIMILARITY_START   | `lowsim_exc`    | coords-only          | model | 
-| *lowsim5l*   | LOW_FEATURE_SIMILARITY_START   | `lowsim_exc`    | coords-only          | model |
-| *lowsim3n*   | LOW_FEATURE_SIMILARITY_END     | `lowsim_exc`    | coords-only          | model |
-| *lowsim3l*   | LOW_FEATURE_SIMILARITY_END     | `lowsim_exc`    | coords-only          | model |
-| *lowsimin*   | LOW_FEATURE_SIMILARITY         | `lowsim_exc`    | coords-only          | model |
-| *lowsimil*   | LOW_FEATURE_SIMILARITY         | `lowsim_exc`    | coords-only          | model |
-| *lowsim5c*   | LOW_FEATURE_SIMILARITY_START   | `lowsim_exc`    | coords-only          | model |
-| *lowsim3c*   | LOW_FEATURE_SIMILARITY_END     | `lowsim_exc`    | coords-only          | model |
-| *lowsimic*   | LOW_FEATURE_SIMILARITY         | `lowsim_exc`    | coords-only          | model |
-| *fsthicft*   | POSSIBLE_FRAMESHIFT_HIGH_CONF  | `fst_exc`       | coords-only          | feature (CDS)|
-| *fsthicfi*   | POSSIBLE_FRAMESHIFT_HIGH_CONF  | `fst_exc`       | coords-only          | feature (CDS)|
-| *fstukcft*   | POSSIBLE_FRAMESHIFT            | `fst_exc`       | coords-only          | feature (CDS)|
-| *fstukcfi*   | POSSIBLE_FRAMESHIFT            | `fst_exc`       | coords-only          | feature (CDS)|
-| *fstlocft*   | POSSIBLE_FRAMESHIFT_LOW_CONF   | `fst_exc`       | coords-only          | feature (CDS)|
-| *fstlocfi*   | POSSIBLE_FRAMESHIFT_LOW_CONF   | `fst_exc`       | coords-only          | feature (CDS)|
-| *extrant5*   | EXTRA_SEQUENCE_START           | `extrant5_exc`  | coords-value*        | model | 
-| *extrant3*   | EXTRA_SEQUENCE_END             | `extrant3_exc`  | coords-value*        | model | 
-
-If you specify a given exception key and value in the model info file,
-it will mean that all alerts with that specific key will have
-exceptions in that region. For example, a `indfstr_exc` 
-exception will prevent reporting of both *indfstrn* and *indfstrp* in
-the region specified.
-
-There are two types of alert 'exception value types', differentiated by the required format
-of the value string in the model info file:
-
-1. 'coords-only' exception keys have value strings that are [VADR
-coordinate (`coords`) strings](formats.md#coords). Our previous
-example of *dupregin* exception is an example of a 'coords-only'
-exception. If you want to allow exceptions for multiple regions, they 
-be separated by commas, for example to additionally exclude
-positions `181` to `333` the string to add would be
-`dupregin_exc:"37..100:+,181..333:+"`.
-
-2. 'coords-value' exception keys have value strings that are [VADR
-coordinate (`coords`) strings](formats.md#coords) appended with
-`:<d>`, where `<d>` is a number relevant to the alert. For example, to
-increase the maximum allowed insertion length without a `insertnn` or
-`insertnp` alert after model (nucleotide) position
-`367` or `368` for a CDS feature encoded on the top (`+`) strand from
-the default value of `27` to `36`, add the following string to the
-`FEATURE` line for that CDS feature in the model info file:
-`insertn_exc:"367..368:+:36"`. As with `coords-only` keys, to add
-multiple position ranges and values, separate with commas.
-
-The alert codes which allow exception ranges can also be viewed by
-running `v-annotate.pl` with the `--alt_list` option.
-
-For `extrant5_exc` the `coords` must be `1..1:+`. For `extrant3_exc`,
-the coords must be `<mdllen>..<mdllen>:+` where `<mdllen>` is the
-length of the reference model.
-
-Prior to VADR version 1.6, some alert exceptions in model info files
-were permitted in different formats. As of version 1.6, the formats
-above are enforced, but the formats present in publicly available
-model files created prior to v1.6 are also compatible with v1.6+.
-
----
-
-## <a name="memory"></a>Limiting memory usage and parallelization with multi-threading
-
-The `v-annotate.pl` script, in particular the alignment step, is memory intensive.
-For Norovirus and Dengue virus, it is recommended to
-have 16G of RAM available. For larger viruses, such as the roughly
-30Kb SARS-CoV-2 virus, 64G of available RAM is recommended. However,
-the `--glsearch` and `--split` options can be used to reduce the
-memory requirements.
-
-The `--glsearch` option causes the `glsearch` program from the FASTA
-software package to be used instead of Infernal's memory intensive
-`cmalign` program.  However, `--glsearch` has only been extensively
-tested for SARS-CoV-2 sequences, for which it is now recommended due
-to the high 64G memory recommendation with `cmalign`.
-
-With `--glsearch` the amount of required memory is roughly 2G of RAM
-for small input fasta files with 2000 sequences or less, but can
-exceed 2G for very large input files. Required memory will increase
-with the size of the input file. 
-
-Using the `--split` option removes the dependence of required
-memory on input file size as it causes splitting of the input fasta file
-into independent chunks with each chunk processed separately and
-results from all chunks combined at the end.
-
-Also, in combination with the `--glsearch` and `--split` options, the
-user can specify multi-threading with `<n>` CPUs by using the `--cpu
-<n>` option.  It is recommended that at least 2G * `<n>` total RAM is
-available when using this option.
-
-In summary, the following combination of options are recommended to
-reduce memory usage and speed-up processing for
-SARS-CoV-2 annotation, provided you are running on a machine with 8
-available cores and 16G of total RAM: `--glsearch --split --cpu 8`. 
-
-For more information on SARS-CoV-2 annotation with VADR see 
-https://github.com/ncbi/vadr/wiki/Coronavirus-annotation
-
----
-## <a name="altparallel"></a>Alternative parallelization using a cluster
-
-Alternatively, if you have access to a cluster and want to parallelize
-but do not want to use `glsearch`, you can use the `-p`
-option. **Importantly, the `-p` option will not work with `--glsearch`
-and will not reduce the memory requirements like `--glsearch` does.**
-
-Using `-p` will parallelize the most time-consuming stages of `v-annotate.pl` (classification,
-coverage determination and alignment) on a cluster
-by splitting up the input sequence file randomly into multiple files,
-and running each as a separate job. This is most beneficial for large
-input sequence files. 
-
-With `-p`, by default, `v-annotate.pl` will consult the file
-`$VADRSCRIPTSDIR/vadr.qsubinfo` to read the command prefix and suffix
-for submitting jobs to the cluster.  This file is set up to use Univa
-Grid Engine (UGE 8.5.5) and specific flags used on the NCBI system,
-but you can either modify this file to work with your own cluster or
-create a new file `<s>` and use the option `-q <s>` to read that file.
-The `$VADRSCRIPTSDIR/vadr.qsubinfo` has comments at the top that
-explain the format of the file. Email eric.nawrocki@nih.gov for help.
-
-To repeat the above `v-annotate.pl` run in the [example usage section](#exampleusage), use this command: 
-
-```
-v-annotate.pl -p $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-parallel-noro.9
-```
-
-The output will look very similar to the run without `-p`, but with additional lines of 
-output explaining that jobs have been submitted and are running on the compute farm:
-
-```
-# Submitting 1 cmscan classification job(s) to the farm                               ... 
-# Waiting a maximum of 500 minutes for all farm jobs to finish                        ... 
-#	   0 of    1 jobs finished (0.2 minutes spent waiting)
-#	   0 of    1 jobs finished (0.5 minutes spent waiting)
-#	   0 of    1 jobs finished (0.8 minutes spent waiting)
-#	   0 of    1 jobs finished (1.0 minutes spent waiting)
-#	   1 of    1 jobs finished (1.2 minutes spent waiting)
-# done. [   75.7 seconds]
-# Submitting 1 cmsearch coverage determination job(s) (NC_001959: 1 seqs) to the farm ... 
-# Waiting a maximum of 500 minutes for all farm jobs to finish                        ... 
-#	   1 of    1 jobs finished (0.2 minutes spent waiting)
-# done. [   15.2 seconds]
-```
-
-Usage of `-p` will not affect the output of `v-annotate.pl` other than
-these lines about the status of jobs, but it can make processing of
-large sequence files significantly faster depending on how busy the
-cluster is.
-
-
+| `--all`              | do not sample, pick model library(ies) based on all sequences (automatically turned on if `-m` used) | 
+| `--s_nseq <n>`       | set the number of sequences to sample to `<n>`, default value is `3` |
+| `--s_beg`            | sample sequences from the beginning of the sequence file, not randomly |
+| `--s_seed <n>`       | set the random number generator seed to `<n>`, default value is `181` |
+
+### `v-scan.pl` options for listing information from the config file or about models and exiting<a name="options-listing"></a>
+
+| ............option............ | explanation | 
+|----------------------------|-------------| 
+| `--l_all`       | list information about all models, model directories, and options strings in the config file and exit |
+| `--l_lib <s>`   | list all information about the model library for options key `<s>` (e.g. `flavi`) in the config file and exit |
+| `--l_dir`       | list all model directories in the config file and exit |
+| `--l_opt`       | list `v-annotate.pl` options for each option key in the config file and exit |
+| `--l_mdl`       | list information about all the models in all libraries in the config file and exit |
 
 ---
 
