@@ -517,7 +517,6 @@ flavi         --split --cpu 1 -r --nomisc
 norovirus     --split --cpu 1 --group Norovirus --nomisc --noprotid --mkey calici -r
 calici        --split --cpu 1 -r --nomisc
 #
-
 ```
 
 List the `v-annotate.pl` options in the config file, for all libraries:
@@ -527,7 +526,6 @@ v-scan.pl --l_opt
 ```
 
 ```
-<[(documentation)]> v-scan.pl --l_mdl
 # List of models in each library:
 #
 #idx   model key  options key  model name  length  group      subgroup
