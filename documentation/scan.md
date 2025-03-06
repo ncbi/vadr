@@ -46,6 +46,8 @@ it, same as 1 but use the `--only` option:
    v-scan.pl --only norovirus $VADRSCRIPTSDIR/documentation/scan-files/n5.fa vs-n5-only
    ```
 
+---
+
 ## `v-scan.pl` config file<a name="config"></a>
 
 <a name="config"></a> `v-scan.pl` can be used to annotate sequences
@@ -147,7 +149,9 @@ models and an example config file that uses them all is
 Several command-line options exist for outputting information from the 
 config file, and on the models that are in the libraries listed in the
 config file: `--l_all`, `--l_lib <s>`, `--l_dir`, `--l_opt` and
-`--l_mdl`. Examples of these can be found [below](#listexamples)
+`--l_mdl`. Examples of these can be found [below.](#listexamples)
+
+---
 
 ## Walk-throughs of `v-scan.pl` examples <a name="longwalk"></a>
 
@@ -403,9 +407,9 @@ if you know the library.
 If you want to restrict the libraries that can be matched, but not
 specify a single one, you can use `--only` with a list of comma
 separated library keys, like this: `v-scan.pl --only norovirus,flavi
-vs-n5-only2`. Alternatively, you can list libraries that you want
+n5.fa vs-n5-only2`. Alternatively, you can list libraries that you want
 `v-scan.pl` to skip (ignore) using the `--skip` option like this:
-`v-scan.pl --skip dengue,flavi`.
+`v-scan.pl --skip dengue,flavi n5.fa vs-n5-skip`.
 
 ---
 
