@@ -11,6 +11,9 @@
 # or to only download files:
 # vadr-install.sh <"linux" or "macosx-silicon" or "macosx-intel"> download
 #
+# or to only download files, and minimize number of models downloaded:
+# vadr-install.sh <"linux" or "macosx-silicon" or "macosx-intel"> download
+#
 # or to only build files (after running in 'download' mode):
 # vadr-install.sh <"linux" or "macosx-silicon" or "macosx-intel"> download
 # 
@@ -44,7 +47,13 @@ MM2VERSIONGITNOV="2.26"
 # dependency git tag
 VVERSION="vadr-$VERSION"
 # vadr models
-MVERSION="1.2-1"
+CALICIVERSION="1.2-1"
+FLAVIVERSION="1.2-1"
+CORONAVERSION="1.3-3"
+SARSCOV2VERSION="1.3-2"
+FLUVERSION="1.6.3-2"
+RSVVERSION="1.5-2"
+MPXVVERSION="1.4.2-1"
 # hmmer (not needed in this release, we can use infernal's hmmer executables)
 #HVERSION="3.4"
 
@@ -215,12 +224,54 @@ if [ "$DOWNLOADORBUILD" != "build" ]; then
     mv ncbi-blast-$BVERSION+ ncbi-blast
     echo "------------------------------------------------------------"
 
-    # download vadr models, calici and flavi model sets only
-    for v in calici flavi; do 
-        echo "Downloading VADR ${v}viridae models ($MVERSION) ... "
-        curl -k -L -o vadr-models-$v.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/${v}viridae/$MVERSION/vadr-models-$v-$MVERSION.tar.gz
+    # download vadr models
+    for v in calici; do 
+        echo "Downloading VADR $v models ($CALICIVERSION) ... "
+        curl -k -L -o vadr-models-$v.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/${v}viridae/$CALICIVERSION/vadr-models-$v-$CALICIVERSION.tar.gz
         tar xfz vadr-models-$v.tar.gz
-        mv vadr-models-$v-$MVERSION vadr-models-$v
+        mv vadr-models-$v-$CALICIVERSION vadr-models-$v
+        rm vadr-models-$v.tar.gz
+    done
+    for v in flavi; do 
+        echo "Downloading VADR $v models ($FLAVIVERSION) ... "
+        curl -k -L -o vadr-models-$v.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/${v}viridae/$FLAVIVERSION/vadr-models-$v-$FLAVIVERSION.tar.gz
+        tar xfz vadr-models-$v.tar.gz
+        mv vadr-models-$v-$FLAVIVERSION vadr-models-$v
+        rm vadr-models-$v.tar.gz
+    done
+    for v in corona; do 
+        echo "Downloading VADR $v models ($CORONAVERSION) ... "
+        curl -k -L -o vadr-models-$v.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/${v}viridae/$CORONAVERSION/vadr-models-$v-$CORONAVERSION.tar.gz
+        tar xfz vadr-models-$v.tar.gz
+        mv vadr-models-$v-$CORONAVERSION vadr-models-$v
+        rm vadr-models-$v.tar.gz
+    done
+    for v in sarscov2; do 
+        echo "Downloading VADR $v models ($SARSCOV2VERSION) ... "
+        curl -k -L -o vadr-models-$v.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/$v/$SARSCOV2VERSION/vadr-models-$v-$SARSCOV2VERSION.tar.gz
+        tar xfz vadr-models-$v.tar.gz
+        mv vadr-models-$v-$SARSCOV2VERSION vadr-models-$v
+        rm vadr-models-$v.tar.gz
+    done
+    for v in flu; do 
+        echo "Downloading VADR $v models ($FLUVERSION) ... "
+        curl -k -L -o vadr-models-$v.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/$v/$FLUVERSION/vadr-models-$v-$FLUVERSION.tar.gz
+        tar xfz vadr-models-$v.tar.gz
+        mv vadr-models-$v-$FLUVERSION vadr-models-$v
+        rm vadr-models-$v.tar.gz
+    done
+    for v in rsv; do 
+        echo "Downloading VADR $v models ($RSVVERSION) ... "
+        curl -k -L -o vadr-models-$v.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/$v/$RSVVERSION/vadr-models-$v-$RSVVERSION.tar.gz
+        tar xfz vadr-models-$v.tar.gz
+        mv vadr-models-$v-$RSVVERSION vadr-models-$v
+        rm vadr-models-$v.tar.gz
+    done
+    for v in mpxv; do 
+        echo "Downloading VADR $v models ($MPXVVERSION) ... "
+        curl -k -L -o vadr-models-$v.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/$v/$MPXVVERSION/vadr-models-$v-$MPXVVERSION.tar.gz
+        tar xfz vadr-models-$v.tar.gz
+        mv vadr-models-$v-$MPXVVERSION vadr-models-$v
         rm vadr-models-$v.tar.gz
     done
     echo "------------------------------------------------------------"
