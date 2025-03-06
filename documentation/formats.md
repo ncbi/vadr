@@ -20,8 +20,7 @@
   * [`.dcr` files](#dcr)
   * [`.alt.list` files](#altlist)
   * [additional output files saved with the `--keep` option](#annotate-keep)
-* [`v-scan.pl` input and output files](#scan)
-  * [input config file](#config)  
+* [`v-scan.pl` output files](#scan)
   * [`.lib` files](#lib)
 
 * [VADR `coords` coordinate string format](#coords)
@@ -745,36 +744,8 @@ files be output. For example the `--out_stk` option specifies that stockholm ali
 | `.<model_name>.blastx.summary.txt` | summary of `blastx` output used internally by `v-annotate.pl` | no further documentation |
 
 ---
-## Format of `v-scan.pl` input and output files<a name="scan"></a>
+## Format of `v-scan.pl` output files<a name="scan"></a>
 
-### Explanation of the `v-scan.pl` config file<a name="config"></a>
-
-The `v-scan.pl` script takes as input a config file that specifies the
-model libraries to use, including the directories the model files can
-be found in, and the options that should be passed to `v-annotate.pl`
-for each library. An example is the [default config
-file](../default.vadr.config) that is installed with VADR, which is
-shown below with **all comment lines removed**.
-
-```
-dengue    $VADRINSTALLDIR/vadr-models-flavi  --split --cpu 1 --group Dengue --nomisc --noprotid --mkey flavi -r
-hcv       $VADRINSTALLDIR/vadr-models-flavi  --split --cpu 4 -r --mkey flavi --group HCV
-flavi     $VADRINSTALLDIR/vadr-models-flavi  --split --cpu 1 -r --nomisc
-norovirus $VADRINSTALLDIR/vadr-models-calici --split --cpu 1 --group Norovirus --nomisc --noprotid --mkey calici -r
-calici    $VADRINSTALLDIR/vadr-models-calici --split --cpu 1 -r --nomisc 
-```
-(Each line prefixed with `#` is a comment line and is ignored by
-`v-scan.pl`.) All other lines have 3 or more fields:
-
-| idx      | field               | description |
-|----------|---------------------|-------------| 
-|   1      | `<options key>`     | name for this library, a unique key that will be used for naming `v-scan.pl` output files, cannot contain whitespace |
-|   2      | `<model directory>` | path to the model directory that includes all model files for this library, the same model directory can be used for multiple `<options key>` values, cannot contain whitespace |
-| 3 to end | `<options string>`  | the `v-annotate.pl` options that should be used for sequences matching this `<opti ons key>` library during the annotation stage of `v-scan.pl`; this must contain `--mkey <s>` if the model files in the `<model directory>` are named with a key other than the `<options key>`, an example is the use of `--mkey calici` for the `norovirus` `<options key>` in the example file above; may contain whitespace |
-
-For more details on `v-scan.pl` config files see the detailed walkthrough of `v-scan.pl` [here.](scan.md#config)
-
----
 ### Explanation of `.lib`-suffixed output files<a name="lib"></a>
 
 The `v-scan.pl` script calls `v-annotate.pl` one or more times, and so

@@ -71,6 +71,14 @@ flavi     $VADRINSTALLDIR/vadr-models-flavi  --split --cpu 1 -r --nomisc
 norovirus $VADRINSTALLDIR/vadr-models-calici --split --cpu 1 --group Norovirus --nomisc --noprotid --mkey calici -r
 calici    $VADRINSTALLDIR/vadr-models-calici --split --cpu 1 -r --nomisc 
 ```
+(Each line prefixed with `#` is a comment line and is ignored by
+`v-scan.pl`.) All other lines have 3 or more fields:
+
+| idx      | field               | description |
+|----------|---------------------|-------------| 
+|   1      | `<options key>`     | name for this library, a unique key that will be used for naming `v-scan.pl` output files, cannot contain whitespace |
+|   2      | `<model directory>` | path to the model directory that includes all model files for this library, the same model directory can be used for multiple `<options key>` values, cannot contain whitespace |
+| 3 to end | `<options string>`  | the `v-annotate.pl` options that should be used for sequences matching this `<options key>` library during the annotation stage of `v-scan.pl`; this must contain `--mkey <s>` if the model files in the `<model directory>` are named with a key other than the `<options key>`, an example is the use of `--mkey calici` for the `norovirus` `<options key>` in the example file above; may contain whitespace |
 
 Note that in the above example config file, both `dengue` and `hcv`
 `<options key>` values use the `flavi` model library. We can tell this
