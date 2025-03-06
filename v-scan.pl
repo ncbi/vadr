@@ -1100,7 +1100,7 @@ sub list_options {
      opt_IsUsed("--l_dir", $opt_HHR) || 
      opt_IsUsed("--l_lib", $opt_HHR)) { 
     if($do_lib) { 
-      #print("# $out_lib library directory information:\n");
+      ;
     }
     else { 
       print("# Model library directory information:\n#\n");
@@ -1124,7 +1124,7 @@ sub list_options {
      opt_IsUsed("--l_opt", $opt_HHR) ||
      opt_IsUsed("--l_lib", $opt_HHR)) { 
     if($do_lib) { 
-      #print("# $out_lib library options information:\n");
+      ;
     }
     else {
       print("# Options information:\n#\n");
@@ -1148,7 +1148,7 @@ sub list_options {
      opt_IsUsed("--l_mdl", $opt_HHR) ||
      opt_IsUsed("--l_lib", $opt_HHR)) { 
     if($do_lib) { 
-      ;#print("# List of models in $out_lib model library:\n");
+      ;
     }
     else {
       print("# List of models in each library:\n#\n");
@@ -1163,13 +1163,16 @@ sub list_options {
     my %ftr_info_HAH = ();
     my $mkey_idx = 0;
     my @matching_other_okey_A = (); # array of other okeys that match to current model
+    my $printed_header = 0;
     for(my $k = 0; $k < scalar(@{$okey_AR}); $k++) {
       my $okey = $okey_AR->[$k];
       my $mkey = $okey_mkey_HR->{$okey};
       my $orig_okey = $okey;
       # will we output data for this library?
-      if(($okey eq $mkey) || ($do_lib && $okey eq $out_lib)) { 
-        if((! $do_lib) && ($k > 0)) { push(@data_AA, []); } # blank line
+      if(((! $do_lib) && ($okey eq $mkey)) ||
+          (( $do_lib) && ($okey eq $out_lib))) { 
+        if((! $do_lib) && ($printed_header)) { push(@data_AA, []); } # blank line
+        $printed_header = 1;
         $mkey_idx++;
         $minfo_file = $okey_mdir_HR->{$okey} . "/" . $mkey . ".minfo";
         @mdl_info_AH = ();
