@@ -2,7 +2,8 @@
 
 * [Quickstart `v-scan.pl` examples](#quickstart)
 * [The `v-scan.pl` config file](#config)
-  * adding libraries to the config file(#add2config")
+  * adding libraries to the config file(#add2config)
+  * printing information from the config file(#printinfo)
 * [Walk-throughs of `v-scan.pl` examples](#longwalk)
   * [running `v-scan.pl` when all sequences are expected to match one unknown model library (mode 1)](#mode1)
   * [running `v-scan.pl` when sequences may match multiple models libraries (mode 2)](#mode2)
@@ -12,6 +13,7 @@
   * [options for specifying which model libraries to use](#options-libraries)
   * [options controlling the random sampling of sequences](#options-sampling)
   * [options for listing information from the config model or about models and exiting(#options-listing)
+* [Using the list options](#listexamples)
 
 ---
 
@@ -139,6 +141,13 @@ to the config file or make your own config file. To use a different
 config file `<s>` use the `-c <s>` option. The list of available VADR
 models and an example config file that uses them all is 
 [here](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files).
+
+#### Printing information from the config file<a name="printinfo">
+
+Several command-line options exist for outputting information from the 
+config file, and on the models that are in the libraries listed in the
+config file: `--l_all`, `--l_lib <s>`, `--l_dir`, `--l_opt` and
+`--l_mdl`. Examples of these can be found [below](#listexamples)
 
 ## Walk-throughs of `v-scan.pl` examples <a name="longwalk"></a>
 
@@ -453,6 +462,135 @@ integer.
 | `--l_dir`       | list all model directories in the config file and exit |
 | `--l_opt`       | list `v-annotate.pl` options for each option key in the config file and exit |
 | `--l_mdl`       | list information about all the models in all libraries in the config file and exit |
+
+---
+
+## Using the list options <a name="listexamples"></a>
+
+The `v-scan.pl` options listed above beginning with `-l` can be
+useful for listing information about the config file and the model
+libraries listed in the config file. Here are some examples of using
+these options when the environment variable `$VADRCONFIGFILE` points
+to the default config file in `$VADRINSTALLDIR/default.vadr.config`,
+which it should be default after following the [installation
+instructions](install.md#top):
+
+List the model directories in the config file, for all libraries:
+
+```
+v-scan.pl --l_dir
+```
+
+```
+############################################################
+#
+# VADR 1.7 (Mar 2025)
+#
+# config file: /home/nawrocki/vadr-install-dir/default.vadr.config
+#
+# Model library directory information:
+#
+#options key  model key  model dir
+#-----------  ---------  ---------
+dengue        flavi      /home/nawrocki/vadr-install-dir/vadr-models-flavi
+hcv           flavi      /home/nawrocki/vadr-install-dir/vadr-models-flavi
+flavi         "          /home/nawrocki/vadr-install-dir/vadr-models-flavi
+norovirus     calici     /home/nawrocki/vadr-install-dir/vadr-models-calici
+calici        "          /home/nawrocki/vadr-install-dir/vadr-models-calici
+#
+```
+
+List the `v-annotate.pl` options in the config file, for all libraries:
+
+```
+v-scan.pl --l_opt
+```
+
+```
+# Options information:
+#
+#options key  v-annotate.pl options
+#-----------  ---------------------
+dengue        --split --cpu 1 --group Dengue --nomisc --noprotid --mkey flavi -r
+hcv           --split --cpu 4 -r --mkey flavi --group HCV
+flavi         --split --cpu 1 -r --nomisc
+norovirus     --split --cpu 1 --group Norovirus --nomisc --noprotid --mkey calici -r
+calici        --split --cpu 1 -r --nomisc
+#
+
+```
+
+List the `v-annotate.pl` options in the config file, for all libraries:
+
+```
+v-scan.pl --l_opt
+```
+
+```
+<[(documentation)]> v-scan.pl --l_mdl
+# List of models in each library:
+#
+#idx   model key  options key  model name  length  group      subgroup
+#----  ---------  -----------  ----------  ------  ---------  --------
+#----  ---------  -----------  ----------  ------  ---------  --------
+1.1    flavi      dengue       NC_001477    10735  Dengue     1       
+1.2    flavi      dengue       NC_001474    10723  Dengue     2       
+1.3    flavi      dengue       NC_001475    10707  Dengue     3       
+1.4    flavi      dengue       NC_002640    10649  Dengue     4       
+1.5    flavi      hcv          NC_004102     9646  HCV        1       
+1.6    flavi      hcv          NC_038882     9599  HCV        1       
+1.7    flavi      hcv          NC_009823     9711  HCV        2       
+1.8    flavi      hcv          NC_009824     9456  HCV        3       
+1.9    flavi      hcv          NC_009825     9355  HCV        4       
+1.10   flavi      hcv          NC_009826     9343  HCV        5       
+1.11   flavi      hcv          NC_009827     9628  HCV        6       
+1.12   flavi      hcv          NC_030791     9443  HCV        7       
+1.13   flavi      "            NC_040815     8684  -          -       
+1.14   flavi      "            NC_040788    10311  -          -       
+1.15   flavi      "            NC_040776    10794  -          -       
+..snip..
+1.153  flavi      "            NC_001837     9550  -          -       
+1.154  flavi      "            NC_001710     9392  -          -       
+1.155  flavi      "            NC_001461    12573  -          -       
+1.156  flavi      "            NC_031327    10588  -          -       
+#----  ---------  -----------  ----------  ------  ---------  --------
+2.1    calici     norovirus    NC_001959     7654  Norovirus  GI      
+2.2    calici     norovirus    NC_008311     7382  Norovirus  GV      
+2.3    calici     norovirus    NC_029645     7313  Norovirus  GIII    
+2.4    calici     norovirus    NC_029646     7518  Norovirus  GII     
+..snip..
+2.35   calici     "            NC_002551     8284  -          -       
+2.36   calici     "            NC_001543     7437  -          -       
+2.37   calici     "            NC_000940     7320  -          -       
+2.38   calici     norovirus    NC_039897     7745  Norovirus  GI      
+2.39   calici     "            NC_040674     6453  -          -       
+2.40   calici     norovirus    NC_040876     7521  Norovirus  GII     
+2.41   calici     norovirus    NC_044045     7551  Norovirus  GIX     
+2.42   calici     norovirus    NC_044046     7543  Norovirus  GVIII   
+2.43   calici     norovirus    NC_044047     7637  Norovirus  GVII    
+2.44   calici     norovirus    NC_044853     7677  Norovirus  GI      
+2.45   calici     norovirus    NC_044854     7693  Norovirus  GI      
+2.46   calici     norovirus    NC_044855     7419  Norovirus  GIV     
+2.47   calici     norovirus    NC_044856     7734  Norovirus  GI      
+2.48   calici     norovirus    NC_044932     7525  Norovirus  GII     
+2.49   calici     norovirus    NC_045762     7839  Norovirus  GIV     
+```
+
+List all information for a particular library/options key:
+```
+v-scan.pl --l_lib norovirus
+```
+
+This will print all the above information (model directory, options,
+model information), but only for `norovirus`.
+
+List all information for all library/options keys:
+```
+v-scan.pl --l_all
+```
+
+This will print all the above information (model directory, options,
+model information), for all libraries.
 
 ---
 
