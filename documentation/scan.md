@@ -2,8 +2,8 @@
 
 * [Quickstart `v-scan.pl` examples](#quickstart)
 * [The `v-scan.pl` config file](#config)
-  * adding libraries to the config file(#add2config)
-  * printing information from the config file(#printinfo)
+  * [adding libraries to the config file](#add2config)
+  * [printing information from the config file](#printinfo)
 * [Walk-throughs of `v-scan.pl` examples](#longwalk)
   * [running `v-scan.pl` when all sequences are expected to match one unknown model library (mode 1)](#mode1)
   * [running `v-scan.pl` when sequences may match multiple models libraries (mode 2)](#mode2)
@@ -12,7 +12,7 @@
   * [basic options](#options-basic)
   * [options for specifying which model libraries to use](#options-libraries)
   * [options controlling the random sampling of sequences](#options-sampling)
-  * [options for listing information from the config model or about models and exiting(#options-listing)
+  * [options for listing information from the config model or about models and exiting](#options-listing)
 * [Using the list options](#listexamples)
 
 ---
