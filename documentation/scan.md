@@ -44,14 +44,19 @@ it, same as 1 but use the `--only` option:
    v-scan.pl --only norovirus $VADRSCRIPTSDIR/documentation/scan-files/n5.fa vs-n5-only
    ```
 
-Another key option is the `-c <s>` option to specify a different config
-file `<s>` besides the default one. See [here](#config) for more on config files.
-
 ## `v-scan.pl` config file<a name="config"></a>
 
-<a name="config"></a> `v-scan.pl` requires a 'config' file that lists information on the
+<a name="config"></a> `v-scan.pl` can be used to annotate sequences
+that match to one or more VADR model libraries. `v-scan.pl`
+determines which model library to use for the input sequences and then
+calls `v-annotate.pl` to annotate all sequences that match to that
+model library. It will supply `v-annotate.pl` with the command-line
+options specific for that model library read from the input config
+file.
+
+ `v-scan.pl` requires a 'config' file that lists information on the
 model libraries it will use. Here is the config file that is included
-with VADR in [vadr/default.vadr.config](../default.vadr.config) with
+with VADR and is used by default in [vadr/default.vadr.config](../default.vadr.config) with
 comment lines removed for brevity (all lines that begin with a `#` are
 comment lines):
 
@@ -64,8 +69,9 @@ calici    $VADRINSTALLDIR/vadr-models-calici --split --cpu 1 -r --nomisc
 ```
 
 Note that in the above example config file, both `dengue` and `hcv`
-`<options key>` values use the `flavi` model library: `--mkey flavi`
-exists in the `<options string>` *and* the `<model directory>` is the
+`<options key>` values use the `flavi` model library. We can tell this
+because `--mkey flavi` exists in the `<options string>` for the lines
+beginning with `dengue` and `hcv`, *and* because the `<model directory>` is the
 same for all three of `dengue`, `hcv` and `flavi`. Similarly
 `norovirus` uses the `calici` library.
 
@@ -101,7 +107,7 @@ Then, when parsing the output for the the scan against the `flavi`
 library, sequences are matched to either `dengue`, `hcv` or `flavi` by
 checking if the best matching model for each sequence matches to
 `dengue` or `hcv` or `flavi`. A model matches to an `<options key>` if
-its `model name`, `group` or `subgroup` equals that `<options key>`
+its `model name`, `group` or `subgroup` is identical to that `<options key>`
 *after lowercasing and removing all
 special characters* from the name, group or subgroup. For example, if a
 sequence's best matching model is `NC_001477` which has `group` defined
@@ -136,12 +142,8 @@ models and an example config file that uses them all is
 
 ## Walk-throughs of `v-scan.pl` examples <a name="longwalk"></a>
 
-This section includes more detailed information on how to use `v-scan.pl`.
-`v-scan.pl` is a wrapper script for `v-annotate.pl`. It first
-determines which model library to use for the input sequences and then
-calls `v-annotate.pl` for that model library. It will supply
-`v-annotate.pl` with the command-line options specific for that model
-library read from the input config file.
+This section includes more detailed information on how to use
+`v-scan.pl` and understand its output.
 
 To determine the command-line usage of 
 `v-scan.pl` (or any VADR script), use the `-h` option, like this:
