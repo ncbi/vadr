@@ -1485,8 +1485,6 @@ these lines about the status of jobs, but it can make processing of
 large sequence files significantly faster depending on how busy the
 cluster is.
 
-
-
 ---
 
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
