@@ -475,6 +475,8 @@ to the default config file in `$VADRINSTALLDIR/default.vadr.config`,
 which it should be default after following the [installation
 instructions](install.md#top):
 
+---
+
 List the model directories in the config file, for all libraries:
 
 ```
@@ -500,6 +502,8 @@ calici        "          /home/nawrocki/vadr-install-dir/vadr-models-calici
 #
 ```
 
+---
+
 List the `v-annotate.pl` options in the config file, for all libraries:
 
 ```
@@ -519,12 +523,13 @@ calici        --split --cpu 1 -r --nomisc
 #
 ```
 
+---
+
 List the `v-annotate.pl` options in the config file, for all libraries:
 
 ```
 v-scan.pl --l_opt
 ```
-
 ```
 # List of models in each library:
 #
@@ -574,6 +579,8 @@ v-scan.pl --l_opt
 2.49   calici     norovirus    NC_045762     7839  Norovirus  GIV     
 ```
 
+---
+
 List all information for a particular library/options key:
 ```
 v-scan.pl --l_lib norovirus
@@ -581,6 +588,8 @@ v-scan.pl --l_lib norovirus
 
 This will print all the above information (model directory, options,
 model information), but only for `norovirus`.
+
+---
 
 List all information for all library/options keys:
 ```
