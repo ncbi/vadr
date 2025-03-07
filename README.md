@@ -73,13 +73,13 @@ with [VADR installation](documentation/install.md#top).
 VADR installation includes the following model libraries:
 
 | library      | model key (short name) | rigorously tested? | number of models | notes | 
-|--------------|----------------|------------------|-------|
-| \emph{caliciviridae} | calici | norovirus models only | 49 | norovirus models used by GenBank |
+|--------------|------------------------|--------------------|------------------|-------|
+| \emph{caliciviridae} | calici | norovirus models only      | 49  | norovirus models used by GenBank |
 | \emph{flaviviridae}  | flavi  | dengue and HCV models only | 156 | dengue models used by GenBank |
-| \emph{coronaviridae} | corona | SARS-CoV-2 only           | 55 | SARS-CoV-2 models used by GenBank |
-| influenza     | flu | yes           | 70 | [described in Database article](https://pubmed.ncbi.nlm.nih.gov/39297389/) |
-| mpox          | mpxv | yes | 1 | | 
-| RSV           | rsv  | yes | 2 | | 
+| \emph{coronaviridae} | corona | SARS-CoV-2 only            | 55  | SARS-CoV-2 models used by GenBank |
+| influenza            | flu    | yes                        | 70  | [described in Database article](https://pubmed.ncbi.nlm.nih.gov/39297389/) |
+| mpox                 | mpxv   | yes                        | 1   | | 
+| RSV                  | rsv    | yes                        | 2   | | 
 
 Additional models are available. See [this
 page](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files)
