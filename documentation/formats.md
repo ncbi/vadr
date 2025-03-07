@@ -22,7 +22,6 @@
   * [additional output files saved with the `--keep` option](#annotate-keep)
 * [`v-scan.pl` output files](#scan)
   * [`.lib` files](#lib)
-
 * [VADR `coords` coordinate string format](#coords)
 * [VADR sequence naming conventions](#seqnames)
 
@@ -769,6 +768,8 @@ key' that has a model library that was scanned against in the
 |   2 | `options key`         | unique key for the specific set of options and associated model directory read from the config file, the first field of a line in the config file |
 |   3 | `model key`           | the model key used for this options key, multiple options keys can use the same model key |
 |   4 | `num seqs`            | the number of sequences in the input fasta file that matched to this options key, the total number in all rows will be lower than the total number of sequences in the file if sampling was performed
+
+---
 
 ### Explanation of VADR `coords` coordinate strings <a name="coords"></a>
 

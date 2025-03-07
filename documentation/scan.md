@@ -59,17 +59,29 @@ options specific for that model library read from the input config
 file.
 
  `v-scan.pl` requires a 'config' file that lists information on the
-model libraries it will use. Here is the config file that is included
-with VADR and is used by default in [vadr/default.vadr.config](../default.vadr.config) with
+model libraries it will use. The config file that will be used 
+will be stored in the `$VADRCONFIGFILE` environment variable after the
+[installation procedure](install.md#top). If you want you can modify
+this file or modify a copy of it, and specify that a different file
+`<s>` be used by using the `-c <s>` option to `v-scan.pl` or by
+changing the value of `$VADRCONFIGFILE` to point to a different file. 
+
+Here is the config file that is included with VADR and is used by
+default in [vadr/default.vadr.config](../default.vadr.config) with
 comment lines removed for brevity (all lines that begin with a `#` are
 comment lines):
 
 ```
-dengue    $VADRINSTALLDIR/vadr-models-flavi  --split --cpu 1 --group Dengue --nomisc --noprotid --mkey flavi -r
-hcv       $VADRINSTALLDIR/vadr-models-flavi  --split --cpu 4 -r --mkey flavi --group HCV
-flavi     $VADRINSTALLDIR/vadr-models-flavi  --split --cpu 1 -r --nomisc
-norovirus $VADRINSTALLDIR/vadr-models-calici --split --cpu 1 --group Norovirus --nomisc --noprotid --mkey calici -r
-calici    $VADRINSTALLDIR/vadr-models-calici --split --cpu 1 -r --nomisc 
+dengue    $VADRINSTALLDIR/vadr-models-flavi    --split --cpu 1 --group Dengue --nomisc --noprotid --mkey flavi -r
+hcv       $VADRINSTALLDIR/vadr-models-flavi    --split --cpu 1 -r --mkey flavi --group HCV
+flavi     $VADRINSTALLDIR/vadr-models-flavi    --split --cpu 1 -r --nomisc
+norovirus $VADRINSTALLDIR/vadr-models-calici   --split --cpu 1 --group Norovirus --nomisc --noprotid --mkey calici -r
+calici    $VADRINSTALLDIR/vadr-models-calici   --split --cpu 1 -r --nomisc 
+sarscov2  $VADRINSTALLDIR/vadr-models-sarscov2 --split --cpu 4 -s -r --nomisc --lowsim5seq 6 --lowsim3seq 6 --alt_fail lowscore,insertnn,deletinn --glsearch
+corona    $VADRINSTALLDIR/vadr-models-corona   --split --cpu 1 -s -r --nomisc --lowsim5seq 6 --lowsim3seq 6 --alt_fail lowscore,insertnn,deletinn --glsearch 
+flu       $VADRINSTALLDIR/vadr-models-flu      --split --cpu 2 -r --atgonly --alt_fail extrant5,extrant3 --xnocomp --nomisc --forcegene
+rsv       $VADRINSTALLDIR/vadr-models-rsv      --split --cpu 1 -r --xnocomp --nomisc 
+mpxv      $VADRINSTALLDIR/vadr-models-mpxv     --split --cpu 1 --glsearch --minimap2 -s -r --nomisc --r_lowsimok --r_lowsimxd 100 --r_lowsimxl 2000 --alt_pass discontn,dupregin --s_overhang 150
 ```
 (Each line prefixed with `#` is a comment line and is ignored by
 `v-scan.pl`.) All other lines have 3 or more fields:
@@ -143,6 +155,25 @@ the same way.
 
 Model libraries do not have to be nested in this way. Each `<options
 key>` in the config file can pertain to its own unique model library. 
+
+#### Modifying the `--split` and `--cpu <n>` options 
+
+Note that in the default config file shown above, each `<options
+string>` includes the `--split` and `--cpu <n>` options with `<n>`
+varying between `1`, `2` and `4`. These options are used to
+parallelize processing in `v-annotate.pl` across `<n>` threads. If you
+prefer to run non-threaded, you can remove these two options from all
+the lines of the config file. You should also potentially change the
+number of threads that are used for each `<options key>` by modifying
+`<n>` after considering how much RAM you have on your computer The
+suggested amount of RAM **per thread** for each virus is:
+
+| options key | recommended RAM per thread |
+|-------------|----------------------------|
+| sarscov2    | 2Gb |
+| flu         | 4Gb |
+| dengue, hcv, flavi, norovirus, calici, corona, mpxv | 8Gb |
+| rsv         |  16Gb |
 
 #### Adding libraries to the config file<a name="add2config"></a>
 
