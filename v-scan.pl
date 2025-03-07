@@ -28,6 +28,7 @@ require "sqp_utils.pm";
 #   o outputs program banner
 #   o makes sure the required executables are executable
 #   o validates and parses input config file
+#   o validates input fasta doesn't have any duplicate ids
 #
 # - Runs v-annotate.pl with --cls_only for each model library
 #   listed in config file
@@ -52,6 +53,7 @@ my $env_vadr_install_dir = (exists $ENV{"VADRINSTALLDIR"}) ? $ENV{"VADRINSTALLDI
 my %execs_H = (); # hash with paths to all required executables
 $execs_H{"v-annotate.pl"} = $env_vadr_scripts_dir  . "/v-annotate.pl";
 $execs_H{"esl-reformat"}  = $env_vadr_easel_dir    . "/esl-reformat";
+$execs_H{"esl-seqstat"}   = $env_vadr_easel_dir    . "/esl-seqstat";
 
 utl_ExecHValidate(\%execs_H, undef);
 
@@ -361,6 +363,12 @@ else {
   push(@to_remove_A, $in_fa_file);
   push(@to_remove_A, $in_fa_file . ".ssi");
 }
+my $seqstat_file = $out_root . ".seqstat";
+my @seq_name_A = (); # [0..$i..$nseq-1]: name of sequence $i in input file, we actually don't need this but sqf_EslSeqstatOptAParse requires it
+my %seq_len_H = ();  # key: sequence name (guaranteed to be unique), value: seq length, we actually don't need this but sqf_EslSeqstatOptAParse requires it
+utl_RunCommand($execs_H{"esl-seqstat"} . " --dna -a $in_fa_file > $seqstat_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "seqstat", $seqstat_file, 1, 1, "esl-seqstat -a output for input fasta file");
+sqf_EslSeqstatOptAParse($seqstat_file, \@seq_name_A, \%seq_len_H, $FH_HR);
 
 my $in_sqfile = Bio::Easel::SqFile->new({ fileLocation => $in_fa_file }); # the sequence file object
 my $in_nseq   = $in_sqfile->nseq_ssi;
