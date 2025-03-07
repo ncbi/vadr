@@ -19,9 +19,9 @@ calicivirus, coronavirus, influenza, RSV, or Mpox sequences, run:
 
 `v-scan.pl -m in.fa out`
 
-This will generate output explaining each stage of the processing and
+This will list each stage of the processing and
 ultimately create an output directory called `out` and fill it with 
-output files. Short descriptions of the output files will be output to the
+output files. Short descriptions of the output files will be printed to the
 screen. More detailed explanation of output file types can be found
 [here](formats.md#annotate). For a more detailed walk-through example
 of `v-scan.pl` see [this page](scan.md#longwalk).
