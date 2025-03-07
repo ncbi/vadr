@@ -4,31 +4,52 @@
 
 VADR is a suite of tools for classifying and analyzing sequences
 homologous to a set of reference models of viral genomes or gene
-families. It has been mainly tested for analysis of Norovirus, Dengue,
-and SARS-CoV-2 virus sequences in preparation for submission to the
-GenBank database. It can also be used for the analysis of influenza, RSV,
-Mpox, and [other viruses](#models).
+families. It includes models that can be used to validate and annotate
+Norovirus, Dengue virus, SARS-CoV-2 virus as well as other
+flaviviruses, caliciviruses, and coronaviruses, plus influenza virus,
+mpox virus, and repiratory syncitial virus (RSV). Additional models
+are [available to download](#models) or can be created using the
+`v-build.pl` program.
 
-The VADR `v-annotate.pl` script is used to classify a sequence, by
-determining which in a library of reference models it is most similar to,
-and then annotate that sequence based on that most similar model.
-Example usage of `v-annotate.pl` can be found
-[here](documentation/annotate.md#top).  Another VADR script,
-`v-build.pl`, is used to create the models from NCBI RefSeq sequences
-or from input multiple sequence alignments, potentially with secondary
-structure annotation. `v-build.pl` stores the RefSeq feature
-annotation in the model, and `v-annotate.pl` maps that annotation
-(e.g. CDS coordinates) onto the sequences it annotates.  Example usage of
-`v-build.pl` can be found [here](documentation/build.md#top). An
-advanced tutorial on building VADR models using RSV as an example can
-be found [here](documentation/advbuild.md#top).
+---
+## Quick-start: classifying and annotating viruses using `v-scan.pl`
 
-If you have multiple model libraries installed, the `v-scan.pl` script
-allows you to run one simple command to annotate sequences using any
-of those libraries. `v-scan.pl` will determine which library to use
-for each sequence and call `v-annotate.pl` using that library with
-pre-defined options read from an input 'config' file. Example usage of
-`v-scan.pl` can be found [here](documentation/scan.md#top).
+Given an fasta sequence file called `my.fa` with any combination of flavivirus,
+calicivirus, coronavirus, influenza, RSV, or Mpox sequences, run:
+
+`v-scan.pl -m in.fa out`
+
+This will generate output explaining each stage of the processing and
+ultimately create an output directory called `out` and fill it with 
+output files. Short descriptions of the output files will be output to the
+screen. More detailed explanation of output file types can be found
+[here](formats.md#annotate). For a more detailed walk-through example
+of `v-scan.pl` see [this page](scan.md#longwalk).
+
+---
+## VADR programs
+
+The VADR `v-scan.pl` script classifies and annotates sequences that
+match to any of your VADR model libraries. 
+Once `v-scan.pl` determines the library to use for a given set of
+sequences, it runs a different VADR program called `v-annotate.pl`
+which identifies the appropriate model in the library to use for each
+sequence and defines the annotation based on that most similar model.
+`v-scan.pl` will automatically run `v-annotate.pl` using the
+recommended settings (`v-annotate.pl` command-line options) for each
+library but alternatively, users can run the `v-annotate.pl`
+separately. Example usage of `v-annotate.pl` can be found
+[here](documentation/annotate.md#top).
+
+Another VADR script, `v-build.pl`, is used to create the models from
+individual sequences from GenBank or from input multiple sequence
+alignments, potentially with secondary structure
+annotation. `v-build.pl` stores the GenBank feature annotation in the
+model, and `v-annotate.pl` maps that annotation (e.g. CDS coordinates)
+onto the sequences it annotates.  Example usage of `v-build.pl` can be
+found [here](documentation/build.md#top). An advanced tutorial on
+building VADR models using RSV as an example can be found
+[here](documentation/advbuild.md#top).
 
 `v-annotate.pl` identifies unexpected or divergent attributes of the
 sequences it annotates (e.g. invalid or early stop codons in CDS
@@ -46,31 +67,21 @@ FASTA, MINIMAP2 and BLAST software packages, which are downloaded and installed
 with [VADR installation](documentation/install.md#top).
 
 ---
-## SARS-CoV-2 annotation using VADR
 
-The `v-annotate.pl` script includes some special options specifically
-developed for SARS-CoV-2 annotation that increase speed (`-s` and
-`--glsearch` options) and provide better annotation for sequences with
-stretches of Ns (`-r` option). See [this
-page](https://github.com/ncbi/vadr/wiki/Coronavirus-annotation) for
-more information on using VADR to annotate SARS-CoV-2 sequences.
-
----
 ## Available VADR models <a name="models"></a>
 
-VADR installation includes a default set of *Caliciviridae* models
-including Norovirus virus. The installation also includes a set of
-*Flaviviridae* models including Dengue virus. These models were
-created with a process similar to the one described [here](documentation/build.md#1.0library).
+VADR installation includes the following model libraries:
 
-You can download additional pre-built models to use to validate and
-annotate viruses, including SARS-CoV-2, RSV, or cox1
-genes. Importantly, to use a set of models other than the default
-*Caliciviridae* set, you will need to use either the `--mdir` and
-`--mkey` options, or the the `-m`, `-i`, `-x` and possibly `-n`
-options as described [here](documentation/annotate.md#options).
+| library      | model key (short name) | rigorously tested? | number of models | notes | 
+|--------------|----------------|------------------|-------|
+| \emph{caliciviridae} | calici | norovirus models only | 49 | norovirus models used by GenBank |
+| \emph{flaviviridae}  | flavi  | dengue and HCV models only | 156 | dengue models used by GenBank |
+| \emph{coronaviridae} | corona | SARS-CoV-2 only           | 55 | SARS-CoV-2 models used by GenBank |
+| influenza     | flu | yes           | 70 | [described in Database article](https://pubmed.ncbi.nlm.nih.gov/39297389/) |
+| mpox          | mpxv | yes | 1 | | 
+| RSV           | rsv  | yes | 2 | | 
 
-See [this
+Additional models are available. See [this
 page](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files)
 for a list of all available models and additional information.
 
