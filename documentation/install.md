@@ -154,6 +154,7 @@ of v10.15 (Catalina)), add the following lines to the end of your
 
 export VADRINSTALLDIR=<full path to directory in which you ran vadr-install.sh>
 export VADRSCRIPTSDIR="$VADRINSTALLDIR/vadr"
+export VADRCONFIGFILE="$VADRINSTALLDIR/vadr.config"
 export VADRMODELDIR="$VADRINSTALLDIR/vadr-models-calici"
 export VADRINFERNALDIR="$VADRINSTALLDIR/infernal/binaries"
 export VADREASELDIR="$VADRINSTALLDIR/infernal/binaries"
@@ -182,6 +183,7 @@ directory:
 
 setenv VADRINSTALLDIR "<full path to directory in which you ran vadr-install.sh>"
 setenv VADRSCRIPTSDIR "$VADRINSTALLDIR/vadr"
+setenv VADRCONFIGFILE "$VADRINSTALLDIR/vadr.config"
 setenv VADRMODELDIR "$VADRINSTALLDIR/vadr-models-calici"
 setenv VADRINFERNALDIR "$VADRINSTALLDIR/infernal/binaries"
 setenv VADRHMMERDIR "$VADRINSTALLDIR/infernal/binaries"
