@@ -386,6 +386,7 @@ and it is recommended to use the `-s` and `--glsearch` options with `v-annotate.
 ---
 ## <a name="further"></a> Further information
 
+* [`v-scan.pl` example usage and command-line options](scan.md#top)
 * [`v-build.pl` example usage and command-line options](build.md#top)
 * [`v-annotate.pl` example usage, command-line options and alert information](annotate.md#top)
 * [Explanations and examples of `v-annotate.pl` detailed alert and error messages](alerts.md#top)

@@ -12,9 +12,47 @@ are [available to download](#models) or can be created using the
 `v-build.pl` program.
 
 ---
-## Quick-start: classifying and annotating viruses using `v-scan.pl`
+## Quick-start: install VADR and classify and annotate viral sequences using `v-scan.pl`
 
-Given an fasta sequence file called `my.fa` with any combination of flavivirus,
+#### Install VADR:
+
+Download this file:
+
+```
+https://raw.githubusercontent.com/ncbi/vadr/master/vadr-install.sh
+```
+
+possibly with a command like:
+```
+curl -o vadr-install.sh https://raw.githubusercontent.com/ncbi/vadr/master/vadr-install.sh
+```
+
+And execute it, with one of the following commands depending on your
+system type:
+
+```
+sh ./vadr-install.sh linux
+```
+
+OR
+
+```
+sh ./vadr-install.sh macosx-silicon
+```
+
+OR
+
+```
+sh ./vadr-install.sh macosx-intel
+```
+
+Then follow the instructions output at the end of the installation for
+updating your `.bashrc` or `.cshrc` file and defining important
+environment variables that VADR relies on.
+
+#### Run `v-scan.pl` to annotate viral sequences
+
+Given a fasta sequence file called `my.fa` with any combination of flavivirus,
 calicivirus, coronavirus, influenza, RSV, or Mpox sequences, run:
 
 `v-scan.pl -m in.fa out`

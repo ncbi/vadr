@@ -1,5 +1,6 @@
 ## VADR documentation <a name="documentation"></a>
 
+* [Quick-start](../README.md#quickstart)
 * [VADR installation instructions](install.md#top)
   * [Installation using `vadr-install.sh`](install.md#install)
   * [Setting environment variables](install.md#environment)
