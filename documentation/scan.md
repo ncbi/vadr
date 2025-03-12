@@ -476,7 +476,7 @@ integer.
 | `-m`             | multiple-library mode, allow matches to multiple model libraries, without this option matches to only one library are allowed and the program will exit if matches to multiple libraries are found |
 | `-c <s>`         | use the config file `<s>` instead of the config file in $VADRCONFIGFILE |
 | `-v`             | *verbose* mode: all commands will be output to standard output as they are run | 
-| `--cpu <n>`      | parallelize classification stage across <n> CPU workers, requires `-m`, *only impacts the initial classification stage, parallelization of annotation stage can be controlled by adding `--split --cpu <n>` to options strings in the config file |
+| `--cpu <n>`      | parallelize classification stage across <n> CPU workers, requires `-m`, only impacts the initial classification stage, parallelization of annotation stage can be controlled by adding `--split --cpu <n>` to options strings in the config file |
 | `--first`        | specify that if a sequence matches to more than one library, use the first one; by default the higher scoring match is used |
 | `--lone`         | exit if at least one sequence matches to multiple libraries |
 | `--origfa`       | do not copy the input fasta file into output directory prior to analysis, use the original |
