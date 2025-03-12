@@ -97,6 +97,7 @@ opt_Add("-v",           "boolean", 0,         $g,    undef, undef,      "be verb
 opt_Add("--first",      "boolean", 0,         $g,    undef,"--lone",    "if a seq matches > 1 model library, use first one [df: use best scoring]",                 "if a seq matches > 1 model library, use first one [df: use best scoring]", \%opt_HH, \@opt_order_A);
 opt_Add("--lone",       "boolean", 0,         $g,    undef, undef,      "exit if at least one sequence matches to multiple libraries",                             "exit if at least one sequence matches to multiple libraries", \%opt_HH, \@opt_order_A);
 opt_Add("--origfa",     "boolean", 0,         $g,    undef,   undef,    "do not copy fasta file prior to analysis, use original",                                  "do not copy fasta file prior to analysis, use original", \%opt_HH, \@opt_order_A);
+opt_Add("--cpu",        "integer", 0,         $g,     "-m", undef,      "with -m, parallelize classification stage across <n> CPU workers",                        "with -m, parallelize classification stage across <n> CPU workers", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,         $g,    undef, undef,      "leaving intermediate files on disk",                                                      "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 #     option            type       default group   requires incompat    preamble-output                                                                            help-output    
 $opt_group_desc_H{++$g} = "options for specifying which model libraries to use";
@@ -125,6 +126,7 @@ my $options_okay =
                 'm'        => \$GetOptions_H{"-m"}, 
                 'c=s'      => \$GetOptions_H{"-c"},
                 'v'        => \$GetOptions_H{"-v"},
+                'cpu=s'    => \$GetOptions_H{"--cpu"}, 
                 'first'    => \$GetOptions_H{"--first"},
                 'lone'     => \$GetOptions_H{"--lone"}, 
                 'origfa'   => \$GetOptions_H{"--origfa"},
@@ -438,7 +440,8 @@ my $clsonly_fa_file = ($do_sample) ? $sample_in_fa_file : $in_fa_file;
 my @clsonly_outdir_A = ();
 my $keep_opt   = ($do_keep) ? "--keep" : "";
 my $mkey_opt2use = "";
-
+my $split_cpu_opt2use = (opt_IsUsed("--cpu", \%opt_HH)) ? "--split --cpu " . opt_Get("--cpu", \%opt_HH) : ""; 
+    
 if($n_okey_clsonly > 1) { # if we only have 1 model library, we skip the --cls_only stage
   foreach $okey (@okey_clsonly_used_A) {
     $clsonly_outdir_H{$okey} = $dir_tail . "/" . $dir_tail . ".clsonly." . $okey;
@@ -446,7 +449,8 @@ if($n_okey_clsonly > 1) { # if we only have 1 model library, we skip the --cls_o
     $sqc_H{$okey} = $clsonly_outdir_H{$okey} . "/" . $dir_tail . ".clsonly." . $okey . ".vadr.sqc";
     # determine --mkey option to use, this is --mkey $okey unless specified in config file options string
     $mkey_opt2use = "--mkey " . mkey_from_opts($okey, $okey_opts_H{$okey});
-    $cmd = $execs_H{"v-annotate.pl"} . " -f -s --origfa --cls_only $mkey_opt2use --mdir $okey_mdir_H{$okey} $keep_opt $clsonly_fa_file $clsonly_outdir_H{$okey}";
+
+    $cmd = $execs_H{"v-annotate.pl"} . " -f $split_cpu_opt2use -s --origfa --cls_only $mkey_opt2use --mdir $okey_mdir_H{$okey} $keep_opt $clsonly_fa_file $clsonly_outdir_H{$okey}";
     if(! $do_verbose) { $cmd .= " > /dev/null"; }
     my $start_secs = ofile_OutputProgressPrior(sprintf("Scanning $sample_nseq sequence%s against %-*s library ", ($sample_nseq == 1) ? "" : "s", $okey_width, $okey), $progress_w, $log_FH, *STDOUT);
     utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
@@ -674,9 +678,9 @@ sub parse_config_file {
         $mdir =~ s/\$VADRINSTALLDIR/$env_vadr_install_dir/g;
       }
       my $test_okey = $okey;
-      $test_okey =~ s/[^a-z0-9]//g;
+      $test_okey =~ s/[^a-zA-Z0-9]//g;
       if($test_okey ne $okey) { 
-        ofile_FAIL("ERROR ready okey $okey, which includes some characters that are not lowercase or numeric, all okey values in field 1 must be all lowercase without any special non-alphanumeric characters", 1, $FH_HR);
+        ofile_FAIL("ERROR reading okey $okey, which includes some special (non alphanumeric) characters, all okey values in field 1 must be all lowercase without any special non-alphanumeric characters", 1, $FH_HR);
       }
       my $opts = "";
       for(my $i = 2; $i < scalar(@el_A); $i++) {
@@ -1465,10 +1469,12 @@ sub find_matching_okeys {
     $subgrp  =~ s/[^a-z0-9]//g;
   }
   foreach my $other_okey (@{$other_okey_AR}) {
+    # lowercase it
+    my $lc_other_okey = lc($other_okey);
     # other_okey will be lowercase without special characters, parse_config_file makes sure of this
-    if(($mdl eq $other_okey) || 
-       ((defined $grp)    && ($grp    eq $other_okey)) ||
-       ((defined $subgrp) && ($subgrp eq $other_okey))) { 
+    if(($mdl eq $lc_other_okey) || 
+       ((defined $grp)    && ($grp    eq $lc_other_okey)) ||
+       ((defined $subgrp) && ($subgrp eq $lc_other_okey))) { 
       push(@{$matching_other_okey_AR}, $other_okey);
     }
   }
