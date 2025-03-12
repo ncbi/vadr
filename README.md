@@ -7,12 +7,12 @@ homologous to a set of reference models of viral genomes or gene
 families. It includes models that can be used to validate and annotate
 Norovirus, Dengue virus, SARS-CoV-2 virus as well as other
 flaviviruses, caliciviruses, and coronaviruses, plus influenza virus,
-mpox virus, and repiratory syncitial virus (RSV). Additional models
+mpox virus, and respiratory syncitial virus (RSV). Additional models
 are [available to download](#models) or can be created using the
 `v-build.pl` program.
 
 ---
-## Quick-start: install VADR and classify and annotate viral sequences using `v-scan.pl`
+## Quick-start: install VADR and classify and annotate viral sequences using `v-scan.pl`<a name="quickstart"></a>
 
 #### Install VADR:
 
