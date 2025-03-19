@@ -7707,9 +7707,12 @@ sub add_protein_validation_alerts {
                       my @p_del_len_A  = ();
                       my $ndel = helper_blastx_breakdown_max_indel_str($p_del, \@p_del_qpos_A, \@p_del_spos_A, \@p_del_len_A, $FH_HR);
                       for(my $del_idx = 0; $del_idx < $ndel; $del_idx++) { 
-                        my $nt_del_spos = vdr_Feature3pMostPosition(vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, 
-                                                                                                        vdr_CoordsSinglePositionSegmentCreate($p_del_spos_A[$del_idx], "+", $FH_HR),
-                                                                                                        $FH_HR), $FH_HR);
+                        my $nt_del_spos = 1 + vdr_Feature3pMostPosition(vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, 
+                                                                                                            vdr_CoordsSinglePositionSegmentCreate($p_del_spos_A[$del_idx], "+", $FH_HR),
+                                                                                                            $FH_HR), $FH_HR);
+                        # we add 1 to make nt_del_spos bc the value returned from vdr_Feature3pMostPosition is the nucleotide subject position of the 3' most nt in the AA
+                        # just before the deletion so deletion actually starts at that position + 1
+
                         my $local_xmaxdel = (defined $deletin_posn_exc_AH[$ftr_idx]{$nt_del_spos}) ? $deletin_posn_exc_AH[$ftr_idx]{$nt_del_spos} : $xmaxdel;
                         if($p_del_len_A[$del_idx] > $local_xmaxdel) { 
                           if(defined $alt_str_HH{$ftr_results_prefix}{"deletinp"}) { $alt_str_HH{$ftr_results_prefix}{"deletinp"} .= ":VADRSEP:"; } # we are adding another instance
