@@ -199,12 +199,17 @@ for a list of all available models and additional information.
 ---
 ## Reference <a name="reference"></a>
 
+* The recommended citation for influenza analysis using VADR is:
+  *Vincent C Calhoun, Eneida L Hatcher, Linda Yankie, Eric P Nawrocki; 
+  Influenza sequence validation and annotation using VADR. Database.
+  baae091. (2024).* https://doi.org/10.1093/database/baae091
+
 * The recommended citation for using VADR for SARS-CoV-2 analysis:
   *Eric P Nawrocki; Faster SARS-CoV-2 sequence validation and
   annotation for GenBank using VADR. NAR Genom Bioinform. 2023 Jan
   20;5(1)::lqad002. (2023).* https://doi.org/10.1093/nargab/lqad002
 
-* The recommended citation for non-SARS-CoV-2 use of VADR is:
+* The recommended citation for all other uses of VADR is:
   *Alejandro A Schäffer, Eneida L Hatcher, Linda Yankie, Lara Shonkwiler,
   J Rodney Brister, Ilene Karsch-Mizrachi, Eric P Nawrocki; VADR:
   validation and annotation of virus sequence submissions to
