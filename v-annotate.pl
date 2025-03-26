@@ -171,6 +171,7 @@ $execs_H{"esl-alimerge"}  = $env_vadr_easel_dir    . "/esl-alimerge";
 $execs_H{"esl-alimanip"}  = $env_vadr_easel_dir    . "/esl-alimanip";
 $execs_H{"esl-reformat"}  = $env_vadr_easel_dir    . "/esl-reformat";
 $execs_H{"esl-seqstat"}   = $env_vadr_easel_dir    . "/esl-seqstat";
+$execs_H{"esl-sfetch"}    = $env_vadr_easel_dir    . "/esl-sfetch";
 $execs_H{"esl-translate"} = $env_vadr_easel_dir    . "/esl-translate";
 $execs_H{"esl-ssplit"}    = $env_vadr_bioeasel_dir . "/scripts/esl-ssplit.pl";
 $execs_H{"blastx"}        = $env_vadr_blast_dir    . "/blastx";
@@ -253,7 +254,7 @@ opt_Add("-n",           "string",  undef,      $g,    undef, undef,       "use b
 opt_Add("-x",           "string",  undef,      $g,    undef, undef,       "blastx dbs are in dir <s>, instead of default",                                  "blastx dbs are in dir <s>, instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("--mkey",       "string","calici",     $g,    undef,"-m,-i,-a",   ".cm, .minfo, blastn .fa files in \$VADRMODELDIR start with key <s>, not 'vadr'", ".cm, .minfo, blastn .fa files in \$VADRMODELDIR start with key <s>, not 'vadr'",  \%opt_HH, \@opt_order_A);
 opt_Add("--mdir",       "string",  undef,      $g,    undef, undef,       "model files are in directory <s>, not in \$VADRMODELDIR",                        "model files are in directory <s>, not in \$VADRMODELDIR",  \%opt_HH, \@opt_order_A);
-opt_Add("--mlist",      "string",  undef,      $g,    undef, "-s",        "only use models listed in file <s>",                                             "only use models listed in file <s>",  \%opt_HH, \@opt_order_A);
+opt_Add("--mlist",      "string",  undef,      $g,    undef, undef,       "only use models listed in file <s>",                                             "only use models listed in file <s>",  \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling output feature table";
 #        option               type   default group  requires incompat    preamble-output                                                               help-output    
@@ -1095,6 +1096,21 @@ if(defined $model_list) {
   }
   if($err_msg ne "") { 
     ofile_FAIL("ERROR, the following models listed in $model_list do not exist in model info file $minfo_file:\n$err_msg\n", 1, $FH_HR);
+  }
+}
+# if --mlist and -s used, create a new blastdb file
+if((defined $model_list) && $do_blastn_any) {
+  my $mlist_blastn_db_file = $out_root . ".mlist.blastn.db.fa";
+  my $sfetch_cmd = $execs_H{"esl-sfetch"} . " -f $blastn_db_file $model_list > $mlist_blastn_db_file";
+  utl_RunCommand($sfetch_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+  my $makeblastdb_cmd = $execs_H{"makeblastdb"} . " -in $mlist_blastn_db_file -dbtype nucl > /dev/null";
+  utl_RunCommand($makeblastdb_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+  $blastn_db_file = $mlist_blastn_db_file;
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "mlist.blastn.db.fa", $mlist_blastn_db_file, $do_keep, $do_keep, "temporary blastn db (due to --mlist)");
+  push(@to_remove_A, $mlist_blastn_db_file);
+  foreach my $blastn_sfx ("nhr", "nin", "nsq", "ndb", "not", "ntf", "nto", "njs") {
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "mlist.blastn.db.$blastn_sfx", $mlist_blastn_db_file . "." . $blastn_sfx, $do_keep, $do_keep, "temporary blastn db $blastn_sfx file (due to --mlist)");
+    push(@to_remove_A, $mlist_blastn_db_file . "." . $blastn_sfx);
   }
 }
 
