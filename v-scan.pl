@@ -440,6 +440,7 @@ my $clsonly_fa_file = ($do_sample) ? $sample_in_fa_file : $in_fa_file;
 my @clsonly_outdir_A = ();
 my $keep_opt   = ($do_keep) ? "--keep" : "";
 my $mkey_opt2use = "";
+my $mlist_opt2use = "";
 my $split_cpu_opt2use = (opt_IsUsed("--cpu", \%opt_HH)) ? "--split --cpu " . opt_Get("--cpu", \%opt_HH) : ""; 
     
 if($n_okey_clsonly > 1) { # if we only have 1 model library, we skip the --cls_only stage
@@ -448,9 +449,10 @@ if($n_okey_clsonly > 1) { # if we only have 1 model library, we skip the --cls_o
     push(@clsonly_outdir_A, $clsonly_outdir_H{$okey});
     $sqc_H{$okey} = $clsonly_outdir_H{$okey} . "/" . $dir_tail . ".clsonly." . $okey . ".vadr.sqc";
     # determine --mkey option to use, this is --mkey $okey unless specified in config file options string
-    $mkey_opt2use = "--mkey " . mkey_from_opts($okey, $okey_opts_H{$okey});
+    $mkey_opt2use  = "--mkey " . mkey_from_opts($okey, $okey_opts_H{$okey});
+    $mlist_opt2use = mlist_from_opts($okey_opts_H{$okey});
 
-    $cmd = $execs_H{"v-annotate.pl"} . " -f $split_cpu_opt2use -s --origfa --cls_only $mkey_opt2use --mdir $okey_mdir_H{$okey} $keep_opt $clsonly_fa_file $clsonly_outdir_H{$okey}";
+    $cmd = $execs_H{"v-annotate.pl"} . " -f $split_cpu_opt2use -s --origfa --cls_only $mkey_opt2use --mdir $okey_mdir_H{$okey} $mlist_opt2use $keep_opt $clsonly_fa_file $clsonly_outdir_H{$okey}";
     if(! $do_verbose) { $cmd .= " > /dev/null"; }
     my $start_secs = ofile_OutputProgressPrior(sprintf("Scanning $sample_nseq sequence%s against %-*s library ", ($sample_nseq == 1) ? "" : "s", $okey_width, $okey), $progress_w, $log_FH, *STDOUT);
     utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
@@ -676,11 +678,6 @@ sub parse_config_file {
       my ($okey, $mdir) = ($el_A[0], $el_A[1]);
       if(defined $env_vadr_install_dir) { # replace $VADRINSTALLDIR with passed in $env_vadr_install_dir (if defined)
         $mdir =~ s/\$VADRINSTALLDIR/$env_vadr_install_dir/g;
-      }
-      my $test_okey = $okey;
-      $test_okey =~ s/[^a-zA-Z0-9]//g;
-      if($test_okey ne $okey) { 
-        ofile_FAIL("ERROR reading okey $okey, which includes some special (non alphanumeric) characters, all okey values in field 1 must be all lowercase without any special non-alphanumeric characters", 1, $FH_HR);
       }
       my $opts = "";
       for(my $i = 2; $i < scalar(@el_A); $i++) {
@@ -1307,12 +1304,12 @@ sub parse_log_file_for_out_files {
 #             is set, return $mkey.
 #
 # Arguments: 
-#  $mkey:     path to config file
-#  $opts:     REF to hash of file handles
+#  $okey:     options key
+#  $opts:     options string
 #
-# Returns:    void
+# Returns:    the arg for the --mkey option, else $mkey
 #
-# Dies:       if there's a problem parsing the log file
+# Dies:       never
 #
 #################################################################
 sub mkey_from_opts {
@@ -1326,6 +1323,34 @@ sub mkey_from_opts {
     return $1;
   }
   return $mkey;
+}
+
+#################################################################
+# Subroutine:  mlist_from_opts()
+# Incept:      EPN, Wed Mar 26 14:34:39 2025
+#
+# Purpose:    Return the --mlist option from an options string, if
+#             it doesn't exist in the options string, return ""
+#
+# Arguments: 
+#  $opts:     options string
+#
+# Returns:    mlist option from $opts, or "" if it doesn't exist
+#
+# Dies:       never
+#
+#################################################################
+sub mlist_from_opts {
+  my $sub_name = "mlist_from_opts";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($opts) = (@_);
+
+  if($opts =~ /\s+(\-\-mlist\s+\S+)/) {
+    return $1;
+  }
+  return "";
 }
 
 #################################################################
@@ -1457,7 +1482,10 @@ sub find_matching_okeys {
   my ($other_okey_AR, $mdl, $grp, $subgrp, $matching_other_okey_AR) = (@_);
 
   @{$matching_other_okey_AR} = ();
-  
+
+  # remove special characters from mdl, grp and subgrp and make them all lowercase
+  # and do the same for okey values
+  # we check for identity after doing this so e.g. 'sarscov2' will match 'SARS-CoV-2'
   $mdl =~ tr/A-Z/a-z/;
   $mdl =~ s/[^a-z0-9]//g;
   if(defined $grp) { 
@@ -1469,12 +1497,12 @@ sub find_matching_okeys {
     $subgrp  =~ s/[^a-z0-9]//g;
   }
   foreach my $other_okey (@{$other_okey_AR}) {
-    # lowercase it
-    my $lc_other_okey = lc($other_okey);
-    # other_okey will be lowercase without special characters, parse_config_file makes sure of this
-    if(($mdl eq $lc_other_okey) || 
-       ((defined $grp)    && ($grp    eq $lc_other_okey)) ||
-       ((defined $subgrp) && ($subgrp eq $lc_other_okey))) { 
+    my $tocompare_other_okey = $other_okey;
+    $tocompare_other_okey =~ tr/A-Z/a-z/;
+    $tocompare_other_okey =~ s/[^a-z0-9]//g;
+    if(($mdl eq $tocompare_other_okey) || 
+       ((defined $grp)    && ($grp    eq $tocompare_other_okey)) ||
+       ((defined $subgrp) && ($subgrp eq $tocompare_other_okey))) { 
       push(@{$matching_other_okey_AR}, $other_okey);
     }
   }
