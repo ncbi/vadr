@@ -94,6 +94,7 @@ $opt_group_desc_H{++$g} = "basic options";
 opt_Add("-h",           "boolean", 0,           0,    undef, undef,       undef,                                                         "display this help",                                   \%opt_HH, \@opt_order_A);
 opt_Add("-f",           "boolean", 0,          $g,    undef, undef,       "forcing directory overwrite",                                 "force; if dir <output directory> exists, overwrite it", \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,          $g,    undef, undef,       "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
+opt_Add("-c",           "boolean", 0,          $g,    undef, undef,       "assert genome is circular, build 'doubled' model",            "assert genome is circular, build 'doubled' model", \%opt_HH, \@opt_order_A);
 opt_Add("--stk",        "string",  undef,      $g,    undef, undef,       "read single sequence stockholm 'alignment' from <s>",         "read single sequence stockholm 'alignment' from <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--infa",       "string",  undef,      $g,    undef, undef,       "read single sequence fasta file from <s>, don't fetch it",    "read single sequence fasta file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
 opt_Add("--inft",       "string",  undef,      $g, "--inft", "--gb",      "read feature table file from <s>, don't fetch it",            "read feature table file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
@@ -163,6 +164,7 @@ my $options_okay =
 # basic options
                 'f'            => \$GetOptions_H{"-f"},
                 'v'            => \$GetOptions_H{"-v"},
+                'c'            => \$GetOptions_H{"-c"},
                 'stk=s'        => \$GetOptions_H{"--stk"},
                 'infa=s'       => \$GetOptions_H{"--infa"},
                 'inft=s'       => \$GetOptions_H{"--inft"},
@@ -324,6 +326,8 @@ my $FH_HR  = $ofile_info_HH{"FH"};
 # output files are all open, if we exit after this point, we'll need
 # to close these first.
 
+my $do_circular = opt_Get("-c", \%opt_HH) ? 1 : 0;
+
 # open optional output files
 if(opt_Get("--ftrinfo", \%opt_HH)) { 
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "ftrinfo", $out_root . ".ftrinfo", 1, 1, "Feature information (created due to --ftrinfo)");
@@ -375,6 +379,7 @@ else {
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "fasta", $fa_file, 1, 1, "fasta file for $mdl_name");
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
+
 $start_secs = ofile_OutputProgressPrior("Parsing FASTA file", $progress_w, $log_FH, *STDOUT);
 vdr_ParseSeqFileToSeqHash($fa_file, \%seq_H, $FH_HR);
 my @fetched_seq_A = (sort keys %seq_H);
@@ -391,6 +396,18 @@ if($mdl_name_ver =~ /(\S+)\.\d+/) {
 else {
   ofile_FAIL("ERROR did not fetch correct sequence from fasta file $fa_file (expected accession.version starting with $mdl_name, got $mdl_name_ver)\n", 1, $FH_HR);
 }
+
+if($do_circular) {
+  # double the sequence, and replace the fasta file with the doubled seq
+  $seq_H{$mdl_name_ver} = $seq_H{$mdl_name_ver} . $seq_H{$mdl_name_ver};
+  my $bkup_fa_file = $out_root . ".orig.fa";
+  utl_RunCommand("cp $fa_file $bkup_fa_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "doubled-fa", $fa_file, 1, 1, "doubled fa file (due to -c)");
+  sqf_FastaWriteSequence($FH_HR->{"doubled-fa"}, $mdl_name_ver, undef, $seq_H{$mdl_name_ver}, $FH_HR);
+  close $ofile_info_HH{"FH"}{"doubled-fa"};
+  $ofile_info_HH{"FH"}{"doubled-fa"} = undef;
+}
+
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #######################################################################
