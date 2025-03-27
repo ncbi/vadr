@@ -485,12 +485,20 @@ else {
   if(! exists $ftr_info_HAH{$mdl_name}) { 
     ofile_FAIL("ERROR parsing GenBank file $gb_file, did not read info for reference accession $mdl_name\n", 1, $FH_HR);
   }
+  # create 'coords' keys, from location
+  vdr_FeatureInfoImputeCoords(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
+
+#if($do_circular) {
+#  modify_coords_for_circular_genomes(\@{$ftr_info_HAH{$mdl_name}});
+#}
+
 if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
   utl_AHDump("Feature information", \@{$ftr_info_HAH{$mdl_name}}, $ofile_info_HH{"FH"}{"ftrinfo"});
 }
 
+#exit 0;
 #######################################################
 # Prune data read from %ftr_info_HAH, only keeping what
 # we want to output to the eventual model info file
@@ -704,9 +712,6 @@ ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
 ######################################################################
 $start_secs = ofile_OutputProgressPrior("Finalizing feature information", $progress_w, $log_FH, *STDOUT);
 
-if(opt_Get("--gb", \%opt_HH)) { # we only need to derive 'coords' if we parsed the GenBank file
-  vdr_FeatureInfoImputeCoords(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-}
 vdr_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 vdr_FeatureInfoInitializeParentIndexStrings(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 
@@ -1376,6 +1381,61 @@ sub check_and_add_cds_splice_sites {
         if($canon_5p && $canon_3p) { 
           # set canon_splice_sites="1"
           $ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"} = 1;
+        }
+      } # end of if($nsgm > 1)
+    }
+  }
+  return;
+}
+
+#################################################################
+# Subroutine: modify_coords_for_circular_genomes
+# Incept:     EPN, Thu Mar 27 10:43:31 2025
+# 
+# Purpose:    Given feature information for a circular genome,
+#             modify the coords so they do not cross the origin.
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, changed and added to here
+#   $opt_HHR:       REF to 2D hash of option values, see top of sqp_opts.pm for description, PRE-FILLED
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#
+#################################################################
+sub modify_coords_for_circular_genomes { 
+  my $sub_name = "modify_coords_for_circular_genomes";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_AHR, $opt_HHR, $FH_HR) = @_;
+
+  
+  # precompute start, stop, strand, for all features, so we don't have to redo this for each seq
+  my @sgm_start_AA  = ();
+  my @sgm_stop_AA   = ();
+  my @sgm_strand_AA = ();
+  vdr_FeatureInfoStartStopStrandArrays($ftr_info_AHR, \@sgm_start_AA, \@sgm_stop_AA, \@sgm_strand_AA, $FH_HR);
+
+  my $nftr = scalar(@{$ftr_info_AHR});
+
+  my $canon_5p; # TRUE if all seqs have canonical 5' splice site (GT)
+  my $canon_3p; # TRUE if all seqs have canonical 3' splice site (AG)
+  my ($rfstart, $rfstop, $astart, $astop); # model/alignment positions 
+  my ($nsgm, $next_sgm_idx, $strand);
+  my $seq_idx;     # sequence index in the MSA (always 0 if 1 seq MSA)
+  my $ss_sqstring; # the splice site string
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") { 
+      $nsgm = scalar(@{$sgm_start_AA[$ftr_idx]});
+      if($nsgm > 1) { 
+        $canon_5p = 1; # will set to 0 below if any 5' splice site for any intron is not GT
+        $canon_3p = 1; # will set to 0 below if any 3' splice site for any intron is not AG
+        if($canon_5p && $canon_3p) { 
+          # set canon_splice_sites="1"
+#          $ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"} = 1;
         }
       } # end of if($nsgm > 1)
     }
