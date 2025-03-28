@@ -491,6 +491,7 @@ else {
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 
+# modify coords if we are circular
 if($do_circular) {
   modify_coords_for_circular_genomes(\@{$ftr_info_HAH{$mdl_name}}, $orig_mdllen, \%opt_HH, $FH_HR);
 }
@@ -519,7 +520,7 @@ my %qdf_H      = (); # default qualifiers to keep
 my %qadd_H     = (); # qualifiers to add
 my %qskip_H    = (); # qualifiers to skip
 my %qftr_add_H = (); # if --qftradd, subset of features to add qualifiers in --qadd option for
-process_add_and_skip_options("type,coords,location,product,gene,exception,parent_idx_str,5p_trunc,3p_trunc", "--qadd", "--qskip", "--qftradd", \%qdf_H, \%qadd_H, \%qskip_H, \%qftr_add_H, \%opt_HH, $FH_HR); 
+process_add_and_skip_options("type,coords,location,product,gene,exception,parent_idx_str,5p_trunc,3p_trunc,orig_coords", "--qadd", "--qskip", "--qftradd", \%qdf_H, \%qadd_H, \%qskip_H, \%qftr_add_H, \%opt_HH, $FH_HR); 
 # we only need ribosomal_slippage above so we can get the exception:ribosomal slippage 
 # qualifier, if we switch to parsing feature tables instead of GenBank files, then
 # "ribosomal_slippage" should be removed from the list.
@@ -918,8 +919,11 @@ $start_secs = ofile_OutputProgressPrior("Creating model info file", $progress_w,
 # but we use it here only for a single model.
 my @mdl_info_AH = (); 
 %{$mdl_info_AH[0]} = ();
-$mdl_info_AH[0]{"name"}   = $mdl_name;
-$mdl_info_AH[0]{"length"} = length($seq_H{$mdl_name_ver});
+$mdl_info_AH[0]{"name"}        = $mdl_name;
+$mdl_info_AH[0]{"length"}      = length($seq_H{$mdl_name_ver});
+if($do_circular) {
+  $mdl_info_AH[0]{"is_circular"} = "1";
+}
 if(defined $cm_file) { 
   $mdl_info_AH[0]{"cmfile"} = utl_RemoveDirPath($cm_file);
 }
@@ -1428,6 +1432,7 @@ sub modify_coords_for_circular_genomes {
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     $nsgm = scalar(@{$sgm_start_AA[$ftr_idx]});
     my $new_coords = "";
+    my $modified_coords_flag = 0;
     if($nsgm == 1) {
       $new_coords = $ftr_info_AHR->[$ftr_idx]{"coords"};
     }
@@ -1453,6 +1458,7 @@ sub modify_coords_for_circular_genomes {
             $new_coords .= vdr_CoordsSegmentCreate($sgm_start_AA[$ftr_idx][$sgm_idx], ($sgm_stop_AA[$ftr_idx][$sgm_idx+1]+$orig_mdllen), "+", $FH_HR);
             $crossed_origin = 1;
             $combined_sgm_flag = 1;
+            $modified_coords_flag = 1;
           } 
           else { # the two segments do not cross origin, add current segment
             if(! $combined_sgm_flag) {
@@ -1470,15 +1476,16 @@ sub modify_coords_for_circular_genomes {
               ofile_FAIL("ERROR, in $sub_name, feature $ftr_idx with coords " . $ftr_info_AHR->[$ftr_idx]{"coords"} . " crosses origin ($orig_mdllen) more than once");
             }
             # collapse segments together
-            printf("HEYA collapsing ftr_idx: %d with coords: %s, segments %d (%d..%d) and %d (%d..%d) into single segment (%d..%d)\n",
-                   $ftr_idx, 
-                   $ftr_info_AHR->[$ftr_idx]{"coords"},
-                   $sgm_idx+1, $sgm_start_AA[$ftr_idx][$sgm_idx],   $sgm_stop_AA[$ftr_idx][$sgm_idx], 
-                   $sgm_idx+2, $sgm_start_AA[$ftr_idx][$sgm_idx+1], $sgm_stop_AA[$ftr_idx][$sgm_idx+1],
-                   ($sgm_start_AA[$ftr_idx][$sgm_idx] + $orig_mdllen), $sgm_stop_AA[$ftr_idx][$sgm_idx+1]);
+            #printf("collapsing ftr_idx: %d with coords: %s, segments %d (%d..%d) and %d (%d..%d) into single segment (%d..%d)\n",
+            #       $ftr_idx, 
+            #       $ftr_info_AHR->[$ftr_idx]{"coords"},
+            #       $sgm_idx+1, $sgm_start_AA[$ftr_idx][$sgm_idx],   $sgm_stop_AA[$ftr_idx][$sgm_idx], 
+            #       $sgm_idx+2, $sgm_start_AA[$ftr_idx][$sgm_idx+1], $sgm_stop_AA[$ftr_idx][$sgm_idx+1],
+            #       ($sgm_start_AA[$ftr_idx][$sgm_idx] + $orig_mdllen), $sgm_stop_AA[$ftr_idx][$sgm_idx+1]);
             $new_coords .= vdr_CoordsSegmentCreate(($sgm_start_AA[$ftr_idx][$sgm_idx] + $orig_mdllen), $sgm_stop_AA[$ftr_idx][$sgm_idx+1], "-", $FH_HR);
             $crossed_origin = 1;
             $combined_sgm_flag = 1;
+            $modified_coords_flag = 1;
           }
           else { # the two segments do not cross origin, add current segment
             if(! $combined_sgm_flag) {
@@ -1498,8 +1505,10 @@ sub modify_coords_for_circular_genomes {
     if(defined $ftr_info_AHR->[$ftr_idx]{"orig_coords"}) {
       ofile_FAIL("ERROR, in $sub_name, feature $ftr_idx already has key orig_coords with value: " . $ftr_info_AHR->[$ftr_idx]{"orig_coords"});
     }
-    $ftr_info_AHR->[$ftr_idx]{"orig_coords"} = $ftr_info_AHR->[$ftr_idx]{"coords"};
-    $ftr_info_AHR->[$ftr_idx]{"coords"} = $new_coords;
+    if($modified_coords_flag) {
+      $ftr_info_AHR->[$ftr_idx]{"orig_coords"} = $ftr_info_AHR->[$ftr_idx]{"coords"};
+      $ftr_info_AHR->[$ftr_idx]{"coords"} = $new_coords;
+    }
   } # end of 'for(my $ftr_idx = 0; $ftr_idx < $nftr...'
   return;
 }
