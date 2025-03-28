@@ -5954,25 +5954,28 @@ sub vdr_CmalignCheckStdOutput {
 #
 #             
 # Arguments: 
-#  $ifile_file:       ifile file to parse
-#  $seq_inserts_HHR:  REF to hash of hashes with insert information, added to here, must be defined
-#                     key 1: sequence name
-#                     key 2: one of 'spos', 'epos', 'ins'
-#                     $seq_inserts_HHR->{}{"spos"} is starting model position of alignment
-#                     $seq_inserts_HHR->{}{"epos"} is ending model position of alignment
-#                     $seq_inserts_HHR->{}{"ins"} is the insert string in the format:
-#                     <mdlpos_1>:<uapos_1>:<inslen_1>;...<mdlpos_n>:<uapos_n>:<inslen_n>;
-#                     for n inserts, where insert x is defined by:
-#                     <mdlpos_x> is model position after which insert occurs 0..mdl_len (0=before first pos)
-#                     <uapos_x> is unaligned sequence position of the first aligned nt
-#                     <inslen_x> is length of the insert
-#  $mdl_name_HR:      REF to hash of model name hash to fill, added to here, can be undef
-#                     key: sequence name, value: name of model this sequence was aligned to
-#  $seq_name_AR:      REF to array of sequence names, in order read, added to here, can be undef
-#  $seq_len_HR:       REF to hash of sequence lengths to fill, added to here, can be undef
-#  $mdl_len_HR:       REF to hash of model name hash to fill, added to here, can be undef
-#                     key: *model* name, value: length of model
-#  $FH_HR:            REF to hash of file handles
+#  $ifile_file:          ifile file to parse
+#  $seq_inserts_HHR:     REF to hash of hashes with insert information, added to here, must be defined
+#                        key 1: sequence name
+#                        key 2: one of 'spos', 'epos', 'ins'
+#                        $seq_inserts_HHR->{}{"spos"} is starting model position of alignment
+#                        $seq_inserts_HHR->{}{"epos"} is ending model position of alignment
+#                        $seq_inserts_HHR->{}{"ins"} is the insert string in the format:
+#                        <mdlpos_1>:<uapos_1>:<inslen_1>;...<mdlpos_n>:<uapos_n>:<inslen_n>;
+#                        for n inserts, where insert x is defined by:
+#                        <mdlpos_x> is model position after which insert occurs 0..mdl_len (0=before first pos)
+#                        <uapos_x> is unaligned sequence position of the first aligned nt
+#                        <inslen_x> is length of the insert
+#  $mdl_name_HR:         REF to hash of model name hash to fill, added to here, can be undef
+#                        key: sequence name, value: name of model this sequence was aligned to
+#  $seq_name_AR:         REF to array of sequence names, in order read, added to here, can be undef
+#  $seq_len_HR:          REF to hash of sequence lengths to fill, added to here, can be undef
+#  $mdl_len_HR:          REF to hash of model name hash to fill, added to here, can be undef
+#                        key: *model* name, value: length of model
+#  $do_shift_inserts_HR: REF: to hash of '1/0' values whether we should shift all inserts
+#                        and spos/epos by subtracting clen/2 (for some seqs aligned to models for
+#                        circular genomes), can be undef
+#  $FH_HR:               REF to hash of file handles
 #
 # Returns:    void
 #
@@ -5984,10 +5987,11 @@ sub vdr_CmalignCheckStdOutput {
 ################################################################# 
 sub vdr_CmalignParseInsertFile { 
   my $sub_name = "vdr_CmalignParseInsertFile()";
-  my $nargs_exp = 7;
+  my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($ifile_file, $seq_inserts_HHR, $mdl_name_HR, $seq_name_AR, $seq_len_HR, $mdl_len_HR, $FH_HR) = @_;
+  my ($ifile_file, $seq_inserts_HHR, $mdl_name_HR, $seq_name_AR, $seq_len_HR,
+      $mdl_len_HR, $do_shift_inserts_HR, $FH_HR) = @_;
   
   open(IN, $ifile_file) || ofile_FileOpenFailure($ifile_file, $sub_name, $!, "reading", $FH_HR);
 
@@ -6026,6 +6030,10 @@ sub vdr_CmalignParseInsertFile {
           ofile_FAIL("ERROR in $sub_name, unexpected number of elements ($nel) in ifile line in $ifile_file on line $line_ctr:\n$line\n", 1, $FH_HR);
         }          
         my ($seq_name, $seq_len, $spos, $epos) = ($el_A[0], $el_A[1], $el_A[2], $el_A[3]);
+        my $do_shift_insert = ((defined $do_shift_inserts_HR) &&
+                               (defined $do_shift_inserts_HR->{$seq_name}) && 
+                               ($do_shift_inserts_HR->{$seq_name})) ? 1 : 0;
+
         if(! defined $seq_inserts_HHR->{$seq_name}) { 
           # initialize
           %{$seq_inserts_HHR->{$seq_name}} = ();
@@ -6036,7 +6044,12 @@ sub vdr_CmalignParseInsertFile {
         # create the insert string
         my $insert_str = "";
         for(my $el_idx = 4; $el_idx < scalar(@el_A); $el_idx += 3) { 
+          if($do_shift_insert) { $el_A[$el_idx] -= (int($mdl_len/2)); } 
           $insert_str .= $el_A[$el_idx] . ":" . $el_A[$el_idx+1] . ":" . $el_A[$el_idx+2] . ";"; 
+        }
+        if($do_shift_insert) {
+          $spos -= int($mdl_len/2); 
+          $epos -= int($mdl_len/2);
         }
         $seq_inserts_HHR->{$seq_name}{"spos"} = $spos;
         $seq_inserts_HHR->{$seq_name}{"epos"} = $epos;

@@ -1303,7 +1303,7 @@ sub join_alignments_and_add_unjoinbl_alerts {
   # seed that spanned the full sequence
   my $in_ifile = $out_root . "." . $mdl_name . ".align.ifile";
   if($ninstk > 0) { 
-    vdr_CmalignParseInsertFile($in_ifile, \%subseq_inserts_HH, undef, undef, undef, undef, $FH_HR);
+    vdr_CmalignParseInsertFile($in_ifile, \%subseq_inserts_HH, undef, undef, undef, undef, undef, $FH_HR);
   }
 
   # define variables for the output insert file we will create
