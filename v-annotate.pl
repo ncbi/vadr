@@ -1951,9 +1951,6 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     # vdr_CmalignParseInsertFile() also needs to know which sequences this occurred for.
     my %do_shift_inserts_H = ();
     if($mdl_is_circular) { 
-      if(! opt_Get("--cmindi", \%opt_HH)) { 
-        ofile_FAIL("ERROR, attempting to doctor models for a circular model, but alignments may have multiple sequences, shouldn't happen", 1, \%{$ofile_info_HH{"FH"}});
-      }
       for(my $a = 0; $a < scalar(@{$stk_file_HA{$mdl_name}}); $a++) { 
         if(-s $stk_file_HA{$mdl_name}[$a]) { # skip empty alignments, which may exist if all seqs were not alignable
           check_and_doctor_stk_for_circular_models($stk_file_HA{$mdl_name}[$a], \%do_shift_inserts_H, \%opt_HH, \%ofile_info_HH);
