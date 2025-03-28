@@ -1941,9 +1941,25 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       $ftr_fileroot_A[$ftr_idx] = vdr_FeatureTypeAndTypeIndexString(\@{$ftr_info_HAH{$mdl_name}}, $ftr_idx, ".");
       $ftr_outroot_A[$ftr_idx]  = vdr_FeatureTypeAndTypeIndexString(\@{$ftr_info_HAH{$mdl_name}}, $ftr_idx, "#");
     }
-
+    
+    # if model is for a circular genome, originally of length L, but doubled to 2L, determine if entire sequence is
+    # aligned after model position L, if so, remove the first L positions (all gaps) and move them to the 3' end
+    # vdr_CmalignParseInsertFile() also needs to know which sequences this occurred for.
+    my %do_shift_inserts_H = ();
+    if(1) { 
+      if(! opt_Get("--cmindi", \%opt_HH)) { 
+        ofile_FAIL("ERROR, attempting to doctor models for a circular model, but alignments may have multiple sequences, shouldn't happen", 1, \%{$ofile_info_HH{"FH"}});
+      }
+      for(my $a = 0; $a < scalar(@{$stk_file_HA{$mdl_name}}); $a++) { 
+        if(-s $stk_file_HA{$mdl_name}[$a]) { # skip empty alignments, which may exist if all seqs were not alignable
+          check_and_doctor_stk_for_circular_models($stk_file_HA{$mdl_name}[$a], \%do_shift_inserts_H, \%opt_HH, \%ofile_info_HH);
+        }    
+      }
+    }
+    
     # parse the cmalign --ifile file
     if($mdl_nseq > $mdl_unexdivg_H{$mdl_name}) { # at least 1 sequence was aligned
+      # HEYA: pass in new arg, a hash that keeps track of which sequences to offset positions for (should be mdllen/2 for all seqs)
       vdr_CmalignParseInsertFile($align_ifile_file, \%seq_inserts_HH, undef, undef, undef, undef, \%{$ofile_info_HH{"FH"}});
       push(@to_remove_A, ($align_stdout_file, $align_ifile_file));
     }
@@ -14933,4 +14949,113 @@ sub determine_intron_index {
 
   # should never be reached
   return $intron_idx;
+}
+
+#################################################################
+# Subroutine: check_and_doctor_stk_for_circular_models
+# Incept:     EPN, Thu Mar 27 15:59:41 2025
+#
+# Purpose:    For a circular model, check if, for single sequence stk
+#             alignment the entire sequene is aligned after position
+#             $clen/2. If so, remove the first $clen/2 positions (all gaps)
+#             and add them to the 3' end of the alignment, effectively
+#             moving the alignment from the second half of the model to
+#             the (identical) first half of the model. Should only be
+#             used for 'doubled' models which are created for circular
+#             genomes.
+#
+# Arguments:
+#  $stk_file:            name of stk file
+#  $do_shift_inserts_HR: REF to hash, keys seq names, value 1 to shift the insert values by clen/2
+#                        0 (or undef) not to
+#  $opt_HHR:             REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:      REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:  void
+#           
+# Dies:     if stk file has more than 1 sequence,
+#           or if problem parsing or manipulating the stk file
+#
+#################################################################
+sub check_and_doctor_stk_for_circular_models {
+  my $sub_name = "check_and_doctor_stk_for_circular_models";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($stk_file, $do_shift_inserts_HR, $opt_HHR, $ofile_info_HHR) = (@_);
+
+  my $msa = Bio::Easel::MSA->new({
+    fileLocation => $stk_file,
+    isDna => 1});  
+
+  if($msa->nseq != 1) {
+    ofile_FAIL("ERROR in $sub_name, expected alignment with 1 sequence, but $stk_file has $msa->nseq sequences", 1, $FH_HR);
+  }
+
+  # build a map of aligned positions to model RF positions and vice versa, only need to do this once per alignment
+  my @rf2a_A = (); # [1..$rfpos..$rflen] = $apos;  rf position $rfpos maps to alignment position $apos [1..$alen]  ($rf2a_A[0] = -1  (dummy value))
+  my $rflen    = msa_create_rfpos_to_apos_map($msa, \@rf2a_A, $FH_HR);
+  my $alen     = $msa->alen;
+  my $seq_name = $msa->get_sqname(0);
+  
+  if(($rflen % 2) != 0) {
+    ofile_FAIL("ERROR in $sub_name, expected alignment with even number of RF positions, but $stk_file has $rflen RF positions", 1, $FH_HR);
+  }
+  my $orig_mdllen = int($rflen / 2);
+
+  # determine first alignment position that is not a gap
+  my $sqstring = $msa->get_sqstring_aligned(0);
+  $sqstring =~ m/\w/g;
+  my $a_spos = pos($sqstring); # returns position of first non-gap nt
+  printf("HEYA a_spos: $a_spos\n");
+  my $apos;
+  if($a_spos > $alen) {
+    ofile_FAIL("ERROR in $sub_name, didn't find nongap in alignment in $stk_file", 1, $FH_HR);
+  }
+
+  if($a_spos > $orig_mdllen) { 
+    if($rf2a_A[$orig_mdllen] != $orig_mdllen) {
+      ofile_FAIL("ERROR in $sub_name, first non-gap is more than halfway through the alignment, but first half of alignment positions are not all gaps in $stk_file", 1, $FH_HR);
+    }
+    my @keepme_A = ();
+    for($apos = 0; $apos < $orig_mdllen; $apos++) {
+      $keepme_A[$apos] = 0;
+    }
+    for($apos = $orig_mdllen; $apos < $alen; $apos++) {
+      $keepme_A[$apos] = 1;
+    }
+    my $orig_rf     = $msa->get_rf();
+    my $orig_sscons = $msa->has_ss_cons() ? $msa->get_ss_cons() : undef;
+    my $rf_to_add     = substr($orig_rf,     0, $orig_mdllen);
+    my $sscons_to_add = (defined $orig_sscons) ? (substr($orig_sscons, 0, $orig_mdllen)) : undef;
+    $msa->column_subset(\@keepme_A);
+
+    # now add gapped out second half of the alignment
+    my $gaps_to_add     = utl_StringMonoChar($orig_mdllen, ".", undef);
+    my $ali_seq_line    = $msa->get_sqstring_aligned(0) . $gaps_to_add;
+    my $ali_rf_line     = $msa->get_rf()                . $rf_to_add;
+    my $ali_pp_line     = $msa->get_ppstring_aligned(0) . $gaps_to_add;
+    my $ali_sscons_line = (defined $sscons_to_add) ? ($msa->get_ss_cons . $sscons_to_add) : undef;
+    
+    # make copy of old alignment
+    my $orig_stk_file = $stk_file . ".orig";
+    utl_RunCommand("cp $stk_file $orig_stk_file", opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
+
+    # create the new stockholm alignment
+    open(OUT, ">", $stk_file) || ofile_FileOpenFailure($stk_file . "new", $sub_name, $!, "writing", $FH_HR);
+    print OUT ("# STOCKHOLM 1.0\n$seq_name $ali_seq_line\n");
+    print OUT "#=GR $seq_name PP $ali_pp_line\n";
+    if(defined $ali_sscons_line) { print OUT "#=GC SS_cons $ali_sscons_line\n"; }
+    print OUT "#=GC RF $ali_rf_line\n";
+    print OUT "//\n";
+    close(OUT);
+
+    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "orig $stk_file", $orig_stk_file, opt_Get("--keep", \%opt_HH), opt_Get("--keep", \%opt_HH), "copy of $stk_file before doctoring for circularity");
+    $do_shift_inserts_HR->{$seq_name} = 1;
+  }
+  else {
+    $do_shift_inserts_HR->{$seq_name} = 0;
+  }
+
+  return;
 }
