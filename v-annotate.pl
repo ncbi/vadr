@@ -241,6 +241,8 @@ opt_Add("--ignore_mnf",       "boolean",  0,       $g,     undef, undef,    "ign
 opt_Add("--ignore_isdel",     "boolean",  0,       $g,     undef, undef,    "ignore non-zero 'is_deletable' values in .minfo file, set to 0 for all features/models",     "ignore non-zero 'is_deletable' values in .minfo file, set to 0 for all features/models", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_afset",     "boolean",  0,       $g,     undef, undef,    "ignore 'alternative_ftr_set' and 'alternative_ftr_set_subn' values in .minfo file",          "ignore 'alternative_ftr_set' and 'alternative_ftr_set_subn' values in .minfo file", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_afsetsubn", "boolean",  0,       $g,     undef, undef,    "ignore 'alternative_ftr_set_subn' values in .minfo file",                                    "ignore 'alternative_ftr_set_subn' values in .minfo file", \%opt_HH, \@opt_order_A);
+opt_Add("--ignore_dfset",     "boolean",  0,       $g,     undef, undef,    "ignore 'duplicate_ftr_set' and 'duplicate_ftr_set_subn' values in .minfo file",              "ignore 'duplicate_ftr_set' and 'duplicate_ftr_set_subn' values in .minfo file", \%opt_HH, \@opt_order_A);
+opt_Add("--ignore_dfsetsubn", "boolean",  0,       $g,     undef, undef,    "ignore 'duplicate_ftr_set_subn' values in .minfo file",                                      "ignore 'duplicate_ftr_set_subn' values in .minfo file", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_canonss",   "boolean",  0,       $g,     undef, undef,    "ignore 'canon_splice_sites' values in .minfo file (never check intron splice sites)",        "ignore 'canon_splice_sites' values in .minfo file (never check intron splice sites)", \%opt_HH, \@opt_order_A);
 opt_Add("--force_canonss",    "boolean",  0,       $g,     undef,"--ignore_canonss", "force 'canon_splice_sites' is 1 for all CDS with qualifying introns",               "force 'canon_splice_sites' is 1 for all CDS with qualifying introns", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_exc",       "boolean",  0,       $g,     undef, undef,    "ignore all exception keys '*_exc' in .minfo file",                                           "ignore all exception keys '*_exc' in .minfo file", \%opt_HH, \@opt_order_A);
@@ -466,6 +468,8 @@ my $options_okay =
                 "ignore_isdel"     => \$GetOptions_H{"--ignore_isdel"},
                 "ignore_afset"     => \$GetOptions_H{"--ignore_afset"},
                 "ignore_afsetsubn" => \$GetOptions_H{"--ignore_afsetsubn"},
+                "ignore_dfset"     => \$GetOptions_H{"--ignore_dfset"},
+                "ignore_dfsetsubn" => \$GetOptions_H{"--ignore_dfsetsubn"},
                 "ignore_canonss"   => \$GetOptions_H{"--ignore_canonss"},
                 "force_canonss"    => \$GetOptions_H{"--force_canonss"},
                 "ignore_exc"       => \$GetOptions_H{"--ignore_exc"},
@@ -1145,13 +1149,21 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   vdr_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
   vdr_FeatureInfoInitializeMiscNotFailure(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--ignore_mnf", \%opt_HH), $FH_HR);
   vdr_FeatureInfoInitializeIsDeletable(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--ignore_isdel", \%opt_HH), $FH_HR);
-  vdr_FeatureInfoInitializeAlternativeFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--ignore_afset", \%opt_HH), $FH_HR);
-  vdr_FeatureInfoInitializeAlternativeFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, (opt_Get("--ignore_afset", \%opt_HH) || opt_Get("--ignore_afsetsubn", \%opt_HH)), $FH_HR);
+  vdr_FeatureInfoInitializeAlternativeOrDuplicateFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, "alternative", opt_Get("--ignore_afset", \%opt_HH), $FH_HR);
+  vdr_FeatureInfoInitializeAlternativeOrDuplicateFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, "alternative", (opt_Get("--ignore_afset", \%opt_HH) || opt_Get("--ignore_afsetsubn", \%opt_HH)), $FH_HR);
+  if(vdr_ModelInfoIsCircular(\%{$mdl_info_AH[$mdl_idx]}, $FH_HR)) {
+    vdr_FeatureInfoInitializeAlternativeOrDuplicateFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, "duplicate", opt_Get("--ignore_dfset", \%opt_HH), $FH_HR);
+    vdr_FeatureInfoInitializeAlternativeOrDuplicateFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, "duplicate", (opt_Get("--ignore_dfset", \%opt_HH) || opt_Get("--ignore_dfsetsubn", \%opt_HH)), $FH_HR);
+  }
   vdr_FeatureInfoInitializeCanonSpliceSites(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--force_canonss", \%opt_HH), opt_Get("--ignore_canonss", \%opt_HH), $FH_HR);
   vdr_FeatureInfoValidateMiscNotFailure(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoValidateIsDeletable(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-  vdr_FeatureInfoValidateAlternativeFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-  vdr_FeatureInfoValidateAndConvertAlternativeFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  vdr_FeatureInfoValidateAlternativeOrDuplicateFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, "alternative", $FH_HR);
+  vdr_FeatureInfoValidateAndConvertAlternativeOrDuplicateFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, "alternative", $FH_HR);
+  if(vdr_ModelInfoIsCircular(\%{$mdl_info_AH[$mdl_idx]}, $FH_HR)) {
+    vdr_FeatureInfoValidateAlternativeOrDuplicateFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, "duplicate", $FH_HR);
+    vdr_FeatureInfoValidateAndConvertAlternativeOrDuplicateFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, "duplicate", $FH_HR);
+  }
   vdr_FeatureInfoValidateCanonSpliceSites(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_SegmentInfoPopulate(\@{$sgm_info_HAH{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   if(! opt_Get("--ignore_exc", \%opt_HH)) { 
@@ -2144,7 +2156,9 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   if((defined $mdl_seq_name_HA{$mdl_name}) && (! $do_clsonly)) {
-    if(vdr_FeatureInfoValidateAlternativeFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR)) { 
+    my $has_alternatives = vdr_FeatureInfoValidateAlternativeOrDuplicateFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, "alternative", $FH_HR);
+    my $has_duplicates   = vdr_FeatureInfoValidateAlternativeOrDuplicateFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, "duplicate",   $FH_HR);
+    if($has_alternatives || $has_duplicates) { 
       # we'll enter this 'if' if any features have non-empty alternative_ftr_set
       
       # get children info for all features, we'll need this when picking features
@@ -2154,16 +2168,31 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                                            
       # first pick features from sets that are not composed of any children
       # this will remove features in alternative_ftr_sets that are not picked *and* their children
-      pick_features_from_all_alternatives(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
-                                          \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, 
-                                          0, \@i_am_child_A, \@children_AA, 
-                                          \%opt_HH, \%{$ofile_info_HH{"FH"}});
-      # now pick features from sets that are not composed of any children (that we have left)
-      if($nchildren > 0) { 
-        pick_features_from_all_alternatives(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
+      if($has_duplicates) { 
+        pick_features_from_all_alternatives_or_duplicates(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
+                                                          \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, 
+                                                          "duplicate", 0, \@i_am_child_A, \@children_AA, 
+                                                          \%opt_HH, \%{$ofile_info_HH{"FH"}});
+        # now pick features from sets that are not composed of any children (that we have left)
+        if($nchildren > 0) { 
+          pick_features_from_all_alternatives_or_duplicates(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
+                                                            \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, 
+                                                            "duplicate", 1, \@i_am_child_A, \@children_AA, 
+                                                            \%opt_HH, \%{$ofile_info_HH{"FH"}});
+        }
+      }
+      if($has_alternatives) { 
+        pick_features_from_all_alternatives_or_duplicates(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
+                                                          \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, 
+                                                          "alternative", 0, \@i_am_child_A, \@children_AA, 
+                                                        \%opt_HH, \%{$ofile_info_HH{"FH"}});
+        # now pick features from sets that are not composed of any children (that we have left)
+        if($nchildren > 0) { 
+          pick_features_from_all_alternatives(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                             \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, 
                                             1, \@i_am_child_A, \@children_AA,
                                             \%opt_HH, \%{$ofile_info_HH{"FH"}});
+        }
       }
     }
   }
@@ -14474,20 +14503,24 @@ sub helper_tabular_fill_header_and_justification_arrays {
 }
 
 #################################################################
-# Subroutine: pick_features_from_all_alternatives()
+# Subroutine: pick_features_from_all_alternatives_or_duplicates()
 # Incept:     EPN, Wed Oct 13 12:00:26 2021
 # Purpose:    For features that have a non-empty 'alternative_ftr_set'
-#             value, choose one representative from all alternatives
-#             and delete annotation and alerts from all other alternatives.
+#             (if $choice eq "alternative") or 'duplicate_ftr_set' (if
+#             $choice eq "duplicate") value, choose one representative
+#             from all alternatives or duplicates and delete annotation
+#             and alerts from all other alternatives or duplicates.
 #             This subroutine should be called twice, first with the
 #             $only_children_flag set as '0' to only pick features from 
 #             sets that are not children, then again with $only_children_flag 
 #             set as '1' to only pick features from sets that *are* children.
 #             This is important because when we remove results/alerts for
 #             parents we also remove results/alerts for their children.
-#             This only works because we validate (in vdr_FeatureInfoValidateAlternativeFeatureSet)
-#             - that for any alternative_ftr_set set that includes >= 1 feature
-#               child, all members of that set are children, with the same parent.
+#             This only works because we validate
+#             (in vdr_FeatureInfoValidateAlternativeOrDuplicateFeatureSet)
+#             - that for any {alternative,duplicate}_ftr_set set that includes
+#               >= 1 feature child, all members of that set are children, with
+#               the same parent.
 #             And in vdr_FeatureInfoParentIndexStrings we validate that
 #             all features that are parents are not themselves children
 #             of any feature.
@@ -14498,6 +14531,7 @@ sub helper_tabular_fill_header_and_justification_arrays {
 #  $alt_info_HHR:            REF to array of hashes with information on the alerts, PRE-FILLED
 #  $ftr_results_HAHR:        REF to feature results HAH, PRE-FILLED
 #  $alt_ftr_instances_HHHR:  REF to array of 2D hashes with per-feature alerts, PRE-FILLED
+#  $choice:                  "alternative" or "duplicate"
 #  $only_children_flag:      '1' to only remove sets that are all children, '0' to remove sets that
 #                            are not all children, see 'Purpose'
 #  $i_am_child_AR:           REF [0..$nftr-1] to array of 1/0 values on whether each feature is a child, PRE-FILLED
@@ -14510,13 +14544,18 @@ sub helper_tabular_fill_header_and_justification_arrays {
 # Dies:     never
 #
 #################################################################
-sub pick_features_from_all_alternatives { 
-  my $sub_name = "pick_features_from_all_alternatives";
-  my $nargs_exp = 10;
+sub pick_features_from_all_alternatives_or_duplicates { 
+  my $sub_name = "pick_features_from_all_alternatives_or_duplicates";
+  my $nargs_exp = 11;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($seq_name_AR, $ftr_info_AHR, $alt_info_HHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, 
-      $only_children_flag, $i_am_child_AR, $children_AAR, $opt_HHR, $FH_HR) = @_;
+      $choice, $only_children_flag, $i_am_child_AR, $children_AAR, $opt_HHR, $FH_HR) = @_;
+
+  printf("HEYA in $sub_name\n");
+  
+  my $chosen_key      = ($choice eq "duplicate") ? "duplicate_ftr_set"      : "alternative_ftr_set";
+  my $chosen_key_subn = ($choice eq "duplicate") ? "duplicate_ftr_set_subn" : "alternative_ftr_set_subn";
 
   my $nseq = scalar(@{$seq_name_AR});
   my $nftr = scalar(@{$ftr_info_AHR});
@@ -14533,11 +14572,11 @@ sub pick_features_from_all_alternatives {
           # if(! only_children_flag), we only pick from a set for non-children
           if(((  $only_children_flag) && (  $i_am_child_AR->[$ftr_idx])) || 
              ((! $only_children_flag) && (! $i_am_child_AR->[$ftr_idx]))) { 
-            my $set = $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set"};
+            my $set = $ftr_info_AHR->[$ftr_idx]{$chosen_key};
             if(($set ne "") && (! defined $sets_completed_H{$set})) { 
               my @ftr_set_A = ($ftr_idx);
               for($ftr_idx2 = $ftr_idx+1; $ftr_idx2 < $nftr; $ftr_idx2++) { # can start at $ftr_idx+1 b/c we've already covered earlier ftr_idx values  
-                if($ftr_info_AHR->[$ftr_idx2]{"alternative_ftr_set"} eq $set) { 
+                if($ftr_info_AHR->[$ftr_idx2]{$chosen_key} eq $set) { 
                   push(@ftr_set_A, $ftr_idx2);
                 }
               }
@@ -14546,37 +14585,104 @@ sub pick_features_from_all_alternatives {
               if($nset == 1) { 
                 ofile_FAIL("ERROR in $sub_name, alt feature set with value $set only has 1 member post-validation", 1, $FH_HR);
               }
-              my $nfatal         = undef;
-              my $winner_nfatal  = undef;
-              my $winner_set_idx = undef;
               my $ftr_set_idx    = undef;
-              for($ftr_set_idx = 0; $ftr_set_idx < $nset; $ftr_set_idx++) { 
-                $ftr_idx2 = $ftr_set_A[$ftr_set_idx];
-                # count fatal alerts for substitute if we have one
-                # printf("\tftr_set_idx: $ftr_set_idx, ftr_idx2: $ftr_idx2\n");
-                if((defined $ftr_info_AHR->[$ftr_idx2]{"alternative_ftr_set_subn"}) && 
-                   $ftr_info_AHR->[$ftr_idx2]{"alternative_ftr_set_subn"} ne "") {
-                  $ftr_idx2 = $ftr_info_AHR->[$ftr_idx2]{"alternative_ftr_set_subn"};
-                  # printf("\tsubstituted $ftr_idx2 due to alternative_ftr_set_subn values\n");
-                }
-                my $nfatal = alert_feature_instances_count_fatal($seq_name, $ftr_idx2, $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
-                if($nfatal == 0) { 
-                  # no fatal alerts, this is our winner, break the loop          
-                  $winner_nfatal  = $nfatal;
-                  $winner_set_idx = $ftr_set_idx; 
-                  $ftr_set_idx    = $nset; # breaks loop
-                }
-                elsif((! defined $winner_nfatal) || ($nfatal < $winner_nfatal)) { 
-                  # >= 1 fatal alerts, but minimum yet seen, this is our current winner but keep looking
-                  $winner_nfatal  = $nfatal;
-                  $winner_set_idx = $ftr_set_idx; 
-                }
-              }
-              # go through and remove results and alerts for all non-winners in this set and their children
-              # printf("winner_set_idx is $winner_set_idx, ftr_idx: $ftr_set_A[$winner_set_idx]\n");
-              for($ftr_set_idx = 0; $ftr_set_idx < $nset; $ftr_set_idx++) { 
-                if($ftr_set_idx != $winner_set_idx) { 
+              my @keepme_A = ();
+              ####################################
+              if($chosen_key eq "alternative_ftr_set") { 
+                my $nfatal         = undef;
+                my $winner_nfatal  = undef;
+                my $winner_set_idx = undef;
+                for($ftr_set_idx = 0; $ftr_set_idx < $nset; $ftr_set_idx++) { 
                   $ftr_idx2 = $ftr_set_A[$ftr_set_idx];
+                  # count fatal alerts for substitute if we have one
+                  # printf("\tftr_set_idx: $ftr_set_idx, ftr_idx2: $ftr_idx2\n");
+                  if((defined $ftr_info_AHR->[$ftr_idx2]{$chosen_key_subn}) && 
+                     $ftr_info_AHR->[$ftr_idx2]{$chosen_key_subn} ne "") {
+                    $ftr_idx2 = $ftr_info_AHR->[$ftr_idx2]{$chosen_key_subn};
+                    # printf("\tsubstituted $ftr_idx2 due to alternative_ftr_set_subn values\n");
+                  }
+                  my $nfatal = alert_feature_instances_count_fatal($seq_name, $ftr_idx2, $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
+                  if($nfatal == 0) { 
+                    # no fatal alerts, this is our winner, break the loop          
+                    $winner_nfatal  = $nfatal;
+                    $winner_set_idx = $ftr_set_idx; 
+                    $ftr_set_idx    = $nset; # breaks loop
+                  }
+                  elsif((! defined $winner_nfatal) || ($nfatal < $winner_nfatal)) { 
+                    # >= 1 fatal alerts, but minimum yet seen, this is our current winner but keep looking
+                    $winner_nfatal  = $nfatal;
+                    $winner_set_idx = $ftr_set_idx; 
+                  }
+                }
+                for($ftr_set_idx = 0; $ftr_set_idx < $nset; $ftr_set_idx++) { 
+                  $keepme_A[$ftr_set_idx] = ($ftr_set_idx == $winner_set_idx) ? 1 : 0;
+                }
+              } # end of 'if($chosen_key eq "alternative_ftr_set")'
+              ####################################
+              else {
+                if($nset != 2) {
+                  ofile_FAIL("ERROR in $sub_name, trying to pick features for duplicates, but a duplicate set doesn't have exactly 2 features", 1, $FH_HR);
+                }
+                my $set_idx1 = $ftr_set_A[0]; # for convenience
+                my $set_idx2 = $ftr_set_A[1]; # for convenience
+                # do the two overlap?
+                my $s_coords1 = (defined $ftr_results_HAHR->{$seq_name}[$set_idx1]{"n_scoords"}) ?
+                    $ftr_results_HAHR->{$seq_name}[$set_idx1]{"n_scoords"} : undef;
+                my $s_coords2 = (defined $ftr_results_HAHR->{$seq_name}[$set_idx2]{"n_scoords"}) ?
+                    $ftr_results_HAHR->{$seq_name}[$set_idx2]{"n_scoords"} : undef;
+                my $m_coords1 = (defined $ftr_results_HAHR->{$seq_name}[$set_idx1]{"n_mcoords"}) ?
+                    $ftr_results_HAHR->{$seq_name}[$set_idx1]{"n_mcoords"} : undef;
+                my $m_coords2 = (defined $ftr_results_HAHR->{$seq_name}[$set_idx2]{"n_mcoords"}) ?
+                    $ftr_results_HAHR->{$seq_name}[$set_idx2]{"n_mcoords"} : undef;
+                if(defined $s_coords1 && defined $s_coords2) {
+                  # check overlap between all pairs of segments
+                  my @sgm1_A = ();
+                  my @sgm2_A = ();
+                  vdr_CoordsToSegments($s_coords1, \@sgm1_A, $FH_HR);
+                  vdr_CoordsToSegments($s_coords2, \@sgm2_A, $FH_HR);
+                  my $tot_nt_overlap = 0;
+                  foreach my $sgm1 (@sgm1_A) { 
+                    foreach my $sgm2 (@sgm2_A) { 
+                      my ($nt_overlap, undef) = vdr_CoordsSegmentOverlap($sgm1, $sgm2, $FH_HR);
+                      $tot_nt_overlap += $nt_overlap;
+                    }
+                  }
+                  if($tot_nt_overlap > 0) {
+                    # keep longer feature
+                    my $len1 = vdr_CoordsLength($s_coords1, $FH_HR);
+                    my $len2 = vdr_CoordsLength($s_coords2, $FH_HR);
+                    if($len1 >= $len2) {
+                      $keepme_A[0] = 1;
+                      $keepme_A[1] = 0;
+                    }
+                    else {
+                      $keepme_A[0] = 0;
+                      $keepme_A[1] = 1;
+                    }
+                  }
+                  else { # no overlap, keep both
+                    $keepme_A[0] = 1;
+                    $keepme_A[1] = 1;
+                  }
+                }
+                else { # one is not defined, 'keep' both (just don't remove either, they will remain undef)
+                  $keepme_A[0] = 1;
+                  $keepme_A[1] = 1;
+                }
+                printf("HEYA in $sub_name, comparing idx:%d %s (S:%s, M:%s, keep: %d)) and idx:%d %s (S:%s, M:%s, keep: %d)\n",
+                       $ftr_set_A[0], 
+                       $ftr_info_AHR->[$ftr_set_A[0]]{"outname"},
+                       $s_coords1, $m_coords1, $keepme_A[0], 
+                       $ftr_set_A[1], 
+                       $ftr_info_AHR->[$ftr_set_A[1]]{"outname"}, 
+                       $s_coords2, $m_coords2, $keepme_A[1]);
+              } # end of 'else' entered if($chosen_key ne "alternative_ftr_set")
+              ####################################
+              # go through and remove results and alerts for those we want to remove in this set and their children
+              for($ftr_set_idx = 0; $ftr_set_idx < $nset; $ftr_set_idx++) { 
+                if(! $keepme_A[$ftr_set_idx]) { 
+                  $ftr_idx2 = $ftr_set_A[$ftr_set_idx];
+                  printf("HEYA removing ftr_idx $ftr_idx2\n");
                   %{$ftr_results_HAHR->{$seq_name}[$ftr_idx2]} = ();
                   %{$alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx2}} = ();
                   undef $ftr_results_HAHR->{$seq_name}[$ftr_idx2];
