@@ -109,7 +109,10 @@ require "sqp_utils.pm";
 # vdr_FeatureStartStopStrandArrays()
 # vdr_FeatureSummaryStrand()
 # vdr_FeaturePositionSpecificValueBreakdown()
-# vdr_FeatureCoordsListBreakdown()
+# vdr_FeatureCoordsListValueBreakdown()
+# vdr_FeatureLengthBetweenAdjacentSegments()
+# vdr_FeatureIs5pTruncated()
+# vdr_FeatureIs3pTruncated()
 #
 # vdr_SegmentStartIdenticalToCds()
 # vdr_SegmentStopIdenticalToCds()
@@ -2528,6 +2531,58 @@ sub vdr_FeatureLengthBetweenAdjacentSegments {
   # printf("in $sub_name, returning $region_length\n");
 
   return $region_length;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureIs5pTruncated
+# Incept:     EPN, Tue May  6 14:44:41 2025
+# 
+# Purpose:    Return "1" if "is_5trunc" is defined and "1"
+#             else return "0"
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $ftr_idx:       feature index
+#
+# Returns:    void
+# 
+# Dies:       Never
+#
+#################################################################
+sub vdr_FeatureIs5pTruncated {
+  my $sub_name = "vdr_FeatureIs5pTruncated";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+  
+  return ((defined $ftr_info_AHR->[$ftr_idx]{"is_5trunc"}) && $ftr_info_AHR->[$ftr_idx]{"is_5trunc"} == 1) ? 1 : 0;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureIs3pTruncated
+# Incept:     EPN, Tue May  6 14:56:59 2025
+# 
+# Purpose:    Return "1" if "is_3trunc" is defined and "1"
+#             else return "0"
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $ftr_idx:       feature index
+#
+# Returns:    void
+# 
+# Dies:       Never
+#
+#################################################################
+sub vdr_FeatureIs3pTruncated {
+  my $sub_name = "vdr_FeatureIs3pTruncated";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+  
+  return ((defined $ftr_info_AHR->[$ftr_idx]{"is_3trunc"}) && $ftr_info_AHR->[$ftr_idx]{"is_3trunc"} == 1) ? 1 : 0;
 }
 
 #################################################################

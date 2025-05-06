@@ -6097,6 +6097,14 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
                         ($sgm_results_HAHR->{$seq_name}[$final_sgm_idx]{"3trunc"})) 
           ? 1 : 0;
     }
+    if(vdr_FeatureIs5pTruncated($ftr_info_AHR, $ftr_idx)) {
+      $ftr_is_5trunc = 1;
+      printf("HEYA ftr_idx $ftr_idx is 5trunc\n");
+    }
+    if(vdr_FeatureIs3pTruncated($ftr_info_AHR, $ftr_idx)) {
+      $ftr_is_3trunc = 1;
+      printf("HEYA ftr_idx $ftr_idx is 3trunc\n");
+    }
 
     # main loop over segments
     for(my $sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
