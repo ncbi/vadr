@@ -7303,6 +7303,9 @@ sub add_extrant_alerts_for_one_sequence {
 #  $mdl_name:                 name of model
 #  $do_pv_blastx:             '1' if we are going to run blastx, else '0'
 #  $do_separate_cds_fa_files: '1' if we output a separate file for the protein validation stage
+#  $mdl_is_circular:          '1' if model is circular, in this case we don't include the
+#                             full sequence, only predicted CDS, because some features exist twice
+#                             and using the full sequence will cause annotation errors
 #  $ftr_info_AHR:             REF to array of hashes with feature info 
 #  $opt_HHR:                  REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:           REF to 2D hash of output file information, ADDED TO HERE
@@ -7314,21 +7317,23 @@ sub add_extrant_alerts_for_one_sequence {
 ################################################################# 
 sub make_protein_validation_fasta_file {
   my $sub_name = "make_protein_validation_fasta_file";
-  my $nargs_exp = 7;
+  my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($out_fa_file, $mdl_name, $do_pv_blastx, $do_separate_cds_fa_files, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR) = (@_);
+  my ($out_fa_file, $mdl_name, $do_pv_blastx, $do_separate_cds_fa_files, $mdl_is_circular, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR) = (@_);
 
   my $ofile_info_key = $mdl_name . ".a.fa";
   my $mdl_fa_file = $ofile_info_HH{"fullpath"}{$ofile_info_key};
   # printf("in $sub_name, ofile_info_key: $ofile_info_key, mdl_fa_file: $mdl_fa_file\n");
   my $nftr = scalar(@{$ftr_info_AHR});
 
-  if($do_pv_blastx) { 
-    sqf_FastaFileRemoveDescriptions($mdl_fa_file, $out_fa_file, $ofile_info_HHR);
-  }
-  else { 
-    utl_RunCommand("cp $mdl_fa_file $out_fa_file", opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
+  if(! $mdl_is_circular) { 
+    if($do_pv_blastx) { 
+      sqf_FastaFileRemoveDescriptions($mdl_fa_file, $out_fa_file, $ofile_info_HHR);
+    }
+    else { 
+      utl_RunCommand("cp $mdl_fa_file $out_fa_file", opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
+    }
   }
   # now add the predicted CDS sequences
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
@@ -7989,13 +7994,14 @@ sub run_blastx_and_summarize_output {
   my $mdl_name = $mdl_info_HR->{"name"};
   my $ncpu = opt_Get("--cpu", $opt_HHR);
   if($ncpu == 0) { $ncpu = 1; }
-
+  my $mdl_is_circular = vdr_ModelInfoIsCircular($mdl_info_HR, $FH_HR);
+      
   # make a query fasta file for blastx, consisting of full length
   # sequences (with sequence descriptions removed because they can
   # affect the output and mess up our parsing if they are too long)
   # AND all the predicted CDS sequences
   my $blastx_query_fa_file = $out_root . "." . $mdl_name . ".pv.blastx.fa";
-  make_protein_validation_fasta_file($blastx_query_fa_file, $mdl_name,  1, $do_separate_cds_fa_files, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR);
+  make_protein_validation_fasta_file($blastx_query_fa_file, $mdl_name,  1, $do_separate_cds_fa_files, $mdl_is_circular, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR);
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".pv-blastx-fasta", $blastx_query_fa_file, 0, opt_Get("--keep", \%opt_HH), "sequences for protein validation for model $mdl_name");
   
   # run blastx 
@@ -8502,6 +8508,7 @@ sub run_esl_translate_and_hmmsearch {
   my $do_keep = opt_Get("--keep", $opt_HHR);
   my $nftr = scalar(@{$ftr_info_AHR});
   my $mdl_name = $mdl_info_HR->{"name"};
+  my $mdl_is_circular = vdr_ModelInfoIsCircular($mdl_info_HR, $FH_HR);
 
   my $model_domtblout_file = $out_root . "." . $mdl_name . ".hmmscan.domtblout";
   # make a query fasta file for blastx, consisting of full length
@@ -8509,7 +8516,7 @@ sub run_esl_translate_and_hmmsearch {
   # affect the output and mess up our parsing if they are too long)
   # AND all the predicted CDS sequences
   my $pv_fa_file = $out_root . "." . $mdl_name . ".pv.hmmer.fa";
-  make_protein_validation_fasta_file($pv_fa_file, $mdl_name,  0, $do_separate_cds_fa_files, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR); # 0: not doing blastx
+  make_protein_validation_fasta_file($pv_fa_file, $mdl_name,  0, $do_separate_cds_fa_files, $mdl_is_circular, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR); # 0: not doing blastx
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".pv.hmmer.fa", $pv_fa_file, 0, opt_Get("--keep", \%opt_HH), "sequences for protein validation for model $mdl_name");
 
   # now esl-translate it
