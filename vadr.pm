@@ -852,9 +852,11 @@ sub vdr_FeatureInfoValidateAlternativeOrDuplicateFeatureSet {
   my ($ftr_info_AHR, $choice, $FH_HR) = @_;
   
   my $nftr     = scalar(@{$ftr_info_AHR});
-  my $ret_val  = 0;  # set to '1' if we see any values ne ""
-  my $fail_str = ""; # added to if any elements are out of range
-  my %set_HA = ();   # key is set value, array is feature indices in that set
+  my $ret_val  = 0;    # set to '1' if we see any values ne ""
+  my $fail_str = "";   # added to if any elements are out of range
+  my %set_HA = ();     # key is set value, array is feature indices in that set
+  my %n5trunc_H  = (); # key is set value, value is number of features with is_5trunc set to 1
+  my %n3trunc_H  = (); # key is set value, value is number of features with is_3trunc set to 1
   my $ftr_idx = undef;
 
   my $chosen_key = ($choice eq "duplicate") ? "duplicate_ftr_set" : "alternative_ftr_set";
@@ -869,19 +871,37 @@ sub vdr_FeatureInfoValidateAlternativeOrDuplicateFeatureSet {
         $ret_val = 1;
         if(! defined $set_HA{$value}) { 
           @{$set_HA{$value}} = ();
+          $n5trunc_H{$value} = 0;
+          $n3trunc_H{$value} = 0;
         }
         push(@{$set_HA{$value}}, $ftr_idx);
+        if((defined $ftr_info_AHR->[$ftr_idx]{"is_5trunc"}) && ($ftr_info_AHR->[$ftr_idx]{"is_5trunc"} == 1)) {
+          $n5trunc_H{$value}++;
+        }
+        if((defined $ftr_info_AHR->[$ftr_idx]{"is_3trunc"}) && ($ftr_info_AHR->[$ftr_idx]{"is_3trunc"} == 1)) {
+          $n3trunc_H{$value}++;
+        }
       }
     }    
   }
 
   # make sure that each alternative_ftr_set has >= 2 members
-  # or duplicate_ftr_set has exactly 2 members
+  # or duplicate_ftr_set has exactly 3 members
   # and that for any set that has >= 1 children, all members are children with the same parent
   foreach my $key (sort keys (%set_HA)) { 
     my $nset = scalar(@{$set_HA{$key}});
-    if(($chosen_key eq "duplicate") && ($nset != 2)) {
-      $fail_str .= "$chosen_key value: $key exists $nset times, each value must exist exactly twice\n"; 
+    # if 'duplicate': make sure there is exactly 1 is_5trunc and 1 is_3trunc value for this set
+    if($chosen_key eq "duplicate") {
+      if($n5trunc_H{$key} != 1) {
+        $fail_str .= "$chosen_key value: exactly 1 $key feature must have is_5trunc value set to 1\n";
+      }
+      if($n3trunc_H{$key} != 1) {
+        $fail_str .= "$chosen_key value: exactly 1 $key feature must have is_3trunc value set to 1\n";
+      }
+    }
+    
+    if(($chosen_key eq "duplicate") && ($nset != 3)) {
+      $fail_str .= "$chosen_key value: $key exists $nset times, each value must exist exactly 3 times\n"; 
     }
     elsif(($chosen_key eq "alternative") && ($nset == 1)) { 
       $fail_str .= "$chosen_key value: $key exists only once, each value must exist at least twice\n"; 

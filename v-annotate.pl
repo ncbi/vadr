@@ -8928,7 +8928,7 @@ sub helper_protein_validation_breakdown_source {
   
   my ($in_source, $seq_len_HR, $FH_HR) = (@_);
 
-  # printf("\nin $sub_name, in_source: $in_source\n");
+  #printf("\nin $sub_name, in_source: $in_source\n");
   
   # check for simple case, $in_source is a sequence name key in %{$seq_len_HR}
   if(defined $seq_len_HR->{$in_source}) { 
@@ -9125,23 +9125,42 @@ sub helper_protein_validation_db_seqname_to_ftr_idx {
 
   my $ret_ftr_idx = undef;
   my $ret_strand  = undef;
+  my $dup_idx     = undef;
 
   if($blastx_seqname =~ /(\S+)\/(\S+)/) { 
     my ($accn, $coords) = ($1, $2);
+    if($coords =~ /.+(\.\d+)$/) {
+      $dup_idx = $1;
+      $coords =~ s/\.\d+$//;
+    }
     # find it in @{$ftr_info_AHR->{"coords"}}
+    my @possible_ret_ftr_idx_A = ();
     $ret_strand = vdr_FeatureSummaryStrand($coords, $FH_HR);
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       if(($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS")) { 
         if($ftr_info_AHR->[$ftr_idx]{"coords"} eq $coords) { 
-          if(defined $ret_ftr_idx) { # found more than 1 features that match
-            ofile_FAIL("ERROR in $sub_name, found blastx db sequence with coords that match two features, ftr_idx: $ftr_idx and $ret_ftr_idx", 1, $FH_HR);
-          }                  
-          $ret_ftr_idx = $ftr_idx;
+          push(@possible_ret_ftr_idx_A, $ftr_idx);
         }
       }
     }
-    if(! defined $ret_ftr_idx) { # did not find match
+    if(scalar(@possible_ret_ftr_idx_A) == 0) { # did not find match
       ofile_FAIL("ERROR in $sub_name, did not find matching feature for blastx db sequence $blastx_seqname", 1, $FH_HR);
+    }
+    if(scalar(@possible_ret_ftr_idx_A) == 1) {
+      $ret_ftr_idx = $possible_ret_ftr_idx_A[0];
+    }
+    else { # more than one match
+      if(! defined $dup_idx) {
+        my $fail_str = "";
+        foreach $ret_ftr_idx (@possible_ret_ftr_idx_A) {
+          $fail_str .= " " . $ret_ftr_idx;
+        }
+        ofile_FAIL("ERROR in $sub_name, found blastx db sequence with coords that match more than one feature:" . $fail_str, 1, $FH_HR);
+      }
+      if(scalar(@possible_ret_ftr_idx_A) < $dup_idx) {
+        ofile_FAIL("ERROR in $sub_name, not enough features match coords $coords, expected at least $dup_idx", 1, $FH_HR);
+      }
+      $ret_ftr_idx = $possible_ret_ftr_idx_A[($dup_idx-1)];
     }
   }
   else { 
@@ -14620,62 +14639,57 @@ sub pick_features_from_all_alternatives_or_duplicates {
               } # end of 'if($chosen_key eq "alternative_ftr_set")'
               ####################################
               else {
-                if($nset != 2) {
-                  ofile_FAIL("ERROR in $sub_name, trying to pick features for duplicates, but a duplicate set doesn't have exactly 2 features", 1, $FH_HR);
+                if($nset != 3) {
+                  ofile_FAIL("ERROR in $sub_name, trying to pick features for duplicates, but a duplicate set doesn't have exactly 3 features", 1, $FH_HR);
                 }
-                my $set_idx1 = $ftr_set_A[0]; # for convenience
-                my $set_idx2 = $ftr_set_A[1]; # for convenience
-                # do the two overlap?
-                my $s_coords1 = (defined $ftr_results_HAHR->{$seq_name}[$set_idx1]{"n_scoords"}) ?
-                    $ftr_results_HAHR->{$seq_name}[$set_idx1]{"n_scoords"} : undef;
-                my $s_coords2 = (defined $ftr_results_HAHR->{$seq_name}[$set_idx2]{"n_scoords"}) ?
-                    $ftr_results_HAHR->{$seq_name}[$set_idx2]{"n_scoords"} : undef;
-                my $m_coords1 = (defined $ftr_results_HAHR->{$seq_name}[$set_idx1]{"n_mcoords"}) ?
-                    $ftr_results_HAHR->{$seq_name}[$set_idx1]{"n_mcoords"} : undef;
-                my $m_coords2 = (defined $ftr_results_HAHR->{$seq_name}[$set_idx2]{"n_mcoords"}) ?
-                    $ftr_results_HAHR->{$seq_name}[$set_idx2]{"n_mcoords"} : undef;
-                if(defined $s_coords1 && defined $s_coords2) {
-                  # check overlap between all pairs of segments
-                  my @sgm1_A = ();
-                  my @sgm2_A = ();
-                  vdr_CoordsToSegments($s_coords1, \@sgm1_A, $FH_HR);
-                  vdr_CoordsToSegments($s_coords2, \@sgm2_A, $FH_HR);
-                  my $tot_nt_overlap = 0;
-                  foreach my $sgm1 (@sgm1_A) { 
-                    foreach my $sgm2 (@sgm2_A) { 
-                      my ($nt_overlap, undef) = vdr_CoordsSegmentOverlap($sgm1, $sgm2, $FH_HR);
-                      $tot_nt_overlap += $nt_overlap;
-                    }
+                my $sum_length_partials = 0;
+                my $sum_length_full = 0;
+                my $full_idx = undef;
+                my $trunc5_idx = undef;
+                my $trunc3_idx = undef;
+                for($ftr_set_idx = 0; $ftr_set_idx < $nset; $ftr_set_idx++) { 
+                  $ftr_idx2 = $ftr_set_A[$ftr_set_idx];
+                  my $ftr_slen = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx2]{"n_scoords"}) ?
+                      vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$ftr_idx2]{"n_scoords"}, $FH_HR) : 0;
+                  if((defined $ftr_info_AHR->[$ftr_idx2]{"is_5trunc"}) && ($ftr_info_AHR->[$ftr_idx2]{"is_5trunc"} == 1)) {
+                    $sum_length_partials += $ftr_slen;
+                    $trunc5_idx = $ftr_set_idx;
                   }
-                  if($tot_nt_overlap > 0) {
-                    # keep longer feature
-                    my $len1 = vdr_CoordsLength($s_coords1, $FH_HR);
-                    my $len2 = vdr_CoordsLength($s_coords2, $FH_HR);
-                    if($len1 >= $len2) {
-                      $keepme_A[0] = 1;
-                      $keepme_A[1] = 0;
-                    }
-                    else {
-                      $keepme_A[0] = 0;
-                      $keepme_A[1] = 1;
-                    }
+                  elsif((defined $ftr_info_AHR->[$ftr_idx2]{"is_3trunc"}) && ($ftr_info_AHR->[$ftr_idx2]{"is_3trunc"} == 1)) {
+                    $sum_length_partials += $ftr_slen;
+                    $trunc3_idx = $ftr_set_idx;
                   }
-                  else { # no overlap, keep both
-                    $keepme_A[0] = 1;
-                    $keepme_A[1] = 1;
+                  else { 
+                    if($sum_length_full != 0) {
+                      ofile_FAIL("ERROR in $sub_name, problem determining which duplicate feature to use, two features appear to be full length", 1, $FH_HR);
+                    }
+                    $sum_length_full += $ftr_slen;
+                    $full_idx = $ftr_set_idx;
                   }
                 }
-                else { # one is not defined, 'keep' both (just don't remove either, they will remain undef)
-                  $keepme_A[0] = 1;
-                  $keepme_A[1] = 1;
+
+                if((! defined $full_idx) || (! defined $trunc5_idx) || (! defined $trunc3_idx)) {
+                  ofile_FAIL("ERROR in $sub_name, problem determining which duplicate feature to use, did not find one full, one 5' truncated, and one 3' truncated feature", 1, $FH_HR);
                 }
-                printf("HEYA in $sub_name, comparing idx:%d %s (S:%s, M:%s, keep: %d)) and idx:%d %s (S:%s, M:%s, keep: %d)\n",
-                       $ftr_set_A[0], 
-                       $ftr_info_AHR->[$ftr_set_A[0]]{"outname"},
-                       $s_coords1, $m_coords1, $keepme_A[0], 
-                       $ftr_set_A[1], 
-                       $ftr_info_AHR->[$ftr_set_A[1]]{"outname"}, 
-                       $s_coords2, $m_coords2, $keepme_A[1]);
+                if($sum_length_full >= $sum_length_partials) {
+                  # choose full length, remove partials
+                  $keepme_A[$full_idx]   = 1;
+                  $keepme_A[$trunc5_idx] = 0;
+                  $keepme_A[$trunc3_idx] = 0;
+                }
+                else { 
+                  # choose remove partials, remove full length
+                  $keepme_A[$full_idx]   = 0;
+                  $keepme_A[$trunc5_idx] = 1;
+                  $keepme_A[$trunc3_idx] = 1;
+                }
+                printf("HEYA in $sub_name, %s comparing full idx:%d (L=$sum_length_full, keep: %d) and partial idxes:%d and %d (L=$sum_length_partials, keep:%d)\n",
+                       $ftr_info_AHR->[$ftr_set_A[$full_idx]]{"outname"}, 
+                       $ftr_set_A[$full_idx],
+                       $keepme_A[$full_idx],
+                       $ftr_set_A[$trunc3_idx], 
+                       $ftr_set_A[$trunc5_idx],
+                       $keepme_A[$trunc3_idx]);
               } # end of 'else' entered if($chosen_key ne "alternative_ftr_set")
               ####################################
               # go through and remove results and alerts for those we want to remove in this set and their children
