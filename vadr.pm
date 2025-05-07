@@ -113,6 +113,7 @@ require "sqp_utils.pm";
 # vdr_FeatureLengthBetweenAdjacentSegments()
 # vdr_FeatureIs5pTruncated()
 # vdr_FeatureIs3pTruncated()
+# vdr_FeatureCodonStart()
 #
 # vdr_SegmentStartIdenticalToCds()
 # vdr_SegmentStopIdenticalToCds()
@@ -879,6 +880,9 @@ sub vdr_FeatureInfoValidateAlternativeOrDuplicateFeatureSet {
         }
         push(@{$set_HA{$value}}, $ftr_idx);
         if((defined $ftr_info_AHR->[$ftr_idx]{"is_5trunc"}) && ($ftr_info_AHR->[$ftr_idx]{"is_5trunc"} == 1)) {
+          if((! defined $ftr_info_AHR->[$ftr_idx]{"codon_start"}) && vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
+            $fail_str .= "$chosen_key value: feature index $ftr_idx has \"is_5trunc\" set to 1, but doesn't have \"codon_start\" defined\n";
+          }
           $n5trunc_H{$value}++;
         }
         if((defined $ftr_info_AHR->[$ftr_idx]{"is_3trunc"}) && ($ftr_info_AHR->[$ftr_idx]{"is_3trunc"} == 1)) {
@@ -2583,6 +2587,31 @@ sub vdr_FeatureIs3pTruncated {
   my ($ftr_info_AHR, $ftr_idx) = @_;
   
   return ((defined $ftr_info_AHR->[$ftr_idx]{"is_3trunc"}) && $ftr_info_AHR->[$ftr_idx]{"is_3trunc"} == 1) ? 1 : 0;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureCodonStart
+# Incept:     EPN, Tue May  6 15:15:57 2025
+# 
+# Purpose:    Returns "codon_start" value if it is defined, else 1
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $ftr_idx:       feature index
+#
+# Returns:    void
+# 
+# Dies:       Never
+#
+#################################################################
+sub vdr_FeatureCodonStart {
+  my $sub_name = "vdr_FeatureCodonStart";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+  
+  return (defined $ftr_info_AHR->[$ftr_idx]{"codon_start"}) ? $ftr_info_AHR->[$ftr_idx]{"codon_start"} : 1;
 }
 
 #################################################################

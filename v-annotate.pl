@@ -5198,7 +5198,9 @@ sub add_frameshift_alerts_for_one_sequence {
             $ftr_sstop = $sstop;
             $ftr_mstop = $mstop;
             if(! defined $F_0) { 
-              $F_0 = vdr_FrameAdjust(1, abs($mstart - $sgm_start_rfpos) + $missing_sgms_len, $FH_HR);
+              my $ftr_codon_start = vdr_FeatureCodonStart($ftr_info_AHR, $ftr_idx);
+              # ftr_codon_start will typically be '1', will only differ from '1' if codon_start key is defined for this CDS feature
+              $F_0 = vdr_FrameAdjust($ftr_codon_start, (abs($mstart - $sgm_start_rfpos) + $missing_sgms_len), $FH_HR);
               # $F_0 is frame of initial nongap RF position for this CDS 
             } 
 
