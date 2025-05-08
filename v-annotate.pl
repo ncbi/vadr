@@ -6116,7 +6116,8 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
         my $sgm_results_HR = $sgm_results_HAHR->{$seq_name}[$sgm_idx]; # for convenience
         my ($sstart, $sstop, $sstrand) = ($sgm_results_HR->{"sstart"}, $sgm_results_HR->{"sstop"}, $sgm_results_HR->{"strand"});
         my ($mstart, $mstop)           = ($sgm_results_HR->{"mstart"}, $sgm_results_HR->{"mstop"});
-
+        printf("HEYA3 ftr_idx: $ftr_idx, sgm: $sstart..$sstop\n");
+        
         # if cds and we have a canon_splice_sites value, check validity of splice sites (mutspst5 and mutspst3 alerts)
         if(($ftr_is_cds) && ($do_check_splice_sites)) { 
           # we check 3' splice site (upstream of this segment) first and 5' splice site (downstream of this segment) second
@@ -14666,6 +14667,10 @@ sub pick_features_from_all_alternatives_or_duplicates {
                 my $trunc3_idx = undef;
                 for($ftr_set_idx = 0; $ftr_set_idx < $nset; $ftr_set_idx++) { 
                   $ftr_idx2 = $ftr_set_A[$ftr_set_idx];
+                  if(defined $ftr_results_HAHR->{$seq_name}[$ftr_idx2]{"n_scoords"}) { 
+                    printf("HEYA2 ftr_idx2: $ftr_idx2, coords: %s, length: %d\n", $ftr_results_HAHR->{$seq_name}[$ftr_idx2]{"n_scoords"},
+                           vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$ftr_idx2]{"n_scoords"}, $FH_HR)); 
+                  }
                   my $ftr_slen = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx2]{"n_scoords"}) ?
                       vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$ftr_idx2]{"n_scoords"}, $FH_HR) : 0;
                   if((defined $ftr_info_AHR->[$ftr_idx2]{"is_5trunc"}) && ($ftr_info_AHR->[$ftr_idx2]{"is_5trunc"} == 1)) {
