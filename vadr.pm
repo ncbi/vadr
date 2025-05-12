@@ -114,6 +114,7 @@ require "sqp_utils.pm";
 # vdr_FeatureIs5pTruncated()
 # vdr_FeatureIs3pTruncated()
 # vdr_FeatureCodonStart()
+# vdr_FeatureSpansOrigin()
 #
 # vdr_SegmentStartIdenticalToCds()
 # vdr_SegmentStopIdenticalToCds()
@@ -855,12 +856,13 @@ sub vdr_FeatureInfoValidateAlternativeOrDuplicateFeatureSet {
   
   my ($ftr_info_AHR, $choice, $FH_HR) = @_;
   
-  my $nftr     = scalar(@{$ftr_info_AHR});
-  my $ret_val  = 0;    # set to '1' if we see any values ne ""
-  my $fail_str = "";   # added to if any elements are out of range
-  my %set_HA = ();     # key is set value, array is feature indices in that set
-  my %n5trunc_H  = (); # key is set value, value is number of features with is_5trunc set to 1
-  my %n3trunc_H  = (); # key is set value, value is number of features with is_3trunc set to 1
+  my $nftr         = scalar(@{$ftr_info_AHR});
+  my $ret_val      = 0;  # set to '1' if we see any values ne ""
+  my $fail_str     = ""; # added to if any elements are out of range
+  my %set_HA       = (); # key is set value, array is feature indices in that set
+  my %full_spans_H = (); # key is set value, value is number of features that span the origin
+  my %n5trunc_H    = (); # key is set value, value is number of features with is_5trunc set to 1
+  my %n3trunc_H    = (); # key is set value, value is number of features with is_3trunc set to 1
   my $ftr_idx = undef;
 
   my $chosen_key = ($choice eq "duplicate") ? "duplicate_ftr_set" : "alternative_ftr_set";
@@ -875,18 +877,22 @@ sub vdr_FeatureInfoValidateAlternativeOrDuplicateFeatureSet {
         $ret_val = 1;
         if(! defined $set_HA{$value}) { 
           @{$set_HA{$value}} = ();
+          $full_spans_H{$value} = 0;
           $n5trunc_H{$value} = 0;
           $n3trunc_H{$value} = 0;
         }
         push(@{$set_HA{$value}}, $ftr_idx);
-        if((defined $ftr_info_AHR->[$ftr_idx]{"is_5trunc"}) && ($ftr_info_AHR->[$ftr_idx]{"is_5trunc"} == 1)) {
+        if(vdr_FeatureIs5pTruncated($ftr_info_AHR, $ftr_idx)) { 
           if((! defined $ftr_info_AHR->[$ftr_idx]{"codon_start"}) && vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
             $fail_str .= "$chosen_key value: feature index $ftr_idx has \"is_5trunc\" set to 1, but doesn't have \"codon_start\" defined\n";
           }
           $n5trunc_H{$value}++;
         }
-        if((defined $ftr_info_AHR->[$ftr_idx]{"is_3trunc"}) && ($ftr_info_AHR->[$ftr_idx]{"is_3trunc"} == 1)) {
+        if(vdr_FeatureIs3pTruncated($ftr_info_AHR, $ftr_idx)) { 
           $n3trunc_H{$value}++;
+        }
+        if(vdr_FeatureSpansOrigin($ftr_info_AHR, $ftr_idx)) { 
+          $full_spans_H{$value}++;
         }
       }
     }    
@@ -905,10 +911,13 @@ sub vdr_FeatureInfoValidateAlternativeOrDuplicateFeatureSet {
       if($n3trunc_H{$key} != 1) {
         $fail_str .= "$chosen_key value: exactly 1 $key feature must have is_3trunc value set to 1\n";
       }
+      if($full_spans_H{$key} != 1) {
+        $fail_str .= "$chosen_key value: exactly 1 $key feature must have spans_origin value set to 1\n";
+      }
     }
     
-    if(($chosen_key eq "duplicate") && ($nset != 3)) {
-      $fail_str .= "$chosen_key value: $key exists $nset times, each value must exist exactly 3 times\n"; 
+    if(($chosen_key eq "duplicate") && ($nset != 4)) {
+      $fail_str .= "$chosen_key value: $key exists $nset times, each value must exist exactly 4 times\n"; 
     }
     elsif(($chosen_key eq "alternative") && ($nset == 1)) { 
       $fail_str .= "$chosen_key value: $key exists only once, each value must exist at least twice\n"; 
@@ -2612,6 +2621,31 @@ sub vdr_FeatureCodonStart {
   my ($ftr_info_AHR, $ftr_idx) = @_;
   
   return (defined $ftr_info_AHR->[$ftr_idx]{"codon_start"}) ? $ftr_info_AHR->[$ftr_idx]{"codon_start"} : 1;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureSpansOrigin
+# Incept:     EPN, Thu May  8 11:42:07 2025
+# 
+# Purpose:    Returns "spans_origin" value if it is defined, else 0
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $ftr_idx:       feature index
+#
+# Returns:    void
+# 
+# Dies:       Never
+#
+#################################################################
+sub vdr_FeatureSpansOrigin {
+  my $sub_name = "vdr_FeatureSpansOrigin";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+  
+  return (defined $ftr_info_AHR->[$ftr_idx]{"spans_origin"}) ? $ftr_info_AHR->[$ftr_idx]{"spans_origin"} : 0;
 }
 
 #################################################################
