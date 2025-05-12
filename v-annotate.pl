@@ -6472,15 +6472,19 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
                   my $ext_sqstring = undef;
                   my $ext_sqstring_start = undef;
                   if($ftr_strand eq "+") { 
-                    if   (($ftr_len_stops % 3) == 0) { $ext_sqstring_start = $ftr_stop+1; } # first in-frame stop can start at next posn
-                    elsif(($ftr_len_stops % 3) == 1) { $ext_sqstring_start = $ftr_stop;   } # first in-frame stop can start at final posn
-                    elsif(($ftr_len_stops % 3) == 2) { $ext_sqstring_start = $ftr_stop-1; } # first in-frame stop can start at prev posn
+                    if   (($ftr_len_stops % 3) == 0)   { $ext_sqstring_start = $ftr_stop+1; } # first in-frame stop can start at next posn
+                    elsif(($ftr_len_stops % 3) == 1)   { $ext_sqstring_start = $ftr_stop;   } # first in-frame stop can start at final posn
+                    elsif(($ftr_len_stops % 3) == 2)   { $ext_sqstring_start = $ftr_stop-1; } # first in-frame stop can start at prev posn
+                    if($ext_sqstring_start < 1)        { $ext_sqstring_start += 3; }
+                    if($ext_sqstring_start > $seq_len) { $ext_sqstring_start -= 3; }
                     $ext_sqstring = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $ext_sqstring_start, $seq_len, 0); 
                   }
                   else { # negative strand
-                    if   (($ftr_len_stops % 3) == 0) { $ext_sqstring_start = $ftr_stop-1; } # first in-frame stop can start at next posn
-                    elsif(($ftr_len_stops % 3) == 1) { $ext_sqstring_start = $ftr_stop;   } # first in-frame stop can start at final posn
-                    elsif(($ftr_len_stops % 3) == 2) { $ext_sqstring_start = $ftr_stop+1; } # first in-frame stop can start at prev posn
+                    if   (($ftr_len_stops % 3) == 0)   { $ext_sqstring_start = $ftr_stop-1; } # first in-frame stop can start at next posn
+                    elsif(($ftr_len_stops % 3) == 1)   { $ext_sqstring_start = $ftr_stop;   } # first in-frame stop can start at final posn
+                    elsif(($ftr_len_stops % 3) == 2)   { $ext_sqstring_start = $ftr_stop+1; } # first in-frame stop can start at prev posn
+                    if($ext_sqstring_start < 1)        { $ext_sqstring_start += 3; }
+                    if($ext_sqstring_start > $seq_len) { $ext_sqstring_start -= 3; }
                     $ext_sqstring = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $ext_sqstring_start, 1, 1);
                   }
                   my @ext_nxt_stp_A = ();
@@ -14545,22 +14549,23 @@ sub helper_tabular_fill_header_and_justification_arrays {
 # Purpose:    For features that have a non-empty 'alternative_ftr_set'
 #             (if $choice eq "alternative") or 'duplicate_ftr_set' (if
 #             $choice eq "duplicate") value, choose one representative
-#             from all alternatives or duplicates and delete annotation
-#             and alerts from all other alternatives or duplicates.
-#             This subroutine should be called twice, first with the
-#             $only_children_flag set as '0' to only pick features from 
-#             sets that are not children, then again with $only_children_flag 
-#             set as '1' to only pick features from sets that *are* children.
-#             This is important because when we remove results/alerts for
-#             parents we also remove results/alerts for their children.
-#             This only works because we validate
-#             (in vdr_FeatureInfoValidateAlternativeOrDuplicateFeatureSet)
-#             - that for any {alternative,duplicate}_ftr_set set that includes
-#               >= 1 feature child, all members of that set are children, with
-#               the same parent.
-#             And in vdr_FeatureInfoParentIndexStrings we validate that
-#             all features that are parents are not themselves children
-#             of any feature.
+#             from all alternatives or one or two from all duplicates
+#             and delete annotation and alerts from all other
+#             alternatives or duplicates.  This subroutine should be
+#             called twice, first with the $only_children_flag set as
+#             '0' to only pick features from sets that are not
+#             children, then again with $only_children_flag set as '1'
+#             to only pick features from sets that *are* children.
+#             This is important because when we remove results/alerts
+#             for parents we also remove results/alerts for their
+#             children.  This only works because we validate (in
+#             vdr_FeatureInfoValidateAlternativeOrDuplicateFeatureSet)
+#             - that for any {alternative,duplicate}_ftr_set set that
+#             includes >= 1 feature child, all members of that set are
+#             children, with the same parent.  And in
+#             vdr_FeatureInfoParentIndexStrings we validate that all
+#             features that are parents are not themselves children of
+#             any feature.
 #
 # Arguments:
 #  $seq_name_AR:             REF to array of sequence names, PRE-FILLED
@@ -14657,14 +14662,16 @@ sub pick_features_from_all_alternatives_or_duplicates {
               } # end of 'if($chosen_key eq "alternative_ftr_set")'
               ####################################
               else {
-                if($nset != 3) {
-                  ofile_FAIL("ERROR in $sub_name, trying to pick features for duplicates, but a duplicate set doesn't have exactly 3 features", 1, $FH_HR);
+                if($nset != 4) {
+                  ofile_FAIL("ERROR in $sub_name, trying to pick features for duplicates, but a duplicate set doesn't have exactly 4 features", 1, $FH_HR);
                 }
-                my $sum_length_partials = 0;
-                my $sum_length_full = 0;
-                my $full_idx = undef;
-                my $trunc5_idx = undef;
-                my $trunc3_idx = undef;
+                my $sum_length_partials = 0;  # summed length of the two partial duplicate features 
+                my $length_full_linear  = 0;  # length of full length duplicate feature that does not span origin
+                my $length_full_spans   = 0;  # length of full length duplicate feature that spans origin
+                my $full_linear_idx = undef;
+                my $full_spans_idx  = undef;
+                my $trunc5_idx      = undef;
+                my $trunc3_idx      = undef;
                 for($ftr_set_idx = 0; $ftr_set_idx < $nset; $ftr_set_idx++) { 
                   $ftr_idx2 = $ftr_set_A[$ftr_set_idx];
                   if(defined $ftr_results_HAHR->{$seq_name}[$ftr_idx2]{"n_scoords"}) { 
@@ -14681,34 +14688,52 @@ sub pick_features_from_all_alternatives_or_duplicates {
                     $sum_length_partials += $ftr_slen;
                     $trunc3_idx = $ftr_set_idx;
                   }
-                  else { 
-                    if($sum_length_full != 0) {
-                      ofile_FAIL("ERROR in $sub_name, problem determining which duplicate feature to use, two features appear to be full length", 1, $FH_HR);
+                  elsif(vdr_FeatureSpansOrigin($ftr_info_AHR, $ftr_idx2)) { 
+                    if($length_full_spans != 0) {
+                      ofile_FAIL("ERROR in $sub_name, problem determining which duplicate feature to use, two features appear to be full length and span origin", 1, $FH_HR);
                     }
-                    $sum_length_full += $ftr_slen;
-                    $full_idx = $ftr_set_idx;
+                    $length_full_spans += $ftr_slen;
+                    $full_spans_idx = $ftr_set_idx;
+                  }
+                  else {
+                    if($length_full_linear != 0) {
+                      ofile_FAIL("ERROR in $sub_name, problem determining which duplicate feature to use, two features appear to be full length and span origin", 1, $FH_HR);
+                    }
+                    $length_full_linear += $ftr_slen;
+                    $full_linear_idx = $ftr_set_idx;
                   }
                 }
 
-                if((! defined $full_idx) || (! defined $trunc5_idx) || (! defined $trunc3_idx)) {
-                  ofile_FAIL("ERROR in $sub_name, problem determining which duplicate feature to use, did not find one full, one 5' truncated, and one 3' truncated feature", 1, $FH_HR);
+                if((! defined $full_spans_idx) || (! defined $full_linear_idx) || (! defined $trunc5_idx) || (! defined $trunc3_idx)) {
+                  ofile_FAIL("ERROR in $sub_name, problem determining which duplicate feature to use, did not find one spanning full, one linear full, one 5' truncated, and one 3' truncated feature", 1, $FH_HR);
                 }
-                if($sum_length_full >= $sum_length_partials) {
-                  # choose full length, remove partials
-                  $keepme_A[$full_idx]   = 1;
-                  $keepme_A[$trunc5_idx] = 0;
-                  $keepme_A[$trunc3_idx] = 0;
+                if(($length_full_spans >= $length_full_linear) && ($length_full_spans >= $sum_length_partials)) { 
+                  # choose full spans, remove others
+                  $keepme_A[$full_spans_idx]  = 1;
+                  $keepme_A[$full_linear_idx] = 0;
+                  $keepme_A[$trunc5_idx]      = 0;
+                  $keepme_A[$trunc3_idx]      = 0;
+                }
+                elsif(($length_full_linear >= $length_full_spans) && ($length_full_linear >= $sum_length_partials)) { 
+                  # choose full linear, remove others
+                  $keepme_A[$full_spans_idx]  = 0;
+                  $keepme_A[$full_linear_idx] = 1;
+                  $keepme_A[$trunc5_idx]      = 0;
+                  $keepme_A[$trunc3_idx]      = 0;
                 }
                 else { 
-                  # choose remove partials, remove full length
-                  $keepme_A[$full_idx]   = 0;
-                  $keepme_A[$trunc5_idx] = 1;
-                  $keepme_A[$trunc3_idx] = 1;
+                  # choose partials
+                  $keepme_A[$full_spans_idx]  = 0;
+                  $keepme_A[$full_linear_idx] = 0;
+                  $keepme_A[$trunc5_idx]      = 1;
+                  $keepme_A[$trunc3_idx]      = 1;
                 }
-                printf("HEYA in $sub_name, %s comparing full idx:%d (L=$sum_length_full, keep: %d) and partial idxes:%d and %d (L=$sum_length_partials, keep:%d)\n",
-                       $ftr_info_AHR->[$ftr_set_A[$full_idx]]{"outname"}, 
-                       $ftr_set_A[$full_idx],
-                       $keepme_A[$full_idx],
+                printf("HEYA in $sub_name, %s comparing full spans idx:%d (L=$length_full_spans, keep: %d), full linear idx: %d (L=$length_full_linear, keep: %d) and partial idxes:%d and %d (L=$sum_length_partials, keep:%d)\n",
+                       $ftr_info_AHR->[$ftr_set_A[$full_spans_idx]]{"outname"}, 
+                       $ftr_set_A[$full_spans_idx],
+                       $keepme_A[$full_spans_idx],
+                       $ftr_set_A[$full_linear_idx],
+                       $keepme_A[$full_linear_idx],
                        $ftr_set_A[$trunc3_idx], 
                        $ftr_set_A[$trunc5_idx],
                        $keepme_A[$trunc3_idx]);
