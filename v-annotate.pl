@@ -2169,27 +2169,27 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       # first pick features from sets that are not composed of any children
       # this will remove features in alternative_ftr_sets that are not picked *and* their children
       if($has_duplicates) { 
-        pick_features_from_all_alternatives_or_duplicates(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
-                                                          \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, 
+        pick_features_from_all_alternatives_or_duplicates(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
+                                                          \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH,
                                                           "duplicate", 0, \@i_am_child_A, \@children_AA, 
                                                           \%opt_HH, \%{$ofile_info_HH{"FH"}});
         # now pick features from sets that are not composed of any children (that we have left)
         if($nchildren > 0) { 
-          pick_features_from_all_alternatives_or_duplicates(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
-                                                            \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, 
+          pick_features_from_all_alternatives_or_duplicates(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
+                                                            \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH,
                                                             "duplicate", 1, \@i_am_child_A, \@children_AA, 
                                                             \%opt_HH, \%{$ofile_info_HH{"FH"}});
         }
       }
       if($has_alternatives) { 
-        pick_features_from_all_alternatives_or_duplicates(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
-                                                          \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, 
+        pick_features_from_all_alternatives_or_duplicates(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H,  \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
+                                                          \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH,
                                                           "alternative", 0, \@i_am_child_A, \@children_AA, 
                                                         \%opt_HH, \%{$ofile_info_HH{"FH"}});
         # now pick features from sets that are not composed of any children (that we have left)
         if($nchildren > 0) { 
-          pick_features_from_all_alternatives(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
-                                            \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, 
+          pick_features_from_all_alternatives(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
+                                            \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH,
                                             1, \@i_am_child_A, \@children_AA,
                                             \%opt_HH, \%{$ofile_info_HH{"FH"}});
         }
@@ -14569,6 +14569,7 @@ sub helper_tabular_fill_header_and_justification_arrays {
 #
 # Arguments:
 #  $seq_name_AR:             REF to array of sequence names, PRE-FILLED
+#  $seq_len_HR:              REF to hash of sequence lengths, PRE-FILLED
 #  $ftr_info_AHR:            REF to array of hashes with information on the features, PRE-FILLED
 #  $alt_info_HHR:            REF to array of hashes with information on the alerts, PRE-FILLED
 #  $ftr_results_HAHR:        REF to feature results HAH, PRE-FILLED
@@ -14588,10 +14589,10 @@ sub helper_tabular_fill_header_and_justification_arrays {
 #################################################################
 sub pick_features_from_all_alternatives_or_duplicates { 
   my $sub_name = "pick_features_from_all_alternatives_or_duplicates";
-  my $nargs_exp = 11;
+  my $nargs_exp = 12;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($seq_name_AR, $ftr_info_AHR, $alt_info_HHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, 
+  my ($seq_name_AR, $seq_len_HR, $ftr_info_AHR, $alt_info_HHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, 
       $choice, $only_children_flag, $i_am_child_AR, $children_AAR, $opt_HHR, $FH_HR) = @_;
 
   printf("HEYA in $sub_name\n");
@@ -14605,6 +14606,7 @@ sub pick_features_from_all_alternatives_or_duplicates {
   my $ftr_idx; 
   my $ftr_idx2; 
   foreach my $seq_name (@{$seq_name_AR}) { 
+    my $seq_len = $seq_len_HR->{$seq_name};
     my %sets_completed_H = (); # key is name of a set, value is '1' if we've already completed that set
     if((defined $ftr_results_HAHR->{$seq_name}) || (defined $alt_ftr_instances_HHHR->{$seq_name})) { 
       for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
@@ -14665,9 +14667,10 @@ sub pick_features_from_all_alternatives_or_duplicates {
                 if($nset != 4) {
                   ofile_FAIL("ERROR in $sub_name, trying to pick features for duplicates, but a duplicate set doesn't have exactly 4 features", 1, $FH_HR);
                 }
-                my $sum_length_partials = 0;  # summed length of the two partial duplicate features 
-                my $length_full_linear  = 0;  # length of full length duplicate feature that does not span origin
-                my $length_full_spans   = 0;  # length of full length duplicate feature that spans origin
+                my $sum_length_partials = 0;       # summed length of the two partial duplicate features 
+                my $sum_length_full_partial5 = 0;  # summed length of the full linear and 5' partial duplicate feature 
+                my $length_full_linear  = 0;       # length of full length duplicate feature that does not span origin
+                my $length_full_spans   = 0;       # length of full length duplicate feature that spans origin
                 my $full_linear_idx = undef;
                 my $full_spans_idx  = undef;
                 my $trunc5_idx      = undef;
@@ -14682,6 +14685,7 @@ sub pick_features_from_all_alternatives_or_duplicates {
                       vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$ftr_idx2]{"n_scoords"}, $FH_HR) : 0;
                   if((defined $ftr_info_AHR->[$ftr_idx2]{"is_5trunc"}) && ($ftr_info_AHR->[$ftr_idx2]{"is_5trunc"} == 1)) {
                     $sum_length_partials += $ftr_slen;
+                    $sum_length_full_partial5 += $ftr_slen;
                     $trunc5_idx = $ftr_set_idx;
                   }
                   elsif((defined $ftr_info_AHR->[$ftr_idx2]{"is_3trunc"}) && ($ftr_info_AHR->[$ftr_idx2]{"is_3trunc"} == 1)) {
@@ -14700,6 +14704,7 @@ sub pick_features_from_all_alternatives_or_duplicates {
                       ofile_FAIL("ERROR in $sub_name, problem determining which duplicate feature to use, two features appear to be full length and span origin", 1, $FH_HR);
                     }
                     $length_full_linear += $ftr_slen;
+                    $sum_length_full_partial5 += $ftr_slen;
                     $full_linear_idx = $ftr_set_idx;
                   }
                 }
@@ -14707,19 +14712,43 @@ sub pick_features_from_all_alternatives_or_duplicates {
                 if((! defined $full_spans_idx) || (! defined $full_linear_idx) || (! defined $trunc5_idx) || (! defined $trunc3_idx)) {
                   ofile_FAIL("ERROR in $sub_name, problem determining which duplicate feature to use, did not find one spanning full, one linear full, one 5' truncated, and one 3' truncated feature", 1, $FH_HR);
                 }
-                if(($length_full_spans >= $length_full_linear) && ($length_full_spans >= $sum_length_partials)) { 
+                if(($length_full_spans >= $length_full_linear) && ($length_full_spans >= $sum_length_partials) && ($length_full_spans >= $sum_length_full_partial5)) { 
                   # choose full spans, remove others
                   $keepme_A[$full_spans_idx]  = 1;
                   $keepme_A[$full_linear_idx] = 0;
                   $keepme_A[$trunc5_idx]      = 0;
                   $keepme_A[$trunc3_idx]      = 0;
                 }
-                elsif(($length_full_linear >= $length_full_spans) && ($length_full_linear >= $sum_length_partials)) { 
+                elsif(($length_full_linear >= $length_full_spans) && ($length_full_linear >= $sum_length_partials) && ($length_full_linear >= $sum_length_full_partial5)) { 
                   # choose full linear, remove others
                   $keepme_A[$full_spans_idx]  = 0;
                   $keepme_A[$full_linear_idx] = 1;
                   $keepme_A[$trunc5_idx]      = 0;
                   $keepme_A[$trunc3_idx]      = 0;
+                }
+                elsif(($sum_length_full_partial5 >= $length_full_linear) && ($sum_length_full_partial5 >= $length_full_spans) && ($sum_length_full_partial5 >= $sum_length_partials)) { 
+                  # choose full_linear and partial5', remove others
+                  $keepme_A[$full_spans_idx]  = 0;
+                  $keepme_A[$full_linear_idx] = 1;
+                  $keepme_A[$trunc5_idx]      = 1;
+                  $keepme_A[$trunc3_idx]      = 0;
+                  # check if these two predictions span the origin
+                  if(two_coords_span_origin($ftr_results_HAHR->{$seq_name}[$ftr_set_A[$full_linear_idx]]{"n_scoords"},
+                                            $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$trunc5_idx]]{"n_scoords"}, 
+                                            $seq_len, $FH_HR)) {
+                    printf("HEYA MERGING\n");
+                    $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$full_linear_idx]]{"n_scoords"} .= $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$trunc5_idx]]{"n_scoords"}; 
+                    $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$full_linear_idx]]{"n_mcoords"} .= $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$trunc5_idx]]{"n_mcoords"}; 
+                    # add alerts
+                    foreach my $alt_code (%{$alt_ftr_instances_HHHR->{$seq_name}{$ftr_set_A[$trunc5_idx]}}) {
+                      my @alt_str_A = split(":VADRSEP:", $alt_ftr_instances_HHHR->{$seq_name}{$ftr_set_A[$trunc5_idx]}{$alt_code});
+                      foreach my $alt_str (@alt_str_A) { 
+                        alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_set_A[$full_linear_idx], $alt_str, $FH_HR);
+                      }
+                    }
+                    # we've copied all the info we need from this feature, we want to remove it below
+                    $keepme_A[$trunc5_idx] = 0;
+                  }
                 }
                 else { 
                   # choose partials
@@ -14728,7 +14757,7 @@ sub pick_features_from_all_alternatives_or_duplicates {
                   $keepme_A[$trunc5_idx]      = 1;
                   $keepme_A[$trunc3_idx]      = 1;
                 }
-                printf("HEYA in $sub_name, %s comparing full spans idx:%d (L=$length_full_spans, keep: %d), full linear idx: %d (L=$length_full_linear, keep: %d) and partial idxes:%d and %d (L=$sum_length_partials, keep:%d)\n",
+                printf("HEYA in $sub_name, %s comparing full spans idx:%d (L=$length_full_spans, keep: %d), full linear idx: %d (L=$length_full_linear, keep: %d), partial idxes:%d and %d (L=$sum_length_partials, keep:%d %d) and full-lin-3' (L=$sum_length_full_partial5))\n",
                        $ftr_info_AHR->[$ftr_set_A[$full_spans_idx]]{"outname"}, 
                        $ftr_set_A[$full_spans_idx],
                        $keepme_A[$full_spans_idx],
@@ -14736,6 +14765,7 @@ sub pick_features_from_all_alternatives_or_duplicates {
                        $keepme_A[$full_linear_idx],
                        $ftr_set_A[$trunc3_idx], 
                        $ftr_set_A[$trunc5_idx],
+                       $keepme_A[$trunc5_idx],
                        $keepme_A[$trunc3_idx]);
               } # end of 'else' entered if($chosen_key ne "alternative_ftr_set")
               ####################################
@@ -15254,4 +15284,48 @@ sub check_and_doctor_stk_for_circular_models {
   }
 
   return;
+}
+
+#################################################################
+# Subroutine: two_coords_span_origin
+# Incept:     EPN, Wed May 14 13:26:09 2025
+#
+# Purpose:    For a circular model, check if two sets of coordinates
+#             span the origin. Only possible if they are both the same
+#             strand.
+#
+# Arguments:
+#  $coords5p: coords string 1, 5' feature prediction
+#  $coords3p: coords string 2, 3' feature prediction
+#  $seqlen:   sequence length
+#  $FH_HR:    ref to hash of file handles
+#
+# Returns:  '1' if the two coords span the origin, else '0'
+#
+# Dies:     if either coords string is unparseable
+#
+#################################################################
+sub two_coords_span_origin { 
+  my $sub_name = "two_coords_span_origin";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($coords5p, $coords3p, $seqlen, $FH_HR) = (@_);
+
+  my $strand1 = vdr_FeatureSummaryStrand($coords5p, $FH_HR);
+  my $strand2 = vdr_FeatureSummaryStrand($coords3p, $FH_HR);
+
+  if(($strand1 eq "+") && ($strand2 eq "+")) {
+    my $stop1  = vdr_Feature3pMostPosition($coords5p, $FH_HR);
+    my $start2 = vdr_Feature5pMostPosition($coords3p, $FH_HR);
+    if(($stop1 == $seqlen) && ($start2 == 1)) { return 1; }
+  }
+  elsif(($strand1 eq "-") && ($strand2 eq "-")) {
+    my $stop1  = vdr_Feature3pMostPosition($coords5p, $FH_HR);
+    my $start2 = vdr_Feature5pMostPosition($coords3p, $FH_HR);
+    if(($stop1 == 1) && ($start2 == $seqlen)) { return 1; }
+  }
+
+  # if we get here, we do not span the origin 
+  return 0;
 }
