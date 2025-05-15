@@ -2155,6 +2155,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 ##############################################################
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  $mdl_len  = $mdl_info_AH[$mdl_idx]{"length"};
   if((defined $mdl_seq_name_HA{$mdl_name}) && (! $do_clsonly)) {
     my $has_alternatives = vdr_FeatureInfoValidateAlternativeOrDuplicateFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, "alternative", $FH_HR);
     my $has_duplicates   = vdr_FeatureInfoValidateAlternativeOrDuplicateFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, "duplicate",   $FH_HR);
@@ -2169,26 +2170,26 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       # first pick features from sets that are not composed of any children
       # this will remove features in alternative_ftr_sets that are not picked *and* their children
       if($has_duplicates) { 
-        pick_features_from_all_alternatives_or_duplicates(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
+        pick_features_from_all_alternatives_or_duplicates(\@{$mdl_seq_name_HA{$mdl_name}}, $mdl_len, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                                           \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH,
                                                           "duplicate", 0, \@i_am_child_A, \@children_AA, 
                                                           \%opt_HH, \%{$ofile_info_HH{"FH"}});
         # now pick features from sets that are not composed of any children (that we have left)
         if($nchildren > 0) { 
-          pick_features_from_all_alternatives_or_duplicates(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
+          pick_features_from_all_alternatives_or_duplicates(\@{$mdl_seq_name_HA{$mdl_name}}, $mdl_len, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                                             \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH,
                                                             "duplicate", 1, \@i_am_child_A, \@children_AA, 
                                                             \%opt_HH, \%{$ofile_info_HH{"FH"}});
         }
       }
       if($has_alternatives) { 
-        pick_features_from_all_alternatives_or_duplicates(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H,  \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
+        pick_features_from_all_alternatives_or_duplicates(\@{$mdl_seq_name_HA{$mdl_name}}, $mdl_len,  \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                                           \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH,
                                                           "alternative", 0, \@i_am_child_A, \@children_AA, 
                                                         \%opt_HH, \%{$ofile_info_HH{"FH"}});
         # now pick features from sets that are not composed of any children (that we have left)
         if($nchildren > 0) { 
-          pick_features_from_all_alternatives(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
+          pick_features_from_all_alternatives(\@{$mdl_seq_name_HA{$mdl_name}}, $mdl_len, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                             \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH,
                                             1, \@i_am_child_A, \@children_AA,
                                             \%opt_HH, \%{$ofile_info_HH{"FH"}});
@@ -14708,7 +14709,7 @@ sub helper_tabular_fill_header_and_justification_arrays {
 #
 # Arguments:
 #  $seq_name_AR:             REF to array of sequence names, PRE-FILLED
-#  $seq_len_HR:              REF to hash of sequence lengths, PRE-FILLED
+#  $mdl_len:                 length of model, if circular actually 2X circular genome length
 #  $ftr_info_AHR:            REF to array of hashes with information on the features, PRE-FILLED
 #  $alt_info_HHR:            REF to array of hashes with information on the alerts, PRE-FILLED
 #  $ftr_results_HAHR:        REF to feature results HAH, PRE-FILLED
@@ -14731,7 +14732,7 @@ sub pick_features_from_all_alternatives_or_duplicates {
   my $nargs_exp = 12;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($seq_name_AR, $seq_len_HR, $ftr_info_AHR, $alt_info_HHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, 
+  my ($seq_name_AR, $mdl_len, $ftr_info_AHR, $alt_info_HHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, 
       $choice, $only_children_flag, $i_am_child_AR, $children_AAR, $opt_HHR, $FH_HR) = @_;
 
   printf("HEYA in $sub_name\n");
@@ -14745,7 +14746,6 @@ sub pick_features_from_all_alternatives_or_duplicates {
   my $ftr_idx; 
   my $ftr_idx2; 
   foreach my $seq_name (@{$seq_name_AR}) { 
-    my $seq_len = $seq_len_HR->{$seq_name};
     my %sets_completed_H = (); # key is name of a set, value is '1' if we've already completed that set
     if((defined $ftr_results_HAHR->{$seq_name}) || (defined $alt_ftr_instances_HHHR->{$seq_name})) { 
       for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
@@ -14870,9 +14870,10 @@ sub pick_features_from_all_alternatives_or_duplicates {
                     $keepme_A[$trunc5_idx]      = 1;
                     $keepme_A[$trunc3_idx]      = 0;
                     # check if these two predictions span the origin
-                    if(two_coords_span_origin($ftr_results_HAHR->{$seq_name}[$ftr_set_A[$full_linear_idx]]{"n_scoords"},
-                                              $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$trunc5_idx]]{"n_scoords"}, 
-                                              $seq_len, $FH_HR)) {
+                    printf("HEYA calling span origin 1\n");
+                    if(two_coords_span_origin($ftr_results_HAHR->{$seq_name}[$ftr_set_A[$full_linear_idx]]{"n_mcoords"},
+                                              $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$trunc5_idx]]{"n_mcoords"}, 
+                                              ($mdl_len / 2), $FH_HR)) {
                       printf("HEYA MERGING\n");
                       $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$full_linear_idx]]{"n_scoords"} .= $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$trunc5_idx]]{"n_scoords"}; 
                       $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$full_linear_idx]]{"n_mcoords"} .= $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$trunc5_idx]]{"n_mcoords"}; 
@@ -14932,13 +14933,14 @@ sub pick_features_from_all_alternatives_or_duplicates {
                   if((! defined $before_origin_idx) || (! defined $after_origin_idx)) {
                     ofile_FAIL("ERROR in $sub_name, problem determining which duplicate feature to use in set of 2, did not find one feature before origin and one after origin", 1, $FH_HR);
                   }
-                  if((defined $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$before_origin_idx]]{"n_scoords"}) &&
-                     (defined $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$after_origin_idx]]{"n_scoords"}) &&
-                     (two_coords_span_origin($ftr_results_HAHR->{$seq_name}[$ftr_set_A[$after_origin_idx]]{"n_scoords"},
-                                             $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$before_origin_idx]]{"n_scoords"}, 
-                                             $seq_len, $FH_HR))) {
+                  printf("HEYA calling span origin 2\n");
+                  if((defined $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$before_origin_idx]]{"n_mcoords"}) &&
+                     (defined $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$after_origin_idx]]{"n_mcoords"}) &&
+                     (two_coords_span_origin($ftr_results_HAHR->{$seq_name}[$ftr_set_A[$after_origin_idx]]{"n_mcoords"},
+                                             $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$before_origin_idx]]{"n_mcoords"}, 
+                                             ($mdl_len / 2), $FH_HR))) {
                     printf("HEYA MERGING SET OF 2\n");
-                    $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$after_origin_idx]]{"n_scoords"}   .= $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$before_origin_idx]]{"n_scoords"}; 
+                    $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$after_origin_idx]]{"n_scoords"}   .= $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$after_origin_idx]]{"n_scoords"}; 
                     $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$after_origin_idx]]{"n_mcoords"}   .= $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$before_origin_idx]]{"n_mcoords"}; 
                     $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$after_origin_idx]]{"merge_ftr_idx"} = $ftr_set_A[$before_origin_idx];
                     $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$before_origin_idx]]{"merge_ftr_idx"} = $ftr_set_A[$before_origin_idx]; # flag to not output this feature
@@ -15486,10 +15488,10 @@ sub check_and_doctor_stk_for_circular_models {
 #             strand.
 #
 # Arguments:
-#  $coords5p: coords string 1, 5' feature prediction
-#  $coords3p: coords string 2, 3' feature prediction
-#  $seqlen:   sequence length
-#  $FH_HR:    ref to hash of file handles
+#  $mdl_coords5p: coords string 1, 5' feature prediction
+#  $mdl_coords3p: coords string 2, 3' feature prediction
+#  $circ_len:     circular genome length
+#  $FH_HR:        ref to hash of file handles
 #
 # Returns:  '1' if the two coords span the origin, else '0'
 #
@@ -15501,22 +15503,23 @@ sub two_coords_span_origin {
   my $nargs_exp = 4;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($coords5p, $coords3p, $seqlen, $FH_HR) = (@_);
+  my ($mdl_coords5p, $mdl_coords3p, $circ_len, $FH_HR) = (@_);
 
-  my $strand1 = vdr_FeatureSummaryStrand($coords5p, $FH_HR);
-  my $strand2 = vdr_FeatureSummaryStrand($coords3p, $FH_HR);
-
-  printf("in $sub_name, coords5p: $coords5p, coords3p: $coords3p\n");
+  printf("in $sub_name, mdl_coords5p: $mdl_coords5p, mdl_coords3p: $mdl_coords3p, circ_len: $circ_len\n");
   
+  my $strand1 = vdr_FeatureSummaryStrand($mdl_coords5p, $FH_HR);
+  my $strand2 = vdr_FeatureSummaryStrand($mdl_coords3p, $FH_HR);
+
   if(($strand1 eq "+") && ($strand2 eq "+")) {
-    my $stop1  = vdr_Feature3pMostPosition($coords5p, $FH_HR);
-    my $start2 = vdr_Feature5pMostPosition($coords3p, $FH_HR);
-    if(($stop1 == $seqlen) && ($start2 == 1)) { return 1; }
+    my $stop1  = vdr_Feature3pMostPosition($mdl_coords5p, $FH_HR);
+    my $start2 = vdr_Feature5pMostPosition($mdl_coords3p, $FH_HR);
+    printf("\tstop1: $stop1 start2: $start2\n");
+    if(($stop1 % $circ_len) == (($start2 % $circ_len) - 1)) { return 1; }
   }
   elsif(($strand1 eq "-") && ($strand2 eq "-")) {
-    my $stop1  = vdr_Feature3pMostPosition($coords5p, $FH_HR);
-    my $start2 = vdr_Feature5pMostPosition($coords3p, $FH_HR);
-    if(($stop1 == 1) && ($start2 == $seqlen)) { return 1; }
+    my $stop1  = vdr_Feature3pMostPosition($mdl_coords5p, $FH_HR);
+    my $start2 = vdr_Feature5pMostPosition($mdl_coords3p, $FH_HR);
+    if(($stop1 % $circ_len) == (($start2 % $circ_len) - 1)) { return 1; }
   }
 
   # if we get here, we do not span the origin 
