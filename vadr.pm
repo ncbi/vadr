@@ -67,12 +67,12 @@ require "sqp_utils.pm";
 # vdr_FeatureInfoImputeByOverlap()
 # vdr_FeatureInfoInitializeMiscNotFailure()
 # vdr_FeatureInfoInitializeIsDeletable()
-# vdr_FeatureInfoInitializeAlternativeOrDuplicateFeatureSet()
-# vdr_FeatureInfoInitializeAlternativeOrDuplicateFeatureSetSubstitution()
+# vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSet()
+# vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSetSubstitution()
 # vdr_FeatureInfoValidateMiscNotFailure()
 # vdr_FeatureInfoValidateIsDeletable()
-# vdr_FeatureInfoValidateAlternativeOrDuplicateFeatureSet()
-# vdr_FeatureInfoValidateAndConvertAlternativeOrDuplicateFeatureSetSubstitution()
+# vdr_FeatureInfoValidateAlternativeOrCircularFeatureSet()
+# vdr_FeatureInfoValidateAndConvertAlternativeOrCircularFeatureSetSubstitution()
 # vdr_FeatureInfoValidateCanonSpliceSites()
 # vdr_FeatureInfoValidateExceptionKeys()
 # vdr_FeatureInfoStartStopStrandArrays()
@@ -607,10 +607,10 @@ sub vdr_FeatureInfoInitializeIsDeletable {
 }
 
 #################################################################
-# Subroutine: vdr_FeatureInfoInitializeAlternativeOrDuplicateFeatureSet
+# Subroutine: vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSet
 # Incept:     EPN, Tue Oct 12 19:43:46 2021
 # 
-# Purpose:    Set "alternative_ftr_set" or "duplicate_ftr_set" (depending
+# Purpose:    Set "alternative_ftr_set" or "circular_ftr_set" (depending
 #             on $choice) value to "" for any feature in which it is not
 #             already defined in @{$ftr_info_AHR}.
 #             If $force_empty, set all values to "" even if they are
@@ -618,7 +618,7 @@ sub vdr_FeatureInfoInitializeIsDeletable {
 # 
 # Arguments:
 #   $ftr_info_AHR:  REF to feature information, added to here
-#   $choice:        "alternative" or "duplicate"
+#   $choice:        "alternative" or "circular"
 #   $force_empty:   '1' to set values to "" for all features, even if already defined
 #   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
 #
@@ -627,14 +627,14 @@ sub vdr_FeatureInfoInitializeIsDeletable {
 # Dies:       never
 #
 #################################################################
-sub vdr_FeatureInfoInitializeAlternativeOrDuplicateFeatureSet {
-  my $sub_name = "vdr_FeatureInfoInitializeAlternativeOrDuplicateFeatureSet";
+sub vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSet {
+  my $sub_name = "vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSet";
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
   my ($ftr_info_AHR, $choice, $force_empty, $FH_HR) = @_;
 
-  my $chosen_key = ($choice eq "duplicate") ? "duplicate_ftr_set" : "alternative_ftr_set";
+  my $chosen_key = ($choice eq "circular") ? "circular_ftr_set" : "alternative_ftr_set";
   
   my $nftr = scalar(@{$ftr_info_AHR});
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
@@ -647,10 +647,10 @@ sub vdr_FeatureInfoInitializeAlternativeOrDuplicateFeatureSet {
 }
 
 #################################################################
-# Subroutine: vdr_FeatureInfoInitializeAlternativeOrDuplicateFeatureSetSubstitution
+# Subroutine: vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSetSubstitution
 # Incept:     EPN, Thu Oct 14 21:22:20 2021
 # 
-# Purpose:    Set "alternative_ftr_set_subn" or "duplicate_ftr_set_subn"
+# Purpose:    Set "alternative_ftr_set_subn" or "circular_ftr_set_subn"
 #             value to "" for any feature in which it is not already
 #             defined in @{$ftr_info_AHR}.
 #             If $force_empty, set all values to "" even if they are
@@ -658,7 +658,7 @@ sub vdr_FeatureInfoInitializeAlternativeOrDuplicateFeatureSet {
 # 
 # Arguments:
 #   $ftr_info_AHR:  REF to feature information, added to here
-#   $choice:        "alternative" or "duplicate"
+#   $choice:        "alternative" or "circular"
 #   $force_empty:   '1' to set values to "" for all features, even if already defined
 #   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
 #
@@ -667,14 +667,14 @@ sub vdr_FeatureInfoInitializeAlternativeOrDuplicateFeatureSet {
 # Dies:       never
 #
 #################################################################
-sub vdr_FeatureInfoInitializeAlternativeOrDuplicateFeatureSetSubstitution {
-  my $sub_name = "vdr_FeatureInfoInitializeAlternativeOrDuplicateFeatureSetSubstitution";
+sub vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSetSubstitution {
+  my $sub_name = "vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSetSubstitution";
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
   my ($ftr_info_AHR, $choice, $force_empty, $FH_HR) = @_;
 
-  my $chosen_key = ($choice eq "duplicate") ? "duplicate_ftr_set_subn" : "alternative_ftr_set_subn";
+  my $chosen_key = ($choice eq "circular") ? "circular_ftr_set_subn" : "alternative_ftr_set_subn";
 
   my $nftr = scalar(@{$ftr_info_AHR});
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
@@ -820,37 +820,37 @@ sub vdr_FeatureInfoValidateIsDeletable {
 }
 
 #################################################################
-# Subroutine: vdr_FeatureInfoValidateAlternativeOrDuplicateFeatureSet
+# Subroutine: vdr_FeatureInfoValidateAlternativeOrCircularFeatureSet
 # Incept:     EPN, Tue Sep 28 21:09:10 2021
 # 
 
-# Purpose:    Validate "alternative_ftr_set" or "duplicate_ftr_set"
+# Purpose:    Validate "alternative_ftr_set" or "circular_ftr_set"
 #             values are either "" or another string. If another
 #             string, each other string must be the value for
-#             "{alternative,duplicate}_ftr_set" in more than one
+#             "{alternative,circular}_ftr_set" in more than one
 #             feature. Also ensure that for any sets that have >= 1
 #             children, all the features in that set are all the
 #             children of the same parent.
 #           
 #             Should probably be called after
-#             vdr_FeatureInfoInitializeAlternativeOrDuplicateFeatureSet() 
+#             vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSet() 
 #             and 
 #             vdr_FeatureInfoValidateParentIndexStrings()
 #
 # Arguments:
 #   $ftr_info_AHR:  REF to feature information, added to here
-#   $choice:        "alternative" or "duplicate"
+#   $choice:        "alternative" or "circular"
 #   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
 #
-# Returns:    '1' if there are any '{alternative,duplicate}_ftr_set' values ne ""
-#             '0' if all '{alternative,duplicate}_ftr_set' values are ""
+# Returns:    '1' if there are any '{alternative,circular)_ftr_set' values ne ""
+#             '0' if all '{alternative,circular}_ftr_set' values are ""
 # 
-# Dies:       if any {alternative,duplicate}_ftr_set values are undefined
-#             if any {alternative,duplicate}_ftr_set values exist only once 
+# Dies:       if any {alternative,circular}_ftr_set values are undefined
+#             if any {alternative,circular}_ftr_set values exist only once 
 #
 #################################################################
-sub vdr_FeatureInfoValidateAlternativeOrDuplicateFeatureSet {
-  my $sub_name = "vdr_FeatureInfoValidateAlternativeOrDuplicateFeatureSet";
+sub vdr_FeatureInfoValidateAlternativeOrCircularFeatureSet {
+  my $sub_name = "vdr_FeatureInfoValidateAlternativeOrCircularFeatureSet";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
   
@@ -865,7 +865,7 @@ sub vdr_FeatureInfoValidateAlternativeOrDuplicateFeatureSet {
   my %n3trunc_H    = (); # key is set value, value is number of features with is_3trunc set to 1
   my $ftr_idx = undef;
 
-  my $chosen_key = ($choice eq "duplicate") ? "duplicate_ftr_set" : "alternative_ftr_set";
+  my $chosen_key = ($choice eq "circular") ? "circular_ftr_set" : "alternative_ftr_set";
   
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if(! defined $ftr_info_AHR->[$ftr_idx]{$chosen_key}) {
@@ -899,12 +899,12 @@ sub vdr_FeatureInfoValidateAlternativeOrDuplicateFeatureSet {
   }
 
   # make sure that each alternative_ftr_set has >= 2 members
-  # or duplicate_ftr_set has exactly 3 members
+  # or circular_ftr_set has exactly 3 members
   # and that for any set that has >= 1 children, all members are children with the same parent
   foreach my $key (sort keys (%set_HA)) { 
     my $nset = scalar(@{$set_HA{$key}});
-    # if 'duplicate': make sure there is exactly 1 is_5trunc and 1 is_3trunc value for this set
-    if($chosen_key eq "duplicate") {
+    # if 'circular': make sure there is exactly 1 is_5trunc and 1 is_3trunc value for this set
+    if($chosen_key eq "circular") {
       if($n5trunc_H{$key} != 1) {
         $fail_str .= "$chosen_key value: exactly 1 $key feature must have is_5trunc value set to 1\n";
       }
@@ -916,7 +916,7 @@ sub vdr_FeatureInfoValidateAlternativeOrDuplicateFeatureSet {
       }
     }
     
-    if(($chosen_key eq "duplicate") && ($nset != 4)) {
+    if(($chosen_key eq "circular") && ($nset != 4)) {
       $fail_str .= "$chosen_key value: $key exists $nset times, each value must exist exactly 4 times\n"; 
     }
     elsif(($chosen_key eq "alternative") && ($nset == 1)) { 
@@ -952,7 +952,7 @@ sub vdr_FeatureInfoValidateAlternativeOrDuplicateFeatureSet {
 }
 
 #################################################################
-# Subroutine: vdr_FeatureInfoValidateAndConvertAlternativeOrDuplicateFeatureSetSubstitution
+# Subroutine: vdr_FeatureInfoValidateAndConvertAlternativeOrCircularFeatureSetSubstitution
 # Incept:     EPN, Fri Oct 15 10:07:54 2021
 # Purpose:    Validate "alternative_ftr_set_subn" values are either "",
 #             "<s>.<d1>" or "<d2>" where <s> is a valid
@@ -963,11 +963,11 @@ sub vdr_FeatureInfoValidateAlternativeOrDuplicateFeatureSet {
 #             <0..nftr-1> as long as it isn't self idx.
 #
 #             Should probably be called after
-#             vdr_FeatureInfoInitializeAlternativeOrDuplicateFeatureSetSubstitution() 
+#             vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSetSubstitution() 
 #
 # Arguments:
 #   $ftr_info_AHR:  REF to feature information, added to here
-#   $choice:        "alternative" or "duplicate"
+#   $choice:        "alternative" or "circular"
 #   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
@@ -976,15 +976,15 @@ sub vdr_FeatureInfoValidateAlternativeOrDuplicateFeatureSet {
 #             if any alternative_ftr_set_subn values are invalid
 #
 #################################################################
-sub vdr_FeatureInfoValidateAndConvertAlternativeOrDuplicateFeatureSetSubstitution {
+sub vdr_FeatureInfoValidateAndConvertAlternativeOrCircularFeatureSetSubstitution {
   my $sub_name = "vdr_FeatureInfoValidateAndConvertAlternativeFeatureSetSubstitution";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
   
   my ($ftr_info_AHR, $choice, $FH_HR) = @_;
   
-  my $chosen_key      = ($choice eq "duplicate") ? "duplicate_ftr_set"      : "alternative_ftr_set";
-  my $chosen_key_subn = ($choice eq "duplicate") ? "duplicate_ftr_set_subn" : "alternative_ftr_set_subn";
+  my $chosen_key      = ($choice eq "circular") ? "circular_ftr_set"      : "alternative_ftr_set";
+  my $chosen_key_subn = ($choice eq "circular") ? "circular_ftr_set_subn" : "alternative_ftr_set_subn";
 
   my $nftr     = scalar(@{$ftr_info_AHR});
   my $fail_str = ""; # added to if any elements are out of range
