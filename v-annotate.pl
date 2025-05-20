@@ -1153,16 +1153,18 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, "alternative", (opt_Get("--ignore_afset", \%opt_HH) || opt_Get("--ignore_afsetsubn", \%opt_HH)), $FH_HR);
   if(vdr_ModelInfoIsCircular(\%{$mdl_info_AH[$mdl_idx]}, $FH_HR)) {
     vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, "circular", opt_Get("--ignore_cfset", \%opt_HH), $FH_HR);
-    vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, "circular", (opt_Get("--ignore_cfset", \%opt_HH) || opt_Get("--ignore_cfsetsubn", \%opt_HH)), $FH_HR);
+    vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, "circular_spanning", (opt_Get("--ignore_cfset", \%opt_HH) || opt_Get("--ignore_cfsetsubn", \%opt_HH)), $FH_HR);
+    vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, "circular_linear", (opt_Get("--ignore_cfset", \%opt_HH) || opt_Get("--ignore_cfsetsubn", \%opt_HH)), $FH_HR);
   }
   vdr_FeatureInfoInitializeCanonSpliceSites(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--force_canonss", \%opt_HH), opt_Get("--ignore_canonss", \%opt_HH), $FH_HR);
   vdr_FeatureInfoValidateMiscNotFailure(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoValidateIsDeletable(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-  vdr_FeatureInfoValidateAlternativeOrCircularFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, "alternative", $FH_HR);
+  vdr_FeatureInfoValidateAlternativeFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoValidateAndConvertAlternativeOrCircularFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, "alternative", $FH_HR);
   if(vdr_ModelInfoIsCircular(\%{$mdl_info_AH[$mdl_idx]}, $FH_HR)) {
-    vdr_FeatureInfoValidateAlternativeOrCircularFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, "circular", $FH_HR);
-    vdr_FeatureInfoValidateAndConvertAlternativeOrCircularFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, "circular", $FH_HR);
+    vdr_FeatureInfoValidateAllCircularFeatureSets(\@{$ftr_info_HAH{$mdl_name}}, ($mdl_info_AH[$mdl_idx]{"length"}/2), $FH_HR);
+    vdr_FeatureInfoValidateAndConvertAlternativeOrCircularFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, "circular_spanning", $FH_HR);
+    vdr_FeatureInfoValidateAndConvertAlternativeOrCircularFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, "circular_linear", $FH_HR);
   }
   vdr_FeatureInfoValidateCanonSpliceSites(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_SegmentInfoPopulate(\@{$sgm_info_HAH{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
@@ -1874,7 +1876,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
           }
         }
       }
-
+      
       my @joined_stk_file_A = ();   # array of joined stk files created by join_alignments_and_add_unjoinbl_alerts()
       my @unjoinbl_seq_name_A = (); # array of seqs with unjoinbl alerts
       if(scalar(@join_seq_name_A > 0)) { 
@@ -2157,8 +2159,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   $mdl_len  = $mdl_info_AH[$mdl_idx]{"length"};
   if((defined $mdl_seq_name_HA{$mdl_name}) && (! $do_clsonly)) {
-    my $has_alternatives = vdr_FeatureInfoValidateAlternativeOrCircularFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, "alternative", $FH_HR);
-    my $has_circulars   = vdr_FeatureInfoValidateAlternativeOrCircularFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, "circular",   $FH_HR);
+    my $has_alternatives = vdr_FeatureInfoValidateAlternativeFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+    my $has_circulars    = vdr_FeatureInfoHasCircularFeatureSets(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
     if($has_alternatives || $has_circulars) { 
       # we'll enter this 'if' if any features have non-empty alternative_ftr_set
       
@@ -2210,9 +2212,9 @@ if(! $do_clsonly) {
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alerts_list",    $out_root . ".alt.list",       1, 1, "list of alerts in the feature tables");
 
   $start_secs = ofile_OutputProgressPrior("Generating feature table output", $progress_w, $log_FH, *STDOUT);
-  my $npass = output_feature_table(\%mdl_cls_ct_H, \@seq_name_A, \%seq_len_H, \%ftr_info_HAH, \%sgm_info_HAH, \%alt_info_HH, 
-                                   \%stg_results_HHH, \%ftr_results_HHAH, \%sgm_results_HHAH, \%alt_seq_instances_HH,
-                                   \%alt_ftr_instances_HHH, 
+  my $npass = output_feature_table(\%mdl_cls_ct_H, \@seq_name_A, \%seq_len_H, \%ftr_info_HAH, \%sgm_info_HAH,
+                                   \%alt_info_HH, \%stg_results_HHH, \%ftr_results_HHAH, \%sgm_results_HHAH,
+                                   \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, 
                                    ((opt_IsUsed("--msub", \%opt_HH)) ? \%mdl_sub_H : undef),
                                    \$in_sqfile, $out_root, \%opt_HH, \%ofile_info_HH);
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -14842,199 +14844,136 @@ sub pick_features_for_circular_genomes {
   
   my $nseq = scalar(@{$seq_name_AR});
   my $nftr = scalar(@{$ftr_info_AHR});
-
+  my $circ_len = $mdl_len / 2;
+  
   my $ftr_idx; 
   my $ftr_idx2; 
   foreach my $seq_name (@{$seq_name_AR}) { 
     my %sets_completed_H = (); # key is name of a set, value is '1' if we've already completed that set
     if((defined $ftr_results_HAHR->{$seq_name}) || (defined $alt_ftr_instances_HHHR->{$seq_name})) { 
       for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+        printf("ftr_idx; $ftr_idx\n");
         if(((defined $ftr_results_HAHR->{$seq_name})       && (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx])) || 
            ((defined $alt_ftr_instances_HHHR->{$seq_name}) && (defined $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}))) { 
-          my $set = $ftr_info_AHR->[$ftr_idx]{"circular_ftr_set"};
-          if(($set ne "") && (! defined $sets_completed_H{$set})) { 
-            my @ftr_set_A = ($ftr_idx);
-            for($ftr_idx2 = $ftr_idx+1; $ftr_idx2 < $nftr; $ftr_idx2++) { # can start at $ftr_idx+1 b/c we've already covered earlier ftr_idx values  
-              if($ftr_info_AHR->[$ftr_idx2]{"circular_ftr_set"} eq $set) { 
-                push(@ftr_set_A, $ftr_idx2);
-              }
-            }
-            my $nset = scalar(@ftr_set_A);
-            if($nset == 1) { 
-              ofile_FAIL("ERROR in $sub_name, alt feature set with value $set only has 1 member post-validation", 1, $FH_HR);
-            }
-            my $ftr_set_idx    = undef;
-            my @keepme_A = ();
-            ####################################
-            if($nset == 4) {
-              my $sum_length_partials = 0;       # summed length of the two partial duplicate features 
-              my $sum_length_full_partial5 = 0;  # summed length of the full linear and 5' partial duplicate feature 
-              my $length_full_linear  = 0;       # length of full length duplicate feature that does not span origin
-              my $length_full_spans   = 0;       # length of full length duplicate feature that spans origin
-              my $full_linear_idx = undef;
-              my $full_spans_idx  = undef;
-              my $trunc5_idx      = undef;
-              my $trunc3_idx      = undef;
-              for($ftr_set_idx = 0; $ftr_set_idx < $nset; $ftr_set_idx++) { 
-                $ftr_idx2 = $ftr_set_A[$ftr_set_idx];
-                if(defined $ftr_results_HAHR->{$seq_name}[$ftr_idx2]{"n_scoords"}) { 
-                  printf("HEYA2 ftr_idx2: $ftr_idx2, coords: %s, length: %d\n", $ftr_results_HAHR->{$seq_name}[$ftr_idx2]{"n_scoords"},
-                         vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$ftr_idx2]{"n_scoords"}, $FH_HR)); 
-                }
-                my $ftr_slen = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx2]{"n_scoords"}) ?
-                    vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$ftr_idx2]{"n_scoords"}, $FH_HR) : 0;
-                if((defined $ftr_info_AHR->[$ftr_idx2]{"is_5trunc"}) && ($ftr_info_AHR->[$ftr_idx2]{"is_5trunc"} == 1)) {
-                  $sum_length_partials += $ftr_slen;
-                  $sum_length_full_partial5 += $ftr_slen;
-                  $trunc5_idx = $ftr_set_idx;
-                }
-                elsif((defined $ftr_info_AHR->[$ftr_idx2]{"is_3trunc"}) && ($ftr_info_AHR->[$ftr_idx2]{"is_3trunc"} == 1)) {
-                  $sum_length_partials += $ftr_slen;
-                  $trunc3_idx = $ftr_set_idx;
-                }
-                elsif(vdr_FeatureSpansOrigin($ftr_info_AHR, $ftr_idx2)) { 
-                  if($length_full_spans != 0) {
-                    ofile_FAIL("ERROR in $sub_name, problem determining which duplicate feature to use, two features appear to be full length and span origin", 1, $FH_HR);
-                  }
-                  $length_full_spans += $ftr_slen;
-                  $full_spans_idx = $ftr_set_idx;
-                }
-                else {
-                  if($length_full_linear != 0) {
-                    ofile_FAIL("ERROR in $sub_name, problem determining which duplicate feature to use, two features appear to be full length and span origin", 1, $FH_HR);
-                  }
-                  $length_full_linear += $ftr_slen;
-                  $sum_length_full_partial5 += $ftr_slen;
-                  $full_linear_idx = $ftr_set_idx;
-                }
-              }
+          my ($set, $set_type) = vdr_FeatureCircularSetValue($ftr_info_AHR, $ftr_idx, $FH_HR); # will fail if both "circular_spanning_ftr_set" and "circular_linear_ftr_set" are 1
+          if((defined $set) && (! defined $sets_completed_H{$set})) { 
+            printf("set: $set, set_type: $set_type\n");
+            my @merge_ftr_idx_A = (); # will be filled with the two features indices to potentially merge
+            my @to_remove_idx_A = (); # will be filled with indices of features to remove, if nec
+            if($set_type eq "circular_spanning_ftr_set") { 
+              my ($spans_idx, $passes_idx, $trunc3_before_idx, $trunc5_before_idx, $trunc3_after_idx, $trunc5_after_idx) =
+                  vdr_FeatureInfoValidateCircularSpanningFeatureSet($ftr_info_AHR, $set, $circ_len, $FH_HR);
+              # figure out which features to keep, merge if nec
+              my @sum_len_A = ();
+              # 6 possibilities for how to annotate this circular feature
+              # 1. spans_origin alone
+              my $spans_len = (defined $ftr_results_HAHR->{$seq_name}[$spans_idx]{"n_scoords"}) ?
+                  vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$spans_idx]{"n_scoords"}, $FH_HR) : 0;
+              # 2. passes_origin + trunc5_before
+              my $passes_trunc5b_len = (defined $ftr_results_HAHR->{$seq_name}[$passes_idx]{"n_scoords"}) ?
+                  vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$passes_idx]{"n_scoords"}, $FH_HR) : 0;
+              $passes_trunc5b_len += (defined $ftr_results_HAHR->{$seq_name}[$trunc5_before_idx]{"n_scoords"}) ?
+                  vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$trunc5_before_idx]{"n_scoords"}, $FH_HR) : 0;
+              # 3. trunc3_after + passes_origin
+              my $trunc3a_passes_len = (defined $ftr_results_HAHR->{$seq_name}[$trunc3_after_idx]{"n_scoords"}) ?
+                  vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$trunc3_after_idx]{"n_scoords"}, $FH_HR) : 0;
+              $trunc3a_passes_len += (defined $ftr_results_HAHR->{$seq_name}[$passes_idx]{"n_scoords"}) ?
+                  vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$passes_idx]{"n_scoords"}, $FH_HR) : 0;
+              # 4. trunc3_before + trunc5_before
+              my $trunc3b_trunc5b_len = (defined $ftr_results_HAHR->{$seq_name}[$trunc3_before_idx]{"n_scoords"}) ?
+                  vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$trunc3_before_idx]{"n_scoords"}, $FH_HR) : 0;
+              $trunc3b_trunc5b_len += (defined $ftr_results_HAHR->{$seq_name}[$trunc5_before_idx]{"n_scoords"}) ?
+                  vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$trunc5_before_idx]{"n_scoords"}, $FH_HR) : 0;
+              # 5. trunc3_before + trunc5_after
+              my $trunc3b_trunc5a_len = (defined $ftr_results_HAHR->{$seq_name}[$trunc3_before_idx]{"n_scoords"}) ?
+                  vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$trunc3_before_idx]{"n_scoords"}, $FH_HR) : 0;
+              $trunc3b_trunc5a_len += (defined $ftr_results_HAHR->{$seq_name}[$trunc5_after_idx]{"n_scoords"}) ?
+                  vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$trunc5_after_idx]{"n_scoords"}, $FH_HR) : 0;
+              # 6. trunc5_before + trunc3_after
+              my $trunc5b_trunc3a_len = (defined $ftr_results_HAHR->{$seq_name}[$trunc3_before_idx]{"n_scoords"}) ?
+                  vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$trunc3_before_idx]{"n_scoords"}, $FH_HR) : 0;
+              $trunc5b_trunc3a_len += (defined $ftr_results_HAHR->{$seq_name}[$trunc3_after_idx]{"n_scoords"}) ?
+                  vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$trunc3_after_idx]{"n_scoords"}, $FH_HR) : 0;
               
-              if((! defined $full_spans_idx) || (! defined $full_linear_idx) || (! defined $trunc5_idx) || (! defined $trunc3_idx)) {
-                ofile_FAIL("ERROR in $sub_name, problem determining which duplicate feature to use, did not find one spanning full, one linear full, one 5' truncated, and one 3' truncated feature", 1, $FH_HR);
+              # create array of the 5 lengths so we can find the max more easily
+              push(@sum_len_A, ($spans_len, $passes_trunc5b_len, $trunc3a_passes_len, $trunc3b_trunc5b_len, $trunc3b_trunc5a_len, $trunc5b_trunc3a_len));
+              my $argmax_idx = utl_AArgMax(\@sum_len_A);
+              
+              # TODO: determine how many indices have the max value, if more than one, pick the one with fewer alerts
+              if($argmax_idx == 0) { # spans_origin
+                printf("SPANS ORIGIN, no merging\n");
+                push(@to_remove_idx_A, ($passes_idx, $trunc5_before_idx, $trunc3_before_idx, $trunc5_after_idx, $trunc3_after_idx));
               }
-              if(($length_full_spans >= $length_full_linear) && ($length_full_spans >= $sum_length_partials) && ($length_full_spans >= $sum_length_full_partial5)) { 
-                # choose full spans, remove others
-                $keepme_A[$full_spans_idx]  = 1;
-                $keepme_A[$full_linear_idx] = 0;
-                $keepme_A[$trunc5_idx]      = 0;
-                $keepme_A[$trunc3_idx]      = 0;
-              }
-              elsif(($length_full_linear >= $length_full_spans) && ($length_full_linear >= $sum_length_partials) && ($length_full_linear >= $sum_length_full_partial5)) { 
-                # choose full linear, remove others
-                $keepme_A[$full_spans_idx]  = 0;
-                $keepme_A[$full_linear_idx] = 1;
-                $keepme_A[$trunc5_idx]      = 0;
-                $keepme_A[$trunc3_idx]      = 0;
-              }
-              elsif(($sum_length_full_partial5 >= $length_full_linear) && ($sum_length_full_partial5 >= $length_full_spans) && ($sum_length_full_partial5 >= $sum_length_partials)) { 
-                # choose full_linear and partial5', remove others
-                $keepme_A[$full_spans_idx]  = 0;
-                $keepme_A[$full_linear_idx] = 1;
-                $keepme_A[$trunc5_idx]      = 1;
-                $keepme_A[$trunc3_idx]      = 0;
-                # check if these two predictions span the origin
-                printf("HEYA calling span origin 1\n");
-                if(two_coords_span_origin($ftr_results_HAHR->{$seq_name}[$ftr_set_A[$full_linear_idx]]{"n_mcoords"},
-                                          $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$trunc5_idx]]{"n_mcoords"}, 
-                                          ($mdl_len / 2), $FH_HR)) {
-                  printf("HEYA MERGING\n");
-                  $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$full_linear_idx]]{"n_scoords"} .= $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$trunc5_idx]]{"n_scoords"}; 
-                  $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$full_linear_idx]]{"n_mcoords"} .= $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$trunc5_idx]]{"n_mcoords"}; 
-                  $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$full_linear_idx]]{"merge_ftr_idx"} = $ftr_set_A[$trunc5_idx];
-                  $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$trunc5_idx]]{"merge_ftr_idx"}      = $ftr_set_A[$trunc5_idx]; # flag to not output this feature
-                  # add alerts
-                  foreach my $alt_code (%{$alt_ftr_instances_HHHR->{$seq_name}{$ftr_set_A[$trunc5_idx]}}) {
-                    my @alt_str_A = split(":VADRSEP:", $alt_ftr_instances_HHHR->{$seq_name}{$ftr_set_A[$trunc5_idx]}{$alt_code});
-                    foreach my $alt_str (@alt_str_A) { 
-                      alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_set_A[$full_linear_idx], $alt_str, $FH_HR);
-                    }
-                  }
-                  %{$alt_ftr_instances_HHHR->{$seq_name}{$trunc5_idx}} = ();
-                  undef $alt_ftr_instances_HHHR->{$seq_name}{$trunc5_idx};
+              else {
+                # all other possibilities are two features combined, potentially merge them if the span the origin of the model
+                if($argmax_idx == 1) { # passes_origin + trunc5_before
+                  push(@merge_ftr_idx_A, ($passes_idx, $trunc5_before_idx));
+                  push(@to_remove_idx_A, ($spans_idx, $trunc3_before_idx, $trunc5_after_idx, $trunc3_after_idx));
+                  printf("PASSES ORIGIN + TRUNC5_BEFORE, merge check: $passes_idx $trunc5_before_idx\n");
+                }
+                elsif($argmax_idx == 2) { # trunc3_after + passes_origin
+                  push(@merge_ftr_idx_A, ($trunc3_after_idx, $passes_idx));
+                  push(@to_remove_idx_A, ($spans_idx, $trunc5_before_idx, $trunc3_before_idx, $trunc5_after_idx));
+                  printf("PASSES ORIGIN + TRUNC3_AFTER, merge check: $passes_idx $trunc3_after_idx\n");
+                }
+                elsif($argmax_idx == 3) { # trunc3_before + trunc5_before
+                  push(@merge_ftr_idx_A, ($trunc3_before_idx, $trunc5_before_idx));
+                  push(@to_remove_idx_A, ($spans_idx, $passes_idx, $trunc5_after_idx, $trunc3_after_idx));
+                  printf("TRUNC3_BEFORE + TRUNC5_BEFORE, merge check: $trunc3_before_idx $trunc5_before_idx\n");
+                }
+                elsif($argmax_idx == 4) { # trunc3_before + trunc_5after
+                  push(@merge_ftr_idx_A, ($trunc3_before_idx, $trunc5_after_idx));
+                  push(@to_remove_idx_A, ($spans_idx, $passes_idx, $trunc5_before_idx, $trunc3_after_idx));
+                  printf("TRUNC3_BEFORE + TRUNC5_AFTER, merge check: $trunc3_before_idx $trunc5_after_idx\n");
+                }
+                elsif($argmax_idx == 5) { # trunc5_before + trunc_3after
+                  push(@merge_ftr_idx_A, ($trunc5_before_idx, $trunc3_after_idx));
+                  push(@to_remove_idx_A, ($spans_idx, $passes_idx, $trunc3_before_idx, $trunc5_after_idx));
+                  printf("TRUNC5_BEFORE + TRUNC3_AFTER, merge check: $trunc5_before_idx $trunc3_after_idx\n");
                 }
               }
-              else { 
-                # choose partials
-                $keepme_A[$full_spans_idx]  = 0;
-                $keepme_A[$full_linear_idx] = 0;
-                $keepme_A[$trunc5_idx]      = 1;
-                $keepme_A[$trunc3_idx]      = 1;
-              }
-              printf("HEYA in $sub_name, %s comparing full spans idx:%d (L=$length_full_spans, keep: %d), full linear idx: %d (L=$length_full_linear, keep: %d), partial idxes:%d and %d (L=$sum_length_partials, keep:%d %d) and full-lin-3' (L=$sum_length_full_partial5))\n",
-                     $ftr_info_AHR->[$ftr_set_A[$full_spans_idx]]{"outname"}, 
-                     $ftr_set_A[$full_spans_idx],
-                     $keepme_A[$full_spans_idx],
-                     $ftr_set_A[$full_linear_idx],
-                     $keepme_A[$full_linear_idx],
-                     $ftr_set_A[$trunc3_idx], 
-                     $ftr_set_A[$trunc5_idx],
-                     $keepme_A[$trunc5_idx],
-                     $keepme_A[$trunc3_idx]);
-            } # end of 'if($nseq == 4)'
-            elsif($nset == 2) {
-              # make sure neither feature spans the origin
-              my $before_origin_idx = undef;  # feature index of copy of the feature that occurs before the origin
-              my $after_origin_idx  = undef;  # feature index of copy of the feature that occurs after  the origin
-              for($ftr_set_idx = 0; $ftr_set_idx < $nset; $ftr_set_idx++) { 
-                $ftr_idx2 = $ftr_set_A[$ftr_set_idx];
-                if((defined $ftr_info_AHR->[$ftr_idx2]{"before_origin"}) && ($ftr_info_AHR->[$ftr_idx2]{"before_origin"} == 1)) {
-                  $before_origin_idx = $ftr_set_idx;
-                }
-                if((defined $ftr_info_AHR->[$ftr_idx2]{"after_origin"}) && ($ftr_info_AHR->[$ftr_idx2]{"after_origin"} == 1)) {
-                  $after_origin_idx = $ftr_set_idx;
-                }
-                if((defined $ftr_info_AHR->[$ftr_idx2]{"is_5trunc"}) && ($ftr_info_AHR->[$ftr_idx2]{"is_5trunc"} == 1)) {
-                  ofile_FAIL("ERROR in $sub_name, trying to pick features for duplicates from set of 2, but one of the features is 5' truncated", 1, $FH_HR);
-                }
-                if((defined $ftr_info_AHR->[$ftr_idx2]{"is_3trunc"}) && ($ftr_info_AHR->[$ftr_idx2]{"is_3trunc"} == 1)) {
-                  ofile_FAIL("ERROR in $sub_name, trying to pick features for duplicates from set of 2, but one of the features is 3' truncated", 1, $FH_HR);
-                }
-                if(vdr_FeatureSpansOrigin($ftr_info_AHR, $ftr_idx2)) { 
-                  ofile_FAIL("ERROR in $sub_name, trying to pick features for duplicates from set of 2, but one of the features spans the origin", 1, $FH_HR);
-                }
-              }
-              if((! defined $before_origin_idx) || (! defined $after_origin_idx)) {
-                ofile_FAIL("ERROR in $sub_name, problem determining which duplicate feature to use in set of 2, did not find one feature before origin and one after origin", 1, $FH_HR);
-              }
-              printf("HEYA calling span origin 2\n");
-              if((defined $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$before_origin_idx]]{"n_mcoords"}) &&
-                 (defined $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$after_origin_idx]]{"n_mcoords"}) &&
-                 (two_coords_span_origin($ftr_results_HAHR->{$seq_name}[$ftr_set_A[$after_origin_idx]]{"n_mcoords"},
-                                         $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$before_origin_idx]]{"n_mcoords"}, 
-                                         ($mdl_len / 2), $FH_HR))) {
-                printf("HEYA MERGING SET OF 2\n");
-                $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$after_origin_idx]]{"n_scoords"}   .= $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$after_origin_idx]]{"n_scoords"}; 
-                $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$after_origin_idx]]{"n_mcoords"}   .= $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$before_origin_idx]]{"n_mcoords"}; 
-                $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$after_origin_idx]]{"merge_ftr_idx"} = $ftr_set_A[$before_origin_idx];
-                $ftr_results_HAHR->{$seq_name}[$ftr_set_A[$before_origin_idx]]{"merge_ftr_idx"} = $ftr_set_A[$before_origin_idx]; # flag to not output this feature
-                # add alerts
-                foreach my $alt_code (%{$alt_ftr_instances_HHHR->{$seq_name}{$ftr_set_A[$after_origin_idx]}}) {
-                  my @alt_str_A = split(":VADRSEP:", $alt_ftr_instances_HHHR->{$seq_name}{$ftr_set_A[$after_origin_idx]}{$alt_code});
-                  foreach my $alt_str (@alt_str_A) { 
-                    alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_set_A[$before_origin_idx], $alt_str, $FH_HR);
-                  }
-                }
-                %{$alt_ftr_instances_HHHR->{$seq_name}{$after_origin_idx}} = ();
-                undef $alt_ftr_instances_HHHR->{$seq_name}{$after_origin_idx};
-              }
-              $keepme_A[$before_origin_idx] = 1;
-              $keepme_A[$after_origin_idx]  = 1;
+            } # end of 'if($set_type eq "circular_spanning_ftr_set")'
+            elsif($set_type eq "circular_linear_ftr_set") {
+              my ($before_origin_idx, $after_origin_idx) = 
+                  vdr_FeatureInfoValidateCircularLinearFeatureSet($ftr_info_AHR, $set, $circ_len, $FH_HR);
+              push(@merge_ftr_idx_A, ($after_origin_idx, $before_origin_idx));
+              printf("LINEAR merge check: $before_origin_idx, $after_origin_idx\n");
             }
             else {
               ofile_FAIL("ERROR in $sub_name, trying to pick features for duplicates, but a duplicate set doesn't have exactly 4 or 2 features", 1, $FH_HR);
             }
-            ####################################
-            # go through and remove results and alerts for those we want to remove in this set
-            for($ftr_set_idx = 0; $ftr_set_idx < $nset; $ftr_set_idx++) { 
-              if(! $keepme_A[$ftr_set_idx]) { 
-                $ftr_idx2 = $ftr_set_A[$ftr_set_idx];
+
+            if(scalar(@merge_ftr_idx_A) == 2) { 
+              printf("merge_ftr_idx_A size is 2, $merge_ftr_idx_A[0] $merge_ftr_idx_A[1] n_mcoords: " . $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_mcoords"}  . " and " . $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[1]]{"n_mcoords"} . "\n");
+              if((defined ($ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_mcoords"})) && 
+                 (defined ($ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[1]]{"n_mcoords"})) && 
+                 (vdr_TwoCoordsSpanOrigin($ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_mcoords"},
+                                          $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[1]]{"n_mcoords"}, 
+                                          $circ_len, $FH_HR))) {
+                # merge merge_ftr_idx_A[0] and merge_ftr_idx_A[1], we'll keep merge_ftr_idx_A[0]
+                printf("HEYA MERGING $merge_ftr_idx_A[0] and $merge_ftr_idx_A[1]\n");
+                $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_scoords"} .= $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_scoords"}; 
+                $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_mcoords"} .= $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[1]]{"n_mcoords"}; 
+                $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"merge_ftr_idx"} = $merge_ftr_idx_A[1];
+                $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[1]]{"merge_ftr_idx"} = $merge_ftr_idx_A[1]; # flag to not output this feature
+                # add alerts
+                foreach my $alt_code (%{$alt_ftr_instances_HHHR->{$seq_name}{$merge_ftr_idx_A[1]}}) { 
+                  my @alt_str_A = split(":VADRSEP:", $alt_ftr_instances_HHHR->{$seq_name}{$merge_ftr_idx_A[1]}{$alt_code});
+                  foreach my $alt_str (@alt_str_A) { 
+                    alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $merge_ftr_idx_A[0], $alt_str, $FH_HR);
+                  }
+                }
+                %{$alt_ftr_instances_HHHR->{$seq_name}{$merge_ftr_idx_A[1]}} = ();
+                undef $alt_ftr_instances_HHHR->{$seq_name}{$merge_ftr_idx_A[1]};
+              }
+            }
+            if(scalar(@to_remove_idx_A) > 0) {
+              foreach my $ftr_idx2 (@to_remove_idx_A) { 
                 printf("HEYA removing ftr_idx $ftr_idx2\n");
                 %{$ftr_results_HAHR->{$seq_name}[$ftr_idx2]} = ();
                 %{$alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx2}} = ();
                 undef $ftr_results_HAHR->{$seq_name}[$ftr_idx2];
                 undef $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx2};
-                # no need to worry about children, features in a
-                # circular_ftr_set cannot have children
               }
             }
             $sets_completed_H{$set} = 1;
@@ -15456,6 +15395,7 @@ sub check_and_doctor_stk_for_circular_models {
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($stk_file, $do_shift_inserts_HR, $opt_HHR, $ofile_info_HHR) = (@_);
+  my $FH_HR  = $ofile_info_HHR->{"FH"};
 
   my $msa = Bio::Easel::MSA->new({
     fileLocation => $stk_file,
@@ -15532,49 +15472,3 @@ sub check_and_doctor_stk_for_circular_models {
   return;
 }
 
-#################################################################
-# Subroutine: two_coords_span_origin
-# Incept:     EPN, Wed May 14 13:26:09 2025
-#
-# Purpose:    For a circular model, check if two sets of coordinates
-#             span the origin. Only possible if they are both the same
-#             strand.
-#
-# Arguments:
-#  $mdl_coords5p: coords string 1, 5' feature prediction
-#  $mdl_coords3p: coords string 2, 3' feature prediction
-#  $circ_len:     circular genome length
-#  $FH_HR:        ref to hash of file handles
-#
-# Returns:  '1' if the two coords span the origin, else '0'
-#
-# Dies:     if either coords string is unparseable
-#
-#################################################################
-sub two_coords_span_origin { 
-  my $sub_name = "two_coords_span_origin";
-  my $nargs_exp = 4;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($mdl_coords5p, $mdl_coords3p, $circ_len, $FH_HR) = (@_);
-
-  printf("in $sub_name, mdl_coords5p: $mdl_coords5p, mdl_coords3p: $mdl_coords3p, circ_len: $circ_len\n");
-  
-  my $strand1 = vdr_FeatureSummaryStrand($mdl_coords5p, $FH_HR);
-  my $strand2 = vdr_FeatureSummaryStrand($mdl_coords3p, $FH_HR);
-
-  if(($strand1 eq "+") && ($strand2 eq "+")) {
-    my $stop1  = vdr_Feature3pMostPosition($mdl_coords5p, $FH_HR);
-    my $start2 = vdr_Feature5pMostPosition($mdl_coords3p, $FH_HR);
-    printf("\tstop1: $stop1 start2: $start2\n");
-    if(($stop1 % $circ_len) == (($start2 % $circ_len) - 1)) { return 1; }
-  }
-  elsif(($strand1 eq "-") && ($strand2 eq "-")) {
-    my $stop1  = vdr_Feature3pMostPosition($mdl_coords5p, $FH_HR);
-    my $start2 = vdr_Feature5pMostPosition($mdl_coords3p, $FH_HR);
-    if(($stop1 % $circ_len) == (($start2 % $circ_len) - 1)) { return 1; }
-  }
-
-  # if we get here, we do not span the origin 
-  return 0;
-}
