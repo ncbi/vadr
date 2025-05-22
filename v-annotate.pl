@@ -14864,69 +14864,93 @@ sub pick_features_for_circular_genomes {
               my ($spans_idx, $passes_idx, $trunc3_before_idx, $trunc5_before_idx, $trunc3_after_idx, $trunc5_after_idx) =
                   vdr_FeatureInfoValidateCircularSpanningFeatureSet($ftr_info_AHR, $set, $circ_len, $FH_HR);
               # figure out which features to keep, merge if nec
-              my @sum_len_A = ();
+              my @sum_len_A = (); # sum of lengths for each possible combo of features
+              my @nfatal_A = ();  # number of fatal alerts for each possible combo of features
               # 6 possibilities for how to annotate this circular feature
               # 1. spans_origin alone
               my $spans_len = (defined $ftr_results_HAHR->{$seq_name}[$spans_idx]{"n_scoords"}) ?
                   vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$spans_idx]{"n_scoords"}, $FH_HR) : 0;
+              my $spans_nfl = alert_feature_instances_count_fatal($seq_name, $spans_idx, $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
               # 2. passes_origin + trunc5_before
               my $passes_trunc5b_len = (defined $ftr_results_HAHR->{$seq_name}[$passes_idx]{"n_scoords"}) ?
                   vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$passes_idx]{"n_scoords"}, $FH_HR) : 0;
               $passes_trunc5b_len += (defined $ftr_results_HAHR->{$seq_name}[$trunc5_before_idx]{"n_scoords"}) ?
                   vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$trunc5_before_idx]{"n_scoords"}, $FH_HR) : 0;
+              my $passes_trunc5b_nfl = alert_feature_instances_count_fatal($seq_name, $passes_idx,        $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
+              $passes_trunc5b_nfl   += alert_feature_instances_count_fatal($seq_name, $trunc5_before_idx, $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
               # 3. trunc3_after + passes_origin
               my $trunc3a_passes_len = (defined $ftr_results_HAHR->{$seq_name}[$trunc3_after_idx]{"n_scoords"}) ?
                   vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$trunc3_after_idx]{"n_scoords"}, $FH_HR) : 0;
               $trunc3a_passes_len += (defined $ftr_results_HAHR->{$seq_name}[$passes_idx]{"n_scoords"}) ?
                   vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$passes_idx]{"n_scoords"}, $FH_HR) : 0;
+              my $trunc3a_passes_nfl = alert_feature_instances_count_fatal($seq_name, $trunc3_after_idx, $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
+              $trunc3a_passes_nfl   += alert_feature_instances_count_fatal($seq_name, $passes_idx,       $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
               # 4. trunc3_before + trunc5_before
               my $trunc3b_trunc5b_len = (defined $ftr_results_HAHR->{$seq_name}[$trunc3_before_idx]{"n_scoords"}) ?
                   vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$trunc3_before_idx]{"n_scoords"}, $FH_HR) : 0;
               $trunc3b_trunc5b_len += (defined $ftr_results_HAHR->{$seq_name}[$trunc5_before_idx]{"n_scoords"}) ?
                   vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$trunc5_before_idx]{"n_scoords"}, $FH_HR) : 0;
+              my $trunc3b_trunc5b_nfl = alert_feature_instances_count_fatal($seq_name, $trunc3_before_idx, $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
+              $trunc3b_trunc5b_nfl   += alert_feature_instances_count_fatal($seq_name, $trunc5_before_idx, $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
               # 5. trunc3_before + trunc5_after
               my $trunc3b_trunc5a_len = (defined $ftr_results_HAHR->{$seq_name}[$trunc3_before_idx]{"n_scoords"}) ?
                   vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$trunc3_before_idx]{"n_scoords"}, $FH_HR) : 0;
               $trunc3b_trunc5a_len += (defined $ftr_results_HAHR->{$seq_name}[$trunc5_after_idx]{"n_scoords"}) ?
                   vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$trunc5_after_idx]{"n_scoords"}, $FH_HR) : 0;
+              my $trunc3b_trunc5a_nfl = alert_feature_instances_count_fatal($seq_name, $trunc3_before_idx, $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
+              $trunc3b_trunc5a_nfl   += alert_feature_instances_count_fatal($seq_name, $trunc5_after_idx,  $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
               # 6. trunc5_before + trunc3_after
               my $trunc5b_trunc3a_len = (defined $ftr_results_HAHR->{$seq_name}[$trunc3_before_idx]{"n_scoords"}) ?
                   vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$trunc3_before_idx]{"n_scoords"}, $FH_HR) : 0;
               $trunc5b_trunc3a_len += (defined $ftr_results_HAHR->{$seq_name}[$trunc3_after_idx]{"n_scoords"}) ?
                   vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$trunc3_after_idx]{"n_scoords"}, $FH_HR) : 0;
+              my $trunc5b_trunc3a_nfl = alert_feature_instances_count_fatal($seq_name, $trunc5_before_idx, $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
+              $trunc5b_trunc3a_nfl   += alert_feature_instances_count_fatal($seq_name, $trunc3_after_idx,  $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
               
               # create array of the 5 lengths so we can find the max more easily
               push(@sum_len_A, ($spans_len, $passes_trunc5b_len, $trunc3a_passes_len, $trunc3b_trunc5b_len, $trunc3b_trunc5a_len, $trunc5b_trunc3a_len));
-              my $argmax_idx = utl_AArgMax(\@sum_len_A);
+              # create array of the 5 number of alerts so we can find the min more easily
+              push(@nfatal_A,  ($spans_nfl, $passes_trunc5b_nfl, $trunc3a_passes_nfl, $trunc3b_trunc5b_nfl, $trunc3b_trunc5a_nfl, $trunc5b_trunc3a_nfl));
+              my $len_argmax_idx = utl_AArgMax(\@sum_len_A);
+              my $nfl_argmax_idx = utl_AArgMax(\@nfatal_A);
+              my $nfl_max_plus_one = $nfatal_A[$nfl_argmax_idx] + 1;
               
-              # TODO: determine how many indices have the max value, if more than one, pick the one with fewer alerts
-              if($argmax_idx == 0) { # spans_origin
+              # determine how many indices have the max value, if more than one, pick the one with fewest alerts
+              my $max_len = $sum_len_A[$len_argmax_idx];
+              for(my $idx = 0; $idx < scalar(@sum_len_A); $idx++) { 
+                if($sum_len_A[$idx] < $max_len) {
+                  $nfatal_A[$idx] = $nfl_max_plus_one; # this will now never be the minimum
+                }
+              }
+              my $nfl_argmin_idx = utl_AArgMin(\@nfatal_A);
+
+              if($nfl_argmin_idx == 0) { # spans_origin
                 printf("SPANS ORIGIN, no merging\n");
                 push(@to_remove_idx_A, ($passes_idx, $trunc5_before_idx, $trunc3_before_idx, $trunc5_after_idx, $trunc3_after_idx));
               }
               else {
                 # all other possibilities are two features combined, potentially merge them if the span the origin of the model
-                if($argmax_idx == 1) { # passes_origin + trunc5_before
+                if($nfl_argmin_idx == 1) { # passes_origin + trunc5_before
                   push(@merge_ftr_idx_A, ($passes_idx, $trunc5_before_idx));
                   push(@to_remove_idx_A, ($spans_idx, $trunc3_before_idx, $trunc5_after_idx, $trunc3_after_idx));
                   printf("PASSES ORIGIN + TRUNC5_BEFORE, merge check: $passes_idx $trunc5_before_idx\n");
                 }
-                elsif($argmax_idx == 2) { # trunc3_after + passes_origin
+                elsif($nfl_argmin_idx == 2) { # trunc3_after + passes_origin
                   push(@merge_ftr_idx_A, ($trunc3_after_idx, $passes_idx));
                   push(@to_remove_idx_A, ($spans_idx, $trunc5_before_idx, $trunc3_before_idx, $trunc5_after_idx));
                   printf("PASSES ORIGIN + TRUNC3_AFTER, merge check: $passes_idx $trunc3_after_idx\n");
                 }
-                elsif($argmax_idx == 3) { # trunc3_before + trunc5_before
+                elsif($nfl_argmin_idx == 3) { # trunc3_before + trunc5_before
                   push(@merge_ftr_idx_A, ($trunc3_before_idx, $trunc5_before_idx));
                   push(@to_remove_idx_A, ($spans_idx, $passes_idx, $trunc5_after_idx, $trunc3_after_idx));
                   printf("TRUNC3_BEFORE + TRUNC5_BEFORE, merge check: $trunc3_before_idx $trunc5_before_idx\n");
                 }
-                elsif($argmax_idx == 4) { # trunc3_before + trunc_5after
+                elsif($nfl_argmin_idx == 4) { # trunc3_before + trunc_5after
                   push(@merge_ftr_idx_A, ($trunc3_before_idx, $trunc5_after_idx));
                   push(@to_remove_idx_A, ($spans_idx, $passes_idx, $trunc5_before_idx, $trunc3_after_idx));
                   printf("TRUNC3_BEFORE + TRUNC5_AFTER, merge check: $trunc3_before_idx $trunc5_after_idx\n");
                 }
-                elsif($argmax_idx == 5) { # trunc5_before + trunc_3after
+                elsif($nfl_argmin_idx == 5) { # trunc5_before + trunc_3after
                   push(@merge_ftr_idx_A, ($trunc5_before_idx, $trunc3_after_idx));
                   push(@to_remove_idx_A, ($spans_idx, $passes_idx, $trunc3_before_idx, $trunc5_after_idx));
                   printf("TRUNC5_BEFORE + TRUNC3_AFTER, merge check: $trunc5_before_idx $trunc3_after_idx\n");
