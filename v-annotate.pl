@@ -6060,6 +6060,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
     my $ftr_ambg_stop_codon_flag     = 0; # set to 1 if ambgcd3c thrown in helper_feature_terminal_ambiguities (or would be if for genes that match a CDS)
     my $ftr_ambg_start_codon_flag_pv = 0; # for pv case, set to 1 if ambgcd5c would have been thrown in helper_feature_terminal_ambiguities (or would be for genes that match a CDS)
     my $ftr_ambg_stop_codon_flag_pv  = 0; # for pv case, set to 1 if ambgcd3c would have been thrown in helper_feature_terminal_ambiguities (or would be for genes that match a CDS)
+    my $ftr_spans_origin             = vdr_FeatureSpansOrigin($ftr_info_AHR, $ftr_idx);
     my $do_check_splice_sites = ((defined $ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"}) && 
                                  ($ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"} == 1)) ? 1 : 0;
 
@@ -6519,14 +6520,17 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
                   # this shouldn't happen, it means there's a bug in sqstring_find_stops()
                   ofile_FAIL("ERROR, in $sub_name, problem identifying stops in feature sqstring for ftr_idx $ftr_idx, found a stop at position that exceeds feature length", 1, undef);
                 }
-                $ftr_stop_c = $ftr2org_pos_A[($ftr_nxt_stp_A[1] + $n_nt_skipped_at_5p_end)];
+                my $ftr_stop_final_pos = $ftr_nxt_stp_A[1] + $n_nt_skipped_at_5p_end;
+                $ftr_stop_c = $ftr2org_pos_A[$ftr_stop_final_pos];
                 if($ftr_strand eq "+") { 
-                  $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_stop_c-2, $ftr_stop_c, $ftr_strand, $FH_HR) . ";";
-                  $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr_stop_c-2)]), abs($ua2rf_AR->[$ftr_stop_c]), $ftr_strand, $FH_HR) . ";";
+                  my $ftr_stop_first_pos = $ftr2org_pos_A[($ftr_stop_final_pos-2)];
+                  $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_stop_first_pos, $ftr_stop_final_pos, $ftr_strand, $FH_HR) . ";";
+                  $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr_stop_first_pos]), abs($ua2rf_AR->[$ftr_stop_final_pos]), $ftr_strand, $FH_HR) . ";";
                 }
                 else {
-                  $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_stop_c+2, $ftr_stop_c, $ftr_strand, $FH_HR) . ";";
-                  $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr_stop_c+2)]), abs($ua2rf_AR->[$ftr_stop_c]), $ftr_strand, $FH_HR) . ";";
+                  my $ftr_stop_first_pos = $ftr2org_pos_A[($ftr_stop_final_pos+2)];
+                  $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_stop_first_pos, $ftr_stop_final_pos, $ftr_strand, $FH_HR) . ";";
+                  $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr_stop_first_pos]), abs($ua2rf_AR->[$ftr_stop_final_pos]), $ftr_strand, $FH_HR) . ";";
                 }
                 $alt_codon = substr($ftr_sqstring_alt_stops, $ftr_nxt_stp_A[1]-3, 3);
                 $alt_codon =~ tr/a-z/A-Z/;
