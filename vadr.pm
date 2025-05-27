@@ -1645,7 +1645,7 @@ sub vdr_FeatureInfoValidateAllCircularFeatureSets {
 #   $circ_len:      length of the circular model
 #   $FH_HR:         file handle hash
 #
-# Returns:    6 values:
+# Returns:    7 values:
 #             spans_idx:  index of feature that includes the full feature
 #                         and spans origin
 #             passes_idx: index of feature in includes the full feature
@@ -1659,7 +1659,8 @@ sub vdr_FeatureInfoValidateAllCircularFeatureSets {
 #                         and all nt > $circ_len
 #             trunc5_after_idx: index of feature truncated at 5' end
 #                         and all nt > $circ_len
-# 
+#             strand:     strand of all features in the set
+#
 # Dies:       If set is invalid, or does not exist
 #
 #################################################################
@@ -1804,9 +1805,6 @@ sub vdr_FeatureInfoValidateCircularSpanningFeatureSet {
       }
     }
   }
-
-  
-  
   
   if(! defined $spans_idx) {
     ofile_FAIL("ERROR, in $sub_name, not able to find a feature that spans the origin ($circ_len) for set $set", 1, $FH_HR);
@@ -1843,7 +1841,7 @@ sub vdr_FeatureInfoValidateCircularSpanningFeatureSet {
     ofile_FAIL("ERROR, in $sub_name, the two partial features after origin don't add up to full feature length for set: $set", 1, $FH_HR);
   }
 
-  return ($spans_idx, $passes_idx, $trunc3_before_idx, $trunc5_before_idx, $trunc3_after_idx, $trunc5_after_idx);
+  return ($spans_idx, $passes_idx, $trunc3_before_idx, $trunc5_before_idx, $trunc3_after_idx, $trunc5_after_idx, $expected_strand);
 }
 
 #################################################################

@@ -4655,12 +4655,20 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"strand"}    = $sgm_strand;
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"5seqflush"} = $p_5seqflush;
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"3seqflush"} = $p_3seqflush;
-        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"5trunc"}    = ($p_5seqflush && ($start_rfpos != $sgm_start_rfpos)) ? 1 : 0;
-        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"3trunc"}    = ($p_3seqflush && ($stop_rfpos  != $sgm_stop_rfpos))  ? 1 : 0;
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startgap"}  = ($rfpos_pp_A[$sgm_start_rfpos] eq ".") ? 1  : 0;
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stopgap"}   = ($rfpos_pp_A[$sgm_stop_rfpos]  eq ".") ? 1  : 0;
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}   = ($rfpos_pp_A[$sgm_start_rfpos] eq ".") ? -1 : ($do_glsearch ? "?" : convert_pp_char_to_pp_avg($rfpos_pp_A[$sgm_start_rfpos], $FH_HR));
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}    = ($rfpos_pp_A[$sgm_stop_rfpos]  eq ".") ? -1 : ($do_glsearch ? "?" : convert_pp_char_to_pp_avg($rfpos_pp_A[$sgm_stop_rfpos], $FH_HR));
+
+        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"5trunc"}    = ($p_5seqflush && ($start_rfpos != $sgm_start_rfpos)) ? 1 : 0;
+        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"3trunc"}    = ($p_3seqflush && ($stop_rfpos  != $sgm_stop_rfpos))  ? 1 : 0;
+        # if the feature is 5' or 3' truncated, its prediction must be as well
+        if(($sgm_idx == $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) && (vdr_FeatureIs5pTruncated($ftr_info_AHR, $ftr_idx))) {
+          $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"5trunc"} = 1; 
+        }
+        if(($sgm_idx == $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}) && (vdr_FeatureIs3pTruncated($ftr_info_AHR, $ftr_idx))) {
+          $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"3trunc"} = 1; 
+        }
 
         # Check for special case where CDS starts/stops with a gap
         # or has a single insert after first position of a start,
@@ -14865,8 +14873,9 @@ sub pick_features_for_circular_genomes {
             my @merge_ftr_idx_A = (); # will be filled with the two features indices to potentially merge
             my @to_remove_idx_A = (); # will be filled with indices of features to remove, if nec
             if($set_type eq "circular_spanning_ftr_set") { 
-              my ($spans_idx, $passes_idx, $trunc3_before_idx, $trunc5_before_idx, $trunc3_after_idx, $trunc5_after_idx) =
+              my ($spans_idx, $passes_idx, $trunc3_before_idx, $trunc5_before_idx, $trunc3_after_idx, $trunc5_after_idx, $strand) =
                   vdr_FeatureInfoValidateCircularSpanningFeatureSet($ftr_info_AHR, $set, $circ_len, $FH_HR);
+              printf("\tspans_idx: $spans_idx\n\tpasses_idx: $passes_idx\n\ttrunc3_before: $trunc3_before_idx\n\ttrunc5_before: $trunc5_before_idx\n\ttrunc3_after: $trunc3_after_idx\n\ttrunc5_after: $trunc5_after_idx\n");
               # figure out which features to keep, merge if nec
               my @sum_len_A = (); # sum of lengths for each possible combo of features
               my @nfatal_A = ();  # number of fatal alerts for each possible combo of features
@@ -14875,20 +14884,36 @@ sub pick_features_for_circular_genomes {
               my $spans_len = (defined $ftr_results_HAHR->{$seq_name}[$spans_idx]{"n_scoords"}) ?
                   vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$spans_idx]{"n_scoords"}, $FH_HR) : 0;
               my $spans_nfl = alert_feature_instances_count_fatal($seq_name, $spans_idx, $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
-              # 2. passes_origin + trunc5_before
-              my $passes_trunc5b_len = (defined $ftr_results_HAHR->{$seq_name}[$passes_idx]{"n_scoords"}) ?
+              # 2. passes_origin + trunc5_before (if strand eq "+")
+              #    passes_origin + trunc3_before (if strand eq "-")
+              my $passes_trunc5or3b_len = (defined $ftr_results_HAHR->{$seq_name}[$passes_idx]{"n_scoords"}) ?
                   vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$passes_idx]{"n_scoords"}, $FH_HR) : 0;
-              $passes_trunc5b_len += (defined $ftr_results_HAHR->{$seq_name}[$trunc5_before_idx]{"n_scoords"}) ?
-                  vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$trunc5_before_idx]{"n_scoords"}, $FH_HR) : 0;
-              my $passes_trunc5b_nfl = alert_feature_instances_count_fatal($seq_name, $passes_idx,        $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
-              $passes_trunc5b_nfl   += alert_feature_instances_count_fatal($seq_name, $trunc5_before_idx, $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
-              # 3. trunc3_after + passes_origin
-              my $trunc3a_passes_len = (defined $ftr_results_HAHR->{$seq_name}[$trunc3_after_idx]{"n_scoords"}) ?
-                  vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$trunc3_after_idx]{"n_scoords"}, $FH_HR) : 0;
-              $trunc3a_passes_len += (defined $ftr_results_HAHR->{$seq_name}[$passes_idx]{"n_scoords"}) ?
+              my $passes_trunc5or3b_nfl = alert_feature_instances_count_fatal($seq_name, $passes_idx,        $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
+              if($strand eq "+") { 
+                $passes_trunc5or3b_len += (defined $ftr_results_HAHR->{$seq_name}[$trunc5_before_idx]{"n_scoords"}) ?
+                    vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$trunc5_before_idx]{"n_scoords"}, $FH_HR) : 0;
+                $passes_trunc5or3b_nfl += alert_feature_instances_count_fatal($seq_name, $trunc5_before_idx, $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
+              }
+              else {
+                $passes_trunc5or3b_len += (defined $ftr_results_HAHR->{$seq_name}[$trunc3_before_idx]{"n_scoords"}) ?
+                    vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$trunc3_before_idx]{"n_scoords"}, $FH_HR) : 0;
+                $passes_trunc5or3b_nfl += alert_feature_instances_count_fatal($seq_name, $trunc3_before_idx, $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
+              }
+              # 3. trunc3_after + passes_origin (if strand eq "+")
+              #    trunc5_after + passes_origin (if strand eq "-")
+              my $trunc3or5a_passes_len = (defined $ftr_results_HAHR->{$seq_name}[$passes_idx]{"n_scoords"}) ?
                   vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$passes_idx]{"n_scoords"}, $FH_HR) : 0;
-              my $trunc3a_passes_nfl = alert_feature_instances_count_fatal($seq_name, $trunc3_after_idx, $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
-              $trunc3a_passes_nfl   += alert_feature_instances_count_fatal($seq_name, $passes_idx,       $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
+              my $trunc3or5a_passes_nfl = alert_feature_instances_count_fatal($seq_name, $passes_idx,       $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
+              if($strand eq "+") { 
+                $trunc3or5a_passes_len += (defined $ftr_results_HAHR->{$seq_name}[$trunc3_after_idx]{"n_scoords"}) ?
+                    vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$trunc3_after_idx]{"n_scoords"}, $FH_HR) : 0;
+                $trunc3or5a_passes_nfl += alert_feature_instances_count_fatal($seq_name, $trunc3_after_idx, $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
+              }
+              else {
+                $trunc3or5a_passes_len += (defined $ftr_results_HAHR->{$seq_name}[$trunc5_after_idx]{"n_scoords"}) ?
+                    vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$trunc5_after_idx]{"n_scoords"}, $FH_HR) : 0;
+                $trunc3or5a_passes_nfl += alert_feature_instances_count_fatal($seq_name, $trunc5_after_idx, $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
+              }
               # 4. trunc3_before + trunc5_before
               my $trunc3b_trunc5b_len = (defined $ftr_results_HAHR->{$seq_name}[$trunc3_before_idx]{"n_scoords"}) ?
                   vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$trunc3_before_idx]{"n_scoords"}, $FH_HR) : 0;
@@ -14911,10 +14936,10 @@ sub pick_features_for_circular_genomes {
               my $trunc5b_trunc3a_nfl = alert_feature_instances_count_fatal($seq_name, $trunc5_before_idx, $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
               $trunc5b_trunc3a_nfl   += alert_feature_instances_count_fatal($seq_name, $trunc3_after_idx,  $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
               
-              # create array of the 5 lengths so we can find the max more easily
-              push(@sum_len_A, ($spans_len, $passes_trunc5b_len, $trunc3a_passes_len, $trunc3b_trunc5b_len, $trunc3b_trunc5a_len, $trunc5b_trunc3a_len));
-              # create array of the 5 number of alerts so we can find the min more easily
-              push(@nfatal_A,  ($spans_nfl, $passes_trunc5b_nfl, $trunc3a_passes_nfl, $trunc3b_trunc5b_nfl, $trunc3b_trunc5a_nfl, $trunc5b_trunc3a_nfl));
+              # create array of the 6 lengths so we can find the max more easily
+              push(@sum_len_A, ($spans_len, $passes_trunc5or3b_len, $trunc3or5a_passes_len, $trunc3b_trunc5b_len, $trunc3b_trunc5a_len, $trunc5b_trunc3a_len));
+              # create array of the 6 number of alerts so we can find the min more easily
+              push(@nfatal_A,  ($spans_nfl, $passes_trunc5or3b_nfl, $trunc3or5a_passes_nfl, $trunc3b_trunc5b_nfl, $trunc3b_trunc5a_nfl, $trunc5b_trunc3a_nfl));
               my $len_argmax_idx = utl_AArgMax(\@sum_len_A);
               my $nfl_argmax_idx = utl_AArgMax(\@nfatal_A);
               my $nfl_max_plus_one = $nfatal_A[$nfl_argmax_idx] + 1;
@@ -14934,15 +14959,29 @@ sub pick_features_for_circular_genomes {
               }
               else {
                 # all other possibilities are two features combined, potentially merge them if the span the origin of the model
-                if($nfl_argmin_idx == 1) { # passes_origin + trunc5_before
-                  push(@merge_ftr_idx_A, ($passes_idx, $trunc5_before_idx));
-                  push(@to_remove_idx_A, ($spans_idx, $trunc3_before_idx, $trunc5_after_idx, $trunc3_after_idx));
-                  printf("PASSES ORIGIN + TRUNC5_BEFORE, merge check: $passes_idx $trunc5_before_idx\n");
+                if($nfl_argmin_idx == 1) { # passes_origin + trunc5_before (if +), passes_origin + trunc3_before (if -)
+                  if($strand eq "+") { 
+                    push(@merge_ftr_idx_A, ($passes_idx, $trunc5_before_idx));
+                    push(@to_remove_idx_A, ($spans_idx, $trunc3_before_idx, $trunc5_after_idx, $trunc3_after_idx));
+                    printf("PASSES ORIGIN + TRUNC5_BEFORE, merge check: $passes_idx $trunc5_before_idx\n");
+                  }
+                  else {
+                    push(@merge_ftr_idx_A, ($trunc3_before_idx, $passes_idx));
+                    push(@to_remove_idx_A, ($spans_idx, $trunc5_before_idx, $trunc5_after_idx, $trunc3_after_idx));
+                    printf("PASSES ORIGIN + TRUNC3_BEFORE, merge check: $passes_idx $trunc3_before_idx\n");
+                  }
                 }
-                elsif($nfl_argmin_idx == 2) { # trunc3_after + passes_origin
-                  push(@merge_ftr_idx_A, ($trunc3_after_idx, $passes_idx));
-                  push(@to_remove_idx_A, ($spans_idx, $trunc5_before_idx, $trunc3_before_idx, $trunc5_after_idx));
-                  printf("PASSES ORIGIN + TRUNC3_AFTER, merge check: $passes_idx $trunc3_after_idx\n");
+                elsif($nfl_argmin_idx == 2) { # trunc3_after + passes_origin (if +), trunc5_after + passes_origin (if -)
+                  if($strand eq "+") { 
+                    push(@merge_ftr_idx_A, ($trunc3_after_idx, $passes_idx));
+                    push(@to_remove_idx_A, ($spans_idx, $trunc5_before_idx, $trunc3_before_idx, $trunc5_after_idx));
+                    printf("PASSES ORIGIN + TRUNC3_AFTER, merge check: $passes_idx $trunc3_after_idx\n");
+                  }
+                  else { 
+                    push(@merge_ftr_idx_A, ($passes_idx, $trunc5_after_idx));
+                    push(@to_remove_idx_A, ($spans_idx, $trunc5_before_idx, $trunc3_before_idx, $trunc3_after_idx));
+                    printf("PASSES ORIGIN + TRUNC3_BEFORE, merge check: $passes_idx $trunc5_after_idx\n");
+                  }
                 }
                 elsif($nfl_argmin_idx == 3) { # trunc3_before + trunc5_before
                   push(@merge_ftr_idx_A, ($trunc3_before_idx, $trunc5_before_idx));
