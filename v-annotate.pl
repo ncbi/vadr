@@ -14962,9 +14962,16 @@ sub pick_features_for_circular_genomes {
               }
             } # end of 'if($set_type eq "circular_spanning_ftr_set")'
             elsif($set_type eq "circular_linear_ftr_set") {
-              my ($before_origin_idx, $after_origin_idx) = 
+              my ($before_origin_idx, $after_origin_idx, $strand) = 
                   vdr_FeatureInfoValidateCircularLinearFeatureSet($ftr_info_AHR, $set, $circ_len, $FH_HR);
-              push(@merge_ftr_idx_A, ($after_origin_idx, $before_origin_idx));
+              # if positive strand, after then before
+              # if negative strand, before then after
+              if($strand eq "+") {
+                push(@merge_ftr_idx_A, ($after_origin_idx, $before_origin_idx));
+              }
+              else {
+                push(@merge_ftr_idx_A, ($before_origin_idx, $after_origin_idx));
+              }
               printf("LINEAR merge check: $before_origin_idx, $after_origin_idx\n");
             }
             else {

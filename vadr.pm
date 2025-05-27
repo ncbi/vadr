@@ -1694,7 +1694,8 @@ sub vdr_FeatureInfoValidateCircularSpanningFeatureSet {
 
   my ($spans_idx, $passes_idx, $trunc3_before_idx, $trunc5_before_idx, $trunc3_after_idx, $trunc5_after_idx) =
       (undef, undef, undef, undef, undef, undef);
-  
+
+  my $expected_strand = undef;
   for(my $ftr_set_idx = 0; $ftr_set_idx < scalar(@ftr_set_A); $ftr_set_idx++) {
     my $ftr_idx = $ftr_set_A[$ftr_set_idx];
     my $spans_origin = 0;
@@ -1704,6 +1705,12 @@ sub vdr_FeatureInfoValidateCircularSpanningFeatureSet {
     my $strand   = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
     if(($strand ne "+") && ($strand ne "-")) {
       ofile_FAIL("ERROR, in $sub_name, not all segments of feature $ftr_idx are the same strand, coords: " . $ftr_info_AHR->[$ftr_idx]{"coords"}, 1, $FH_HR);
+    }
+    if(! defined $expected_strand) {
+      $expected_strand = $strand;
+    }
+    elsif($expected_strand ne $strand) {
+      ofile_FAIL("ERROR, in $sub_name, not all features in set $set are the same strand", 1, $FH_HR);
     }
     vdr_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@start_A, \@stop_A, \@strand_A, $FH_HR);
     my $nsgm = scalar(@start_A);
@@ -1844,8 +1851,8 @@ sub vdr_FeatureInfoValidateCircularSpanningFeatureSet {
 # Incept:     EPN, Mon May 19 14:43:58 2025
 # 
 # Purpose:    Validates and returns the feature indices in a
-#             "circular_linear_set" set. Indices are
-#             returned in a specific order.
+#             "circular_linear_set" set and their strand.
+#             Indices are returned in a specific order.
 #
 #  
 # Arguments:
@@ -1859,7 +1866,8 @@ sub vdr_FeatureInfoValidateCircularSpanningFeatureSet {
 #                                 <= $circ_len
 #             after_origin_idx:  index of feature for which all nt
 #                                 > $circ_len
-# 
+#             strand:             strand of all features in the set
+#
 # Dies:       If set is invalid, or does not exist
 #
 #################################################################
@@ -1887,7 +1895,8 @@ sub vdr_FeatureInfoValidateCircularLinearFeatureSet {
   }
 
   my ($before_origin_idx, $after_origin_idx) = (undef, undef);
-  
+
+  my $expected_strand = undef;
   for(my $ftr_set_idx = 0; $ftr_set_idx < scalar(@ftr_set_A); $ftr_set_idx++) {
     my $ftr_idx = $ftr_set_A[$ftr_set_idx];
     my @start_A  = ();
@@ -1896,6 +1905,12 @@ sub vdr_FeatureInfoValidateCircularLinearFeatureSet {
     my $strand   = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
     if(($strand ne "+") && ($strand ne "-")) {
       ofile_FAIL("ERROR, in $sub_name, not all segments of feature $ftr_idx are the same strand, coords: " . $ftr_info_AHR->[$ftr_idx]{"coords"}, 1, $FH_HR);
+    }
+    if(! defined $expected_strand) {
+      $expected_strand = $strand;
+    }
+    elsif($expected_strand ne $strand) {
+      ofile_FAIL("ERROR, in $sub_name, not all features in set $set are the same strand", 1, $FH_HR);
     }
     vdr_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@start_A, \@stop_A, \@strand_A, $FH_HR);
     my $nsgm = scalar(@start_A);
@@ -1922,7 +1937,7 @@ sub vdr_FeatureInfoValidateCircularLinearFeatureSet {
     ofile_FAIL("ERROR, in $sub_name, not able to find a feature that is completley after the origin ($circ_len) for set $set", 1, $FH_HR);
   }
 
-  return ($before_origin_idx, $after_origin_idx);
+  return ($before_origin_idx, $after_origin_idx, $expected_strand);
 }
 
 #################################################################
@@ -8711,7 +8726,7 @@ sub vdr_TwoCoordsSpanOrigin {
   elsif(($strand1 eq "-") && ($strand2 eq "-")) {
     my $stop1  = vdr_Feature3pMostPosition($mdl_coords5p, $FH_HR);
     my $start2 = vdr_Feature5pMostPosition($mdl_coords3p, $FH_HR);
-    if(($stop1 % $circ_len) == (($start2 - 1) % $circ_len)) { return 1; }
+    if((($stop1-1) % $circ_len) == ($start2 % $circ_len)) { return 1; }
   }
 
   # if we get here, we do not span the origin 
