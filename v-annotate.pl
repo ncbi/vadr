@@ -6433,7 +6433,8 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
         # - has the first two nt removed from $ftr_sqstring_alt if codon_start == 3
         #my $n_nt_skipped_at_5p_end = ($ftr_is_5trunc) ? ($ftr_results_HR->{"n_codon_start_expected"} - 1) : 0;
         my $n_nt_skipped_at_5p_end = $cds_codon_start - 1;
-        my $ftr_sqstring_alt_stops = substr($ftr_sqstring_alt, $n_nt_skipped_at_5p_end);
+        my $ftr_sqstring_alt_stops = (length($ftr_sqstring_alt) > $n_nt_skipped_at_5p_end) ?
+            substr($ftr_sqstring_alt, $n_nt_skipped_at_5p_end) : "";
         my $ftr_len_stops = length($ftr_sqstring_alt_stops);
         if($ftr_len_stops >= 3) { 
           # check for mutendcd alert (final 3 nt are a valid stop) if ! 3' truncated
@@ -6451,6 +6452,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
              ((defined $ftr_results_HR->{"n_codon_start_expected"}) && 
               (defined $ftr_results_HR->{"n_codon_start_dominant"}) && 
               ($ftr_results_HR->{"n_codon_start_expected"} == $ftr_results_HR->{"n_codon_start_dominant"}))) { 
+            printf("HEYC 1\n");
             my @ftr_nxt_stp_A = ();
             sqstring_find_stops($ftr_sqstring_alt_stops, $mdl_tt, \@ftr_nxt_stp_A, $FH_HR);
             if(($ftr_nxt_stp_A[1] != $ftr_len_stops) || 
@@ -6523,6 +6525,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
               } # end of 'if((! $ftr_is_3trunc) && ($ftr_nxt_stp_A[1] == 0) {' 
               ######################################################
               elsif($ftr_nxt_stp_A[1] != 0) { 
+                printf("HEYC 2\n");
                 # there is an early stop (cdsstopn) in $ftr_sqstring_alt_stops
                 if($ftr_nxt_stp_A[1] > $ftr_len_stops) { 
                   # this shouldn't happen, it means there's a bug in sqstring_find_stops()
@@ -6530,20 +6533,17 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
                 }
                 my $ftr_stop_final_pos = $ftr_nxt_stp_A[1] + $n_nt_skipped_at_5p_end;
                 $ftr_stop_c = $ftr2org_pos_A[$ftr_stop_final_pos];
-                if($ftr_strand eq "+") { 
-                  my $ftr_stop_first_pos = $ftr2org_pos_A[($ftr_stop_final_pos-2)];
-                  $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_stop_first_pos, $ftr_stop_final_pos, $ftr_strand, $FH_HR) . ";";
-                  $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr_stop_first_pos]), abs($ua2rf_AR->[$ftr_stop_final_pos]), $ftr_strand, $FH_HR) . ";";
-                }
-                else {
-                  my $ftr_stop_first_pos = $ftr2org_pos_A[($ftr_stop_final_pos+2)];
-                  $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_stop_first_pos, $ftr_stop_final_pos, $ftr_strand, $FH_HR) . ";";
-                  $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr_stop_first_pos]), abs($ua2rf_AR->[$ftr_stop_final_pos]), $ftr_strand, $FH_HR) . ";";
-                }
+
+                # this is strand agnostic because of use of ftr2org_pos_A map
+                my $ftr_stop_first_pos = $ftr2org_pos_A[($ftr_stop_final_pos-2)];
+                $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_stop_first_pos, $ftr_stop_final_pos, $ftr_strand, $FH_HR) . ";";
+                $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr_stop_first_pos]), abs($ua2rf_AR->[$ftr_stop_final_pos]), $ftr_strand, $FH_HR) . ";";
+
                 $alt_codon = substr($ftr_sqstring_alt_stops, $ftr_nxt_stp_A[1]-3, 3);
                 $alt_codon =~ tr/a-z/A-Z/;
                 if(! $ftr_is_3trunc) { 
                   $alt_str_H{"cdsstopn"} = sprintf("%s%s%s, shifted S:%d,M:%d", $alt_scoords, $alt_mcoords, $alt_codon, abs($ftr_stop-$ftr_stop_c), abs(abs($ua2rf_AR->[$ftr_stop]) - abs($ua2rf_AR->[$ftr_stop_c])));
+                  printf("HEYC 4\n");
                 }
                 else { 
                   # report only model shift, reporting on the sequence
@@ -6551,6 +6551,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
                   # to be relative to the seq end position but the
                   # feature is 3' truncated
                   $alt_str_H{"cdsstopn"} = sprintf("%s%s%s, shifted M:%d", $alt_scoords, $alt_mcoords, $alt_codon, abs(abs(vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, undef)) - abs($ua2rf_AR->[$ftr_stop_c])));
+                  printf("HEYC 5\n");
                 }
               } # end of 'elsif($ftr_nxt_stp_A[1] != 0)'
             } # end of 'if($ftr_nxt_stp_A[1] != $ftr_len_stops) {' 
