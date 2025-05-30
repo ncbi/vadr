@@ -7,7 +7,7 @@ allow most high quality sequences for a viral species to *pass*. For
 example, some other sequences may include an extended CDS that has a
 different stop codon position from the sequence the model was built
 from, and these sequences will *fail* due to fatal alerts related to
-the different stop codon. If your goal is too have `v-annotate.pl`
+the different stop codon. If your goal is to have `v-annotate.pl`
 pass the vast majority of sequences that are error-free (lacking
 misassemblies, sequencing errors and other artifacts), then you may
 want to spend some manual effort One good strategy for building and
