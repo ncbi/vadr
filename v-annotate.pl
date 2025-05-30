@@ -242,7 +242,6 @@ opt_Add("--ignore_isdel",     "boolean",  0,       $g,     undef, undef,    "ign
 opt_Add("--ignore_afset",     "boolean",  0,       $g,     undef, undef,    "ignore 'alternative_ftr_set' and 'alternative_ftr_set_subn' values in .minfo file",          "ignore 'alternative_ftr_set' and 'alternative_ftr_set_subn' values in .minfo file", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_afsetsubn", "boolean",  0,       $g,     undef, undef,    "ignore 'alternative_ftr_set_subn' values in .minfo file",                                    "ignore 'alternative_ftr_set_subn' values in .minfo file", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_cfset",     "boolean",  0,       $g,     undef, undef,    "ignore 'circular_ftr_set' and 'circular_ftr_set_subn' values in .minfo file",              "ignore 'circular_ftr_set' and 'circular_ftr_set_subn' values in .minfo file", \%opt_HH, \@opt_order_A);
-opt_Add("--ignore_cfsetsubn", "boolean",  0,       $g,     undef, undef,    "ignore 'circular_ftr_set_subn' values in .minfo file",                                      "ignore 'circular_ftr_set_subn' values in .minfo file", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_canonss",   "boolean",  0,       $g,     undef, undef,    "ignore 'canon_splice_sites' values in .minfo file (never check intron splice sites)",        "ignore 'canon_splice_sites' values in .minfo file (never check intron splice sites)", \%opt_HH, \@opt_order_A);
 opt_Add("--force_canonss",    "boolean",  0,       $g,     undef,"--ignore_canonss", "force 'canon_splice_sites' is 1 for all CDS with qualifying introns",               "force 'canon_splice_sites' is 1 for all CDS with qualifying introns", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_exc",       "boolean",  0,       $g,     undef, undef,    "ignore all exception keys '*_exc' in .minfo file",                                           "ignore all exception keys '*_exc' in .minfo file", \%opt_HH, \@opt_order_A);
@@ -469,7 +468,6 @@ my $options_okay =
                 "ignore_afset"     => \$GetOptions_H{"--ignore_afset"},
                 "ignore_afsetsubn" => \$GetOptions_H{"--ignore_afsetsubn"},
                 "ignore_cfset"     => \$GetOptions_H{"--ignore_cfset"},
-                "ignore_cfsetsubn" => \$GetOptions_H{"--ignore_cfsetsubn"},
                 "ignore_canonss"   => \$GetOptions_H{"--ignore_canonss"},
                 "force_canonss"    => \$GetOptions_H{"--force_canonss"},
                 "ignore_exc"       => \$GetOptions_H{"--ignore_exc"},
@@ -1153,8 +1151,8 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, "alternative", (opt_Get("--ignore_afset", \%opt_HH) || opt_Get("--ignore_afsetsubn", \%opt_HH)), $FH_HR);
   if(vdr_ModelInfoIsCircular(\%{$mdl_info_AH[$mdl_idx]}, $FH_HR)) {
     vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, "circular", opt_Get("--ignore_cfset", \%opt_HH), $FH_HR);
-    vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, "circular_spanning", (opt_Get("--ignore_cfset", \%opt_HH) || opt_Get("--ignore_cfsetsubn", \%opt_HH)), $FH_HR);
-    vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, "circular_linear", (opt_Get("--ignore_cfset", \%opt_HH) || opt_Get("--ignore_cfsetsubn", \%opt_HH)), $FH_HR);
+    vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, "circular_spanning", opt_Get("--ignore_cfset", \%opt_HH), $FH_HR);
+    vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, "circular_linear", opt_Get("--ignore_cfset", \%opt_HH), $FH_HR);
   }
   vdr_FeatureInfoInitializeCanonSpliceSites(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--force_canonss", \%opt_HH), opt_Get("--ignore_canonss", \%opt_HH), $FH_HR);
   vdr_FeatureInfoValidateMiscNotFailure(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
@@ -2171,7 +2169,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                                            
       # first pick features from sets that are not composed of any children
       # this will remove features in alternative_ftr_sets that are not picked *and* their children
-      if($has_circulars) { 
+      if(($has_circulars) && (! opt_Get("--ignore_cfset", \%opt_HH))) { 
         pick_features_for_circular_genomes(\@{$mdl_seq_name_HA{$mdl_name}}, $mdl_len, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                            \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH,
                                            \%opt_HH, \%{$ofile_info_HH{"FH"}});
@@ -9150,7 +9148,7 @@ sub helper_protein_validation_db_seqname_to_ftr_idx {
 
   if($blastx_seqname =~ /(\S+)\/(\S+)/) { 
     my ($accn, $coords) = ($1, $2);
-    if($coords =~ /.+(\.\d+)$/) {
+    if($coords =~ /\.(\d+)$/) {
       $dup_idx = $1;
       $coords =~ s/\.\d+$//;
     }
