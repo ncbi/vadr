@@ -1618,7 +1618,6 @@ sub vdr_FeatureInfoValidateAllCircularFeatureSets {
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
     my ($set, $set_type) = vdr_FeatureCircularSetValue($ftr_info_AHR, $ftr_idx, $FH_HR); # will fail if both "circular_spanning_ftr_set" and "circular_linear_ftr_set" are 1
     if((defined $set_type) && (defined $set) && (! defined $sets_completed_H{$set})) { 
-      printf("HEYA validating $set_type $set\n");
       if($set_type eq "circular_spanning_ftr_set") {
         vdr_FeatureInfoValidateCircularSpanningFeatureSet($ftr_info_AHR, $set, $circ_len, $FH_HR);
       }
@@ -1743,11 +1742,11 @@ sub vdr_FeatureInfoValidateCircularSpanningFeatureSet {
     # check that $spans_origin is consistent with 'spans_origin' value from model info file 
     if(($spans_origin) &&
        (! vdr_FeatureSpansOrigin($ftr_info_AHR, $ftr_idx))) {
-      ofile_FAIL("ERROR, in $sub_name, coords suggest ftr_idx $ftr_idx spans origin but model info doesn't: " . $ftr_info_AHR->[$ftr_idx]{"coords"} . 1, $FH_HR);
+      ofile_FAIL("ERROR, in $sub_name, coords suggest ftr_idx $ftr_idx spans origin but model info doesn't: " . $ftr_info_AHR->[$ftr_idx]{"coords"}, 1, $FH_HR);
     }
     if((! $spans_origin) &&
        (vdr_FeatureSpansOrigin($ftr_info_AHR, $ftr_idx))) {
-      ofile_FAIL("ERROR, in $sub_name, model info states ftr_idx $ftr_idx spans origin but coords don't support that: " . $ftr_info_AHR->[$ftr_idx]{"coords"} . 1, $FH_HR);
+      ofile_FAIL("ERROR, in $sub_name, model info states ftr_idx $ftr_idx spans origin but coords don't support that: " . $ftr_info_AHR->[$ftr_idx]{"coords"}, 1, $FH_HR);
     }
 
     if($ftr_len_A[$ftr_set_idx] == $max_len) {
@@ -1756,13 +1755,13 @@ sub vdr_FeatureInfoValidateCircularSpanningFeatureSet {
       if($is_after && $is_before) {
         $passes_idx = $ftr_idx;
         if($spans_origin) {
-          ofile_FAIL("ERROR, in $sub_name, ftr_idx $ftr_idx doesn't seem to span origin but coords suggest it does: " . $ftr_info_AHR->[$ftr_idx]{"coords"} . 1, $FH_HR);
+          ofile_FAIL("ERROR, in $sub_name, ftr_idx $ftr_idx doesn't seem to span origin but coords suggest it does: " . $ftr_info_AHR->[$ftr_idx]{"coords"}, 1, $FH_HR);
         }
       }
       elsif($is_before) {
         $spans_idx = $ftr_idx;
         if(! $spans_origin) {
-          ofile_FAIL("ERROR, in $sub_name, ftr_idx $ftr_idx seems to span origin but coords don't support that: " . $ftr_info_AHR->[$ftr_idx]{"coords"} . 1, $FH_HR);
+          ofile_FAIL("ERROR, in $sub_name, ftr_idx $ftr_idx seems to span origin but coords don't support that: " . $ftr_info_AHR->[$ftr_idx]{"coords"}, 1, $FH_HR);
         }
       }
       else {
@@ -1775,17 +1774,17 @@ sub vdr_FeatureInfoValidateCircularSpanningFeatureSet {
       if($is_5trunc) {
         if((($strand eq "+") && (! $has_first_pos_start)) ||
            (($strand eq "-") && (! $has_final_pos_start))) { 
-          ofile_FAIL("ERROR, in $sub_name, ftr_idx $ftr_idx listed as 5' truncated but coords don't support that: " . $ftr_info_AHR->[$ftr_idx]{"coords"} . 1, $FH_HR);
+          ofile_FAIL("ERROR, in $sub_name, ftr_idx $ftr_idx listed as 5' truncated but coords don't support that: " . $ftr_info_AHR->[$ftr_idx]{"coords"}, 1, $FH_HR);
         }
       }
       if($is_3trunc) {
         if((($strand eq "+") && (! $has_final_pos_stop)) ||
            (($strand eq "-") && (! $has_first_pos_stop))) { 
-          ofile_FAIL("ERROR, in $sub_name, ftr_idx $ftr_idx listed as 3' truncated but coords don't support that: " . $ftr_info_AHR->[$ftr_idx]{"coords"} . 1, $FH_HR);
+          ofile_FAIL("ERROR, in $sub_name, ftr_idx $ftr_idx listed as 3' truncated but coords don't support that: " . $ftr_info_AHR->[$ftr_idx]{"coords"}, 1, $FH_HR);
         }
       }
       if($spans_origin) {
-        ofile_FAIL("ERROR, in $sub_name, ftr_idx $ftr_idx doesn't seem to span origin but coords suggest it does: " . $ftr_info_AHR->[$ftr_idx]{"coords"} . 1, $FH_HR);
+        ofile_FAIL("ERROR, in $sub_name, ftr_idx $ftr_idx doesn't seem to span origin but coords suggest it does: " . $ftr_info_AHR->[$ftr_idx]{"coords"}, 1, $FH_HR);
       }
 
       if(($is_before) && (! $is_after) && ($is_5trunc) && (! $is_3trunc)) {
@@ -3037,7 +3036,7 @@ sub vdr_FeatureIs5pTruncated {
   
   my ($ftr_info_AHR, $ftr_idx) = @_;
   
-  return ((defined $ftr_info_AHR->[$ftr_idx]{"is_5trunc"}) && $ftr_info_AHR->[$ftr_idx]{"is_5trunc"} == 1) ? 1 : 0;
+  return ((defined $ftr_info_AHR->[$ftr_idx]{"trunc5"}) && $ftr_info_AHR->[$ftr_idx]{"trunc5"} == 1) ? 1 : 0;
 }
 
 #################################################################
@@ -3063,7 +3062,7 @@ sub vdr_FeatureIs3pTruncated {
   
   my ($ftr_info_AHR, $ftr_idx) = @_;
   
-  return ((defined $ftr_info_AHR->[$ftr_idx]{"is_3trunc"}) && $ftr_info_AHR->[$ftr_idx]{"is_3trunc"} == 1) ? 1 : 0;
+  return ((defined $ftr_info_AHR->[$ftr_idx]{"trunc3"}) && $ftr_info_AHR->[$ftr_idx]{"trunc3"} == 1) ? 1 : 0;
 }
 
 #################################################################
@@ -4675,7 +4674,7 @@ sub vdr_CoordsSegmentParse {
   if($coords_tok =~ /^\<?(\d+)\.\.\>?(\d+)\:([\+\-])$/) { 
     return ($1, $2, $3);
   }
-  ofile_FAIL("ERROR in $sub_name, unable to parse coords token $coords_tok", 1, $FH_HR); 
+  ofile_FAIL("ERROR in $sub_name, unable to parse coords token: $coords_tok", 1, $FH_HR); 
 
   return; # NEVER REACHED
 }
@@ -7936,16 +7935,36 @@ sub vdr_CdsFetchStockholmToFasta {
   my @sgm_stop_AA   = ();
   my @sgm_strand_AA = ();
   vdr_FeatureInfoStartStopStrandArrays($ftr_info_AHR, \@sgm_start_AA, \@sgm_stop_AA, \@sgm_strand_AA, $FH_HR);
-
+  
   my $nftr = scalar(@{$ftr_info_AHR});
   my $nseq = $msa->nseq;
   my $ftr_idx = undef; # feature index
-  my $seq_idx = undef; # feature index
+  my $seq_idx = undef; # sequence index
+  my $coords = undef;
+  my $coords2print = undef;
+  my $codon_start = undef;
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    # determine if any CDS features have duplicate coords, if so we need to modify their names
+    my %ftr_coords_idx_H = ();
+    my %coords_ct_H = ();
+    for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      if($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") { 
+        $coords = $ftr_info_AHR->[$ftr_idx]{"coords"};
+        if(! defined $coords_ct_H{$coords}) { $coords_ct_H{$coords} = 1; }
+        else                                { $coords_ct_H{$coords}++; }
+        $ftr_coords_idx_H{$ftr_idx} = $coords_ct_H{$coords};
+      }
+    }
+    # for each CDS, fetch it:
+    for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       if($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") { 
         my $cds_sqstring = "";
-        foreach(my $sgm_idx = 0; $sgm_idx < scalar(@{$sgm_start_AA[$ftr_idx]}); $sgm_idx++) { 
+        $coords = $ftr_info_AHR->[$ftr_idx]{"coords"};
+        $coords2print = ""; # build these with carrots for 5' and 3' trunc
+        $codon_start = vdr_FeatureCodonStart($ftr_info_AHR, $ftr_idx); # will return 1 if undef
+        printf("HEYA $ftr_idx codon_start $codon_start\n");
+        my $nsgm = scalar(@{$sgm_start_AA[$ftr_idx]});
+        foreach(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) { 
           my $rfstart = $sgm_start_AA[$ftr_idx][$sgm_idx];
           my $rfstop  = $sgm_stop_AA[$ftr_idx][$sgm_idx];
           my $astart  = ($msa_has_rf) ? $msa->rfpos_to_aligned_pos($rfstart) : $rfstart;
@@ -7956,8 +7975,19 @@ sub vdr_CdsFetchStockholmToFasta {
             seq_SqstringReverseComplement(\$sgm_sqstring);
           }
           $cds_sqstring .= $sgm_sqstring;
+          my $start2print = (($sgm_idx == 0)         && vdr_FeatureIs5pTruncated($ftr_info_AHR, $ftr_idx)) ? ("<" . $rfstart) : $rfstart;
+          my $stop2print  = (($sgm_idx == ($nsgm-1)) && vdr_FeatureIs3pTruncated($ftr_info_AHR, $ftr_idx)) ? (">" . $rfstop)  : $rfstop;
+          $coords2print = vdr_CoordsAppendSegment($coords2print, vdr_CoordsSegmentCreate($start2print, $stop2print, $sgm_strand_AA[$ftr_idx][$sgm_idx], $FH_HR));
         }
-        print $out_FH(">" . $msa->get_sqname($seq_idx) . "/" . $ftr_info_AHR->[$ftr_idx]{"coords"} . "\n" . seq_SqstringAddNewlines($cds_sqstring, 60));
+        my $seqname = $msa->get_sqname($seq_idx);
+        $seqname .= "/" . $coords2print;
+        if((defined $coords_ct_H{$coords}) && ($coords_ct_H{$coords} > 1)) {
+          $seqname .= "." . $ftr_coords_idx_H{$ftr_idx};
+        }
+        if($codon_start != 1) {
+          $seqname .= "/CS" . $codon_start;
+        }          
+        print $out_FH(">$seqname\n" . seq_SqstringAddNewlines($cds_sqstring, 60));
       }
     }
   }
@@ -8710,7 +8740,7 @@ sub vdr_TwoCoordsSpanOrigin {
 
   my ($mdl_coords5p, $mdl_coords3p, $circ_len, $FH_HR) = (@_);
 
-  printf("in $sub_name, mdl_coords5p: $mdl_coords5p, mdl_coords3p: $mdl_coords3p, circ_len: $circ_len\n");
+  # printf("in $sub_name, mdl_coords5p: $mdl_coords5p, mdl_coords3p: $mdl_coords3p, circ_len: $circ_len\n");
   
   my $strand1 = vdr_FeatureSummaryStrand($mdl_coords5p, $FH_HR);
   my $strand2 = vdr_FeatureSummaryStrand($mdl_coords3p, $FH_HR);
@@ -8718,7 +8748,7 @@ sub vdr_TwoCoordsSpanOrigin {
   if(($strand1 eq "+") && ($strand2 eq "+")) {
     my $stop1  = vdr_Feature3pMostPosition($mdl_coords5p, $FH_HR);
     my $start2 = vdr_Feature5pMostPosition($mdl_coords3p, $FH_HR);
-    printf("\tstop1: $stop1 start2: $start2\n");
+    # printf("\tstop1: $stop1 start2: $start2\n");
     if(($stop1 % $circ_len) == (($start2-1)  % $circ_len)) { return 1; }
   }
   elsif(($strand1 eq "-") && ($strand2 eq "-")) {

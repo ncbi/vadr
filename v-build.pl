@@ -491,16 +491,17 @@ else {
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 
+printf("HEYA\n");
+
 # modify coords if we are circular
+my @new_ftr_info_AH = ();
 if($do_circular) {
-  modify_coords_for_circular_genomes(\@{$ftr_info_HAH{$mdl_name}}, $orig_mdllen, \%opt_HH, $FH_HR);
+  # modify_coords_for_circular_genomes(\@{$ftr_info_HAH{$mdl_name}}, $orig_mdllen, \%opt_HH, $FH_HR);
+  create_circular_feature_sets(\@{$ftr_info_HAH{$mdl_name}}, $orig_mdllen, \@new_ftr_info_AH, \%opt_HH, $FH_HR);
+  @{$ftr_info_HAH{$mdl_name}} = ();
+  @{$ftr_info_HAH{$mdl_name}} = @new_ftr_info_AH;
 }
     
-if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
-  utl_AHDump("Feature information", \@{$ftr_info_HAH{$mdl_name}}, $ofile_info_HH{"FH"}{"ftrinfo"});
-}
-
-#exit 0;
 #######################################################
 # Prune data read from %ftr_info_HAH, only keeping what
 # we want to output to the eventual model info file
@@ -520,7 +521,8 @@ my %qdf_H      = (); # default qualifiers to keep
 my %qadd_H     = (); # qualifiers to add
 my %qskip_H    = (); # qualifiers to skip
 my %qftr_add_H = (); # if --qftradd, subset of features to add qualifiers in --qadd option for
-process_add_and_skip_options("type,coords,location,product,gene,exception,parent_idx_str,5p_trunc,3p_trunc,orig_coords", "--qadd", "--qskip", "--qftradd", \%qdf_H, \%qadd_H, \%qskip_H, \%qftr_add_H, \%opt_HH, $FH_HR); 
+process_add_and_skip_options("type,coords,location,product,gene,exception,parent_idx_str,trunc5,trunc3,codon_start,circular_spanning_ftr_set,circular_linear_ftr_set,spans_origin",
+                             "--qadd", "--qskip", "--qftradd", \%qdf_H, \%qadd_H, \%qskip_H, \%qftr_add_H, \%opt_HH, $FH_HR); 
 # we only need ribosomal_slippage above so we can get the exception:ribosomal slippage 
 # qualifier, if we switch to parsing feature tables instead of GenBank files, then
 # "ribosomal_slippage" should be removed from the list.
@@ -545,24 +547,29 @@ for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) {
   }
 }
 
+############################################
+# Support for circular genomes necessitated addition of support
+# for partial CDS that are truncated 5' and/or 3'. They used to be
+# disallowed prior to this (up through v1.6.4) by the block below
+# 
 # deal with special case: remove any CDS features that have "trunc5"
 # or "trunc3" keys set as 1 we can't deal with these because we
 # don't know how to translate them in v-build.pl and (even if we did
 # handle that based on codon_start) v-annotate.pl can't deal with
 # these because a start/stop codon is not expected and all complete
 # CDS are validated by looking for a start/stop
-for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
-  my $ftype = $ftr_info_HAH{$mdl_name}[$ftr_idx]{"type"};
-  if(($ftype eq "CDS") && 
-     (((defined $ftr_info_HAH{$mdl_name}[$ftr_idx]{"trunc5"}) && 
-       ($ftr_info_HAH{$mdl_name}[$ftr_idx]{"trunc5"} == 1)) || 
-      ((defined $ftr_info_HAH{$mdl_name}[$ftr_idx]{"trunc3"}) && 
-       ($ftr_info_HAH{$mdl_name}[$ftr_idx]{"trunc3"} == 1)))) { 
-    ofile_OutputString($log_FH, 1, "\n# WARNING: not modelling CDS feature with coords " . $ftr_info_HAH{$mdl_name}[$ftr_idx]{"coords"} . " because it is 5' and/or 3' truncated\n#          (e.g. incomplete, with a \"<\" or \">\" in its coordinates in the feature table.\n#\n# ");
-    splice(@{$ftr_info_HAH{$mdl_name}}, $ftr_idx, 1);
-    $ftr_idx--; # this is about to be incremented
-  }
-}
+#for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
+#  my $ftype = $ftr_info_HAH{$mdl_name}[$ftr_idx]{"type"};
+#  if(($ftype eq "CDS") && 
+#     (((defined $ftr_info_HAH{$mdl_name}[$ftr_idx]{"trunc5"}) && 
+#       ($ftr_info_HAH{$mdl_name}[$ftr_idx]{"trunc5"} == 1)) || 
+#      ((defined $ftr_info_HAH{$mdl_name}[$ftr_idx]{"trunc3"}) && 
+#       ($ftr_info_HAH{$mdl_name}[$ftr_idx]{"trunc3"} == 1)))) { 
+#    ofile_OutputString($log_FH, 1, "\n# WARNING: not modelling CDS feature with coords " . $ftr_info_HAH{$mdl_name}[$ftr_idx]{"coords"} . " because it is 5' and/or 3' truncated\n#          (e.g. incomplete, with a \"<\" or \">\" in its coordinates in the feature table.\n#\n# ");
+#    splice(@{$ftr_info_HAH{$mdl_name}}, $ftr_idx, 1);
+#    $ftr_idx--; # this is about to be incremented
+#  }
+#}
 
 # remove any qualifier key/value pairs with keys not in %qual_H, unless --qall used
 for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
@@ -645,6 +652,11 @@ if(defined $addminfo_file) {
   }
   vdr_FeatureInfoMerge(\@{$add_ftr_info_HAH{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+}
+
+# HERE HERE HERE 
+if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
+  utl_AHDump("Feature information", \@{$ftr_info_HAH{$mdl_name}}, $ofile_info_HH{"FH"}{"ftrinfo"});
 }
 
 #####################################################################
@@ -796,13 +808,19 @@ if($ncds > 0) {
         ofile_FAIL("ERROR, illegal sequence name in $protein_fa_file, sequence names can't have ')' or '(' in them", 1, $FH_HR);
       }
     }
+    elsif($seq_name =~ /^(.+)\.\d+(\,\d+)(\/[^\/]+)$/) { 
+      $hmm_name = $1 . $2 . $3;
+      if($hmm_name =~ /[\(\)]/) { 
+        ofile_FAIL("ERROR, illegal sequence name in $protein_fa_file, sequence names can't have ')' or '(' in them", 1, $FH_HR);
+      }
+    }
     else { 
       ofile_FAIL("ERROR, unable to parse protein sequence name $seq_name to make HMM model name", 1, $FH_HR);
     }
     my $tmp_hmm_file      = $out_root . "." . ($nhmm+1) . ".hmm";
     my $tmp_hmmbuild_file = $out_root . "." . ($nhmm+1) . ".hmmbuild";
     my $sfetch_to_hmmbuild_cmd = $execs_H{"esl-sfetch"} . " $protein_fa_file $seq_name | ";
-    $sfetch_to_hmmbuild_cmd   .= $execs_H{"hmmbuild"} . " -n $hmm_name --informat afa $tmp_hmm_file - > $tmp_hmmbuild_file";
+    $sfetch_to_hmmbuild_cmd   .= $execs_H{"hmmbuild"} . " --amino -n $hmm_name --informat afa $tmp_hmm_file - > $tmp_hmmbuild_file";
     utl_RunCommand($sfetch_to_hmmbuild_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
     push(@hmm_file_A,      $tmp_hmm_file);
     push(@hmmbuild_file_A, $tmp_hmmbuild_file);
@@ -1647,3 +1665,156 @@ sub duplicate_features_for_circular_genomes {
   return;
 }
 
+#################################################################
+# Subroutine: create_circular_feature_sets
+# Incept:     EPN, Wed May 28 13:13:29 2025
+# 
+# Purpose:    Given feature information for a circular genome,
+#             expand each feature into a set of features.
+#             Features that span the origin become one of 6 features
+#             in a 'circular_spanning_set'.
+#             Features that do not span the origin become one
+#             of 2 features in a 'circular_linear_set'.
+#
+# Arguments:
+#   $ftr_info_AHR:     REF to feature information
+#   $orig_mdllen:      length of the model before it was doubled
+#   $new_ftr_info_AHR: REF to new feature information, created here from ftr_info_AHR
+#   $opt_HHR:          REF to 2D hash of option values, see top of sqp_opts.pm for description, PRE-FILLED
+#   $FH_HR:            REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#
+#################################################################
+sub create_circular_feature_sets {
+  my $sub_name = "create_circular_feature_sets";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_AHR, $orig_mdllen, $new_ftr_info_AHR, $opt_HHR, $FH_HR) = @_;
+
+  printf("in $sub_name()\n");
+  
+  # new ftr_info_AHR for new features we add here
+  @{$new_ftr_info_AHR} = ();
+  my $new_ftr_idx = 0;
+  
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my ($nsgm, $next_sgm_idx, $strand);
+  my $spanning_set_idx = 1;
+  my $linear_set_idx = 1;
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    my $before_5p_coords = "";
+    my $before_3p_coords = "";
+    my $after_5p_coords  = "";
+    my $after_3p_coords  = "";
+    my @sgm_coords_A = ();
+    my $spans_origin = 0;
+    my @start_A  = ();
+    my @stop_A   = ();
+    my @strand_A = ();
+    vdr_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@start_A, \@stop_A, \@strand_A, $FH_HR);
+    vdr_CoordsToSegments($ftr_info_AHR->[$ftr_idx]{"coords"}, \@sgm_coords_A, $FH_HR);
+    my $nsgm = scalar(@sgm_coords_A);
+    my $passes_coords = "";
+    my $key = undef;
+    if($nsgm > 1) { 
+      # determine if this feature spans the origin
+      for(my $sgm_idx = 0; $sgm_idx < ($nsgm-1); $sgm_idx++) {
+        $before_5p_coords = vdr_CoordsAppendSegment($before_5p_coords, $sgm_coords_A[$sgm_idx]);
+        $after_5p_coords  = vdr_CoordsAppendSegment($after_5p_coords,  vdr_CoordsSegmentCreate($start_A[$sgm_idx] + $orig_mdllen,
+                                                                                               $stop_A[$sgm_idx] + $orig_mdllen,
+                                                                                               $strand_A[$sgm_idx], $FH_HR));
+        
+        if(vdr_TwoCoordsSpanOrigin($sgm_coords_A[$sgm_idx], $sgm_coords_A[$sgm_idx+1], $orig_mdllen, $FH_HR)) {
+          $spans_origin = 1;
+          $passes_coords    = vdr_CoordsAppendSegment($passes_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx],
+                                                                                              ($stop_A[$sgm_idx] + $stop_A[$sgm_idx+1]),
+                                                                                              $strand_A[$sgm_idx], $FH_HR));
+          $before_3p_coords = vdr_CoordsAppendSegment($before_3p_coords, $sgm_coords_A[$sgm_idx+1]);
+          $after_3p_coords  = vdr_CoordsAppendSegment($after_3p_coords,  vdr_CoordsSegmentCreate($start_A[$sgm_idx+1] + $orig_mdllen,
+                                                                             $stop_A[$sgm_idx+1] + $orig_mdllen,
+                                                                             $strand_A[$sgm_idx+1], $FH_HR));
+          $sgm_idx+=2;
+          while($sgm_idx < $nsgm) {
+            $before_3p_coords = vdr_CoordsAppendSegment($before_3p_coords, $sgm_coords_A[$sgm_idx]); 
+            $after_3p_coords  = vdr_CoordsAppendSegment($after_3p_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx] + $orig_mdllen,
+                                                                                                  $stop_A[$sgm_idx] + $orig_mdllen,
+                                                                                                  $strand_A[$sgm_idx], $FH_HR));
+            $passes_coords    = vdr_CoordsAppendSegment($passes_coords, $sgm_coords_A[$sgm_idx]); 
+            $sgm_idx++;
+          }
+        }
+        else {
+          $passes_coords = vdr_CoordsAppendSegment($passes_coords, $sgm_coords_A[$sgm_idx]);
+        }
+      }
+    }
+    if($spans_origin) {
+      # create 6 new features, including the original
+      for(my $i = 0; $i < 6; $i++) { 
+        %{$new_ftr_info_AHR->[$new_ftr_idx]} = ();
+        foreach $key (sort keys (%{$ftr_info_AHR->[$ftr_idx]})) {
+          $new_ftr_info_AHR->[$new_ftr_idx]{$key} = $ftr_info_AHR->[$ftr_idx]{$key};
+        }
+        $new_ftr_info_AHR->[$new_ftr_idx]{"circular_spanning_ftr_set"} = $spanning_set_idx;
+        if($i == 0) {
+          $new_ftr_info_AHR->[$new_ftr_idx]{"spans_origin"} = 1;
+        }
+        elsif($i == 1) {
+          $new_ftr_info_AHR->[$new_ftr_idx]{"coords"} = $passes_coords;
+        }
+        elsif($i == 2) {
+          $new_ftr_info_AHR->[$new_ftr_idx]{"coords"} = $before_5p_coords;
+          $new_ftr_info_AHR->[$new_ftr_idx]{"trunc3"} = 1;
+        }
+        elsif($i == 3) {
+          $new_ftr_info_AHR->[$new_ftr_idx]{"coords"} = $before_3p_coords;
+          $new_ftr_info_AHR->[$new_ftr_idx]{"trunc5"} = 1;
+          $new_ftr_info_AHR->[$new_ftr_idx]{"codon_start"} = vdr_FrameAdjust(1, vdr_CoordsLength($before_5p_coords, $FH_HR), $FH_HR)
+        }
+        elsif($i == 4) {
+          $new_ftr_info_AHR->[$new_ftr_idx]{"coords"} = $after_5p_coords;
+          $new_ftr_info_AHR->[$new_ftr_idx]{"trunc3"} = 1;
+        }
+        elsif($i == 5) {
+          $new_ftr_info_AHR->[$new_ftr_idx]{"coords"} = $after_3p_coords;
+          $new_ftr_info_AHR->[$new_ftr_idx]{"trunc5"} = 1;
+          $new_ftr_info_AHR->[$new_ftr_idx]{"codon_start"} = vdr_FrameAdjust(1, vdr_CoordsLength($after_5p_coords, $FH_HR), $FH_HR);
+        }
+        $new_ftr_idx++;
+      }
+      #printf("CIRCULAR feature " . $ftr_info_AHR->[$ftr_idx]{"coords"} . "\n");
+      #printf("CIRCULAR feature " . $passes_coords . "\n");
+      #printf("CIRCULAR feature " . $before_5p_coords . "\n");
+      #printf("CIRCULAR feature " . $before_3p_coords . "\n");
+      #printf("CIRCULAR feature " . $after_5p_coords . "\n");
+      #printf("CIRCULAR feature " . $after_3p_coords . "\n");
+      $spanning_set_idx++;
+    }
+    else {
+      # simply duplicate the feature but add $orig_mdllen to all coordinates
+      my $after_coords = "";
+      for(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) {
+        $after_coords = vdr_CoordsAppendSegment($after_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx] + $orig_mdllen, $stop_A[$sgm_idx] + $orig_mdllen, $strand_A[$sgm_idx], $FH_HR));
+      }
+      for(my $i = 0; $i < 2; $i++) { 
+        %{$new_ftr_info_AHR->[$new_ftr_idx]} = ();
+        $new_ftr_info_AHR->[$new_ftr_idx]{"circular_linear_ftr_set"} = $linear_set_idx;
+        foreach $key (sort keys (%{$ftr_info_AHR->[$ftr_idx]})) {
+          $new_ftr_info_AHR->[$new_ftr_idx]{$key} = $ftr_info_AHR->[$ftr_idx]{$key};
+        }
+        if($i == 1) {
+          $new_ftr_info_AHR->[$new_ftr_idx]{"coords"} = $after_coords;
+        }
+        $new_ftr_idx++;
+      }
+      $linear_set_idx++;
+    }
+  } # end of 'for(my $ftr_idx = 0; $ftr_idx < $nftr...'
+
+  printf("returning from in $sub_name()\n");
+  return;
+}
