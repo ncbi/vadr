@@ -5578,7 +5578,7 @@ sub add_frameshift_alerts_for_one_sequence {
                       my $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate(abs($shifted_span_mstart), abs($shifted_span_mstop), $ftr_strand, $FH_HR) . ";";
                       my $alt_scoords = "seq:" . $alt_scoords_tok . ";";
                       my $alt_str  = sprintf("%s%s", $alt_scoords, $alt_mcoords);
-                      $alt_str .= sprintf("cause:%s", $causative_indel_str);
+                      $alt_str .= sprintf("cause:%s", (defined $causative_indel_str) ? $causative_indel_str : "?");
                       if(defined $restorative_indel_str)  { $alt_str .= sprintf(" restore:%s", $restorative_indel_str); }
                       $alt_str .= sprintf(" frame:%s;", $frame_sum_str);
                       $alt_str .= sprintf(" length:%s;", $length_sum_str);
@@ -5617,7 +5617,7 @@ sub add_frameshift_alerts_for_one_sequence {
                         my $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate(abs($shifted_span_mstart), abs($shifted_span_mstop), $ftr_strand, $FH_HR) . ";";
                         my $alt_scoords = "seq:" . $alt_scoords_tok . ";";
                         my $alt_str  = sprintf("%s%s", $alt_scoords, $alt_mcoords);
-                        $alt_str .= sprintf("cause:%s", $causative_indel_str);
+                        $alt_str .= sprintf("cause:%s", (defined $causative_indel_str) ? $causative_indel_str : "?");
                         if(defined $restorative_indel_str)  { $alt_str .= sprintf(" restore:%s", $restorative_indel_str); }
                         $alt_str .= sprintf(" frame:%s;", $frame_sum_str);
                         $alt_str .= sprintf(" length:%s;", $length_sum_str);
@@ -11684,7 +11684,6 @@ sub helper_ftable_coords_from_nt_prediction {
     #$start_non_ab = undef; # TEMP
     #$stop_non_ab = undef;  # TEMP
     $spans_origin = 1;
-    printf("set spans_origin to $spans_origin\n");
   }
   
   return helper_ftable_start_stop_strand_arrays_to_coords(\@start_A, \@stop_A, \@strand_A, \@is_5trunc_A, \@is_3trunc_A, 
@@ -11837,7 +11836,6 @@ sub helper_ftable_start_stop_strand_arrays_to_coords {
     if($do_alternative_trimming) {
       $min_non_ab_A[$c] = $alt_min_non_ab;
       $max_non_ab_A[$c] = $alt_max_non_ab;
-      printf("alternative_trimming c: $c $min_non_ab_A[$c] $max_non_ab_A[$c]\n");
       if($ftr_strand eq "+") {
         if($stop_AR->[$c] == $seq_len) {
           ($alt_min_non_ab, $alt_max_non_ab) = (1, $df_min_non_ab);
