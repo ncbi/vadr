@@ -422,7 +422,6 @@ sub vdr_FeatureInfoImpute3paFtrIdx {
     $ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} = -1;
     if($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") { 
       $ftr_3p_pos = vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
-      $ftr_strand = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
       for($ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
         $ftr_5p_pos2 = vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
         $ftr_strand2 = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
@@ -5307,7 +5306,7 @@ sub vdr_CoordsMissing {
 # Synopsis: Check if coords value $coords1 completely spans
 #           $coords2. This occurs if every segment in $coords2
 #           is spanned completely by at least 1 segment in 
-#           $coords2.
+#           $coords1.
 # 
 # Arguments:
 #  $coords1: coordinate string 1
