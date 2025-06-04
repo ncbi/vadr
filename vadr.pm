@@ -347,7 +347,7 @@ sub vdr_FeatureInfoInitializeParentIndexStrings {
 # Arguments: 
 #   $ftr_info_AHR:  REF to array of hashes of feature info
 #
-# Returns:    Feature name string
+# Returns:    void
 #
 # Dies: Never, nothing is validated
 # 
@@ -357,20 +357,52 @@ sub vdr_FeatureInfoImputeOutname {
   my $nargs_expected = 1;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($ftr_info_AHR, $ftr_idx) = (@_);
+  my ($ftr_info_AHR) = (@_);
 
   my $nftr = scalar(@{$ftr_info_AHR}); 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if(defined $ftr_info_AHR->[$ftr_idx]{"product"}) { 
-      $ftr_info_AHR->[$ftr_idx]{"outname"} = $ftr_info_AHR->[$ftr_idx]{"product"}; 
-    }
-    elsif(defined $ftr_info_AHR->[$ftr_idx]{"gene"}) { 
-      $ftr_info_AHR->[$ftr_idx]{"outname"} = $ftr_info_AHR->[$ftr_idx]{"gene"}; 
-    }
-    else { 
-      $ftr_info_AHR->[$ftr_idx]{"outname"} = vdr_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".");
-    }
+    vdr_FeatureImputeOutname($ftr_info_AHR, $ftr_idx);
   }
+
+  return;
+}
+
+################################################################
+# Subroutine: vdr_FeatureImputeOutname()
+# Incept:     EPN, Wed Jun  4 10:26:53 2025
+#
+# Purpose:    Fill "outname" value for @{$ftr_info_AHR->[$ftr_idx]}
+#             This is defined as:
+#                  $ftr_info_AHR->[$ftr_idx]{"product"} if defined,
+#             else $ftr_info_AHR->[$ftr_idx]{"gene"} if defined,
+#             else string of type and type index (e.g. CDS.1)
+#
+# Arguments: 
+#   $ftr_info_AHR:  REF to array of hashes of feature info
+#   $ftr_idx:       index to fill
+#
+# Returns:    void
+#
+# Dies: Never, nothing is validated
+# 
+#################################################################
+sub vdr_FeatureImputeOutname { 
+  my $sub_name  = "vdr_FeatureImputeOutname";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($ftr_info_AHR, $ftr_idx) = (@_);
+
+  if(defined $ftr_info_AHR->[$ftr_idx]{"product"}) { 
+    $ftr_info_AHR->[$ftr_idx]{"outname"} = $ftr_info_AHR->[$ftr_idx]{"product"}; 
+  }
+  elsif(defined $ftr_info_AHR->[$ftr_idx]{"gene"}) { 
+    $ftr_info_AHR->[$ftr_idx]{"outname"} = $ftr_info_AHR->[$ftr_idx]{"gene"}; 
+  }
+  else { 
+    $ftr_info_AHR->[$ftr_idx]{"outname"} = vdr_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".");
+  }
+  printf("\tset ftr_info_AHR->[$ftr_idx]{outname} to " . $ftr_info_AHR->[$ftr_idx]{"outname"} . "\n");
 
   return;
 }
