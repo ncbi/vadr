@@ -1847,10 +1847,7 @@ sub create_circular_feature_sets {
       }
       else {
         # simply duplicate the feature but add $orig_mdllen to all coordinates
-        my $after_coords = "";
-        for(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) {
-          $after_coords = vdr_CoordsAppendSegment($after_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx] + $orig_mdllen, $stop_A[$sgm_idx] + $orig_mdllen, $strand_A[$sgm_idx], $FH_HR));
-        }
+        my $after_coords = vdr_CoordsAddConstant($orig_coords, $orig_mdllen, $FH_HR);"";
         for(my $i = 0; $i < 2; $i++) { 
           %{$new_ftr_info_AHR->[$new_ftr_idx]} = ();
           $new_ftr_info_AHR->[$new_ftr_idx]{"circular_linear_ftr_set"} = $linear_set_idx;
@@ -1872,7 +1869,6 @@ sub create_circular_feature_sets {
     } # end of 'if(! $i_am_child_A[$ftr_idx])'
   } # end of 'for(my $ftr_idx = 0; $ftr_idx < $nftr...'
 
-  printf("returning from in $sub_name()\n");
   return;
 }
 
@@ -1955,6 +1951,7 @@ sub add_children_for_circular_feature {
       for(my $orig_child_sgm_idx = 0; $orig_child_sgm_idx < $orig_child_nsgm; $orig_child_sgm_idx++) {
         if(($orig_child_sgm_idx < ($orig_child_nsgm-1)) &&
            (vdr_TwoCoordsSpanOrigin($orig_child_sgm_coords_A[$orig_child_sgm_idx], $orig_child_sgm_coords_A[$orig_child_sgm_idx+1], $orig_mdllen, $FH_HR))) {
+          # this segment spans the origin, update stop stop 
           $new_abs_child_coords = vdr_CoordsAppendSegment($new_abs_child_coords, vdr_CoordsSegmentCreate($orig_child_start_A[$orig_child_sgm_idx],
                                                                                                          ($orig_child_stop_A[$orig_child_sgm_idx] + $orig_child_stop_A[$orig_child_sgm_idx+1]),
                                                                                                          $orig_child_strand_A[$orig_child_sgm_idx], $FH_HR));
@@ -1964,7 +1961,7 @@ sub add_children_for_circular_feature {
         else {
           if((($orig_summary_strand eq "+") && ($orig_child_stop_A[$orig_child_sgm_idx]  < $new_ftr_minimum_coord)) ||
              (($orig_summary_strand eq "-") && ($orig_child_start_A[$orig_child_sgm_idx] < $new_ftr_minimum_coord))) { 
-            # entire child exists after origin, 
+            # entire child exists after origin
             $new_abs_child_coords = vdr_CoordsAppendSegment($new_abs_child_coords, vdr_CoordsSegmentCreate($orig_child_start_A[$orig_child_sgm_idx] + $orig_mdllen, 
                                                                                                            $orig_child_stop_A[$orig_child_sgm_idx] + $orig_mdllen, 
                                                                                                            $orig_child_strand_A[$orig_child_sgm_idx], $FH_HR));
@@ -1983,22 +1980,14 @@ sub add_children_for_circular_feature {
     }
     elsif($circ_ftr_type eq "after-linear") { 
       $add_child_flag = 1; 
-      for(my $orig_child_sgm_idx = 0; $orig_child_sgm_idx < $orig_child_nsgm; $orig_child_sgm_idx++) {
-        $new_abs_child_coords = vdr_CoordsAppendSegment($new_abs_child_coords, vdr_CoordsSegmentCreate($orig_child_start_A[$orig_child_sgm_idx] + $orig_mdllen,
-                                                                                                       ($orig_child_stop_A[$orig_child_sgm_idx] + $orig_mdllen,
-                                                                                                        $orig_child_strand_A[$orig_child_sgm_idx], $FH_HR)));
-
-      }
-      printf("HEYC after-linear new_abs_child_coords: $new_abs_child_coords\n");
+      $new_abs_child_coords = vdr_CoordsAddConstant($new_abs_child_coords, $orig_mdllen, $FH_HR);
     }
     elsif(($circ_ftr_type eq "before-5p") || ($circ_ftr_type eq "before-3p") ||
           ($circ_ftr_type eq "after-5p")  || ($circ_ftr_type eq "after-3p")) {
       # create new orig_ftr_coords, after the origin
       my $orig_ftr_coords = "";
       if(($circ_ftr_type eq "after-5p") || ($circ_ftr_type eq "after-3p")) {
-        for(my $orig_sgm_idx = 0; $orig_sgm_idx < $orig_nsgm; $orig_sgm_idx++) {
-          $orig_ftr_coords = vdr_CoordsAppendSegment($orig_ftr_coords, vdr_CoordsSegmentCreate($orig_start_A[$orig_sgm_idx] + $orig_mdllen, $orig_stop_A[$orig_sgm_idx] + $orig_mdllen, $orig_strand_A[$orig_sgm_idx], $FH_HR));
-        }
+        $orig_ftr_coords = vdr_CoordsAddConstant($orig_ftr_coords, $orig_mdllen, $FH_HR);
       }
       else {
         $orig_ftr_coords = $orig_ftr_info_AHR->[$orig_ftr_idx]{"coords"};
@@ -2060,18 +2049,7 @@ sub add_children_for_circular_feature {
       }
       printf("HEYB type:$circ_ftr_type adding new_abs_child_coords: $new_abs_child_coords\n");
       if(($circ_ftr_type eq "after-5p") || ($circ_ftr_type eq "after-3p")) { 
-        my @new_abs_child_start_A  = ();
-        my @new_abs_child_stop_A   = ();
-        my @new_abs_child_strand_A = ();
-        vdr_FeatureStartStopStrandArrays($new_abs_child_coords, \@new_abs_child_start_A, \@new_abs_child_stop_A, \@new_abs_child_strand_A, $FH_HR);
-        my $new_abs_child_nsgm = scalar(@new_abs_child_start_A);
-        $new_abs_child_coords = "";
-        for(my $new_abs_child_sgm_idx = 0; $new_abs_child_sgm_idx < $new_abs_child_nsgm; $new_abs_child_sgm_idx++) {
-          $new_abs_child_coords .= vdr_CoordsAppendSegment($new_abs_child_coords,
-                                                           vdr_CoordsSegmentCreate($new_abs_child_start_A[$new_abs_child_sgm_idx] + $orig_mdllen,
-                                                                                   $new_abs_child_stop_A[$new_abs_child_sgm_idx]  + $orig_mdllen,
-                                                                                   $new_abs_child_strand_A[$new_abs_child_sgm_idx], $FH_HR));
-        }
+        $new_abs_child_coords = vdr_CoordsAddConstant($new_abs_child_coords, $orig_mdllen, $FH_HR);
       }
       $new_ftr_info_AHR->[($new_ftr_idx+$child_idx+1)]{"coords"} = $new_abs_child_coords;
       $new_ftr_info_AHR->[($new_ftr_idx+$child_idx+1)]{"parent_idx_str"} = $new_ftr_idx;

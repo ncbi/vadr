@@ -121,9 +121,8 @@ require "sqp_utils.pm";
 # vdr_FeaturePassesOrigin()
 # vdr_FeatureIs5pTruncated()
 # vdr_FeatureIs3pTruncated()
-# vdr_FeatureBeforeOrigin()
-# vdr_FeatureAfterOrigin()
-#
+# vdr_FeatureImputeOutname()
+# 
 # vdr_SegmentStartIdenticalToCds()
 # vdr_SegmentStopIdenticalToCds()
 #
@@ -178,6 +177,7 @@ require "sqp_utils.pm";
 # vdr_CoordsFromStartStopStrandArrays()
 # vdr_CoordsSegmentActualToFractional()
 # vdr_CoordsSegmentFractionalToActual()
+# vdr_CoordsAddConstant()
 #
 # Subroutines related to eutils:
 # vdr_EutilsFetchToFile()
@@ -367,46 +367,6 @@ sub vdr_FeatureInfoImputeOutname {
   return;
 }
 
-################################################################
-# Subroutine: vdr_FeatureImputeOutname()
-# Incept:     EPN, Wed Jun  4 10:26:53 2025
-#
-# Purpose:    Fill "outname" value for @{$ftr_info_AHR->[$ftr_idx]}
-#             This is defined as:
-#                  $ftr_info_AHR->[$ftr_idx]{"product"} if defined,
-#             else $ftr_info_AHR->[$ftr_idx]{"gene"} if defined,
-#             else string of type and type index (e.g. CDS.1)
-#
-# Arguments: 
-#   $ftr_info_AHR:  REF to array of hashes of feature info
-#   $ftr_idx:       index to fill
-#
-# Returns:    void
-#
-# Dies: Never, nothing is validated
-# 
-#################################################################
-sub vdr_FeatureImputeOutname { 
-  my $sub_name  = "vdr_FeatureImputeOutname";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  
-  my ($ftr_info_AHR, $ftr_idx) = (@_);
-
-  if(defined $ftr_info_AHR->[$ftr_idx]{"product"}) { 
-    $ftr_info_AHR->[$ftr_idx]{"outname"} = $ftr_info_AHR->[$ftr_idx]{"product"}; 
-  }
-  elsif(defined $ftr_info_AHR->[$ftr_idx]{"gene"}) { 
-    $ftr_info_AHR->[$ftr_idx]{"outname"} = $ftr_info_AHR->[$ftr_idx]{"gene"}; 
-  }
-  else { 
-    $ftr_info_AHR->[$ftr_idx]{"outname"} = vdr_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".");
-  }
-  printf("\tset ftr_info_AHR->[$ftr_idx]{outname} to " . $ftr_info_AHR->[$ftr_idx]{"outname"} . "\n");
-
-  return;
-}
-
 #################################################################
 # Subroutine: vdr_FeatureInfoImpute3paFtrIdx
 # Incept:     EPN, Wed Mar 13 13:39:34 2019
@@ -452,6 +412,7 @@ sub vdr_FeatureInfoImpute3paFtrIdx {
   my $found_adj = 0;
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     $ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} = -1;
+    $ftr_strand = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
     if($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") { 
       $ftr_3p_pos = vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
       for($ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
@@ -3101,30 +3062,43 @@ sub vdr_FeatureIs3pTruncated {
   return ((defined $ftr_info_AHR->[$ftr_idx]{"trunc3"}) && $ftr_info_AHR->[$ftr_idx]{"trunc3"} == 1) ? 1 : 0;
 }
 
-#################################################################
-# Subroutine: vdr_FeatureBeforeOrigin
-# Incept:     EPN, Fri May 16 15:16:17 2025
-# 
-# Purpose:    Return "1" if "before_origin" is defined and "1"
-#             else return "0"
-# 
-# Arguments:
-#   $ftr_info_AHR:  REF to feature information, added to here
-#   $ftr_idx:       feature index
+################################################################
+# Subroutine: vdr_FeatureImputeOutname()
+# Incept:     EPN, Wed Jun  4 10:26:53 2025
+#
+# Purpose:    Fill "outname" value for @{$ftr_info_AHR->[$ftr_idx]}
+#             This is defined as:
+#                  $ftr_info_AHR->[$ftr_idx]{"product"} if defined,
+#             else $ftr_info_AHR->[$ftr_idx]{"gene"} if defined,
+#             else string of type and type index (e.g. CDS.1)
+#
+# Arguments: 
+#   $ftr_info_AHR:  REF to array of hashes of feature info
+#   $ftr_idx:       index to fill
 #
 # Returns:    void
-# 
-# Dies:       Never
 #
+# Dies: Never, nothing is validated
+# 
 #################################################################
-sub vdr_FeatureIsBeforeOrigin {
-  my $sub_name = "vdr_FeatureIsBeforeOrigin";
+sub vdr_FeatureImputeOutname { 
+  my $sub_name  = "vdr_FeatureImputeOutname";
   my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($ftr_info_AHR, $ftr_idx) = @_;
-  
-  return ((defined $ftr_info_AHR->[$ftr_idx]{"is_3trunc"}) && $ftr_info_AHR->[$ftr_idx]{"is_3trunc"} == 1) ? 1 : 0;
+  my ($ftr_info_AHR, $ftr_idx) = (@_);
+
+  if(defined $ftr_info_AHR->[$ftr_idx]{"product"}) { 
+    $ftr_info_AHR->[$ftr_idx]{"outname"} = $ftr_info_AHR->[$ftr_idx]{"product"}; 
+  }
+  elsif(defined $ftr_info_AHR->[$ftr_idx]{"gene"}) { 
+    $ftr_info_AHR->[$ftr_idx]{"outname"} = $ftr_info_AHR->[$ftr_idx]{"gene"}; 
+  }
+  else { 
+    $ftr_info_AHR->[$ftr_idx]{"outname"} = vdr_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".");
+  }
+
+  return;
 }
 
 #################################################################
@@ -6127,6 +6101,44 @@ sub vdr_CoordsSegmentFractionalToActual {
 
   # printf("in $sub_name returning $ret_start..$ret_stop:$full_strand\n");
   return($ret_start, $ret_stop, $full_strand);
+}
+
+#################################################################
+# Subroutine: vdr_CoordsAddConstant
+# Incept:     EPN, Thu Jun  5 09:53:42 2025
+#
+# Purpose:    Given a coords string, add a constant to all positions.
+#
+# Arguments:
+#  $coords:   coordinates of full region (1 segment)
+#  $constant: constant to add
+#  $FH_HR:    ref to hash of file handles
+#
+# Returns:  void
+#
+# Dies: If $coords is not parseable
+#################################################################
+sub vdr_CoordsAddConstant { 
+  my $sub_name = "vdr_CoordsAddConstant";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($coords, $constant, $FH_HR) = (@_);
+
+  my $new_coords = "";
+  my @start_A  = ();
+  my @stop_A   = ();
+  my @strand_A = ();
+  vdr_FeatureStartStopStrandArrays($coords, \@start_A, \@stop_A, \@strand_A, $FH_HR);
+  my $nsgm = scalar(@start_A);
+  for(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) {
+    $new_coords .= vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx] + $constant, 
+                                                                                $stop_A[$sgm_idx]  + $constant,
+                                                                                $strand_A[$sgm_idx], $FH_HR));
+
+  }
+
+  return $new_coords;
 }
 
 #################################################################
