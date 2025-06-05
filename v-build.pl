@@ -500,8 +500,10 @@ if($do_circular) {
   
   create_circular_feature_sets(\@{$ftr_info_HAH{$mdl_name}}, $orig_mdllen, \@new_ftr_info_AH, \%opt_HH, $FH_HR);
   @{$ftr_info_HAH{$mdl_name}} = ();
-  @{$ftr_info_HAH{$mdl_name}} = @new_ftr_info_AH;
+  @{$ftr_info_HAH{$mdl_name}} = (@new_ftr_info_AH);
 
+  printf("HEY0 nftr: " . scalar(@{$ftr_info_HAH{$mdl_name}}) . "\n");
+  
   # revert the parent values back, so they can be integerized again later
   # after all pruning is done
   vdr_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
@@ -745,6 +747,7 @@ printf("HEYA2\n");
 # fetch_and_parse_cds_protein_feature_tables to integers, now that all
 # feature pruning is complete
 printf("HEYA3\n");
+vdr_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
 integerize_parent_index_strings(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 printf("HEYA4\n");
 
@@ -1251,6 +1254,7 @@ sub integerize_parent_index_strings {
   my ($ftr_info_AHR, $FH_HR) = @_;
 
   my $nftr = scalar(@{$ftr_info_AHR});
+  printf(" in $sub_name, nftr: $nftr\n");
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if((defined $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"}) && 
        ($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} ne "GBNULL")) { 
@@ -1262,19 +1266,25 @@ sub integerize_parent_index_strings {
           ofile_FAIL("ERROR in $sub_name, unable to parse temporary parent_idx_str $parent_type_coords_str\n", 1, $FH_HR);
         }
         my ($parent_type, $parent_coords, $parent_outname) = ($el_A[0], $el_A[1], $el_A[2]);
+        printf("checking for $parent_type $parent_coords $parent_outname\n");
         my $parent_ftr_idx = undef;
         # find parent idx in ftr_info_AHR, if it exists
         for(my $ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
           if($ftr_idx2 ne $ftr_idx) { # a feature can't be the parent of itself
             my $outname2 = (defined $ftr_info_AHR->[$ftr_idx2]{"outname"}) ?
                 $ftr_info_AHR->[$ftr_idx2]{"outname"} : "undef";
+            printf("\tchecking ftr_idx: $ftr_idx2 " . $ftr_info_AHR->[$ftr_idx2]{"type"} . " " . $ftr_info_AHR->[$ftr_idx2]{"coords"} . " " . $outname2 . "\n");
             if(($ftr_info_AHR->[$ftr_idx2]{"type"}   eq $parent_type) && 
                ($ftr_info_AHR->[$ftr_idx2]{"coords"} eq $parent_coords) && 
                ($outname2                            eq $parent_outname)) { 
+              printf("\t\tmatch!\n");
               if(defined $parent_ftr_idx) { 
                 ofile_FAIL("ERROR in $sub_name, found two features that qualify as parents of feature $ftr_idx with type $parent_type coords $parent_coords outname: $parent_outname: $parent_ftr_idx and $ftr_idx2", 1, $FH_HR);
               }
               $parent_ftr_idx = $ftr_idx2;
+            }
+            else {
+              printf("\t\tmistmatch\n");
             }
           }
         }
@@ -2114,6 +2124,7 @@ sub stringize_parent_index_strings {
       }
       $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} =
           create_parent_index_string($ftr_info_AHR, $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"});
+      printf("in $sub_name, set ftr_info_AHR->[$ftr_idx]{parent_idx_str} to " . $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} . "\n");
     }
   }
 

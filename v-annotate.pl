@@ -1147,13 +1147,8 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   vdr_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
   vdr_FeatureInfoInitializeMiscNotFailure(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--ignore_mnf", \%opt_HH), $FH_HR);
   vdr_FeatureInfoInitializeIsDeletable(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--ignore_isdel", \%opt_HH), $FH_HR);
-  vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, "alternative", opt_Get("--ignore_afset", \%opt_HH), $FH_HR);
-  vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, "alternative", (opt_Get("--ignore_afset", \%opt_HH) || opt_Get("--ignore_afsetsubn", \%opt_HH)), $FH_HR);
-  if(vdr_ModelInfoIsCircular(\%{$mdl_info_AH[$mdl_idx]}, $FH_HR)) {
-    vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, "circular", opt_Get("--ignore_cfset", \%opt_HH), $FH_HR);
-    vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, "circular_spanning", opt_Get("--ignore_cfset", \%opt_HH), $FH_HR);
-    vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, "circular_linear", opt_Get("--ignore_cfset", \%opt_HH), $FH_HR);
-  }
+  vdr_FeatureInfoInitializeAlternativeFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--ignore_afset", \%opt_HH), $FH_HR);
+  vdr_FeatureInfoInitializeAlternativeFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, (opt_Get("--ignore_afset", \%opt_HH) || opt_Get("--ignore_afsetsubn", \%opt_HH)), $FH_HR);
   vdr_FeatureInfoInitializeCanonSpliceSites(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--force_canonss", \%opt_HH), opt_Get("--ignore_canonss", \%opt_HH), $FH_HR);
   vdr_FeatureInfoValidateMiscNotFailure(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoValidateIsDeletable(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
@@ -2171,7 +2166,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       # this will remove features in alternative_ftr_sets that are not picked *and* their children
       if(($has_circulars) && (! opt_Get("--ignore_cfset", \%opt_HH))) { 
         pick_features_for_circular_genomes(\@{$mdl_seq_name_HA{$mdl_name}}, $mdl_len, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
-                                           \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH,
+                                           \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, \@children_AA, 
                                            \%opt_HH, \%{$ofile_info_HH{"FH"}});
       }
       if($has_alternatives) { 
@@ -14806,6 +14801,12 @@ sub pick_features_from_all_alternatives {
 #             be removed and remove them. For those kept, potentially
 #             merge some pairs of them together.
 #
+#             For any features that we remove, we also remove all of
+#             its children. We don't have to worry about removing
+#             children that are themselves in a circular_spanning_ftr_set
+#             or circular_linear_ftr_set because children are not
+#             allowed to be 
+#
 #             This subroutine does not need to be called for children
 #             because features in a 'circular_ftr_set' cannot have
 #             children. 
@@ -14817,6 +14818,7 @@ sub pick_features_from_all_alternatives {
 #  $alt_info_HHR:            REF to array of hashes with information on the alerts, PRE-FILLED
 #  $ftr_results_HAHR:        REF to feature results HAH, PRE-FILLED
 #  $alt_ftr_instances_HHHR:  REF to array of 2D hashes with per-feature alerts, PRE-FILLED
+#  $children_AAR:            REF to array of arrays of children feature indices, FILLED HERE, can be undef, PRE-FILLED
 #  $opt_HHR:                 REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $FH_HR:                   REF to hash of file handles, including 'log'
 #             
@@ -14827,11 +14829,11 @@ sub pick_features_from_all_alternatives {
 #################################################################
 sub pick_features_for_circular_genomes { 
   my $sub_name = "pick_features_for_circular_genomes";
-  my $nargs_exp = 8;
+  my $nargs_exp = 9;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($seq_name_AR, $mdl_len, $ftr_info_AHR, $alt_info_HHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, 
-      $opt_HHR, $FH_HR) = @_;
+      $children_AAR, $opt_HHR, $FH_HR) = @_;
 
   my $nseq = scalar(@{$seq_name_AR});
   my $nftr = scalar(@{$ftr_info_AHR});
@@ -15018,12 +15020,23 @@ sub pick_features_for_circular_genomes {
                 undef $alt_ftr_instances_HHHR->{$seq_name}{$merge_ftr_idx_A[1]};
               }
             }
+            # remove features
             if(scalar(@to_remove_idx_A) > 0) {
               foreach my $ftr_idx2 (@to_remove_idx_A) { 
                 %{$ftr_results_HAHR->{$seq_name}[$ftr_idx2]} = ();
                 %{$alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx2}} = ();
                 undef $ftr_results_HAHR->{$seq_name}[$ftr_idx2];
                 undef $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx2};
+                my $nchildren = scalar(@{$children_AAR->[$ftr_idx2]}); 
+                # nchildren will always be '0' if $only_children_flag is '1' because 
+                # children can't have children, enforced in vdr_FeatureInfoValidateParentIndexStrings()
+                for(my $child_idx = 0; $child_idx < $nchildren; $child_idx++) { 
+                  my $child_ftr_idx = $children_AAR->[$ftr_idx2][$child_idx];
+                  %{$ftr_results_HAHR->{$seq_name}[$child_ftr_idx]} = ();
+                  %{$alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}} = ();
+                  undef $ftr_results_HAHR->{$seq_name}[$child_ftr_idx];
+                  undef $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx};
+                }
               }
             }
             $sets_completed_H{$set} = 1;
