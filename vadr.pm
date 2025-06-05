@@ -121,9 +121,8 @@ require "sqp_utils.pm";
 # vdr_FeaturePassesOrigin()
 # vdr_FeatureIs5pTruncated()
 # vdr_FeatureIs3pTruncated()
-# vdr_FeatureBeforeOrigin()
-# vdr_FeatureAfterOrigin()
-#
+# vdr_FeatureImputeOutname()
+# 
 # vdr_SegmentStartIdenticalToCds()
 # vdr_SegmentStopIdenticalToCds()
 #
@@ -178,6 +177,7 @@ require "sqp_utils.pm";
 # vdr_CoordsFromStartStopStrandArrays()
 # vdr_CoordsSegmentActualToFractional()
 # vdr_CoordsSegmentFractionalToActual()
+# vdr_CoordsAddConstant()
 #
 # Subroutines related to eutils:
 # vdr_EutilsFetchToFile()
@@ -347,7 +347,7 @@ sub vdr_FeatureInfoInitializeParentIndexStrings {
 # Arguments: 
 #   $ftr_info_AHR:  REF to array of hashes of feature info
 #
-# Returns:    Feature name string
+# Returns:    void
 #
 # Dies: Never, nothing is validated
 # 
@@ -357,19 +357,11 @@ sub vdr_FeatureInfoImputeOutname {
   my $nargs_expected = 1;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($ftr_info_AHR, $ftr_idx) = (@_);
+  my ($ftr_info_AHR) = (@_);
 
   my $nftr = scalar(@{$ftr_info_AHR}); 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if(defined $ftr_info_AHR->[$ftr_idx]{"product"}) { 
-      $ftr_info_AHR->[$ftr_idx]{"outname"} = $ftr_info_AHR->[$ftr_idx]{"product"}; 
-    }
-    elsif(defined $ftr_info_AHR->[$ftr_idx]{"gene"}) { 
-      $ftr_info_AHR->[$ftr_idx]{"outname"} = $ftr_info_AHR->[$ftr_idx]{"gene"}; 
-    }
-    else { 
-      $ftr_info_AHR->[$ftr_idx]{"outname"} = vdr_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".");
-    }
+    vdr_FeatureImputeOutname($ftr_info_AHR, $ftr_idx);
   }
 
   return;
@@ -420,9 +412,9 @@ sub vdr_FeatureInfoImpute3paFtrIdx {
   my $found_adj = 0;
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     $ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} = -1;
+    $ftr_strand = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
     if($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") { 
       $ftr_3p_pos = vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
-      $ftr_strand = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
       for($ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
         $ftr_5p_pos2 = vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
         $ftr_strand2 = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
@@ -626,7 +618,6 @@ sub vdr_FeatureInfoInitializeIsDeletable {
 # 
 # Arguments:
 #   $ftr_info_AHR:  REF to feature information, added to here
-#   $choice:        "alternative" or "circular"
 #   $force_empty:   '1' to set values to "" for all features, even if already defined
 #   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
 #
@@ -635,19 +626,17 @@ sub vdr_FeatureInfoInitializeIsDeletable {
 # Dies:       never
 #
 #################################################################
-sub vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSet {
-  my $sub_name = "vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSet";
-  my $nargs_expected = 4;
+sub vdr_FeatureInfoInitializeAlternativeFeatureSet {
+  my $sub_name = "vdr_FeatureInfoInitializeAlternativeFeatureSet";
+  my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
-  my ($ftr_info_AHR, $choice, $force_empty, $FH_HR) = @_;
+  my ($ftr_info_AHR, $force_empty, $FH_HR) = @_;
 
-  my $chosen_key = ($choice eq "circular") ? "circular_ftr_set" : "alternative_ftr_set";
-  
   my $nftr = scalar(@{$ftr_info_AHR});
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if(($force_empty) || (! defined $ftr_info_AHR->[$ftr_idx]{$chosen_key})) { 
-      $ftr_info_AHR->[$ftr_idx]{$chosen_key} = "";
+    if(($force_empty) || (! defined $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set"})) { 
+      $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set"} = "";
     }
   }
 
@@ -655,7 +644,7 @@ sub vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSet {
 }
 
 #################################################################
-# Subroutine: vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSetSubstitution
+# Subroutine: vdr_FeatureInfoInitializeAlternativeFeatureSetSubstitution
 # Incept:     EPN, Thu Oct 14 21:22:20 2021
 # 
 # Purpose:    Set "alternative_ftr_set_subn" or "circular_ftr_set_subn"
@@ -675,19 +664,17 @@ sub vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSet {
 # Dies:       never
 #
 #################################################################
-sub vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSetSubstitution {
-  my $sub_name = "vdr_FeatureInfoInitializeAlternativeOrCircularFeatureSetSubstitution";
-  my $nargs_expected = 4;
+sub vdr_FeatureInfoInitializeAlternativeFeatureSetSubstitution {
+  my $sub_name = "vdr_FeatureInfoInitializeAlternativeFeatureSetSubstitution";
+  my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
-  my ($ftr_info_AHR, $choice, $force_empty, $FH_HR) = @_;
-
-  my $chosen_key = ($choice eq "circular") ? "circular_ftr_set_subn" : "alternative_ftr_set_subn";
+  my ($ftr_info_AHR, $force_empty, $FH_HR) = @_;
 
   my $nftr = scalar(@{$ftr_info_AHR});
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if(($force_empty) || (! defined $ftr_info_AHR->[$ftr_idx]{$chosen_key})) { 
-      $ftr_info_AHR->[$ftr_idx]{$chosen_key} = "";
+    if(($force_empty) || (! defined $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set_subn"})) { 
+      $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set_subn"} = "";
     }
   }
 
@@ -1594,7 +1581,8 @@ sub vdr_FeatureInfoMaxNumCdsSegments {
 # 
 # Purpose:    Validate all circular features sets, of types
 #             'circular_spanning_set' and 'circular_linear_set'.
-#  
+#      
+# 
 # Arguments:
 #   $ftr_info_AHR:  REF to feature information, added to here
 #   $circ_len:      length of the circular model
@@ -1603,6 +1591,8 @@ sub vdr_FeatureInfoMaxNumCdsSegments {
 # Returns:    void
 # 
 # Dies:       If a set is invalid
+#             If any child is in a circular_spanning_ftr_set or
+#             circular_linear_ftr_set.
 #
 #################################################################
 sub vdr_FeatureInfoValidateAllCircularFeatureSets {
@@ -1612,11 +1602,18 @@ sub vdr_FeatureInfoValidateAllCircularFeatureSets {
   
   my ($ftr_info_AHR, $circ_len, $FH_HR) = @_;
 
+  # get i_am_child_A so we can make sure no child is in a set
+  my @i_am_child_A;
+  vdr_FeatureInfoChildrenArrayOfArrays($ftr_info_AHR, undef, \@i_am_child_A, undef, $FH_HR);
+  
   my %sets_completed_H = (); # key is a set name, value is 1 if we've already validated this set
   
   my $nftr = scalar(@{$ftr_info_AHR});
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
     my ($set, $set_type) = vdr_FeatureCircularSetValue($ftr_info_AHR, $ftr_idx, $FH_HR); # will fail if both "circular_spanning_ftr_set" and "circular_linear_ftr_set" are 1
+    if((defined $set_type) && ($i_am_child_A[$ftr_idx])) {
+      ofile_FAIL("ERROR in $sub_name, ftr idx $ftr_idx is a child of another feature but is also in a circular_spanning_ftr_set or circular_linear_ftr_set, this is not allowed.", 1, $FH_HR);
+    }
     if((defined $set_type) && (defined $set) && (! defined $sets_completed_H{$set})) { 
       if($set_type eq "circular_spanning_ftr_set") {
         vdr_FeatureInfoValidateCircularSpanningFeatureSet($ftr_info_AHR, $set, $circ_len, $FH_HR);
@@ -3065,30 +3062,43 @@ sub vdr_FeatureIs3pTruncated {
   return ((defined $ftr_info_AHR->[$ftr_idx]{"trunc3"}) && $ftr_info_AHR->[$ftr_idx]{"trunc3"} == 1) ? 1 : 0;
 }
 
-#################################################################
-# Subroutine: vdr_FeatureBeforeOrigin
-# Incept:     EPN, Fri May 16 15:16:17 2025
-# 
-# Purpose:    Return "1" if "before_origin" is defined and "1"
-#             else return "0"
-# 
-# Arguments:
-#   $ftr_info_AHR:  REF to feature information, added to here
-#   $ftr_idx:       feature index
+################################################################
+# Subroutine: vdr_FeatureImputeOutname()
+# Incept:     EPN, Wed Jun  4 10:26:53 2025
+#
+# Purpose:    Fill "outname" value for @{$ftr_info_AHR->[$ftr_idx]}
+#             This is defined as:
+#                  $ftr_info_AHR->[$ftr_idx]{"product"} if defined,
+#             else $ftr_info_AHR->[$ftr_idx]{"gene"} if defined,
+#             else string of type and type index (e.g. CDS.1)
+#
+# Arguments: 
+#   $ftr_info_AHR:  REF to array of hashes of feature info
+#   $ftr_idx:       index to fill
 #
 # Returns:    void
-# 
-# Dies:       Never
 #
+# Dies: Never, nothing is validated
+# 
 #################################################################
-sub vdr_FeatureIsBeforeOrigin {
-  my $sub_name = "vdr_FeatureIsBeforeOrigin";
+sub vdr_FeatureImputeOutname { 
+  my $sub_name  = "vdr_FeatureImputeOutname";
   my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($ftr_info_AHR, $ftr_idx) = @_;
-  
-  return ((defined $ftr_info_AHR->[$ftr_idx]{"is_3trunc"}) && $ftr_info_AHR->[$ftr_idx]{"is_3trunc"} == 1) ? 1 : 0;
+  my ($ftr_info_AHR, $ftr_idx) = (@_);
+
+  if(defined $ftr_info_AHR->[$ftr_idx]{"product"}) { 
+    $ftr_info_AHR->[$ftr_idx]{"outname"} = $ftr_info_AHR->[$ftr_idx]{"product"}; 
+  }
+  elsif(defined $ftr_info_AHR->[$ftr_idx]{"gene"}) { 
+    $ftr_info_AHR->[$ftr_idx]{"outname"} = $ftr_info_AHR->[$ftr_idx]{"gene"}; 
+  }
+  else { 
+    $ftr_info_AHR->[$ftr_idx]{"outname"} = vdr_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".");
+  }
+
+  return;
 }
 
 #################################################################
@@ -5307,7 +5317,7 @@ sub vdr_CoordsMissing {
 # Synopsis: Check if coords value $coords1 completely spans
 #           $coords2. This occurs if every segment in $coords2
 #           is spanned completely by at least 1 segment in 
-#           $coords2.
+#           $coords1.
 # 
 # Arguments:
 #  $coords1: coordinate string 1
@@ -6091,6 +6101,44 @@ sub vdr_CoordsSegmentFractionalToActual {
 
   # printf("in $sub_name returning $ret_start..$ret_stop:$full_strand\n");
   return($ret_start, $ret_stop, $full_strand);
+}
+
+#################################################################
+# Subroutine: vdr_CoordsAddConstant
+# Incept:     EPN, Thu Jun  5 09:53:42 2025
+#
+# Purpose:    Given a coords string, add a constant to all positions.
+#
+# Arguments:
+#  $coords:   coordinates of full region (1 segment)
+#  $constant: constant to add
+#  $FH_HR:    ref to hash of file handles
+#
+# Returns:  void
+#
+# Dies: If $coords is not parseable
+#################################################################
+sub vdr_CoordsAddConstant { 
+  my $sub_name = "vdr_CoordsAddConstant";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($coords, $constant, $FH_HR) = (@_);
+
+  my $new_coords = "";
+  my @start_A  = ();
+  my @stop_A   = ();
+  my @strand_A = ();
+  vdr_FeatureStartStopStrandArrays($coords, \@start_A, \@stop_A, \@strand_A, $FH_HR);
+  my $nsgm = scalar(@start_A);
+  for(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) {
+    $new_coords .= vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx] + $constant, 
+                                                                                $stop_A[$sgm_idx]  + $constant,
+                                                                                $strand_A[$sgm_idx], $FH_HR));
+
+  }
+
+  return $new_coords;
 }
 
 #################################################################
