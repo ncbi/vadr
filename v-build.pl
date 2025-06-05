@@ -1443,260 +1443,6 @@ sub check_and_add_cds_splice_sites {
 }
 
 #################################################################
-# Subroutine: modify_coords_for_circular_genomes
-# Incept:     EPN, Thu Mar 27 10:43:31 2025
-# 
-# Purpose:    Given feature information for a circular genome,
-#             modify the coords so they do not cross the origin.
-# 
-# Arguments:
-#   $ftr_info_AHR:  REF to feature information, changed and added to here
-#   $orig_mdllen:   length of the model before it was doubled
-#   $opt_HHR:       REF to 2D hash of option values, see top of sqp_opts.pm for description, PRE-FILLED
-#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void
-# 
-# Dies:       if $ftr_info_AHR is invalid upon entry
-#
-#################################################################
-sub modify_coords_for_circular_genomes { 
-  my $sub_name = "modify_coords_for_circular_genomes";
-  my $nargs_expected = 4;
-  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
- 
-  my ($ftr_info_AHR, $orig_mdllen, $opt_HHR, $FH_HR) = @_;
-
-  # new ftr_info_AHR for new features we add here
-  my @new_ftr_info_AH = ();
-  
-  # precompute start, stop, strand, for all features, so we don't have to redo this for each seq
-  my @sgm_start_AA  = ();
-  my @sgm_stop_AA   = ();
-  my @sgm_strand_AA = ();
-  vdr_FeatureInfoStartStopStrandArrays($ftr_info_AHR, \@sgm_start_AA, \@sgm_stop_AA, \@sgm_strand_AA, $FH_HR);
-
-  my $nftr = scalar(@{$ftr_info_AHR});
-
-  my ($nsgm, $next_sgm_idx, $strand);
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    $nsgm = scalar(@{$sgm_start_AA[$ftr_idx]});
-    my $new_coords = "";
-    my $new_5p_coords = "";
-    my $new_3p_coords = "";
-    my $modified_coords_flag = 0;
-    if($nsgm == 1) {
-      $new_coords = $ftr_info_AHR->[$ftr_idx]{"coords"};
-    }
-    else {  # potentially combine segments that cross the origin
-      my $crossed_origin = 0; 
-      my $combined_sgm_flag = 0; # set to '1' if we combine two segments, so we know not to add next one (because it is part of the combo)
-      for(my $sgm_idx = 0; $sgm_idx < ($nsgm-1); $sgm_idx++) {
-        if(($sgm_strand_AA[$ftr_idx][$sgm_idx]     eq "+") &&
-           ($sgm_strand_AA[$ftr_idx][($sgm_idx+1)] eq "+")) { 
-          # + strand case (both sgms are +)
-          if(($sgm_stop_AA[$ftr_idx][$sgm_idx]      == $orig_mdllen) &&
-             ($sgm_start_AA[$ftr_idx][($sgm_idx+1)] == 1)) {
-            if($crossed_origin) {
-              ofile_FAIL("ERROR, in $sub_name, feature $ftr_idx with coords " . $ftr_info_AHR->[$ftr_idx]{"coords"} . " crosses origin ($orig_mdllen) more than once");
-            }
-            # combine segments together
-            printf("HEYA collapsing ftr_idx: %d with coords: %s, segments %d (%d..%d) and %d (%d..%d) into single segment (%d..%d)\n",
-                   $ftr_idx, 
-                   $ftr_info_AHR->[$ftr_idx]{"coords"},
-                   $sgm_idx+1, $sgm_start_AA[$ftr_idx][$sgm_idx],   $sgm_stop_AA[$ftr_idx][$sgm_idx], 
-                   $sgm_idx+2, $sgm_start_AA[$ftr_idx][$sgm_idx+1], $sgm_stop_AA[$ftr_idx][$sgm_idx+1],
-                   $sgm_start_AA[$ftr_idx][$sgm_idx], ($sgm_stop_AA[$ftr_idx][$sgm_idx+1]+$orig_mdllen));
-            $new_coords    .= vdr_CoordsSegmentCreate($sgm_start_AA[$ftr_idx][$sgm_idx],  ($sgm_stop_AA[$ftr_idx][$sgm_idx+1]+$orig_mdllen), "+", $FH_HR);
-            $new_5p_coords .= vdr_CoordsSegmentCreate($sgm_start_AA[$ftr_idx][$sgm_idx],   $sgm_stop_AA[$ftr_idx][$sgm_idx],   "+", $FH_HR);
-            $new_3p_coords .= vdr_CoordsSegmentCreate($sgm_start_AA[$ftr_idx][$sgm_idx+1], $sgm_stop_AA[$ftr_idx][$sgm_idx+1], "+", $FH_HR);
-            $crossed_origin = 1;
-            $combined_sgm_flag = 1;
-            $modified_coords_flag = 1;
-          } 
-          else { # the two segments do not cross origin, add current segment
-            if(! $combined_sgm_flag) {
-              $new_coords    .= vdr_CoordsSegmentCreate($sgm_start_AA[$ftr_idx][$sgm_idx],   $sgm_stop_AA[$ftr_idx][$sgm_idx], "+", $FH_HR);
-              $new_5p_coords .= vdr_CoordsSegmentCreate($sgm_start_AA[$ftr_idx][$sgm_idx],   $sgm_stop_AA[$ftr_idx][$sgm_idx],  "+", $FH_HR);
-              $new_3p_coords .= vdr_CoordsSegmentCreate($sgm_start_AA[$ftr_idx][$sgm_idx+1], $sgm_stop_AA[$ftr_idx][$sgm_idx+1], "+", $FH_HR);
-            }
-            $combined_sgm_flag = 0;
-          }
-        } # end of "+" strand case
-        elsif(($sgm_strand_AA[$ftr_idx][$sgm_idx]     eq "-") &&
-              ($sgm_strand_AA[$ftr_idx][($sgm_idx+1)] eq "-")) {
-          # - strand case (both sgms are -)
-          if(($sgm_stop_AA[$ftr_idx][$sgm_idx]      == 1) && 
-             ($sgm_start_AA[$ftr_idx][($sgm_idx+1)] == $orig_mdllen)) {
-            if($crossed_origin) {
-              ofile_FAIL("ERROR, in $sub_name, feature $ftr_idx with coords " . $ftr_info_AHR->[$ftr_idx]{"coords"} . " crosses origin ($orig_mdllen) more than once");
-            }
-            # collapse segments together
-            #printf("collapsing ftr_idx: %d with coords: %s, segments %d (%d..%d) and %d (%d..%d) into single segment (%d..%d)\n",
-            #       $ftr_idx, 
-            #       $ftr_info_AHR->[$ftr_idx]{"coords"},
-            #       $sgm_idx+1, $sgm_start_AA[$ftr_idx][$sgm_idx],   $sgm_stop_AA[$ftr_idx][$sgm_idx], 
-            #       $sgm_idx+2, $sgm_start_AA[$ftr_idx][$sgm_idx+1], $sgm_stop_AA[$ftr_idx][$sgm_idx+1],
-            #       ($sgm_start_AA[$ftr_idx][$sgm_idx] + $orig_mdllen), $sgm_stop_AA[$ftr_idx][$sgm_idx+1]);
-            $new_coords = vdr_CoordsSegmentCreate(($sgm_start_AA[$ftr_idx][$sgm_idx] + $orig_mdllen), $sgm_stop_AA[$ftr_idx][$sgm_idx+1], "-", $FH_HR);
-            $crossed_origin = 1;
-            $combined_sgm_flag = 1;
-            $modified_coords_flag = 1;
-          }
-          else { # the two segments do not cross origin, add current segment
-            if(! $combined_sgm_flag) {
-              $new_coords = vdr_CoordsSegmentCreate($sgm_start_AA[$ftr_idx][$sgm_idx], $sgm_stop_AA[$ftr_idx][$sgm_idx], "-", $FH_HR);
-            }
-            $combined_sgm_flag = 0;
-          }
-        } # end of - strand case
-        else { # strands of sgm_idx and sgm_idx+1 are different, add sgm_idx
-          if(! $combined_sgm_flag) {
-            $new_coords = vdr_CoordsSegmentCreate($sgm_start_AA[$ftr_idx][$sgm_idx], $sgm_stop_AA[$ftr_idx][$sgm_idx], "-", $FH_HR);
-          }
-          $combined_sgm_flag = 0;
-        }
-      }
-    }
-    if(defined $ftr_info_AHR->[$ftr_idx]{"orig_coords"}) {
-      ofile_FAIL("ERROR, in $sub_name, feature $ftr_idx already has key orig_coords with value: " . $ftr_info_AHR->[$ftr_idx]{"orig_coords"});
-    }
-    if($modified_coords_flag) {
-      $ftr_info_AHR->[$ftr_idx]{"orig_coords"} = $ftr_info_AHR->[$ftr_idx]{"coords"};
-      $ftr_info_AHR->[$ftr_idx]{"coords"} = $new_coords;
-    }
-  } # end of 'for(my $ftr_idx = 0; $ftr_idx < $nftr...'
-  return;
-}
-
-#################################################################
-# Subroutine: duplicate_features_for_circular_genomes
-# Incept:     EPN, Thu May  8 14:48:54 2025
-# 
-# Purpose:    Given feature information for a circular genome,
-#             duplicate the features that span the origin.
-# 
-# Arguments:
-#   $ftr_info_AHR:  REF to feature information, changed and added to here
-#   $orig_mdllen:   length of the model before it was doubled
-#   $opt_HHR:       REF to 2D hash of option values, see top of sqp_opts.pm for description, PRE-FILLED
-#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void
-# 
-# Dies:       if $ftr_info_AHR is invalid upon entry
-#
-#################################################################
-sub duplicate_features_for_circular_genomes { 
-  my $sub_name = "duplicate_features_for_circular_genomes";
-  my $nargs_expected = 4;
-  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
- 
-  my ($ftr_info_AHR, $orig_mdllen, $opt_HHR, $FH_HR) = @_;
-
-  # new ftr_info_AHR for new features we add here
-  my @new_ftr_info_AH = ();
-  
-  # precompute start, stop, strand, for all features, so we don't have to redo this for each seq
-  my @sgm_start_AA  = ();
-  my @sgm_stop_AA   = ();
-  my @sgm_strand_AA = ();
-  vdr_FeatureInfoStartStopStrandArrays($ftr_info_AHR, \@sgm_start_AA, \@sgm_stop_AA, \@sgm_strand_AA, $FH_HR);
-
-  my $nftr = scalar(@{$ftr_info_AHR});
-
-  my ($nsgm, $next_sgm_idx, $strand);
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    $nsgm = scalar(@{$sgm_start_AA[$ftr_idx]});
-    my $new_coords = "";
-    my $new_5p_coords = "";
-    my $new_3p_coords = "";
-    my $modified_coords_flag = 0;
-    if($nsgm == 1) {
-      $new_coords = $ftr_info_AHR->[$ftr_idx]{"coords"};
-    }
-    else {  # potentially combine segments that cross the origin
-      my $crossed_origin = 0; 
-      my $combined_sgm_flag = 0; # set to '1' if we combine two segments, so we know not to add next one (because it is part of the combo)
-      for(my $sgm_idx = 0; $sgm_idx < ($nsgm-1); $sgm_idx++) {
-        if(($sgm_strand_AA[$ftr_idx][$sgm_idx]     eq "+") &&
-           ($sgm_strand_AA[$ftr_idx][($sgm_idx+1)] eq "+")) { 
-          # + strand case (both sgms are +)
-          if(($sgm_stop_AA[$ftr_idx][$sgm_idx]      == $orig_mdllen) &&
-             ($sgm_start_AA[$ftr_idx][($sgm_idx+1)] == 1)) {
-            if($crossed_origin) {
-              ofile_FAIL("ERROR, in $sub_name, feature $ftr_idx with coords " . $ftr_info_AHR->[$ftr_idx]{"coords"} . " crosses origin ($orig_mdllen) more than once");
-            }
-            # combine segments together
-            printf("HEYA collapsing ftr_idx: %d with coords: %s, segments %d (%d..%d) and %d (%d..%d) into single segment (%d..%d)\n",
-                   $ftr_idx, 
-                   $ftr_info_AHR->[$ftr_idx]{"coords"},
-                   $sgm_idx+1, $sgm_start_AA[$ftr_idx][$sgm_idx],   $sgm_stop_AA[$ftr_idx][$sgm_idx], 
-                   $sgm_idx+2, $sgm_start_AA[$ftr_idx][$sgm_idx+1], $sgm_stop_AA[$ftr_idx][$sgm_idx+1],
-                   $sgm_start_AA[$ftr_idx][$sgm_idx], ($sgm_stop_AA[$ftr_idx][$sgm_idx+1]+$orig_mdllen));
-            $new_coords    .= vdr_CoordsSegmentCreate($sgm_start_AA[$ftr_idx][$sgm_idx],  ($sgm_stop_AA[$ftr_idx][$sgm_idx+1]+$orig_mdllen), "+", $FH_HR);
-            $new_5p_coords .= vdr_CoordsSegmentCreate($sgm_start_AA[$ftr_idx][$sgm_idx],   $sgm_stop_AA[$ftr_idx][$sgm_idx],   "+", $FH_HR);
-            $new_3p_coords .= vdr_CoordsSegmentCreate($sgm_start_AA[$ftr_idx][$sgm_idx+1], $sgm_stop_AA[$ftr_idx][$sgm_idx+1], "+", $FH_HR);
-            $crossed_origin = 1;
-            $combined_sgm_flag = 1;
-            $modified_coords_flag = 1;
-          } 
-          else { # the two segments do not cross origin, add current segment
-            if(! $combined_sgm_flag) {
-              $new_coords    .= vdr_CoordsSegmentCreate($sgm_start_AA[$ftr_idx][$sgm_idx],   $sgm_stop_AA[$ftr_idx][$sgm_idx], "+", $FH_HR);
-              $new_5p_coords .= vdr_CoordsSegmentCreate($sgm_start_AA[$ftr_idx][$sgm_idx],   $sgm_stop_AA[$ftr_idx][$sgm_idx],  "+", $FH_HR);
-              $new_3p_coords .= vdr_CoordsSegmentCreate($sgm_start_AA[$ftr_idx][$sgm_idx+1], $sgm_stop_AA[$ftr_idx][$sgm_idx+1], "+", $FH_HR);
-            }
-            $combined_sgm_flag = 0;
-          }
-        } # end of "+" strand case
-        elsif(($sgm_strand_AA[$ftr_idx][$sgm_idx]     eq "-") &&
-              ($sgm_strand_AA[$ftr_idx][($sgm_idx+1)] eq "-")) {
-          # - strand case (both sgms are -)
-          if(($sgm_stop_AA[$ftr_idx][$sgm_idx]      == 1) && 
-             ($sgm_start_AA[$ftr_idx][($sgm_idx+1)] == $orig_mdllen)) {
-            if($crossed_origin) {
-              ofile_FAIL("ERROR, in $sub_name, feature $ftr_idx with coords " . $ftr_info_AHR->[$ftr_idx]{"coords"} . " crosses origin ($orig_mdllen) more than once");
-            }
-            # collapse segments together
-            #printf("collapsing ftr_idx: %d with coords: %s, segments %d (%d..%d) and %d (%d..%d) into single segment (%d..%d)\n",
-            #       $ftr_idx, 
-            #       $ftr_info_AHR->[$ftr_idx]{"coords"},
-            #       $sgm_idx+1, $sgm_start_AA[$ftr_idx][$sgm_idx],   $sgm_stop_AA[$ftr_idx][$sgm_idx], 
-            #       $sgm_idx+2, $sgm_start_AA[$ftr_idx][$sgm_idx+1], $sgm_stop_AA[$ftr_idx][$sgm_idx+1],
-            #       ($sgm_start_AA[$ftr_idx][$sgm_idx] + $orig_mdllen), $sgm_stop_AA[$ftr_idx][$sgm_idx+1]);
-            $new_coords = vdr_CoordsSegmentCreate(($sgm_start_AA[$ftr_idx][$sgm_idx] + $orig_mdllen), $sgm_stop_AA[$ftr_idx][$sgm_idx+1], "-", $FH_HR);
-            $crossed_origin = 1;
-            $combined_sgm_flag = 1;
-            $modified_coords_flag = 1;
-          }
-          else { # the two segments do not cross origin, add current segment
-            if(! $combined_sgm_flag) {
-              $new_coords = vdr_CoordsSegmentCreate($sgm_start_AA[$ftr_idx][$sgm_idx], $sgm_stop_AA[$ftr_idx][$sgm_idx], "-", $FH_HR);
-            }
-            $combined_sgm_flag = 0;
-          }
-        } # end of - strand case
-        else { # strands of sgm_idx and sgm_idx+1 are different, add sgm_idx
-          if(! $combined_sgm_flag) {
-            $new_coords = vdr_CoordsSegmentCreate($sgm_start_AA[$ftr_idx][$sgm_idx], $sgm_stop_AA[$ftr_idx][$sgm_idx], "-", $FH_HR);
-          }
-          $combined_sgm_flag = 0;
-        }
-      }
-    }
-    if(defined $ftr_info_AHR->[$ftr_idx]{"orig_coords"}) {
-      ofile_FAIL("ERROR, in $sub_name, feature $ftr_idx already has key orig_coords with value: " . $ftr_info_AHR->[$ftr_idx]{"orig_coords"});
-    }
-    if($modified_coords_flag) {
-      $ftr_info_AHR->[$ftr_idx]{"orig_coords"} = $ftr_info_AHR->[$ftr_idx]{"coords"};
-      $ftr_info_AHR->[$ftr_idx]{"coords"} = $new_coords;
-    }
-  } # end of 'for(my $ftr_idx = 0; $ftr_idx < $nftr...'
-  return;
-}
-
-#################################################################
 # Subroutine: create_circular_feature_sets
 # Incept:     EPN, Wed May 28 13:13:29 2025
 # 
@@ -1735,35 +1481,61 @@ sub create_circular_feature_sets {
   # get children info for all features
   my @i_am_child_A = ();
   my @children_AA  = ();
-  printf("calling child sub\n");
   my $nchildren = vdr_FeatureInfoChildrenArrayOfArrays(\@{$ftr_info_HAH{$mdl_name}}, undef, \@i_am_child_A, \@children_AA, $FH_HR);
-  printf("back from child sub\n");
   
+  my $spanning_set_idx = 1; # the integer index for the current circular_spanning_ftr_set, incremented as we create sets
+  my $linear_set_idx   = 1; # the integer index for the current circular_linear_ftr_set, incremented as we create sets
+
   my $nftr = scalar(@{$ftr_info_AHR});
-  my ($nsgm, $next_sgm_idx, $strand);
-  my $spanning_set_idx = 1;
-  my $linear_set_idx = 1;
+  my $key = undef;
+
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if(! $i_am_child_A[$ftr_idx]) { # skip all children, they will be regenerated for each new feature including original features
-      my $before_5p_coords = "";
-      my $before_3p_coords = "";
-      my $after_5p_coords  = "";
+    if(! $i_am_child_A[$ftr_idx]) { # skip all children, they will be regenerated for each new feature, including original features
+
+      # coordinates for the various new features in a 'circular_spanning_ftr_set'
+      # which 'spans' the origin (includes >=1 nt 5' of and >=1 nt 3' of origin)
+      # the first 'spans' feature will keep the original coordinates
+      # example NC_003977, polymerase CDS, genome circular length: 3182 ($orig_mdllen)
+      # original:  2309..3182:+,1..1625:+
+      # spans:     2309..3182:+,1..1625:+
+      # passes:    2309..4807:+
+      # before-5p: 2309..3182:+
+      # before-3p: 1..1625:+
+      # after-5p:  5491..6364:+
+      # after-3p:  3183..4807:+
+      my $passes_coords    = "";  # the coordinates for the entire features that passes the origin (has nt in first and second $orig_mdllen nt)
+      my $before_5p_coords = "";  # the coordinates for the 'before-5p', part of feature 5' of origin, in first $orig_mdllen nt
+      my $before_3p_coords = "";  # the coordinates for the 'before-3p', part of feature 3' of origin, in first $orig_mdllen nt
+      my $after_5p_coords  = "";  # the coordinates for the 'before-5p', part of feature 5' of origin, in first $orig_mdllen nt
       my $after_3p_coords  = "";
+
+      # coordinates for the one new feature in a 'circular_linear_ftr_set'
+      # that does not 'span' the origin (starts and ends without crossing origin)
+      # the first feature will keep the original coordinates
+      # example NC_003977, X protein CDS, genome circular length: 3182 ($orig_mdllen)
+      # original: 1376..1840:+
+      # linear_before: 1376..1840:+
+      # linear_after:  4558..5022:+
+      my $linear_after_coords = "";
+
+      # arrays with segment coords info
       my @sgm_coords_A = ();
-      my $spans_origin = 0;
-      my @start_A  = ();
-      my @stop_A   = ();
-      my @strand_A = ();
+      my @start_A      = ();
+      my @stop_A       = ();
+      my @strand_A     = ();
+
       my $orig_coords = $ftr_info_AHR->[$ftr_idx]{"coords"};
+      my $spans_origin = 0; # flag set to 1 if we find the feature spans the origin
+
       vdr_FeatureStartStopStrandArrays($orig_coords, \@start_A, \@stop_A, \@strand_A, $FH_HR);
       vdr_CoordsToSegments($orig_coords, \@sgm_coords_A, $FH_HR);
       my $nsgm = scalar(@sgm_coords_A);
-      my $passes_coords = "";
-      my $key = undef;
-      printf("feature index $ftr_idx is child: $i_am_child_A[$ftr_idx]\n");
 
+      # first determine if this feature spans the origin, if there is only 1 segment, it can't
       if($nsgm > 1) { 
-        # determine if this feature spans the origin
+        # step through each segment and see if the current segment and the next span the origin
+        # build up the coords strings for each potential 'circular_spanning_ftr_set' feature
+        # as we go, we will only use these if we find this feature actually does span the origin
         for(my $sgm_idx = 0; $sgm_idx < ($nsgm-1); $sgm_idx++) {
           $before_5p_coords = vdr_CoordsAppendSegment($before_5p_coords, $sgm_coords_A[$sgm_idx]);
           $after_5p_coords  = vdr_CoordsAppendSegment($after_5p_coords,  vdr_CoordsSegmentCreate($start_A[$sgm_idx] + $orig_mdllen,
@@ -1797,14 +1569,14 @@ sub create_circular_feature_sets {
         }
       }
       if($spans_origin) {
-        # create 6 new features, including the original
+        # create a 'circular_spanning_ftr_set', 6 new features, including a duplicate of the original,
         for(my $i = 0; $i < 6; $i++) { 
+          # first duplicate original to make each new feature, then we'll modify the coords as necessary
           %{$new_ftr_info_AHR->[$new_ftr_idx]} = ();
           foreach $key (sort keys (%{$ftr_info_AHR->[$ftr_idx]})) {
             $new_ftr_info_AHR->[$new_ftr_idx]{$key} = $ftr_info_AHR->[$ftr_idx]{$key};
           }
           $new_ftr_info_AHR->[$new_ftr_idx]{"circular_spanning_ftr_set"} = $spanning_set_idx;
-          $new_ftr_info_AHR->[$new_ftr_idx]{"orig_ftr_idx"}              = $ftr_idx;
           if($i == 0) {
             $new_ftr_info_AHR->[$new_ftr_idx]{"spans_origin"} = 1;
             $new_ftr_idx += add_children_for_circular_feature($new_ftr_info_AHR, $new_ftr_idx, $ftr_info_AHR, $ftr_idx, \@children_AA, "spans", $orig_mdllen, $FH_HR);
@@ -1837,29 +1609,25 @@ sub create_circular_feature_sets {
           }
           $new_ftr_idx++;
         }
-        #printf("CIRCULAR feature " . $ftr_info_AHR->[$ftr_idx]{"coords"} . "\n");
-        #printf("CIRCULAR feature " . $passes_coords . "\n");
-        #printf("CIRCULAR feature " . $before_5p_coords . "\n");
-        #printf("CIRCULAR feature " . $before_3p_coords . "\n");
-        #printf("CIRCULAR feature " . $after_5p_coords . "\n");
-        #printf("CIRCULAR feature " . $after_3p_coords . "\n");
         $spanning_set_idx++;
       }
-      else {
-        # simply duplicate the feature but add $orig_mdllen to all coordinates
-        my $after_coords = vdr_CoordsAddConstant($orig_coords, $orig_mdllen, $FH_HR);"";
+      else { # does not span the origin
+        # create a 'circular_linear_ftr_set', 2 new features, including a duplicate of the original
+        $linear_before_coords = $orig_coords;
+        $linear_after_coords = vdr_CoordsAddConstant($orig_coords, $orig_mdllen, $FH_HR);"";
         for(my $i = 0; $i < 2; $i++) { 
+          # first duplicate original to make each new feature, then we'll modify the coords as necessary
           %{$new_ftr_info_AHR->[$new_ftr_idx]} = ();
           $new_ftr_info_AHR->[$new_ftr_idx]{"circular_linear_ftr_set"} = $linear_set_idx;
-          $new_ftr_info_AHR->[$new_ftr_idx]{"orig_ftr_idx"}            = $ftr_idx;
           foreach $key (sort keys (%{$ftr_info_AHR->[$ftr_idx]})) {
             $new_ftr_info_AHR->[$new_ftr_idx]{$key} = $ftr_info_AHR->[$ftr_idx]{$key};
           }
           if($i == 0) {
+            $new_ftr_info_AHR->[$new_ftr_idx]{"coords"} = $linear_before_coords;
             $new_ftr_idx += add_children_for_circular_feature($new_ftr_info_AHR, $new_ftr_idx, $ftr_info_AHR, $ftr_idx, \@children_AA, "before-linear", $orig_mdllen, $FH_HR);
           }
           else { # $i == 1
-            $new_ftr_info_AHR->[$new_ftr_idx]{"coords"} = $after_coords;
+            $new_ftr_info_AHR->[$new_ftr_idx]{"coords"} = $linear_after_coords;
             $new_ftr_idx += add_children_for_circular_feature($new_ftr_info_AHR, $new_ftr_idx, $ftr_info_AHR, $ftr_idx, \@children_AA, "after-linear", $orig_mdllen, $FH_HR);
           }
           $new_ftr_idx++;
