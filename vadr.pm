@@ -165,6 +165,7 @@ require "sqp_utils.pm";
 # vdr_CoordsFromStartStopStrandArrays()
 # vdr_CoordsSegmentActualToFractional()
 # vdr_CoordsSegmentFractionalToActual()
+# vdr_CoordsStandardizedToOriginal()
 #
 # Subroutines related to eutils:
 # vdr_EutilsFetchToFile()
@@ -5492,6 +5493,78 @@ sub vdr_CoordsSegmentFractionalToActual {
 
   # printf("in $sub_name returning $ret_start..$ret_stop:$full_strand\n");
   return($ret_start, $ret_stop, $full_strand);
+}
+
+#################################################################
+# Subroutine: vdr_CoordsStandardizedToOriginal()
+# Incept:     EPN, Mon Jun  9 11:04:37 2025
+#
+# Purpose:    Given a coords string that is 'standardized' for a
+#             circular genome, convert it to the coords string
+#             that pertains to the original sequence before
+#             it was standardized.
+#
+# Arguments:
+#  $std_coords:  standardized coordinates string
+#  $spos:        model start position used for the standardization
+#  $epos:        model stop position used for the standardization
+#  $seq_len:     sequence length
+#  $orig_mdllen: length of the original circular model
+#  $FH_HR:       ref to hash of file handles
+#
+# Returns:  coords string in original sequence
+#
+# Dies: If $coords is not parseable 
+#       If all segments in coords strand are not same strand
+#
+#################################################################
+sub vdr_CoordsStandardizedToOriginal { 
+  my $sub_name = "vdr_CoordsStandardizedToOriginal";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($std_coords, $spos, $epos, $seq_len, $orig_mdllen, $FH_HR) = (@_);
+
+  if($spos > $orig_mdllen) {
+    ofile_FAIL("ERROR in $sub_name, spos ($spos) is unexpectedly > model len ($orig_mdllen)", 1, $FH_HR);
+  }
+
+  my $strand = vdr_FeatureSummaryStrand($std_coords, $FH_HR);
+   vdr_FeatureInfoStartStopStrandArrays()
+  if(($strand ne "+") && ($strand ne "-")) {
+    ofile_FAIL("ERROR in $sub_name, not all segments are the same strand in standardized coords string $std_coords", 1, $FH_HR);
+  }
+
+  my @std_start_A = ();
+  my @std_stop_A  = ();
+  vdr_FeatureStartStopStrandArrays($std_coords, \@std_start_A, \@std_stop_A, undef, $FH_HR);
+  my $std_nsgm = scalar(@start_A);
+  
+  my $orig_coords = ""; # we will create this as we go
+  my $orig_start = undef;
+  my $orig_stop  = undef;
+  if($strand eq "+") {
+    for(my $std_sgm_idx = 0; $std_sgm_idx < $std_nsgm; $std_sgm_idx++) {
+      if($orig_start < $orig_mdllen) { 
+        $orig_start = ($std_start_A[$std_sgm_idx] - $spos + 1);
+        $orig_stop  = ($std_stop_A[$std_sgm_idx] - $spos + 1);
+      }
+      else { # $orig_start >= $orig_mdllen
+        $orig_start = ($orig_mdllen + $std_start_A[$std_sgm_idx] - $spos + 1);
+        $orig_stop  = ($orig_mdllen + $std_stop_A[$std_sgm_idx] - $spos + 1);
+      }
+      if($orig_start < 1)         { $orig_start = 1; }
+      if($orig_stop  > $seq_len)  { $orig_stop  = $seq_len; }
+    }
+    $orig_coords = vdr_CoordsAppendSegment($orig_coords, vdr_CoordsSegmentCreate($orig_start, $orig_stop, $strand, $FH_HR));
+  }
+  else { # $strand eq "-"
+    ofile_FAIL("ERROR in $sub_name, in $sub_name and strand is -, not yet implemented", 1, $FH_HR);
+  }
+
+  printf("in $sub_name, std_coords: $std_coords, orig_coords: $orig_coords, returning: " . vdr_CoordsMergeAllAdjacentSegments($orig_coords, $FH_HR) . "\n");
+
+  return vdr_CoordsMergeAllAdjacentSegments($orig_coords, $FH_HR);
 }
 
 #################################################################
