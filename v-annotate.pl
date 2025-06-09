@@ -1737,10 +1737,12 @@ my %subseq_len_H  = ();  # key is name of subsequence, value is length of that s
 # for each model with seqs to align to, create the sequence file and run cmalign/glsearch
 my $mdl_name;
 my $mdl_len;
+my $mdl_is_circular; 
 
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   $mdl_len  = $mdl_info_AH[$mdl_idx]{"length"};
+  $mdl_is_circular = ((defined $mdl_info_AH[$mdl_idx]{"is_circular"}) && ($mdl_info_AH[$mdl_idx]{"is_circular"} == 1)) ? 1 : 0;
 
   if((defined $mdl_seq_name_HA{$mdl_name}) && (! $do_clsonly)) {  
     %sda_mdl_H     = (); 
@@ -1824,7 +1826,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     if($cur_mdl_nalign > 0) { 
       cmalign_or_glsearch_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, \$blastn_db_sqfile,
                                   ($do_glsearch ? $glsearch_db_file : $cm_file), 
-                                  $mdl_name, $cur_mdl_align_fa_file, $out_root, "", $cur_mdl_nalign,
+                                  $mdl_name, $mdl_is_circular, $cur_mdl_align_fa_file, $out_root, "", $cur_mdl_nalign,
                                   $cur_mdl_tot_seq_len, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
                                   \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
     }
@@ -1889,7 +1891,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
         $cur_mdl_tot_seq_len = utl_HSumValuesSubset(\%seq_len_H, \@unjoinbl_seq_name_A);
         cmalign_or_glsearch_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, \$blastn_db_sqfile,
                                     ($do_glsearch ? $glsearch_db_file : $cm_file), 
-                                    $mdl_name, $unjoinbl_mdl_fa_file, $out_root, "uj.", $cur_unjoinbl_nseq,
+                                    $mdl_name, $mdl_is_circular, $unjoinbl_mdl_fa_file, $out_root, "uj.", $cur_unjoinbl_nseq,
                                     $cur_mdl_tot_seq_len, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
                                     \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
         # append insert file we just made to larger join insert file (if we created it (we may not have if all seqs had overflow error))
@@ -1942,9 +1944,21 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       $ftr_outroot_A[$ftr_idx]  = vdr_FeatureTypeAndTypeIndexString(\@{$ftr_info_HAH{$mdl_name}}, $ftr_idx, "#");
     }
 
+    # if model is for a circular genome, originally of length L, but doubled to 2L, determine if entire sequence is
+    # aligned after model position L, if so, remove the first L positions (all gaps) and move them to the 3' end
+    # vdr_CmalignParseInsertFile() also needs to know which sequences this occurred for.
+    my %do_shift_inserts_H = ();
+    if($mdl_is_circular) { 
+      for(my $a = 0; $a < scalar(@{$stk_file_HA{$mdl_name}}); $a++) { 
+        if(-s $stk_file_HA{$mdl_name}[$a]) { # skip empty alignments, which may exist if all seqs were not alignable
+          check_and_doctor_stk_for_circular_models($stk_file_HA{$mdl_name}[$a], \%do_shift_inserts_H, \%opt_HH, \%ofile_info_HH);
+        }    
+      }
+    }
+
     # parse the cmalign --ifile file
     if($mdl_nseq > $mdl_unexdivg_H{$mdl_name}) { # at least 1 sequence was aligned
-      vdr_CmalignParseInsertFile($align_ifile_file, \%seq_inserts_HH, undef, undef, undef, undef, \%{$ofile_info_HH{"FH"}});
+      vdr_CmalignParseInsertFile($align_ifile_file, \%seq_inserts_HH, undef, undef, undef, undef, \%do_shift_inserts_H, \%{$ofile_info_HH{"FH"}});
       push(@to_remove_A, ($align_stdout_file, $align_ifile_file));
     }
 
@@ -3738,6 +3752,9 @@ sub populate_per_model_data_structures_given_classification_results {
 #  $blastn_db_sqfile_R:    ref to Bio::Easel::SqFile object with glsearch target seqs (model seqs)
 #  $mdl_file:              name of model file to use (if ends with .fa, run glsearch, else run cmalign)
 #  $mdl_name:              name of model to fetch from $mdl_file (undef to not fetch)
+#  $mdl_is_circular:       '1' if model is circular, we will create alignments of 1 seq at a time so
+#                          we can more easily doctor them if alignment is completely to second half of mdl
+#                          which is a duplicate of the first half
 #  $seq_file:              name of sequence file with all sequences to run against
 #  $out_root:              string for naming output files
 #  $extra_key:             extra key for output file names, "" or "uj." (latter for seqs with unjoinbl alerts)
@@ -3757,11 +3774,11 @@ sub populate_per_model_data_structures_given_classification_results {
 ################################################################# 
 sub cmalign_or_glsearch_wrapper { 
   my $sub_name = "cmalign_or_glsearch_wrapper";
-  my $nargs_expected = 17;
+  my $nargs_expected = 18;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($execs_HR, $qsub_prefix, $qsub_suffix, $blastn_db_sqfile_R,
-      $mdl_file, $mdl_name, $seq_file, $out_root, $extra_key, 
+      $mdl_file, $mdl_name, $mdl_is_circular, $seq_file, $out_root, $extra_key, 
       $nseq, $tot_len_nt, $progress_w, $stk_file_AR, $overflow_seq_AR, 
       $overflow_mxsize_AR, $opt_HHR, $ofile_info_HHR) = @_;
 
@@ -3772,6 +3789,7 @@ sub cmalign_or_glsearch_wrapper {
   my $do_parallel = opt_Get("-p", $opt_HHR);
   my $do_keep     = opt_Get("--keep", $opt_HHR);
   my $do_cmindi   = opt_Get("--cmindi", $opt_HHR);
+  my $do_cmindi   = ((opt_Get("--cmindi", $opt_HHR)) || $mdl_is_circular) ? 1 : 0;
   @{$overflow_seq_AR} = (); # we will fill this with names of sequences that fail cmalign because
                             # the matrix required to align them is too big
 
@@ -7255,6 +7273,9 @@ sub add_extrant_alerts_for_one_sequence {
 #  $mdl_name:                 name of model
 #  $do_pv_blastx:             '1' if we are going to run blastx, else '0'
 #  $do_separate_cds_fa_files: '1' if we output a separate file for the protein validation stage
+#  $mdl_is_circular:          '1' if model is circular, in this case we don't include the
+#                             full sequence, only predicted CDS, because some features exist twice
+#                             and using the full sequence will cause annotation errors
 #  $ftr_info_AHR:             REF to array of hashes with feature info 
 #  $opt_HHR:                  REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:           REF to 2D hash of output file information, ADDED TO HERE
@@ -7266,22 +7287,25 @@ sub add_extrant_alerts_for_one_sequence {
 ################################################################# 
 sub make_protein_validation_fasta_file {
   my $sub_name = "make_protein_validation_fasta_file";
-  my $nargs_exp = 7;
+  my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($out_fa_file, $mdl_name, $do_pv_blastx, $do_separate_cds_fa_files, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR) = (@_);
+  my ($out_fa_file, $mdl_name, $do_pv_blastx, $do_separate_cds_fa_files, $mdl_is_circular, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR) = (@_);
 
   my $ofile_info_key = $mdl_name . ".a.fa";
   my $mdl_fa_file = $ofile_info_HH{"fullpath"}{$ofile_info_key};
   # printf("in $sub_name, ofile_info_key: $ofile_info_key, mdl_fa_file: $mdl_fa_file\n");
   my $nftr = scalar(@{$ftr_info_AHR});
 
-  if($do_pv_blastx) { 
-    sqf_FastaFileRemoveDescriptions($mdl_fa_file, $out_fa_file, $ofile_info_HHR);
+  if(! $mdl_is_circular) { 
+    if($do_pv_blastx) { 
+      sqf_FastaFileRemoveDescriptions($mdl_fa_file, $out_fa_file, $ofile_info_HHR);
+    }
+    else { 
+      utl_RunCommand("cp $mdl_fa_file $out_fa_file", opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
+    }
   }
-  else { 
-    utl_RunCommand("cp $mdl_fa_file $out_fa_file", opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
-  }
+
   # now add the predicted CDS sequences
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
@@ -7358,7 +7382,9 @@ sub add_protein_validation_alerts {
   
   my $do_pv_hmmer = opt_Get("--pv_hmmer", $opt_HHR) ? 1 : 0;
 
-  my $mdl_name = $mdl_info_HR->{"name"};
+  my $mdl_name        = $mdl_info_HR->{"name"};
+  my $mdl_len         = $mdl_info_HR->{"length"};
+  my $mdl_is_circular = ((defined $mdl_info_HR->{"is_circular"}) && ($mdl_info_HR->{"is_circular"} == 1)) ? 1 : 0;
   my $nseq = scalar(@{$seq_name_AR});
   my $nftr = scalar(@{$ftr_info_AHR});
   my $seq_idx;   # counter over sequences
@@ -7527,15 +7553,29 @@ sub add_protein_validation_alerts {
                       # always create in + strand first, vdr_CoordsProteinRelativeToAbsolute requires it
                       my $tmp_alt_mcoords = vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"},
                                                                                 vdr_CoordsSegmentCreate($p_hstart, $p_hstop, "+", $FH_HR), $FH_HR);
-                      if($p_strand eq "+") { # just append
-                        $alt_mcoords .= $tmp_alt_mcoords . ";";
+                      if(($mdl_is_circular) &&
+                         (vdr_Feature5pMostPosition($tmp_alt_mcoords, undef) > ($mdl_len/2)) &&
+                         (vdr_Feature3pMostPosition($tmp_alt_mcoords, undef) > ($mdl_len/2))) {
+                        $skip_flag = 1; 
+                        # do not report this indfantp bc if
+                        # mdl_is_circular, we want to ignore all hits
+                        # that occur completely to the second half of
+                        # the model, because there should be a
+                        # duplicate hit to the first half of the model
+                        # (since model is one sequence concatenated to
+                        # itself).
                       }
-                      else { # append rev comp
-                        $alt_mcoords .= vdr_CoordsReverseComplement($tmp_alt_mcoords, 0, $FH_HR) . ";"; # 0: don't do carrots
+                      else { # don't skip it, report it
+                        if($p_strand eq "+") { # just append
+                          $alt_mcoords .= $tmp_alt_mcoords . ";";
+                        }
+                        else { # append rev comp
+                          $alt_mcoords .= vdr_CoordsReverseComplement($tmp_alt_mcoords, 0, $FH_HR) . ";"; # 0: don't do carrots
+                        }
                       }
-                    }
-                    else { 
-                      $alt_mcoords .= "VADRNULL;";
+                      else { 
+                        $alt_mcoords .= "VADRNULL;";
+                      }
                     }
                   }
                   else { # $p_blastx_feature_flag is true
@@ -7914,13 +7954,14 @@ sub run_blastx_and_summarize_output {
   my $mdl_name = $mdl_info_HR->{"name"};
   my $ncpu = opt_Get("--cpu", $opt_HHR);
   if($ncpu == 0) { $ncpu = 1; }
+  my $mdl_is_circular = vdr_ModelInfoIsCircular($mdl_info_HR, $FH_HR);
 
   # make a query fasta file for blastx, consisting of full length
   # sequences (with sequence descriptions removed because they can
   # affect the output and mess up our parsing if they are too long)
   # AND all the predicted CDS sequences
   my $blastx_query_fa_file = $out_root . "." . $mdl_name . ".pv.blastx.fa";
-  make_protein_validation_fasta_file($blastx_query_fa_file, $mdl_name,  1, $do_separate_cds_fa_files, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR);
+  make_protein_validation_fasta_file($blastx_query_fa_file, $mdl_name,  1, $do_separate_cds_fa_files, $mdl_is_circular, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR);
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".pv-blastx-fasta", $blastx_query_fa_file, 0, opt_Get("--keep", \%opt_HH), "sequences for protein validation for model $mdl_name");
   
   # run blastx 
@@ -8427,6 +8468,7 @@ sub run_esl_translate_and_hmmsearch {
   my $do_keep = opt_Get("--keep", $opt_HHR);
   my $nftr = scalar(@{$ftr_info_AHR});
   my $mdl_name = $mdl_info_HR->{"name"};
+  my $mdl_is_circular = vdr_ModelInfoIsCircular($mdl_info_HR, $FH_HR);
 
   my $model_domtblout_file = $out_root . "." . $mdl_name . ".hmmscan.domtblout";
   # make a query fasta file for blastx, consisting of full length
@@ -8434,7 +8476,7 @@ sub run_esl_translate_and_hmmsearch {
   # affect the output and mess up our parsing if they are too long)
   # AND all the predicted CDS sequences
   my $pv_fa_file = $out_root . "." . $mdl_name . ".pv.hmmer.fa";
-  make_protein_validation_fasta_file($pv_fa_file, $mdl_name,  0, $do_separate_cds_fa_files, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR); # 0: not doing blastx
+  make_protein_validation_fasta_file($pv_fa_file, $mdl_name,  0, $do_separate_cds_fa_files, $mdl_is_circular, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR); # 0: not doing blastx
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".pv.hmmer.fa", $pv_fa_file, 0, opt_Get("--keep", \%opt_HH), "sequences for protein validation for model $mdl_name");
 
   # now esl-translate it
@@ -14933,4 +14975,113 @@ sub determine_intron_index {
 
   # should never be reached
   return $intron_idx;
+}
+
+#################################################################
+# Subroutine: check_and_doctor_stk_for_circular_models
+# Incept:     EPN, Thu Mar 27 15:59:41 2025
+#
+# Purpose:    For a circular model, check if, for single sequence stk
+#             alignment the entire sequene is aligned after position
+#             $clen/2. If so, remove the first $clen/2 positions (all gaps)
+#             and add them to the 3' end of the alignment, effectively
+#             moving the alignment from the second half of the model to
+#             the (identical) first half of the model. Should only be
+#             used for 'doubled' models which are created for circular
+#             genomes.
+#
+# Arguments:
+#  $stk_file:            name of stk file
+#  $do_shift_inserts_HR: REF to hash, keys seq names, value 1 to shift the insert values by clen/2
+#                        0 (or undef) not to
+#  $opt_HHR:             REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:      REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:  void
+#           
+# Dies:     if stk file has more than 1 sequence,
+#           or if problem parsing or manipulating the stk file
+#
+#################################################################
+sub check_and_doctor_stk_for_circular_models {
+  my $sub_name = "check_and_doctor_stk_for_circular_models";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($stk_file, $do_shift_inserts_HR, $opt_HHR, $ofile_info_HHR) = (@_);
+  my $FH_HR  = $ofile_info_HHR->{"FH"};
+
+  my $msa = Bio::Easel::MSA->new({
+    fileLocation => $stk_file,
+    isDna => 1});  
+
+  if($msa->nseq != 1) {
+    ofile_FAIL("ERROR in $sub_name, expected alignment with 1 sequence, but $stk_file has $msa->nseq sequences", 1, $FH_HR);
+  }
+
+  # build a map of aligned positions to model RF positions and vice versa, only need to do this once per alignment
+  my @rf2a_A = (); # [1..$rfpos..$rflen] = $apos;  rf position $rfpos maps to alignment position $apos [1..$alen]  ($rf2a_A[0] = -1  (dummy value))
+  my $rflen    = msa_create_rfpos_to_apos_map($msa, \@rf2a_A, $FH_HR);
+  my $alen     = $msa->alen;
+  my $seq_name = $msa->get_sqname(0);
+  
+  if(($rflen % 2) != 0) {
+    ofile_FAIL("ERROR in $sub_name, expected alignment with even number of RF positions, but $stk_file has $rflen RF positions", 1, $FH_HR);
+  }
+  my $orig_mdllen = int($rflen / 2);
+
+  # determine first alignment position that is not a gap
+  my $sqstring = $msa->get_sqstring_aligned(0);
+  $sqstring =~ m/\w/g;
+  my $a_spos = pos($sqstring); # returns position of first non-gap nt
+  my $apos;
+  if($a_spos > $alen) {
+    ofile_FAIL("ERROR in $sub_name, didn't find nongap in alignment in $stk_file", 1, $FH_HR);
+  }
+
+  if($a_spos > $orig_mdllen) { 
+    if($rf2a_A[$orig_mdllen] != $orig_mdllen) {
+      ofile_FAIL("ERROR in $sub_name, first non-gap is more than halfway through the alignment, but first half of alignment positions are not all gaps in $stk_file", 1, $FH_HR);
+    }
+    my @keepme_A = ();
+    for($apos = 0; $apos < $orig_mdllen; $apos++) {
+      $keepme_A[$apos] = 0;
+    }
+    for($apos = $orig_mdllen; $apos < $alen; $apos++) {
+      $keepme_A[$apos] = 1;
+    }
+    my $orig_rf     = $msa->get_rf();
+    my $orig_sscons = $msa->has_ss_cons() ? $msa->get_ss_cons() : undef;
+    my $rf_to_add     = substr($orig_rf,     0, $orig_mdllen);
+    my $sscons_to_add = (defined $orig_sscons) ? (substr($orig_sscons, 0, $orig_mdllen)) : undef;
+    $msa->column_subset(\@keepme_A);
+
+    # now add gapped out second half of the alignment
+    my $gaps_to_add     = utl_StringMonoChar($orig_mdllen, ".", undef);
+    my $ali_seq_line    = $msa->get_sqstring_aligned(0) . $gaps_to_add;
+    my $ali_rf_line     = $msa->get_rf()                . $rf_to_add;
+    my $ali_pp_line     = $msa->get_ppstring_aligned(0) . $gaps_to_add;
+    my $ali_sscons_line = (defined $sscons_to_add) ? ($msa->get_ss_cons . $sscons_to_add) : undef;
+    
+    # make copy of old alignment
+    my $orig_stk_file = $stk_file . ".orig";
+    utl_RunCommand("cp $stk_file $orig_stk_file", opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
+
+    # create the new stockholm alignment
+    open(OUT, ">", $stk_file) || ofile_FileOpenFailure($stk_file . "new", $sub_name, $!, "writing", $FH_HR);
+    print OUT ("# STOCKHOLM 1.0\n$seq_name $ali_seq_line\n");
+    print OUT "#=GR $seq_name PP $ali_pp_line\n";
+    if(defined $ali_sscons_line) { print OUT "#=GC SS_cons $ali_sscons_line\n"; }
+    print OUT "#=GC RF $ali_rf_line\n";
+    print OUT "//\n";
+    close(OUT);
+
+    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "orig $stk_file", $orig_stk_file, opt_Get("--keep", \%opt_HH), opt_Get("--keep", \%opt_HH), "copy of $stk_file before doctoring for circularity");
+    $do_shift_inserts_HR->{$seq_name} = 1;
+  }
+  else {
+    $do_shift_inserts_HR->{$seq_name} = 0;
+  }
+
+  return;
 }
