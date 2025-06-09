@@ -2078,7 +2078,7 @@ if($do_pv_blastx) {
         if(! opt_Get("--xnolongest", \%opt_HH)) { 
           # 'pl_': keep longest hit, not max scoring
           parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, "pl_", \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
-                             $ftr_info_blastx_HR, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
+                               $ftr_info_blastx_HR, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
 
         }
         add_protein_validation_alerts(\%{$mdl_info_AH[$mdl_idx]}, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
@@ -2182,7 +2182,31 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       }
     }
   }
+
+  my @tmp_sgm_info_AH  = (); 
+  my @tmp_ftr_info_AH = ();
+  my %tmp_sgm_results_HAH = ();
+  my %tmp_ftr_results_HAH = ();
+  my %tmp_alt_ftr_instances_HHH = ();
+  my %tmp_dcr_output_HAH = ();
+
+  # create a new ftr_info_AH that includes all the merged features for this sequence
+  create_ftr_info_for_merged_circular_features(\@tmp_ftr_info_AH, \@{$ftr_info_HAH{$mdl_name}}, \@{$ftr_results_HHAH{$mdl_name}{"NC_003977.2/2-3182"}}, $FH_HR);
+  #vdr_SegmentInfoPopulate(\@tmp_sgm_info_AH, \@tmp_ftr_info_AH, $FH_HR);
+  
+  
+  #parse_stk_and_add_alignment_cds_and_mp_alerts($stk_file_HA{$mdl_name}[0], \$in_sqfile, 
+  #                                              \%seq_len_H, \%seq_inserts_HH, \@tmp_sgm_info_AH,
+  #                                              \@tmp_ftr_info_AH, \%alt_info_HH, \%stg_results_HHH,
+  #                                              \%tmp_sgm_results_HAH{$mdl_name}}, \%tmp_ftr_results_HAH,
+  #                                              \%alt_seq_instances_HH, \%tmp_alt_ftr_instances_HHH, \%tmp_dcr_output_HAH,
+  #                                              \@mdl_info_AH, $mdl_idx, \@ftr_fileroot_A, \@ftr_outroot_A, 
+  #                                              $$sqfile_for_cds_mp_alerts_R, $$sqfile_for_output_fastas_R, $$sqfile_for_pv_R,
+  #                                              $do_separate_cds_fa_files_for_protein_validation, \@to_remove_A,
+  #                                              ($do_replace_ns) ? \%rpn_output_HH : undef, 
+  #                                              $out_root, %opt_HH, \%ofile_info_HH);
 }
+
 
 ################################
 # Output annotations and alerts
@@ -14991,7 +15015,6 @@ sub pick_features_for_circular_genomes {
               else {
                 push(@merge_ftr_idx_A, ($before_origin_idx, $after_origin_idx));
               }
-              # printf("LINEAR merge check: $before_origin_idx, $after_origin_idx\n");
             }
             else {
               ofile_FAIL("ERROR in $sub_name, trying to pick features for duplicates, but a duplicate set doesn't have exactly 4 or 2 features", 1, $FH_HR);
@@ -15005,8 +15028,9 @@ sub pick_features_for_circular_genomes {
                                           $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[1]]{"n_mcoords"}, 
                                           $circ_len, $FH_HR))) {
                 # merge merge_ftr_idx_A[0] and merge_ftr_idx_A[1], we'll keep merge_ftr_idx_A[0]
-                $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_scoords"} .= $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_scoords"}; 
-                $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_mcoords"} .= $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[1]]{"n_mcoords"}; 
+                printf("HEYA merging ftrs " . $merge_ftr_idx_A[0] . " and " . $merge_ftr_idx_A[1] . " seq-coords " . $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_scoords"} . " and " . $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[1]]{"n_scoords"} . " mdl-coords " . $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_mcoords"} . " and " . $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[1]]{"n_mcoords"} . "\n");
+                $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_scoords"} .= "," . $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[1]]{"n_scoords"}; 
+                $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_mcoords"} .= "," . $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[1]]{"n_mcoords"}; 
                 $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"merge_ftr_idx"} = $merge_ftr_idx_A[1];
                 $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[1]]{"merge_ftr_idx"} = $merge_ftr_idx_A[1]; # flag to not output this feature
                 # add alerts
@@ -15535,3 +15559,47 @@ sub check_and_doctor_stk_for_circular_models {
   return;
 }
 
+#################################################################
+# Subroutine: create_ftr_info_for_merged_circular_features
+# Incept:     EPN, Thu Jun  5 14:20:46 2025
+#
+# Purpose:    For a circular model, check if any features have been
+#             'merged' and if so create a new @{$ftr_info_AHR} with the
+#             merged features only.
+#
+# Arguments:
+#  $new_ftr_info_AHR:    REF to new ftr_info_AH to fill here
+#  $ftr_info_AHR:        REF to original ftr_info_AH to use as a template
+#  $ftr_results_HAHR:    REF to results that includes info on which feature predictions were merged
+#  $FH_HR:               output file handles
+#
+# Returns:  void
+#           
+# Dies:     
+#
+#################################################################
+sub create_ftr_info_for_merged_circular_features { 
+  my $sub_name = "create_ftr_info_for_merged_circular_features";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($new_ftr_info_AHR, $ftr_info_AHR, $ftr_results_AHR, $FH_HR) = (@_);
+
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $new_ftr_idx = 0;
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
+    my $merged_ftr_idx = ((defined $ftr_results_AHR->[$ftr_idx]{"merge_ftr_idx"}) &&
+                         $ftr_results_AHR->[$ftr_idx]{"merge_ftr_idx"} != $ftr_idx) ?
+        $ftr_results_AHR->[$ftr_idx]{"merge_ftr_idx"} : undef;
+    if(defined $merged_ftr_idx) { 
+      my $new_coords = $ftr_results_AHR->[$ftr_idx]{"n_mcoords"};
+      @{$new_ftr_info_AHR->[$new_ftr_idx]} = ();
+      foreach my $key (sort keys %{$ftr_info_AHR->[$ftr_idx]}) {
+        $new_ftr_info_AHR->[$new_ftr_idx]{$key} = $ftr_info_AHR->[$ftr_idx]{$key};
+      }
+      # update coords
+      $new_ftr_info_AHR->[$new_ftr_idx]{"coords"} = $new_coords;
+      # do I need to remove anything?
+    }
+  }
+}
