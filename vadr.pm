@@ -5505,14 +5505,16 @@ sub vdr_CoordsSegmentFractionalToActual {
 #             it was standardized.
 #
 # Arguments:
-#  $std_coords: standardized coordinates string
-#  $spos:       model start position used for the standardization
-#  $epos:       model stop position used for the standardization
-#  $seq_len:    length of original sequence, if -1 then we are
-#               calculating original model positions, not sequence
-#               positions
-#  $circ_len:   length of the original circular model
-#  $FH_HR:      ref to hash of file handles
+#  $std_coords:  standardized coordinates string
+#  $spos:        model start position used for the standardization
+#  $epos:        model stop position used for the standardization
+#  $seq_len:     length of original sequence, if -1 then we are
+#                calculating original model positions, not sequence
+#                positions
+#  $circ_len:    length of the original circular model
+#  $do_mdl_flag: '1' if we want model coordinates, else we want
+#                sequence coordinates
+#  $FH_HR:       ref to hash of file handles
 #
 # Returns:  coords string in original sequence
 #
@@ -5522,14 +5524,14 @@ sub vdr_CoordsSegmentFractionalToActual {
 #################################################################
 sub vdr_CoordsStandardizedToOriginal { 
   my $sub_name = "vdr_CoordsStandardizedToOriginal";
-  my $nargs_exp = 6;
+  my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($std_coords, $spos, $epos, $seq_len, $circ_len, $do_mdl_coords, $FH_HR) = (@_);
+  my ($std_coords, $spos, $epos, $seq_len, $circ_len, $do_mdl_flag, $FH_HR) = (@_);
   printf("in $sub_name, std_coords: $std_coords\n");
 
-  if($spos > $orig_mdllen) {
-    ofile_FAIL("ERROR in $sub_name, spos ($spos) is unexpectedly > model len ($orig_mdllen)", 1, $FH_HR);
+  if($spos > $circ_len) {
+    ofile_FAIL("ERROR in $sub_name, spos ($spos) is unexpectedly > model len ($circ_len)", 1, $FH_HR);
   }
 
   my $strand = vdr_FeatureSummaryStrand($std_coords, $FH_HR);
@@ -5537,7 +5539,7 @@ sub vdr_CoordsStandardizedToOriginal {
     ofile_FAIL("ERROR in $sub_name, not all segments are the same strand in standardized coords string $std_coords", 1, $FH_HR);
   }
 
-  my $nadded = $orig_mdllen - ($epos - $spos + 1);
+  my $nadded = $circ_len - ($epos - $spos + 1);
   my @std_start_A = ();
   my @std_stop_A  = ();
   vdr_FeatureStartStopStrandArrays($std_coords, \@std_start_A, \@std_stop_A, undef, $FH_HR);
@@ -5554,8 +5556,8 @@ sub vdr_CoordsStandardizedToOriginal {
         printf("\tif1 orig_start: $orig_start orig_stop: $orig_stop\n");
       }
       else { # $std_start_A[$std_sgm_idx] <= $spos
-        $orig_start = ($orig_mdllen + $std_start_A[$std_sgm_idx] - $spos + 1);
-        $orig_stop  = ($orig_mdllen + $std_stop_A[$std_sgm_idx] - $spos + 1);
+        $orig_start = ($circ_len + $std_start_A[$std_sgm_idx] - $spos + 1);
+        $orig_stop  = ($circ_len + $std_stop_A[$std_sgm_idx] - $spos + 1);
         printf("\tif2 orig_start: $orig_start orig_stop: $orig_stop\n");
       }
       if($orig_start < 1) {
@@ -5586,8 +5588,8 @@ sub vdr_CoordsStandardizedToOriginal {
         printf("\trc if1 orig_start: $orig_start orig_stop: $orig_stop\n");
       }
       else { # $std_start_A[$std_sgm_idx] <= $spos
-        $orig_start = ($orig_mdllen + $std_start_A[$std_sgm_idx] - $spos + 1);
-        $orig_stop  = ($orig_mdllen + $std_stop_A[$std_sgm_idx] - $spos + 1);
+        $orig_start = ($circ_len + $std_start_A[$std_sgm_idx] - $spos + 1);
+        $orig_stop  = ($circ_len + $std_stop_A[$std_sgm_idx] - $spos + 1);
         printf("\trc if2 orig_start: $orig_start orig_stop: $orig_stop\n");
       }
       if($orig_stop < 1) {
@@ -5616,7 +5618,49 @@ sub vdr_CoordsStandardizedToOriginal {
     return "";
   }
   printf("in $sub_name, orig_coords: $orig_coords, returning: " . vdr_CoordsMergeAllAdjacentSegments($orig_coords, $FH_HR) . "\n");
-  return vdr_CoordsMergeAllAdjacentSegments($orig_coords, $FH_HR);
+  $orig_coords = vdr_CoordsMergeAllAdjacentSegments($orig_coords, $FH_HR);
+  if($mdl_flag) {
+    $orig_coords = vdr_CoordsAddConstant($orig_coords, ($spos-1), $FH_HR);
+  }
+  return $orig_coords;
+}
+
+#################################################################
+# Subroutine: vdr_CoordsAddConstant
+# Incept:     EPN, Thu Jun  5 09:53:42 2025
+#
+# Purpose:    Given a coords string, add a constant to all positions.
+#
+# Arguments:
+#  $coords:   coordinates of full region (1 segment)
+#  $constant: constant to add
+#  $FH_HR:    ref to hash of file handles
+#
+# Returns:  void
+#
+# Dies: If $coords is not parseable
+#################################################################
+sub vdr_CoordsAddConstant { 
+  my $sub_name = "vdr_CoordsAddConstant";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($coords, $constant, $FH_HR) = (@_);
+
+  my $new_coords = "";
+  my @start_A  = ();
+  my @stop_A   = ();
+  my @strand_A = ();
+  vdr_FeatureStartStopStrandArrays($coords, \@start_A, \@stop_A, \@strand_A, $FH_HR);
+  my $nsgm = scalar(@start_A);
+  for(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) {
+    $new_coords .= vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx] + $constant, 
+                                                                                $stop_A[$sgm_idx]  + $constant,
+                                                                                $strand_A[$sgm_idx], $FH_HR));
+
+  }
+
+  return $new_coords;
 }
 
 #################################################################

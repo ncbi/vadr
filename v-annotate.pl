@@ -2227,16 +2227,16 @@ my ($zero_cls, $zero_alt) = output_tabular(\@mdl_info_AH, \%mdl_cls_ct_H, \%mdl_
                                            \%opt_HH, \%ofile_info_HH);
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
-#vdr_CoordsStandardizedToOriginal("41..50:+,1..8:+", 31, 70, 40, 50, $FH_HR);
-#vdr_CoordsStandardizedToOriginal("12..35:+", 31, 70, 40, 50, $FH_HR);
-#vdr_CoordsStandardizedToOriginal("12..35:+", 36, 40, 5, 50, $FH_HR);
+#vdr_CoordsStandardizedToOriginal("41..50:+,1..8:+", 31, 70, 40, 50, 0, $FH_HR);
+#vdr_CoordsStandardizedToOriginal("12..35:+", 31, 70, 40, 50, 0, $FH_HR);
+#vdr_CoordsStandardizedToOriginal("12..35:+", 36, 40, 5, 50, 0, $FH_HR);
 
-vdr_CoordsStandardizedToOriginal("39..16:-", 32, 71, 40, 50, $FH_HR);
-vdr_CoordsStandardizedToOriginal("10..1:-,50..43:-", 32, 71, 40, 50, $FH_HR);
+vdr_CoordsStandardizedToOriginal("39..16:-", 32, 71, 40, 50, 0, $FH_HR);
+vdr_CoordsStandardizedToOriginal("10..1:-,50..43:-", 32, 71, 40, 50, 0, $FH_HR);
 
-#vdr_CoordsStandardizedToOriginal("2309..3182:+,1..1625:+", 2000, 4182, 2183, 3182, $FH_HR);
-#vdr_CoordsStandardizedToOriginal("1903..2454:+", 2000, 4182, 2183, 3182, $FH_HR);
-#vdr_CoordsStandardizedToOriginal("1903..2454:+", 3000, 4500, 1501, 3182, $FH_HR);
+#vdr_CoordsStandardizedToOriginal("2309..3182:+,1..1625:+", 2000, 4182, 2183, 3182, 0, $FH_HR);
+#vdr_CoordsStandardizedToOriginal("1903..2454:+", 2000, 4182, 2183, 3182, 0, $FH_HR);
+#vdr_CoordsStandardizedToOriginal("1903..2454:+", 3000, 4500, 1501, 3182, 0, $FH_HR);
 exit 0;
 
 ################################
