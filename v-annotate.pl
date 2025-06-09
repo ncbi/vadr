@@ -2227,6 +2227,14 @@ my ($zero_cls, $zero_alt) = output_tabular(\@mdl_info_AH, \%mdl_cls_ct_H, \%mdl_
                                            \%opt_HH, \%ofile_info_HH);
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
+#vdr_CoordsStandardizedToOriginal("41..50:+,1..8:+", 31, 70, 40, 50, $FH_HR);
+#vdr_CoordsStandardizedToOriginal("12..35:+", 31, 70, 40, 50, $FH_HR);
+#vdr_CoordsStandardizedToOriginal("12..35:+", 36, 40, 5, 50, $FH_HR);
+
+#vdr_CoordsStandardizedToOriginal("2309..3182:+,1..1625:+", 2000, 4182, 2183, 3182, $FH_HR);
+#vdr_CoordsStandardizedToOriginal("1903..2454:+", 2000, 4182, 2183, 3182, $FH_HR);
+vdr_CoordsStandardizedToOriginal("1903..2454:+", 3000, 4500, 1501, 3182, $FH_HR);
+exit 0;
 
 ################################
 # output optional output files #
@@ -3788,7 +3796,6 @@ sub cmalign_or_glsearch_wrapper {
   my $start_secs; # timing start
   my $do_parallel = opt_Get("-p", $opt_HHR);
   my $do_keep     = opt_Get("--keep", $opt_HHR);
-  my $do_cmindi   = opt_Get("--cmindi", $opt_HHR);
   my $do_cmindi   = ((opt_Get("--cmindi", $opt_HHR)) || $mdl_is_circular) ? 1 : 0;
   @{$overflow_seq_AR} = (); # we will fill this with names of sequences that fail cmalign because
                             # the matrix required to align them is too big
@@ -7543,6 +7550,7 @@ sub add_protein_validation_alerts {
               if((! defined $n_start) && (defined $p_qstart) && (defined $p_score))  { 
                 # no nucleotide-based prediction but there is a protein-based blastx prediction
                 # only add this if length meets our minimum
+                my $skip_flag = 0; # we set this to 1 if we want to skip reporint indfantp b/c we have a circular model
                 if($p_hlen >= $minpvlen) { 
                   if(! $p_blastx_feature_flag) { # this should always be true because if n_start is not defined then there was no 
                     # nucleotide feature to blastx against, but this is a rare alert so to be safe we require it here
@@ -7573,9 +7581,9 @@ sub add_protein_validation_alerts {
                           $alt_mcoords .= vdr_CoordsReverseComplement($tmp_alt_mcoords, 0, $FH_HR) . ";"; # 0: don't do carrots
                         }
                       }
-                      else { 
-                        $alt_mcoords .= "VADRNULL;";
-                      }
+                    }
+                    else { 
+                      $alt_mcoords .= "VADRNULL;";
                     }
                   }
                   else { # $p_blastx_feature_flag is true
