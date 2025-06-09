@@ -5520,50 +5520,71 @@ sub vdr_CoordsSegmentFractionalToActual {
 #################################################################
 sub vdr_CoordsStandardizedToOriginal { 
   my $sub_name = "vdr_CoordsStandardizedToOriginal";
-  my $nargs_exp = 4;
+  my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($std_coords, $spos, $epos, $seq_len, $orig_mdllen, $FH_HR) = (@_);
-
+  printf("in $sub_name, std_coords: $std_coords\n");
+  
   if($spos > $orig_mdllen) {
     ofile_FAIL("ERROR in $sub_name, spos ($spos) is unexpectedly > model len ($orig_mdllen)", 1, $FH_HR);
   }
 
   my $strand = vdr_FeatureSummaryStrand($std_coords, $FH_HR);
-   vdr_FeatureInfoStartStopStrandArrays()
   if(($strand ne "+") && ($strand ne "-")) {
     ofile_FAIL("ERROR in $sub_name, not all segments are the same strand in standardized coords string $std_coords", 1, $FH_HR);
   }
 
+  my $nadded = $orig_mdllen - ($epos - $spos + 1);
   my @std_start_A = ();
   my @std_stop_A  = ();
   vdr_FeatureStartStopStrandArrays($std_coords, \@std_start_A, \@std_stop_A, undef, $FH_HR);
-  my $std_nsgm = scalar(@start_A);
+  my $std_nsgm = scalar(@std_start_A);
   
   my $orig_coords = ""; # we will create this as we go
   my $orig_start = undef;
   my $orig_stop  = undef;
   if($strand eq "+") {
     for(my $std_sgm_idx = 0; $std_sgm_idx < $std_nsgm; $std_sgm_idx++) {
-      if($orig_start < $orig_mdllen) { 
+      if($std_start_A[$std_sgm_idx] > $spos) { 
         $orig_start = ($std_start_A[$std_sgm_idx] - $spos + 1);
         $orig_stop  = ($std_stop_A[$std_sgm_idx] - $spos + 1);
+        printf("\tif1 orig_start: $orig_start orig_stop: $orig_stop\n");
       }
-      else { # $orig_start >= $orig_mdllen
+      else { # $std_start_A[$std_sgm_idx] <= $spos
         $orig_start = ($orig_mdllen + $std_start_A[$std_sgm_idx] - $spos + 1);
         $orig_stop  = ($orig_mdllen + $std_stop_A[$std_sgm_idx] - $spos + 1);
+        printf("\tif2 orig_start: $orig_start orig_stop: $orig_stop\n");
       }
-      if($orig_start < 1)         { $orig_start = 1; }
-      if($orig_stop  > $seq_len)  { $orig_stop  = $seq_len; }
+      if($orig_start < 1) {
+        if(abs($orig_start) >= $nadded) { 
+          $orig_coords = vdr_CoordsAppendSegment($orig_coords, vdr_CoordsSegmentCreate(($orig_start + $seq_len + $nadded), $seq_len, $strand, $FH_HR));
+        }
+        $orig_start = 1;
+      }
+      printf("\torig_stop: $orig_stop seq_len: $seq_len nadded: $nadded\n");
+      if($orig_stop > $seq_len)  {
+        printf("\t\torig_stop > seq_len\n");
+        if(($orig_stop - $seq_len) > $nadded) {
+          printf("\t\t(orig_stop - seq_len > nadded)\n");
+          $orig_coords = vdr_CoordsAppendSegment($orig_coords, vdr_CoordsSegmentCreate(1, ($orig_stop - $seq_len - $nadded), $strand, $FH_HR));
+        }
+        $orig_stop  = $seq_len;
+      }
+      if($orig_start <= $orig_stop) { 
+        $orig_coords = vdr_CoordsAppendSegment($orig_coords, vdr_CoordsSegmentCreate($orig_start, $orig_stop, $strand, $FH_HR));
+      }
     }
-    $orig_coords = vdr_CoordsAppendSegment($orig_coords, vdr_CoordsSegmentCreate($orig_start, $orig_stop, $strand, $FH_HR));
   }
   else { # $strand eq "-"
     ofile_FAIL("ERROR in $sub_name, in $sub_name and strand is -, not yet implemented", 1, $FH_HR);
   }
 
-  printf("in $sub_name, std_coords: $std_coords, orig_coords: $orig_coords, returning: " . vdr_CoordsMergeAllAdjacentSegments($orig_coords, $FH_HR) . "\n");
-
+  if($orig_coords eq "") {
+    printf("in $sub_name, returning empty string\n");
+    return "";
+  }
+  printf("in $sub_name, orig_coords: $orig_coords, returning: " . vdr_CoordsMergeAllAdjacentSegments($orig_coords, $FH_HR) . "\n");
   return vdr_CoordsMergeAllAdjacentSegments($orig_coords, $FH_HR);
 }
 
