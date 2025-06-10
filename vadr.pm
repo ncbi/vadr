@@ -88,6 +88,7 @@ require "sqp_utils.pm";
 # vdr_FeatureInfoValidateCircularSpanningFeatureSet()
 # vdr_FeatureInfoValidateCircularLinearFeatureSet()
 # vdr_FeatureInfoHasCircularFeatureSets()
+# vdr_FeatureInfoSetOrig()
 # 
 # vdr_SegmentInfoPopulate()
 # 
@@ -1968,6 +1969,161 @@ sub vdr_FeatureInfoHasCircularFeatureSets {
   }
 
   return 0;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureOrSegmentInfoSetOrig
+# Incept:     EPN, Tue Jun 10 12:56:55 2025
+# 
+# Purpose:    Sets "ORIG_{key}" values by copying current "{key}"
+#             values for all {key} values in comma separated keys
+#             in $key_string.
+#  
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $key_string:    comma separated string of keys to make copies of
+#   $FH_HR:         REF to file handles
+#
+# Returns:    void
+#
+# Dies:       if any key in $key_string does not exist for any ftr
+#
+#################################################################
+sub vdr_FeatureOrSegmentInfoSetOrig { 
+  my $sub_name = "vdr_FeatureOrSegmentInfoSetOrig";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  
+  my ($info_AHR, $key_string, $FH_HR) = @_;
+
+  my @key_A = split(",", $key_string);
+  
+  my $n = scalar(@{$info_AHR});
+  for(my $idx = 0; $idx < $n; $idx++) {
+    foreach my $key (@key_A) { 
+      my $orig_key = "ORIG_" . $key;
+      if(! defined $info_AHR->[$idx]{$key}) {
+        ofile_FAIL("ERROR in $sub_name, info $idx for key $key is not defined", 1, $FH_HR);
+      }
+      my $orig_value = $info_AHR->[$idx]{$key};
+      if((defined $info_AHR->[$idx]{$orig_key}) && 
+         ($info_AHR->[$idx]{$orig_key} ne $orig_value)) {
+        ofile_FAIL("ERROR in $sub_name, info $idx for key $key is not defined", 1, $FH_HR);
+      }
+      $info_AHR->[$idx]{$orig_key} = $orig_value;
+    }
+  }
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureOrSegmentInfoResetOrig
+# Incept:     EPN, Tue Jun 10 13:05:53 2025
+# 
+# Purpose:    Sets "<key>" values for any keys for which
+#             {ORIG_<key>} values exist. 
+#  
+# Arguments:
+#   $info_AHR:  REF to feature or segment information, modified here
+#   $FH_HR:     REF to file handles
+#
+# Returns:    void
+#
+# Dies: if <key> value not defined for any {ORIG_<key>}
+#################################################################
+sub vdr_FeatureOrSegmentInfoResetOrig { 
+  my $sub_name = "vdr_FeatureOrSegmentInfoResetOrig";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  
+  my ($info_AHR, $FH_HR) = @_;
+
+  my $n = scalar(@{$info_AHR});
+  for(my $idx = 0; $idx < $n; $idx++) {
+    foreach my $key (sort keys (%{$info_AHR->[$idx]})) {
+      my $orig_key = $key;
+      if($key =~ s/^ORIG_//) { 
+        if(! defined $info_AHR->[$idx]{$key}) {
+          ofile_FAIL("ERROR in $sub_name, found info idx $idx $orig_key value but $key key does not exist", 1, $FH_HR);
+        }
+        $info_AHR->[$idx]{$key} = $info_AHR->[$idx]{$orig_key};
+      }
+    }
+  }
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureAndSegmentInfoCircularPerSequenceCoordsShift
+# Incept:     EPN, Tue Jun 10 13:11:39 2025
+# 
+# Purpose:    For circular models, shift ftr coords based on model
+#             start and stop positions for one feature per
+#             circular_spanning_ftr_set or circular_linear_ftr_set.
+#
+#             Should be called after vdr_FeatureInfoSetOrig and
+#             vdr_SegmentInfoSetOrig.
+#
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, modified here
+#   $sgm_info_AHR:  REF to feature information, modified here
+#   $spos:          model start position of alignment of current seq
+#   $epos:          model end position of alignment of current seq
+#   $circ_len:      length of circular model (not doubled length)
+#   $FH_HR:         REF to file handles
+#
+# Returns:    void
+#
+# Dies: $epos-$spos+1 != $circ_len
+#       If ORIG_* values that should be set in ftr or sgm info are not set
+#
+#################################################################
+sub vdr_FeatureAndSegmentInfoCircularPerSequenceCoordsShift { 
+  my $sub_name = "vdr_FeatureAndSegmentInfoPerSequenceCoordsShift";
+  my $nargs_expected = 6;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  
+  my ($ftr_info_AHR, $sgm_info_AHR, $spos, $epos, $circ_len, $FH_HR) = @_;
+
+  if(($epos - $spos + 1) != $circ_len) {
+    ofile_FAIL("ERROR in $sub_name, spos: $spos, epos: $epos, circ_len: $circ_len, model alignment length is not circ_len", 1, $FH_HR);
+  }
+  
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $shift_flag; # set to 1 for any feature we want to update
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
+    $shift_flag = 0;
+    if(! defined $ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}) {
+      ofile_FAIL("ERROR in $sub_name, circular_spanning_ftr_set spanning ftr $ftr_idx does not have ORIG_coords set", 1, $FH_HR);
+    }
+    if((defined $ftr_info_AHR->[$ftr_idx]{"circular_spanning_ftr_set"}) &&
+       (vdr_FeatureSpansOrigin($ftr_info_AHR, $ftr_idx))) {
+      if(vdr_CoordsMin($ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, $FH_HR) > $circ_len) {
+        ofile_FAIL("ERROR in $sub_name, circular_spanning_ftr_set spanning ftr $ftr_idx ORIG_coords (" . $ftr_info_AHR->[$ftr_idx]{"ORIG_coords"} . ") has positions that exceed circular genome length $circ_len", 1, $FH_HR);
+      }
+      $shift_flag = 1;
+    }
+    elsif((defined $ftr_info_AHR->[$ftr_idx]{"circular_linear_ftr_set"}) &&
+          (vdr_CoordsMin($ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, $FH_HR) <= $circ_len)) {
+      $shift_flag = 1;
+    }
+    
+    if($shift_flag) { 
+      $ftr_info_AHR->[$ftr_idx]{"coords"} = vdr_CoordsAddConstant($ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, ($spos-1), $FH_HR);
+      printf("in $sub_name, just shifted ftr_info_AHR->[$ftr_idx]{start} from %s to %s\n", $ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, $ftr_info_AHR->[$ftr_idx]{"coords"});
+      for(my $sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) {
+        if((! defined $sgm_info_AHR->[$sgm_idx]{"ORIG_start"}) ||
+           (! defined $sgm_info_AHR->[$sgm_idx]{"ORIG_stop"})) {
+          ofile_FAIL("ERROR in $sub_name, circular_spanning_ftr_set spanning ftr $ftr_idx sgm_idx $sgm_idx does not have ORIG_start and/or ORIG_stop set", 1, $FH_HR);
+        }
+        $sgm_info_AHR->[$sgm_idx]{"start"} = $sgm_info_AHR->[$sgm_idx]{"ORIG_start"} + ($spos-1);
+        $sgm_info_AHR->[$sgm_idx]{"stop"}  = $sgm_info_AHR->[$sgm_idx]{"ORIG_stop"}  + ($spos-1);
+        printf("\tin $sub_name, just shifted sgm_info_AHR->[$sgm_idx]{start} from %s to %s\n", $sgm_info_AHR->[$sgm_idx]{"ORIG_start"}, $sgm_info_AHR->[$sgm_idx]{"start"});
+        printf("\tin $sub_name, just shifted sgm_info_AHR->[$sgm_idx]{start} from %s to %s\n", $sgm_info_AHR->[$sgm_idx]{"ORIG_stop"}, $sgm_info_AHR->[$sgm_idx]{"stop"});
+      }
+    }
+  }
+  return;
 }
 
 #################################################################
@@ -6132,9 +6288,9 @@ sub vdr_CoordsAddConstant {
   vdr_FeatureStartStopStrandArrays($coords, \@start_A, \@stop_A, \@strand_A, $FH_HR);
   my $nsgm = scalar(@start_A);
   for(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) {
-    $new_coords .= vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx] + $constant, 
-                                                                                $stop_A[$sgm_idx]  + $constant,
-                                                                                $strand_A[$sgm_idx], $FH_HR));
+    $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx] + $constant, 
+                                                                               $stop_A[$sgm_idx]  + $constant,
+                                                                               $strand_A[$sgm_idx], $FH_HR));
 
   }
 

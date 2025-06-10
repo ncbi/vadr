@@ -1931,7 +1931,11 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   $mdl_len  = $mdl_info_AH[$mdl_idx]{"length"};
   $mdl_is_circular = ((defined $mdl_info_AH[$mdl_idx]{"is_circular"}) && ($mdl_info_AH[$mdl_idx]{"is_circular"} == 1)) ? 1 : 0;
-
+  if($mdl_is_circular) {
+    vdr_FeatureOrSegmentInfoSetOrig(\@{$ftr_info_HAH{$mdl_name}}, "coords", $FH_HR);
+    vdr_FeatureOrSegmentInfoSetOrig(\@{$sgm_info_HAH{$mdl_name}}, "start,stop", $FH_HR);
+  }
+  
   if((defined $mdl_seq_name_HA{$mdl_name}) && (! $do_clsonly)) {  
     my $mdl_nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
     initialize_ftr_or_sgm_results_for_model(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, $FH_HR);
@@ -1970,7 +1974,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       vdr_CmalignParseInsertFile($align_ifile_file, \%seq_inserts_HH, undef, undef, undef, undef, \%do_shift_inserts_H, \%{$ofile_info_HH{"FH"}});
       push(@to_remove_A, ($align_stdout_file, $align_ifile_file));
     }
-
+    
     # parse the stk alignments
     for(my $a = 0; $a < scalar(@{$stk_file_HA{$mdl_name}}); $a++) { 
       if(-s $stk_file_HA{$mdl_name}[$a]) { # skip empty alignments, which may exist if all seqs were not alignable
@@ -1982,8 +1986,9 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                                       \@mdl_info_AH, $mdl_idx, \@ftr_fileroot_A, \@ftr_outroot_A, 
                                                       $$sqfile_for_cds_mp_alerts_R, $$sqfile_for_output_fastas_R, $$sqfile_for_pv_R,
                                                       $do_separate_cds_fa_files_for_protein_validation, \@to_remove_A,
-                                                      ($do_replace_ns) ? \%rpn_output_HH : undef, 
-                                                      $out_root, \%opt_HH, \%ofile_info_HH);
+                                                      ($do_replace_ns) ? \%rpn_output_HH : undef, $out_root, 
+                                                      ($mdl_is_circular) ? ($mdl_len / 2) : -1,
+                                                      \%opt_HH, \%ofile_info_HH);
       }
       push(@to_remove_A, ($stk_file_HA{$mdl_name}[$a]));
     }
@@ -4286,6 +4291,7 @@ sub cmalign_or_glsearch_run {
 #  $to_remove_AR:              REF to array of files to remove before exiting, possibly added to here if $do_separate_cds_fa_files
 #  $rpn_output_HHR:            REF to rpn output data HH, PRE-FILLED, will be undef if -r not used
 #  $out_root:                  string for naming output files
+#  $circ_len:                  circular length of model (not doubled length), or -1 if model is not circular
 #  $opt_HHR:                   REF to 2D hash of option values
 #  $ofile_info_HHR:            REF to 2D hash of output file information
 #
@@ -4296,7 +4302,7 @@ sub cmalign_or_glsearch_run {
 ################################################################# 
 sub parse_stk_and_add_alignment_cds_and_mp_alerts { 
   my $sub_name = "parse_stk_and_add_alignment_cds_and_mp_alerts()";
-  my $nargs_exp = 26;
+  my $nargs_exp = 27;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
   my ($stk_file, $in_sqfile_R, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, 
@@ -4305,7 +4311,7 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
       $mdl_info_AHR, $mdl_idx, $ftr_fileroot_AR, $ftr_outroot_AR, 
       $sqfile_for_cds_mp_alerts, $sqfile_for_output_fastas, $sqfile_for_pv,
       $do_separate_cds_fa_files, $to_remove_AR, $rpn_output_HHR,
-      $out_root, $opt_HHR, $ofile_info_HHR) = @_;
+      $out_root, $circ_len, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = \%{$ofile_info_HHR->{"FH"}};
   my $pp_thresh_non_mp = opt_Get("--indefann",    $opt_HHR); # threshold for non-mat_peptide features
@@ -4360,8 +4366,10 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
   }
 
   # for each sequence, go through all segments and fill in the start and stop (unaligned seq) positions
+  my $shift_flag = 0; # set to 1 if we shift feature coordinates
   for(my $i = 0; $i < $nseq; $i++) { 
     my $seq_name = $msa->get_sqname($i);
+    my ($spos, $epos) = ($seq_inserts_HHR->{$seq_name}{"spos"}, $seq_inserts_HHR->{$seq_name}{"epos"});
     if(! exists $seq_len_HR->{$seq_name}) { 
       ofile_FAIL("ERROR in $sub_name, do not have length information for sequence $seq_name from alignment in $stk_file", 1, $FH_HR);
     }
@@ -4370,6 +4378,16 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
       ofile_FAIL("ERROR in $sub_name, do not have insert information for sequence $seq_name from alignment in $stk_file", 1, $FH_HR);
     }
     my $seq_ins = $seq_inserts_HHR->{$seq_name}{"ins"}; # string of inserts
+    if($shift_flag) {
+      vdr_FeatureOrSegmentInfoResetOrig($ftr_info_AHR, $FH_HR);
+      vdr_FeatureOrSegmentInfoResetOrig($sgm_info_AHR, $FH_HR);
+      $shift_flag = 0;
+    }
+    if(($circ_len != -1) && ($spos != 1) && (($epos - $spos + 1) == $circ_len)) { 
+      vdr_FeatureAndSegmentInfoCircularPerSequenceCoordsShift($ftr_info_AHR, $sgm_info_AHR, $spos, $epos, $circ_len, $FH_HR);
+      $shift_flag = 1;
+    }
+       
     my @do_dcr_idx_A = (); # array of indices in $dcr_output_HAHR->{$seq_name} that we will actually doctor alignment for
     $seq_doctor_flag = 0;
 
@@ -5010,6 +5028,12 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
 
     } # end of 'else' entered if ! $doctor_flag
   } # end of 'for(my $i = 0; $i < $nseq; $i++)'
+
+  if($shift_flag) {
+    vdr_FeatureOrSegmentInfoResetOrig($ftr_info_AHR, $FH_HR);
+    vdr_FeatureOrSegmentInfoResetOrig($sgm_info_AHR, $FH_HR);
+    $shift_flag = 0;
+  }
 
   if($msa_doctor_flag) { 
     $msa->write_msa($stk_file, "pfam", 0);
@@ -9151,8 +9175,9 @@ sub helper_protein_validation_db_seqname_to_ftr_idx {
     my @possible_ret_ftr_idx_A = ();
     $ret_strand = vdr_FeatureSummaryStrand($coords, $FH_HR);
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      my $ftr_coords = (defined $ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}) ? $ftr_info_AHR->[$ftr_idx]{"ORIG_coords"} : $ftr_info_AHR->[$ftr_idx]{"coords"};
       if(($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS")) { 
-        if($ftr_info_AHR->[$ftr_idx]{"coords"} eq $coords) { 
+        if($ftr_coords eq $coords) { 
           push(@possible_ret_ftr_idx_A, $ftr_idx);
         }
       }
