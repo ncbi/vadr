@@ -2090,9 +2090,19 @@ sub vdr_FeatureAndSegmentInfoCircularPerSequenceCoordsShift {
   }
   
   my $nftr = scalar(@{$ftr_info_AHR});
-  my $shift_flag; # set to 1 for any feature we want to update
+  my $shift_flag;    # set to 1 for any feature we want to update
+  my $new_coords;    # new coords string
+  my @start_A = ();  # start array for sgms
+  my @stop_A = ();   # stop array for sgms
+  my $nsgm = 0;      # num segments
+  my $sgm_idx = 0;   # sgm idx
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
     $shift_flag = 0;
+    $new_coords = "";
+    my $summary_strand = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, $FH_HR);
+    if(($summary_strand ne "+") && ($summary_strand ne "-")) {
+      ofile_FAIL("ERROR in $sub_name, ftr $ftr_idx with coords " . $ftr_info_AHR->[$ftr_idx]{"ORIG_coords"} . " has multiple strands", 1, $FH_HR);
+    }
     if(! defined $ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}) {
       ofile_FAIL("ERROR in $sub_name, circular_spanning_ftr_set spanning ftr $ftr_idx does not have ORIG_coords set", 1, $FH_HR);
     }
@@ -2101,26 +2111,71 @@ sub vdr_FeatureAndSegmentInfoCircularPerSequenceCoordsShift {
       if(vdr_CoordsMin($ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, $FH_HR) > $circ_len) {
         ofile_FAIL("ERROR in $sub_name, circular_spanning_ftr_set spanning ftr $ftr_idx ORIG_coords (" . $ftr_info_AHR->[$ftr_idx]{"ORIG_coords"} . ") has positions that exceed circular genome length $circ_len", 1, $FH_HR);
       }
-      $shift_flag = 1;
+      # determine if we need to shift, only need to shift if spos is within the feature
+      if(vdr_CoordsCheckIfSpans($ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, vdr_CoordsSinglePositionSegmentCreate($spos, $summary_strand, $FH_HR), $FH_HR)) {
+        # find the two segments that span the origin, and add spos to the stop of the 5' sgm and start of the 3' sgm
+        @start_A = ();
+        @stop_A = ();
+        vdr_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, \@start_A, \@stop_A, undef, $FH_HR);
+        my $found_spans = 0;
+        $nsgm = scalar(@start_A);
+        for(my $sgm_idx = 0; $sgm_idx < ($nsgm-1); $sgm_idx++) {
+          if(vdr_TwoCoordsSpanOrigin(vdr_CoordsSegmentCreate($start_A[$sgm_idx],     $stop_A[$sgm_idx],     $summary_strand, $FH_HR),
+                                     vdr_CoordsSegmentCreate($start_A[($sgm_idx+1)], $stop_A[($sgm_idx+1)], $summary_strand, $FH_HR),
+                                     $circ_len, $FH_HR)) {
+            $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx], $stop_A[$sgm_idx] + ($spos-1), $summary_strand, $FH_HR));
+            $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[($sgm_idx+1)] + ($spos-1), $stop_A[($sgm_idx+1)], $summary_strand, $FH_HR));
+            $sgm_idx++;
+            $found_spans = 1;
+          }
+          else {
+            $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx], $stop_A[$sgm_idx], $summary_strand, $FH_HR));
+          }
+        }
+        if(! $found_spans) {
+          ofile_FAIL("ERROR in $sub_name, circular_spanning_ftr_set spanning ftr $ftr_idx ORIG_coords (" . $ftr_info_AHR->[$ftr_idx]{"ORIG_coords"} . ") unable to find spanning segments", 1, $FH_HR);
+        }
+        $shift_flag = 1;
+      }
     }
     elsif((defined $ftr_info_AHR->[$ftr_idx]{"circular_linear_ftr_set"}) &&
           (vdr_CoordsMin($ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, $FH_HR) <= $circ_len)) {
-      $shift_flag = 1;
+      if(vdr_CoordsCheckIfSpans($ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, vdr_CoordsSinglePositionSegmentCreate($spos, $summary_strand, $FH_HR), $FH_HR)) {
+        my $set = $ftr_info_AHR->[$ftr_idx]{"circular_linear_ftr_set"};
+        my ($before_idx, $after_idx) = vdr_FeatureInfoValidateCircularLinearFeatureSet($ftr_info_AHR, $set, $FH_HR);
+        if($before_idx != $ftr_idx) {
+          ofile_FAIL("ERROR in $sub_name, circular_linear_ftr_set problem finding before idx", 1, $FH_HR);
+        }
+        @start_A = ();
+        @stop_A = ();
+        vdr_FeatureStartStopStrandArrays($ftr_info_AHR->[$before_idx]{"ORIG_coords"}, \@start_A, \@stop_A, undef, $FH_HR);
+        $nsgm = scalar(@start_A);
+        for($sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) {
+          if($start_A[$sgm_idx] < $spos) {
+            $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($spos, $stop_A[$sgm_idx], $summary_strand, $FH_HR));
+          }
+          else {
+            $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx], $stop_A[$sgm_idx], $summary_strand, $FH_HR));
+          }
+        }
+        vdr_FeatureStartStopStrandArrays($ftr_info_AHR->[$after_idx]{"ORIG_coords"}, \@start_A, \@stop_A, undef, $FH_HR);
+        $nsgm = scalar(@start_A);
+        for($sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) {
+          if($stop_A[$sgm_idx] > $epos) {
+            $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx], $epos, $summary_strand, $FH_HR));
+          }
+          else {
+            $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx], $stop_A[$sgm_idx], $summary_strand, $FH_HR));
+          }
+        }
+        $shift_flag = 1;
+      }
     }
     
     if($shift_flag) { 
-      $ftr_info_AHR->[$ftr_idx]{"coords"} = vdr_CoordsAddConstant($ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, ($spos-1), $FH_HR);
+      $ftr_info_AHR->[$ftr_idx]{"coords"} = $new_coords;
       printf("in $sub_name, just shifted ftr_info_AHR->[$ftr_idx]{start} from %s to %s\n", $ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, $ftr_info_AHR->[$ftr_idx]{"coords"});
-      for(my $sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) {
-        if((! defined $sgm_info_AHR->[$sgm_idx]{"ORIG_start"}) ||
-           (! defined $sgm_info_AHR->[$sgm_idx]{"ORIG_stop"})) {
-          ofile_FAIL("ERROR in $sub_name, circular_spanning_ftr_set spanning ftr $ftr_idx sgm_idx $sgm_idx does not have ORIG_start and/or ORIG_stop set", 1, $FH_HR);
-        }
-        $sgm_info_AHR->[$sgm_idx]{"start"} = $sgm_info_AHR->[$sgm_idx]{"ORIG_start"} + ($spos-1);
-        $sgm_info_AHR->[$sgm_idx]{"stop"}  = $sgm_info_AHR->[$sgm_idx]{"ORIG_stop"}  + ($spos-1);
-        printf("\tin $sub_name, just shifted sgm_info_AHR->[$sgm_idx]{start} from %s to %s\n", $sgm_info_AHR->[$sgm_idx]{"ORIG_start"}, $sgm_info_AHR->[$sgm_idx]{"start"});
-        printf("\tin $sub_name, just shifted sgm_info_AHR->[$sgm_idx]{start} from %s to %s\n", $sgm_info_AHR->[$sgm_idx]{"ORIG_stop"}, $sgm_info_AHR->[$sgm_idx]{"stop"});
-      }
+      vdr_SegmentInfoPopulate($sgm_info_AHR, $ftr_info_AHR, $FH_HR);
     }
   }
   return;
