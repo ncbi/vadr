@@ -2142,7 +2142,7 @@ sub vdr_FeatureAndSegmentInfoCircularPerSequenceCoordsShift {
           (vdr_CoordsMin($ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, $FH_HR) <= $circ_len)) {
       if(vdr_CoordsCheckIfSpans($ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, vdr_CoordsSinglePositionSegmentCreate($spos, $summary_strand, $FH_HR), $FH_HR)) {
         my $set = $ftr_info_AHR->[$ftr_idx]{"circular_linear_ftr_set"};
-        my ($before_idx, $after_idx) = vdr_FeatureInfoValidateCircularLinearFeatureSet($ftr_info_AHR, $set, $FH_HR);
+        my ($before_idx, $after_idx) = vdr_FeatureInfoValidateCircularLinearFeatureSet($ftr_info_AHR, $set, $circ_len, $FH_HR);
         if($before_idx != $ftr_idx) {
           ofile_FAIL("ERROR in $sub_name, circular_linear_ftr_set problem finding before idx", 1, $FH_HR);
         }

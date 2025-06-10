@@ -4380,7 +4380,7 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
     my $seq_ins = $seq_inserts_HHR->{$seq_name}{"ins"}; # string of inserts
     if($shift_flag) {
       vdr_FeatureOrSegmentInfoResetOrig($ftr_info_AHR, $FH_HR);
-      vdr_FeatureOrSegmentInfoResetOrig($sgm_info_AHR, $FH_HR);
+      vdr_SegmentInfoPopulate($sgm_info_AHR, $ftr_info_AHR, $FH_HR);
       $shift_flag = 0;
     }
     if(($circ_len != -1) && ($spos != 1) && (($epos - $spos + 1) == $circ_len)) { 
