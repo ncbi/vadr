@@ -110,7 +110,12 @@ require "sqp_utils.pm";
 # vdr_FeatureSummaryStrand()
 # vdr_FeaturePositionSpecificValueBreakdown()
 # vdr_FeatureCoordsListBreakdown()
-#
+# vdr_FeatureLengthBetweenAdjacentSegments()
+# vdr_FeatureCodonStart()
+# vdr_FeatureSpansOrigin()
+# vdr_FeatureIs5pTruncated()
+# vdr_FeatureIs3pTruncated()
+# 
 # vdr_SegmentStartIdenticalToCds()
 # vdr_SegmentStopIdenticalToCds()
 #
@@ -2491,6 +2496,112 @@ sub vdr_FeatureLengthBetweenAdjacentSegments {
   # printf("in $sub_name, returning $region_length\n");
 
   return $region_length;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureCodonStart
+# Incept:     EPN, Tue May  6 15:15:57 2025
+# 
+# Purpose:    Returns "codon_start" value if it is defined, else 1
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $ftr_idx:       feature index
+#
+# Returns:    void
+# 
+# Dies:       Never
+#
+#################################################################
+sub vdr_FeatureCodonStart {
+  my $sub_name = "vdr_FeatureCodonStart";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+  
+  return (defined $ftr_info_AHR->[$ftr_idx]{"codon_start"}) ? $ftr_info_AHR->[$ftr_idx]{"codon_start"} : 1;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureSpansOrigin
+# Incept:     EPN, Thu May  8 11:42:07 2025
+# 
+# Purpose:    Returns "spans_origin" value if it is defined, else 0
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $ftr_idx:       feature index
+#
+# Returns:    void
+# 
+# Dies:       Never
+#
+#################################################################
+sub vdr_FeatureSpansOrigin {
+  my $sub_name = "vdr_FeatureSpansOrigin";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+
+  if((defined $ftr_info_AHR->[$ftr_idx]{"spans_origin"}) && ($ftr_info_AHR->[$ftr_idx]{"spans_origin"} == 1)) {
+    return 1;
+  }
+  return 0;
+}  
+
+
+#################################################################
+# Subroutine: vdr_FeatureIs5pTruncated
+# Incept:     EPN, Tue May  6 14:44:41 2025
+# 
+# Purpose:    Return "1" if "is_5trunc" is defined and "1"
+#             else return "0"
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $ftr_idx:       feature index
+#
+# Returns:    void
+# 
+# Dies:       Never
+#
+#################################################################
+sub vdr_FeatureIs5pTruncated {
+  my $sub_name = "vdr_FeatureIs5pTruncated";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+  
+  return ((defined $ftr_info_AHR->[$ftr_idx]{"trunc5"}) && $ftr_info_AHR->[$ftr_idx]{"trunc5"} == 1) ? 1 : 0;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureIs3pTruncated
+# Incept:     EPN, Tue May  6 14:56:59 2025
+# 
+# Purpose:    Return "1" if "is_3trunc" is defined and "1"
+#             else return "0"
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $ftr_idx:       feature index
+#
+# Returns:    void
+# 
+# Dies:       Never
+#
+#################################################################
+sub vdr_FeatureIs3pTruncated {
+  my $sub_name = "vdr_FeatureIs3pTruncated";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+  
+  return ((defined $ftr_info_AHR->[$ftr_idx]{"trunc3"}) && $ftr_info_AHR->[$ftr_idx]{"trunc3"} == 1) ? 1 : 0;
 }
 
 #################################################################
@@ -5619,7 +5730,7 @@ sub vdr_CoordsStandardizedToOriginal {
   }
   printf("in $sub_name, orig_coords: $orig_coords, returning: " . vdr_CoordsMergeAllAdjacentSegments($orig_coords, $FH_HR) . "\n");
   $orig_coords = vdr_CoordsMergeAllAdjacentSegments($orig_coords, $FH_HR);
-  if($mdl_flag) {
+  if($do_mdl_flag) {
     $orig_coords = vdr_CoordsAddConstant($orig_coords, ($spos-1), $FH_HR);
   }
   return $orig_coords;

@@ -2179,7 +2179,15 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 # feature table file #
 ######################
 
-  # open files for writing
+my %seq_circular_info_HH = ();
+
+%{$seq_circular_info_HH{"ctoy50a/1-50,Ns-21-30"}} = ();
+$seq_circular_info_HH{"ctoy50a/1-50,Ns-21-30"}{"spos"} = 31;
+$seq_circular_info_HH{"ctoy50a/1-50,Ns-21-30"}{"epos"} = 70;
+$seq_circular_info_HH{"ctoy50a/1-50,Ns-21-30"}{"seqlen"} = 40;
+$seq_circular_info_HH{"ctoy50a/1-50,Ns-21-30"}{"circlen"} = 50;
+  
+# open files for writing
 if(! $do_clsonly) {
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_tbl",       $out_root . ".pass.tbl",       1, 1, "5 column feature table output for passing sequences");
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_tbl",       $out_root . ".fail.tbl",       1, 1, "5 column feature table output for failing sequences");
@@ -2190,7 +2198,7 @@ if(! $do_clsonly) {
   $start_secs = ofile_OutputProgressPrior("Generating feature table output", $progress_w, $log_FH, *STDOUT);
   my $npass = output_feature_table(\%mdl_cls_ct_H, \@seq_name_A, \%ftr_info_HAH, \%sgm_info_HAH, \%alt_info_HH, 
                                    \%stg_results_HHH, \%ftr_results_HHAH, \%sgm_results_HHAH, \%alt_seq_instances_HH,
-                                   \%alt_ftr_instances_HHH, 
+                                   \%alt_ftr_instances_HHH, \%seq_circular_info_HH, 
                                    ((opt_IsUsed("--msub", \%opt_HH)) ? \%mdl_sub_H : undef),
                                    \$in_sqfile, $out_root, \%opt_HH, \%ofile_info_HH);
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -2231,13 +2239,13 @@ ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 #vdr_CoordsStandardizedToOriginal("12..35:+", 31, 70, 40, 50, 0, $FH_HR);
 #vdr_CoordsStandardizedToOriginal("12..35:+", 36, 40, 5, 50, 0, $FH_HR);
 
-vdr_CoordsStandardizedToOriginal("39..16:-", 32, 71, 40, 50, 0, $FH_HR);
-vdr_CoordsStandardizedToOriginal("10..1:-,50..43:-", 32, 71, 40, 50, 0, $FH_HR);
+#vdr_CoordsStandardizedToOriginal("39..16:-", 32, 71, 40, 50, 0, $FH_HR);
+#vdr_CoordsStandardizedToOriginal("10..1:-,50..43:-", 32, 71, 40, 50, 0, $FH_HR);
 
 #vdr_CoordsStandardizedToOriginal("2309..3182:+,1..1625:+", 2000, 4182, 2183, 3182, 0, $FH_HR);
 #vdr_CoordsStandardizedToOriginal("1903..2454:+", 2000, 4182, 2183, 3182, 0, $FH_HR);
 #vdr_CoordsStandardizedToOriginal("1903..2454:+", 3000, 4500, 1501, 3182, 0, $FH_HR);
-exit 0;
+#exit 0;
 
 ################################
 # output optional output files #
@@ -10952,6 +10960,7 @@ sub helper_tabular_replace_spaces {
 #  $sgm_results_HAHR:        REF to model results AAH, PRE-FILLED
 #  $alt_seq_instances_HHR:   REF to 2D hash with per-sequence alerts, PRE-FILLED
 #  $alt_ftr_instances_HHHR:  REF to array of 2D hashes with per-feature alerts, PRE-FILLED
+#  $seq_circular_info_HHR:   REF to 2D hash of information for each sequence if model is circular
 #  $mdl_sub_HR:              REF to hash of of model substitutions, PRE-FILLED, should be undef unless --msub used
 #  $in_sqfile_R:             REF to Bio::Easel::SqFile object of input fasta, to create .pass.fa and .fail.fa files with
 #  $out_root:                output root for the output fasta file names
@@ -10965,12 +10974,12 @@ sub helper_tabular_replace_spaces {
 #################################################################
 sub output_feature_table { 
   my $sub_name = "output_feature_table";
-  my $nargs_exp = 15;
+  my $nargs_exp = 16;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($mdl_cls_ct_HR, $seq_name_AR, $ftr_info_HAHR, $sgm_info_HAHR, $alt_info_HHR, 
       $stg_results_HHHR, $ftr_results_HHAHR, $sgm_results_HHAHR, $alt_seq_instances_HHR, 
-      $alt_ftr_instances_HHHR, $mdl_sub_HR, $in_sqfile_R, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
+      $alt_ftr_instances_HHHR, $seq_circular_info_HHR, $mdl_sub_HR, $in_sqfile_R, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $do_pv_blastx  = (opt_Get("--pv_skip", $opt_HHR) || opt_Get("--pv_hmmer", $opt_HHR)) ? 0 : 1;
   my $do_nofasta    = opt_Get("--out_nofasta", $opt_HHR) ? 1 : 0;
@@ -11051,7 +11060,8 @@ sub output_feature_table {
     my $seq_name = $seq_name_AR->[$seq_idx];
     my $seq_ntabftr = 0; # number of features for this sequence annotated in tabular .ftr file (may have shorter features than are permitted in .ftbl file)
     my $seq_idx2print = $seq_idx + $sidx_offset + 1; # will be $seq_idx unless --sidx used and set to > 1
-    
+    my $seq_circular_info_HR = (defined $seq_circular_info_HHR->{$seq_name}) ? \%{$seq_circular_info_HHR->{$seq_name}} : undef;
+
     my @ftout_AH      = (); # array of hashes with output for feature table, kept in a hash so we can sort before outputting
     my $ftidx         = 0;  # index in @ftout_AH
     my %ftr_idx2ftout_idx_H = (); # key is feature index $fidx, value is $ftidx index in @ftout_AH that $fidx corresponds to
@@ -11126,7 +11136,7 @@ sub output_feature_table {
             # $defined_p_qstart must be TRUE
             ($ftr_ftbl_coords_str, $ftr_ftbl_coords_len, $min_coord, 
              $is_5trunc_term_or_n, $is_3trunc_term_or_n) =
-                 helper_ftable_coords_prot_only_prediction($seq_name, $ftr_idx, $ftr_results_HAHR, $FH_HR);
+                helper_ftable_coords_prot_only_prediction($seq_name, $ftr_idx, $ftr_results_HAHR, $seq_circular_info_HR, $FH_HR);
             # note: $is_5trunc_{term,n} will always be 0, we don't try to do truncations for protein only predictions
             # note: $is_3trunc_{term,n} will alwyas be 0, we don't try to do truncations for protein only predictions
           }
@@ -11143,8 +11153,8 @@ sub output_feature_table {
             }
             ($ftr_ftbl_coords_str, $ftr_ftbl_coords_len, $min_coord, 
              $is_5trunc_term_or_n, $is_3trunc_term_or_n) = 
-                 helper_ftable_coords_from_nt_prediction($seq_name, $ftr_idx, $ftr_start_non_ab, $ftr_stop_non_ab, 
-                                                         $ftr_info_AHR, \%{$sgm_results_HHAHR->{$mdl_name}}, $FH_HR);
+                helper_ftable_coords_from_nt_prediction($seq_name, $ftr_idx, $ftr_start_non_ab, $ftr_stop_non_ab, $ftr_info_AHR,
+                                                        \%{$sgm_results_HHAHR->{$mdl_name}}, $seq_circular_info_HR, $FH_HR);
           }
           if($ftr_ftbl_coords_str ne "") { # if $ftr_ftbl_coords_str is "", we won't output the feature because it was entirely ambiguities
             # fill an array and strings with all alerts for this sequence/feature combo
@@ -11529,14 +11539,15 @@ sub output_feature_table {
 #             multiple lines, one per segment.
 #
 # Arguments: 
-#  $seq_name:          sequence name
-#  $ftr_idx:           feature index
-#  $start_non_ab:       first position of feature that is not an N
-#  $stop_non_ab:        final position of feature that is not an N
-#  $ret_min_coord:     REF to minimum coordinate, to fill
-#  $ftr_info_AHR:      REF to array of hashes with information on the features, PRE-FILLED
-#  $sgm_results_HAHR:  REF to segment results HAH, PRE-FILLED
-#  $FH_HR:             REF to hash of file handles
+#  $seq_name:              sequence name
+#  $ftr_idx:               feature index
+#  $start_non_ab:          first position of feature that is not an N
+#  $stop_non_ab:           final position of feature that is not an N
+#  $ret_min_coord:         REF to minimum coordinate, to fill
+#  $ftr_info_AHR:          REF to array of hashes with information on the features, PRE-FILLED
+#  $sgm_results_HAHR:      REF to segment results HAH, PRE-FILLED
+#  $seq_circular_info_HR:  REF to circular info for this seq, "spos", "epos", "seqlen", "circlen"
+#  $FH_HR:                 REF to hash of file handles
 #
 # Returns:    Five values:
 #             $ftr_ftbl_coords_str: string that gives the coordinates for this feature in feature table format
@@ -11552,10 +11563,11 @@ sub output_feature_table {
 ################################################################# 
 sub helper_ftable_coords_from_nt_prediction { 
   my $sub_name = "helper_ftable_coords_from_nt_prediction";
-  my $nargs_exp = 7;
+  my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($seq_name, $ftr_idx, $start_non_ab, $stop_non_ab, $ftr_info_AHR, $sgm_results_HAHR, $FH_HR) = @_;
+  my ($seq_name, $ftr_idx, $start_non_ab, $stop_non_ab, $ftr_info_AHR,
+      $sgm_results_HAHR, $seq_circular_info_HR, $FH_HR) = @_;
 
   # arrays with per-sgm info
   my @start_A     = ();
@@ -11575,10 +11587,12 @@ sub helper_ftable_coords_from_nt_prediction {
   }
   my $missing_first_sgm = (defined $sgm_results_HAHR->{$seq_name}[($ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"})]{"sstart"}) ? 0 : 1;
   my $missing_final_sgm = (defined $sgm_results_HAHR->{$seq_name}[($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"})]{"sstart"}) ? 0 : 1;
+  my $spans_origin      = (vdr_FeatureSpansOrigin($ftr_info_AHR, $ftr_idx)) ? 1 : 0;
   
+  printf("in $sub_name, calling helper_ftable_start_stop_strand_arrays_to_coords()\n");
   return helper_ftable_start_stop_strand_arrays_to_coords(\@start_A, \@stop_A, \@strand_A, \@is_5trunc_A, \@is_3trunc_A, 
                                                           $start_non_ab, $stop_non_ab, $missing_first_sgm, $missing_final_sgm,
-                                                          $FH_HR);
+                                                          $seq_circular_info_HR, $spans_origin, $FH_HR);
 }
 
 #################################################################
@@ -11595,6 +11609,7 @@ sub helper_ftable_coords_from_nt_prediction {
 #  $seq_name:         sequence name
 #  $ftr_idx:          feature index
 #  $ftr_results_HAHR: REF to feature results AAH, PRE-FILLED
+#  $seq_circular_info_HR: REF to circular info for this seq, should be NULL unless model is circular
 #  $FH_HR:            REF to hash of file handles
 #
 # Returns:    Five values:
@@ -11609,10 +11624,10 @@ sub helper_ftable_coords_from_nt_prediction {
 ################################################################# 
 sub helper_ftable_coords_prot_only_prediction { 
   my $sub_name = "helper_ftable_coords_prot_only_prediction";
-  my $nargs_exp = 4;
+  my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($seq_name, $ftr_idx, $ftr_results_HAHR, $FH_HR) = @_;
+  my ($seq_name, $ftr_idx, $ftr_results_HAHR, $seq_circular_info_HR, $FH_HR) = @_;
 
   # NOTE: for 'indfantp' alerts, the p_qstart and p_qstop are always set at the feature level
   if((! exists $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_qstart"}) ||
@@ -11626,8 +11641,9 @@ sub helper_ftable_coords_prot_only_prediction {
   my @is_5trunc_A = (0); # can't detect truncation for protein predictions, currently
   my @is_3trunc_A = (0); # can't detect truncation for protein predictions, currently
 
+  printf("in $sub_name, calling helper_ftable_start_stop_strand_arrays_to_coords()\n");
   return helper_ftable_start_stop_strand_arrays_to_coords(\@start_A, \@stop_A, \@strand_A, \@is_5trunc_A, \@is_3trunc_A, 
-                                                          undef, undef, 0, 0, $FH_HR);
+                                                          undef, undef, 0, 0, $seq_circular_info_HR, 0, $FH_HR);
 }
 
 #################################################################
@@ -11649,6 +11665,8 @@ sub helper_ftable_coords_prot_only_prediction {
 #                      segment being defined as 5' truncated
 #  $missing_final_sgm: '1' if final segment is not annotated, results in final annotated 
 #                      segment being defined as 3' truncated
+#  $seq_circular_info_HR: circular info for this sequence, keys: "spos", "epos", "seqlen"
+#  $spans_origin:      '1' if the segments span the origin, only possible if genome is circular
 #  $FH_HR:             REF to hash of file handles
 #
 # Returns:    Five values:
@@ -11665,11 +11683,11 @@ sub helper_ftable_coords_prot_only_prediction {
 ################################################################# 
 sub helper_ftable_start_stop_strand_arrays_to_coords { 
   my $sub_name = "helper_ftable_start_stop_strand_arrays_to_coords";
-  my $nargs_exp = 10;
+  my $nargs_exp = 12;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($start_AR, $stop_AR, $strand_AR, $is_5trunc_AR, $is_3trunc_AR, $start_non_ab, $stop_non_ab, 
-      $missing_first_sgm, $missing_final_sgm, $FH_HR) = @_;
+      $missing_first_sgm, $missing_final_sgm, $seq_circular_info_HR, $spans_origin, $FH_HR) = @_;
 
   # return values
   my $ret_ftr_ftbl_coords_str = "";
@@ -11678,18 +11696,79 @@ sub helper_ftable_start_stop_strand_arrays_to_coords {
   my $ret_is_5trunc_term_or_n_first_sgm = undef; # set to '1' if first segment is 5' truncated due to sequence terminus or ambigs, '0' if not
   my $ret_is_3trunc_term_or_n_final_sgm = undef; # set to '1' if final segment is 3' truncated due to sequence terminus or ambigs, '0' if not
 
+  my $std_coords = undef;
+  my $is_standardized = (defined $seq_circular_info_HR) ? 1 : 0;
+  
   my $ncoord = scalar(@{$start_AR});
+  my $c;
   if($ncoord == 0) { 
     ofile_FAIL("ERROR in $sub_name, start_A array is empty", 1, $FH_HR);
   }
 
-  my ($min_non_ab, $max_non_ab) = (undef, undef);
-  if((defined $start_non_ab) && (defined $stop_non_ab)) { 
-    ($min_non_ab, $max_non_ab) = ($start_non_ab, $stop_non_ab);
-    if($min_non_ab > $max_non_ab) { utl_Swap(\$min_non_ab, \$max_non_ab); }
+  my $ftr_strand = $strand_AR->[0];
+  for($c = 1; $c < $ncoord; $c++) {
+    if($strand_AR->[$c] ne $ftr_strand) {
+      ofile_FAIL("ERROR in $sub_name, different segments have different strands in one feature", 1, $FH_HR);
+    }
   }
 
-  for(my $c = 0; $c < $ncoord; $c++) { 
+  my $seq_len = ((defined $seq_circular_info_HR) && (defined $seq_circular_info_HR->{"seqlen"})) ?
+      $seq_circular_info_HR->{"seqlen"} : undef;
+  
+  my $do_alternative_trimming = 0; 
+  if(($spans_origin) &&
+     ((($ftr_strand eq "+") && ($start_non_ab > $stop_non_ab)) || 
+      (($ftr_strand eq "-") && ($start_non_ab < $stop_non_ab)))) {
+    # this prediction spans the origin, we need to do the trimming due to ambiguities
+    # differently
+    $do_alternative_trimming = 1;
+  }
+
+  if($do_alternative_trimming && (! defined $seq_len)) {
+    ofile_FAIL("ERROR in $sub_name, trying to do alternative trimming but sequence length is not defined", 1, $FH_HR);
+  }
+
+  my ($df_min_non_ab, $df_max_non_ab) = (undef, undef);
+  if((defined $start_non_ab) && (defined $stop_non_ab)) { 
+    ($df_min_non_ab, $df_max_non_ab) = ($start_non_ab, $stop_non_ab);
+    if($df_min_non_ab > $df_max_non_ab) { utl_Swap(\$df_min_non_ab, \$df_max_non_ab); }
+  }
+
+  my @min_non_ab_A = ();
+  my @max_non_ab_A = ();
+  my $alt_min_non_ab = undef;
+  my $alt_max_non_ab = undef;
+  if($do_alternative_trimming) {
+    if($ftr_strand eq "+") { 
+      ($alt_min_non_ab, $alt_max_non_ab) = ($df_max_non_ab, $seq_len);
+    }
+    else {
+      ($alt_min_non_ab, $alt_max_non_ab) = (1, $df_min_non_ab);
+    }
+  }
+
+  for($c = 0; $c < $ncoord; $c++) {
+    if($do_alternative_trimming) {
+      $min_non_ab_A[$c] = $alt_min_non_ab;
+      $max_non_ab_A[$c] = $alt_max_non_ab;
+      if($ftr_strand eq "+") {
+        if($stop_AR->[$c] == $seq_len) {
+          ($alt_min_non_ab, $alt_max_non_ab) = (1, $df_min_non_ab);
+        }
+      }
+      else {
+        if($stop_AR->[$c] == 1) {
+          ($alt_min_non_ab, $alt_max_non_ab) = ($df_max_non_ab, $seq_len);
+        }
+      }
+    }
+    else { # not doing alternative trimming
+      $min_non_ab_A[$c] = $df_min_non_ab;
+      $max_non_ab_A[$c] = $df_max_non_ab;
+    }
+  }
+
+  for($c = 0; $c < $ncoord; $c++) { 
     my $is_first = ($c == 0)           ? 1 : 0;
     my $is_final = ($c == ($ncoord-1)) ? 1 : 0;
     my $start     = $start_AR->[$c];
@@ -11726,19 +11805,19 @@ sub helper_ftable_start_stop_strand_arrays_to_coords {
         my ($min, $max) = ($start, $stop);
         if($min > $max) { utl_Swap(\$min, \$max); }
 
-        if(($min > $max_non_ab) ||  # $min_non_ab <= $max_non_ab < $min       <= $max
-           ($max < $min_non_ab)) {  # $min       <= $max       < $min_non_ab <= $max_non_ab
+        if(($min > $max_non_ab_A[$c]) ||  # $min_non_ab <= $max_non_ab < $min       <= $max
+           ($max < $min_non_ab_A[$c])) {  # $min       <= $max       < $min_non_ab <= $max_non_ab
           # full sgm is starts/ends before $min_non_ab or after $max_non_ab, don't output it
           $add_this_sgm = 0; # don't add it
         }
         else { 
-          if($min < $min_non_ab) { # minimum starts before min_non_ab
-            if($start == $min) { $start = $min_non_ab; $is_5trunc_n = 1; }
-            if($stop  == $min) { $stop  = $min_non_ab; $is_3trunc_n = 1; }
+          if($min < $min_non_ab_A[$c]) { # minimum starts before min_non_ab
+            if($start == $min) { $start = $min_non_ab_A[$c]; $is_5trunc_n = 1; }
+            if($stop  == $min) { $stop  = $min_non_ab_A[$c]; $is_3trunc_n = 1; }
           }
-          if($max > $max_non_ab) { # maximum ends after max_non_ab
-            if($start == $max) { $start = $max_non_ab; $is_5trunc_n = 1; }
-            if($stop  == $max) { $stop  = $max_non_ab; $is_3trunc_n = 1; }
+          if($max > $max_non_ab_A[$c]) { # maximum ends after max_non_ab
+            if($start == $max) { $start = $max_non_ab_A[$c]; $is_5trunc_n = 1; }
+            if($stop  == $max) { $stop  = $max_non_ab_A[$c]; $is_3trunc_n = 1; }
           }
         }
       }
@@ -11756,9 +11835,28 @@ sub helper_ftable_start_stop_strand_arrays_to_coords {
       $ret_ftr_ftbl_coords_str .= sprintf("%s%d\t%s%d\n", 
                                  ($is_5trunc_term || $is_5trunc_n) ? "<" : "", $start, 
                                  ($is_3trunc_term || $is_3trunc_n) ? ">" : "", $stop);
+
+      if($is_standardized) {
+        $std_coords = vdr_CoordsAppendSegment($std_coords, vdr_CoordsSegmentCreate($start, $stop, $strand, $FH_HR));
+      }
       $ret_ftr_ftbl_coords_len += abs($stop - $start) + 1;
     }
   }
+    
+  if(($is_standardized) && (defined $std_coords)) {
+    my $orig_coords = vdr_CoordsStandardizedToOriginal($std_coords, $seq_circular_info_HR->{"spos"}, $seq_circular_info_HR->{"epos"}, $seq_circular_info_HR->{"seqlen"}, $seq_circular_info_HR->{"circlen"}, 0, $FH_HR);
+    $ret_ftr_ftbl_coords_len = 0;
+    $ret_ftr_ftbl_coords_str = "";
+    my @std_start_A  = ();
+    my @std_stop_A   = ();
+    my @std_strand_A = ();
+    my $nsgm_orig = vdr_FeatureStartStopStrandArrays($orig_coords, \@std_start_A, \@std_stop_A, \@std_strand_A, $FH_HR);
+    printf("ORIG COORDS: $orig_coords\n");
+    for(my $sgm_idx = 0; $sgm_idx < $nsgm_orig; $sgm_idx++) {
+      $ret_ftr_ftbl_coords_str .= sprintf("%d\t%d\n", $std_start_A[$sgm_idx], $std_stop_A[$sgm_idx]);
+    }
+  }
+
   if(! defined $ret_min_coord)                     { $ret_min_coord = -1; } # irrelevant, caller's responsibility to handle this
   if(! defined $ret_is_5trunc_term_or_n_first_sgm) { $ret_is_5trunc_term_or_n_first_sgm =  0; } # irrelevant, caller's responsibility to handle this
   if(! defined $ret_is_3trunc_term_or_n_final_sgm) { $ret_is_3trunc_term_or_n_final_sgm =  0; } # irrelevant, caller's responsibility to handle this
