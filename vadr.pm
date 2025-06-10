@@ -2221,6 +2221,8 @@ sub vdr_SegmentInfoPopulate {
 
   my ($sgm_info_AHR, $ftr_info_AHR, $FH_HR) = @_;
 
+  @{$sgm_info_AHR} = ();
+  
   # ftr_info_AHR should already have array data for keys "type", "coords"
   my @keys_A = ("type", "coords");
   my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR, in $sub_name", $FH_HR);
