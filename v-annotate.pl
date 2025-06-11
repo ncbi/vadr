@@ -1932,8 +1932,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   $mdl_len  = $mdl_info_AH[$mdl_idx]{"length"};
   $mdl_is_circular = ((defined $mdl_info_AH[$mdl_idx]{"is_circular"}) && ($mdl_info_AH[$mdl_idx]{"is_circular"} == 1)) ? 1 : 0;
   if($mdl_is_circular) {
-    vdr_FeatureOrSegmentInfoSetOrig(\@{$ftr_info_HAH{$mdl_name}}, "coords,5p_sgm_idx,3p_sgm_idx", $FH_HR);
-#    vdr_FeatureOrSegmentInfoSetOrig(\@{$sgm_info_HAH{$mdl_name}}, "start,stop", $FH_HR);
+    vdr_FeatureOrSegmentInfoSetOrig(\@{$ftr_info_HAH{$mdl_name}}, "coords", $FH_HR);
+    vdr_FeatureOrSegmentInfoSetOrig(\@{$sgm_info_HAH{$mdl_name}}, "start,stop", $FH_HR);
   }
   
   if((defined $mdl_seq_name_HA{$mdl_name}) && (! $do_clsonly)) {  
@@ -4380,7 +4380,7 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
     my $seq_ins = $seq_inserts_HHR->{$seq_name}{"ins"}; # string of inserts
     if($shift_flag) {
       vdr_FeatureOrSegmentInfoResetOrig($ftr_info_AHR, $FH_HR);
-      vdr_SegmentInfoPopulate($sgm_info_AHR, $ftr_info_AHR, $FH_HR);
+      vdr_FeatureOrSegmentInfoResetOrig($sgm_info_AHR, $FH_HR);
       $shift_flag = 0;
     }
     if(($circ_len != -1) && ($spos != 1) && (($epos - $spos + 1) == $circ_len)) { 
@@ -5029,7 +5029,7 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
     } # end of 'else' entered if ! $doctor_flag
     if($shift_flag) {
       vdr_FeatureOrSegmentInfoResetOrig($ftr_info_AHR, $FH_HR);
-      vdr_SegmentInfoPopulate($sgm_info_AHR, $ftr_info_AHR, $FH_HR);
+      vdr_FeatureOrSegmentInfoResetOrig($sgm_info_AHR, $FH_HR);
       $shift_flag = 0;
     }
   } # end of 'for(my $i = 0; $i < $nseq; $i++)'
@@ -15023,26 +15023,26 @@ sub pick_features_for_circular_genomes {
             }
 
             if(scalar(@merge_ftr_idx_A) == 2) { 
-              # printf("merge_ftr_idx_A size is 2, $merge_ftr_idx_A[0] $merge_ftr_idx_A[1] n_mcoords: " . $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_mcoords"}  . " and " . $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[1]]{"n_mcoords"} . "\n");
+              #printf("merge_ftr_idx_A size is 2, $merge_ftr_idx_A[0] $merge_ftr_idx_A[1] n_mcoords: " . $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_mcoords"}  . " and " . $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[1]]{"n_mcoords"} . "\n");
               if((defined ($ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_mcoords"})) && 
                  (defined ($ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[1]]{"n_mcoords"})) && 
                  (vdr_TwoCoordsSpanOrigin($ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_mcoords"},
                                           $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[1]]{"n_mcoords"}, 
                                           $circ_len, $FH_HR))) {
                 # merge merge_ftr_idx_A[0] and merge_ftr_idx_A[1], we'll keep merge_ftr_idx_A[0]
-                $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_scoords"} .= $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_scoords"}; 
-                $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_mcoords"} .= $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[1]]{"n_mcoords"}; 
-                $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"merge_ftr_idx"} = $merge_ftr_idx_A[1];
-                $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[1]]{"merge_ftr_idx"} = $merge_ftr_idx_A[1]; # flag to not output this feature
+                #$ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_scoords"} .= $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_scoords"}; 
+                #$ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_mcoords"} .= $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[1]]{"n_mcoords"}; 
+                #$ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"merge_ftr_idx"} = $merge_ftr_idx_A[1];
+                #$ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[1]]{"merge_ftr_idx"} = $merge_ftr_idx_A[1]; # flag to not output this feature
                 # add alerts
-                foreach my $alt_code (sort keys %{$alt_ftr_instances_HHHR->{$seq_name}{$merge_ftr_idx_A[1]}}) { 
-                  my @alt_str_A = split(":VADRSEP:", $alt_ftr_instances_HHHR->{$seq_name}{$merge_ftr_idx_A[1]}{$alt_code});
-                  foreach my $alt_str (@alt_str_A) { 
-                    alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $merge_ftr_idx_A[0], $alt_str, $FH_HR);
-                  }
-                }
-                %{$alt_ftr_instances_HHHR->{$seq_name}{$merge_ftr_idx_A[1]}} = ();
-                undef $alt_ftr_instances_HHHR->{$seq_name}{$merge_ftr_idx_A[1]};
+                #foreach my $alt_code (sort keys %{$alt_ftr_instances_HHHR->{$seq_name}{$merge_ftr_idx_A[1]}}) { 
+                #  my @alt_str_A = split(":VADRSEP:", $alt_ftr_instances_HHHR->{$seq_name}{$merge_ftr_idx_A[1]}{$alt_code});
+                #  foreach my $alt_str (@alt_str_A) { 
+                #    alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $merge_ftr_idx_A[0], $alt_str, $FH_HR);
+                #  }
+                #}
+                #%{$alt_ftr_instances_HHHR->{$seq_name}{$merge_ftr_idx_A[1]}} = ();
+                #undef $alt_ftr_instances_HHHR->{$seq_name}{$merge_ftr_idx_A[1]};
               }
             }
             # remove features

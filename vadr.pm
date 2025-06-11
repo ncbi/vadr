@@ -2085,22 +2085,27 @@ sub vdr_FeatureAndSegmentInfoCircularPerSequenceCoordsShift {
   
   my ($ftr_info_AHR, $sgm_info_AHR, $spos, $epos, $circ_len, $FH_HR) = @_;
 
+  printf("in $sub_name\n");
+  
   if(($epos - $spos + 1) != $circ_len) {
     ofile_FAIL("ERROR in $sub_name, spos: $spos, epos: $epos, circ_len: $circ_len, model alignment length is not circ_len", 1, $FH_HR);
   }
   
   my $nftr = scalar(@{$ftr_info_AHR});
-  my $shift_flag;    # set to 1 for any feature we want to update
-  my $new_coords;    # new coords string
-  my @start_A = ();  # start array for sgms
-  my @stop_A = ();   # stop array for sgms
-  my $nsgm = 0;      # num segments
-  my $sgm_idx = 0;   # sgm idx
+  my $shift_flag;      # set to 1 for any feature we want to update
+  my $new_coords;      # new coords string
+  my @start_A = ();    # start array for sgms
+  my @stop_A = ();     # stop array for sgms
+  my $nsgm = 0;        # num segments
+  my $sgm_idx = 0;     # sgm idx
+  my $before_nsgm = 0; # number of segments in 'before' ftr in cirular_linear_ftr_set
+  my $new_nsgm    = 0; # number of segments in 'before' ftr in cirular_linear_ftr_set
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
     $shift_flag = 0;
     $new_coords = "";
-    my $summary_strand = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, $FH_HR);
-    if(($summary_strand ne "+") && ($summary_strand ne "-")) {
+    $new_nsgm = 0;
+    my $strand = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, $FH_HR);
+    if(($strand ne "+") && ($strand ne "-")) {
       ofile_FAIL("ERROR in $sub_name, ftr $ftr_idx with coords " . $ftr_info_AHR->[$ftr_idx]{"ORIG_coords"} . " has multiple strands", 1, $FH_HR);
     }
     if(! defined $ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}) {
@@ -2111,8 +2116,7 @@ sub vdr_FeatureAndSegmentInfoCircularPerSequenceCoordsShift {
       if(vdr_CoordsMin($ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, $FH_HR) > $circ_len) {
         ofile_FAIL("ERROR in $sub_name, circular_spanning_ftr_set spanning ftr $ftr_idx ORIG_coords (" . $ftr_info_AHR->[$ftr_idx]{"ORIG_coords"} . ") has positions that exceed circular genome length $circ_len", 1, $FH_HR);
       }
-      # determine if we need to shift, only need to shift if spos is within the feature
-      if(vdr_CoordsCheckIfSpans($ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, vdr_CoordsSinglePositionSegmentCreate($spos, $summary_strand, $FH_HR), $FH_HR)) {
+      if(vdr_CoordsCheckIfSpans($ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, vdr_CoordsSinglePositionSegmentCreate($spos, $strand, $FH_HR), $FH_HR)) {
         # find the two segments that span the origin, and add spos to the stop of the 5' sgm and start of the 3' sgm
         @start_A = ();
         @stop_A = ();
@@ -2120,16 +2124,16 @@ sub vdr_FeatureAndSegmentInfoCircularPerSequenceCoordsShift {
         my $found_spans = 0;
         $nsgm = scalar(@start_A);
         for(my $sgm_idx = 0; $sgm_idx < ($nsgm-1); $sgm_idx++) {
-          if(vdr_TwoCoordsSpanOrigin(vdr_CoordsSegmentCreate($start_A[$sgm_idx],     $stop_A[$sgm_idx],     $summary_strand, $FH_HR),
-                                     vdr_CoordsSegmentCreate($start_A[($sgm_idx+1)], $stop_A[($sgm_idx+1)], $summary_strand, $FH_HR),
+          if(vdr_TwoCoordsSpanOrigin(vdr_CoordsSegmentCreate($start_A[$sgm_idx],     $stop_A[$sgm_idx],     $strand, $FH_HR),
+                                     vdr_CoordsSegmentCreate($start_A[($sgm_idx+1)], $stop_A[($sgm_idx+1)], $strand, $FH_HR),
                                      $circ_len, $FH_HR)) {
-            $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx], $stop_A[$sgm_idx] + ($spos-1), $summary_strand, $FH_HR));
-            $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[($sgm_idx+1)] + ($spos-1), $stop_A[($sgm_idx+1)], $summary_strand, $FH_HR));
+            $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx], $stop_A[$sgm_idx] + ($spos-1), $strand, $FH_HR));
+            $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[($sgm_idx+1)] + ($spos-1), $stop_A[($sgm_idx+1)], $strand, $FH_HR));
             $sgm_idx++;
             $found_spans = 1;
           }
           else {
-            $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx], $stop_A[$sgm_idx], $summary_strand, $FH_HR));
+            $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx], $stop_A[$sgm_idx], $strand, $FH_HR));
           }
         }
         if(! $found_spans) {
@@ -2140,44 +2144,114 @@ sub vdr_FeatureAndSegmentInfoCircularPerSequenceCoordsShift {
     }
     elsif((defined $ftr_info_AHR->[$ftr_idx]{"circular_linear_ftr_set"}) &&
           (vdr_CoordsMin($ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, $FH_HR) <= $circ_len)) {
-      if(vdr_CoordsCheckIfSpans($ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, vdr_CoordsSinglePositionSegmentCreate($spos, $summary_strand, $FH_HR), $FH_HR)) {
+      if(vdr_CoordsCheckIfSpans($ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, vdr_CoordsSinglePositionSegmentCreate($spos, $strand, $FH_HR), $FH_HR)) {
         my $set = $ftr_info_AHR->[$ftr_idx]{"circular_linear_ftr_set"};
         my ($before_idx, $after_idx) = vdr_FeatureInfoValidateCircularLinearFeatureSet($ftr_info_AHR, $set, $circ_len, $FH_HR);
-        if($before_idx != $ftr_idx) {
-          ofile_FAIL("ERROR in $sub_name, circular_linear_ftr_set problem finding before idx", 1, $FH_HR);
+        printf("linear set $set before_idx: $before_idx after_idx: $after_idx\n");
+        if((($strand eq "+") && (vdr_CoordsMax($ftr_info_AHR->[$before_idx]{"ORIG_coords"}, $FH_HR) > $spos)) ||
+           (($strand eq "-") && (vdr_CoordsMin($ftr_info_AHR->[$before_idx]{"ORIG_coords"}, $FH_HR) < $epos))) {
+          # if above 'if' fails, it means we are + strand and spos is the first position of this feature, or we are - strand
+          # and epos is the final position of this feature, so span check will pass but we actually don't need to modify anything, 
+          if($before_idx != $ftr_idx) {
+            ofile_FAIL("ERROR in $sub_name, circular_linear_ftr_set problem finding before idx", 1, $FH_HR);
+          }
+          @start_A = ();
+          @stop_A = ();
+          printf("\tin1\n");
+
+          # add segments from $after_idx first
+          vdr_FeatureStartStopStrandArrays($ftr_info_AHR->[$after_idx]{"ORIG_coords"}, \@start_A, \@stop_A, undef, $FH_HR);
+          $nsgm = scalar(@start_A);
+          for($sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) {
+            if(($strand eq "+") && ($start_A[$sgm_idx] <= $epos)) { # at least one nt from this segment is within $spos..$epos
+              if($stop_A[$sgm_idx] > $epos) {
+                $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx], $epos, $strand, $FH_HR));
+              }
+              else { # stop_A[$sgm_idx] <= $epos, + strand, full segment not within $spos..$epos
+                $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx], $stop_A[$sgm_idx], $strand, $FH_HR));
+              }
+              $new_nsgm++;
+            }
+            if(($strand eq "-") && ($stop_A[$sgm_idx] <= $epos)) { 
+              if($start_A[$sgm_idx] > $epos) {
+                $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($epos, $stop_A[$sgm_idx], $strand, $FH_HR));
+              }
+              else { # start_A[$sgm_idx] <= $epos, - strand, full segment is within $spos..$epos
+                $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx], $stop_A[$sgm_idx], $strand, $FH_HR));
+              }
+              $new_nsgm++;
+            }
+          }
+
+          # add segments from $before_idx
+          vdr_FeatureStartStopStrandArrays($ftr_info_AHR->[$before_idx]{"ORIG_coords"}, \@start_A, \@stop_A, undef, $FH_HR);
+          $nsgm = scalar(@start_A);
+          my $before_nsgm = $nsgm;
+          my $new_sgm = 0;
+          for($sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) {
+            if(($strand eq "+") && ($stop_A[$sgm_idx] >= $spos)) { # at least one nt from this segment is within $spos..$epos
+              if($start_A[$sgm_idx] < $spos) {
+                $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($spos, $stop_A[$sgm_idx], $strand, $FH_HR));
+              }
+              else { # start_A[$sgm_idx] >= $spos, + strand, full segment not within $spos..$epos
+                $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx], $stop_A[$sgm_idx], $strand, $FH_HR));
+              }
+              $new_nsgm++;
+            }
+            if(($strand eq "-") && ($start_A[$sgm_idx] >= $spos)) { # at least one nt from this segment is within $spos..$epos
+              if($stop_A[$sgm_idx] < $spos) {
+                $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx], $spos, $strand, $FH_HR));
+              }
+              else { # stop_A[$sgm_idx] >= $spos, - strand, full segment is within $spos..$epos
+                $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx], $stop_A[$sgm_idx], $strand, $FH_HR));
+              }
+              $new_nsgm++;
+            }
+          }
+
+          if($new_nsgm > $before_nsgm) {
+            ofile_FAIL(sprintf("ERROR in $sub_name, new coords has more segments than original, new coords (%s) orig coords (%s)",
+                               $new_coords, $ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}), 1, $FH_HR);
+          }
+          if($new_sgm != $before_nsgm) { # $new_nsgm < $before_nsgm
+            vdr_CoordsIncreaseNumSegments($new_coords, $before_nsgm, $FH_HR);
+          }
+          $shift_flag = 1;
         }
-        @start_A = ();
-        @stop_A = ();
-        vdr_FeatureStartStopStrandArrays($ftr_info_AHR->[$before_idx]{"ORIG_coords"}, \@start_A, \@stop_A, undef, $FH_HR);
-        $nsgm = scalar(@start_A);
-        for($sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) {
-          if($start_A[$sgm_idx] < $spos) {
-            $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($spos, $stop_A[$sgm_idx], $summary_strand, $FH_HR));
-          }
-          else {
-            $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx], $stop_A[$sgm_idx], $summary_strand, $FH_HR));
-          }
-        }
-        vdr_FeatureStartStopStrandArrays($ftr_info_AHR->[$after_idx]{"ORIG_coords"}, \@start_A, \@stop_A, undef, $FH_HR);
-        $nsgm = scalar(@start_A);
-        for($sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) {
-          if($stop_A[$sgm_idx] > $epos) {
-            $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx], $epos, $summary_strand, $FH_HR));
-          }
-          else {
-            $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx], $stop_A[$sgm_idx], $summary_strand, $FH_HR));
-          }
-        }
-        $shift_flag = 1;
       }
     }
-    
     if($shift_flag) { 
+      # sanity check, length of new_coords should be same as ORIG_coords
+      if(vdr_CoordsLength($ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, $FH_HR) !=
+         vdr_CoordsLength($new_coords, $FH_HR)) {
+        ofile_FAIL(sprintf("ERROR in $sub_name, shifted coords (%s) length (%d) != orig coords (%s) length (%d)",
+                           $new_coords, vdr_CoordsLength($new_coords, $FH_HR),
+                           $ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, vdr_CoordsLength($ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, $FH_HR)), 1, $FH_HR);
+      }
       $ftr_info_AHR->[$ftr_idx]{"coords"} = $new_coords;
+      @start_A = ();
+      @stop_A = ();
+      vdr_FeatureStartStopStrandArrays($new_coords, \@start_A, \@stop_A, undef, $FH_HR);
+      $nsgm = scalar(@start_A);
+      if($nsgm != ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + 1)) {
+        ofile_FAIL(sprintf("ERROR in $sub_name, shifted coords has unexpected number of segments, orig coords (%s) shifted coords (%s)", 
+                           $ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, $new_coords), 1, $FH_HR);
+      }
+      for($sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
+        my $new_sgm_idx = $sgm_idx - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"};
+        $sgm_info_AHR->[$sgm_idx]{"start"} = $start_A[$new_sgm_idx];
+        $sgm_info_AHR->[$sgm_idx]{"stop"}  = $stop_A[$new_sgm_idx];
+      }
       printf("in $sub_name, just shifted ftr_info_AHR->[$ftr_idx]{start} from %s to %s\n", $ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, $ftr_info_AHR->[$ftr_idx]{"coords"});
-      vdr_SegmentInfoPopulate($sgm_info_AHR, $ftr_info_AHR, $FH_HR);
     }
-  }
+  } # end of 'for' loop over $ftr_idx
+
+  vdr_CoordsIncreaseNumSegments("1..5:+", 2, $FH_HR);
+  vdr_CoordsIncreaseNumSegments("5..1:-", 2, $FH_HR);
+  vdr_CoordsIncreaseNumSegments("1..10:+", 5, $FH_HR);
+  vdr_CoordsIncreaseNumSegments("1..1:+,2..10:+", 5, $FH_HR);
+  vdr_CoordsIncreaseNumSegments("5..1:-", 5, $FH_HR);
+
   return;
 }
 
@@ -9020,6 +9094,89 @@ sub vdr_TwoCoordsSpanOrigin {
 
   # if we get here, we do not span the origin 
   return 0;
+}
+
+#################################################################
+# Subroutine: vdr_CoordsIncreaseNumSegments
+# Incept:     EPN, Wed Jun 11 11:30:07 2025
+#
+# Purpose:    Given a coords string, modify it so it has
+#             <$desired_nsgm> segments. 
+#
+#             Example 1:
+#             <in_coords> = "1..5:+",
+#             <desired_nsgm> = 2
+#             <ret_coords> = "1..1,2..5:+"
+#
+#             Example 2:
+#             <in_coords> = "5..1:-",
+#             <desired_nsgm> = 3
+#             <ret_coords> = "5..5,4..4,3..1:-"
+#
+#
+# Arguments:
+#  $in_coords:    coords string to increase num segments of
+#  $desired_nsgm: desired number of segments in return string
+#  $FH_HR:        ref to hash of file handles
+#
+# Returns:  new coords string with same positions as $in_coords
+#           but with $desired_nsgm (this will be $in_coords)
+#           if it already has $desired_nsgm
+#
+# Dies:     if there's not enough positions in <$in_coords>
+#           to increase segment number 
+#           if $in_coords has segments on different strands
+#           if $in_coords has more segments than $desired_nsgm
+#
+#################################################################
+sub vdr_CoordsIncreaseNumSegments { 
+  my $sub_name = "vdr_CoordsIncreaseNumSegments";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($in_coords, $desired_nsgm, $FH_HR) = (@_);
+
+  my $strand = vdr_FeatureSummaryStrand($in_coords, $FH_HR);
+  my @start_A = ();
+  my @stop_A = ();
+  vdr_FeatureStartStopStrandArrays($in_coords, \@start_A, \@stop_A, undef, $FH_HR);
+  my $nsgm = scalar(@start_A);
+  if($nsgm > $desired_nsgm) {
+    ofile_FAIL("ERROR in $sub_name, desired nsgm is $desired_nsgm but $in_coords already has $nsgm segments", 1, $FH_HR);
+  }
+
+  my $new_nsgm = 0;
+  my $new_coords = "";
+  my $nsgm_needed = $desired_nsgm - $nsgm;
+  my ($sgm_length, $cur_posn, $cur_remaining) = (0, 0, 0);
+  for(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) {
+    if($nsgm_needed > 0) { 
+      $sgm_length = abs($start_A[$sgm_idx] - $stop_A[$sgm_idx]) + 1;
+      $cur_posn = $start_A[$sgm_idx];
+      $cur_remaining = $sgm_length;
+      while(($nsgm_needed > 0) && ($cur_remaining > 1)) {
+        $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSinglePositionSegmentCreate($cur_posn, $strand, $FH_HR));
+        if($strand eq "+") { $cur_posn++; }
+        else               { $cur_posn--; }
+        $cur_remaining--;
+        $nsgm_needed--;
+        $new_nsgm++;
+      }
+      $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($cur_posn, $stop_A[$sgm_idx], $strand, $FH_HR));
+      $new_nsgm++;
+    }
+    else {
+      $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx], $stop_A[$sgm_idx], $strand, $FH_HR));
+      $new_nsgm++;
+    }
+  }
+
+  if($new_nsgm != $desired_nsgm) {
+    ofile_FAIL("ERROR in $sub_name, problem adding segments in_coords: $in_coords desired_nsgm: $desired_nsgm, returning coords: $new_coords nsg: $new_nsgm", 1, $FH_HR);
+  }
+  
+  printf("HEYA in $sub_name, in_coords: $in_coords desired_nsgm: $desired_nsgm, returning coords: $new_coords nsg: $new_nsgm\n");
+  return $new_coords;
 }
 
 ###########################################################################
