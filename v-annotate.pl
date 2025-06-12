@@ -10497,8 +10497,7 @@ sub output_tabular {
            (defined $ftr_results_HHAHR->{$seq_mdl1}{$seq_name}[$ftr_idx])) { 
           my $ftr_results_HR = $ftr_results_HHAHR->{$seq_mdl1}{$seq_name}[$ftr_idx]; # for convenience
           my $ftr_idx2print = $seq_idx2print . "." . ($seq_nftr_annot + 1);
-          if(((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_qstart"})) &&
-             ((! defined $ftr_results_HR->{"merge_ftr_idx"}) || ($ftr_results_HR->{"merge_ftr_idx"}) != $ftr_idx)) { 
+          if(((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_qstart"}))) {
             $seq_nftr_annot++;
             my $ftr_name = $ftr_info_AHR->[$ftr_idx]{"outname"};
             my $ftr_name2print = helper_tabular_replace_spaces($ftr_name);
@@ -10546,13 +10545,6 @@ sub output_tabular {
             my @tmp_sgm_idx_A = ();
             for(my $f = $ftr_first_sgm; $f <= $ftr_final_sgm; $f++) {
               push (@tmp_sgm_idx_A, $f);
-            }
-            if((defined $ftr_results_HR->{"merge_ftr_idx"}) &&
-               $ftr_results_HR->{"merge_ftr_idx"} != $ftr_idx) {
-              my $merge_ftr_idx = $ftr_results_HR->{"merge_ftr_idx"};
-              for(my $f = $ftr_info_AHR->[$merge_ftr_idx]{"5p_sgm_idx"}; $f <= $ftr_info_AHR->[$merge_ftr_idx]{"3p_sgm_idx"}; $f++) { 
-                push (@tmp_sgm_idx_A, $f);
-              }
             }
             my $rel_sgm_idx = 0;
             foreach my $sgm_idx (@tmp_sgm_idx_A) { 
@@ -11235,10 +11227,6 @@ sub output_feature_table {
               my $trim_idx = ($parent_is_cds) ? $parent_ftr_idx : $ftr_idx; # use parent if parent is a cds (e.g. mat_peptides)
               $ftr_start_non_ab = $ftr_results_HAHR->{$seq_name}[$trim_idx]{"n_start_non_ab"};
               $ftr_stop_non_ab  = $ftr_results_HAHR->{$seq_name}[$trim_idx]{"n_stop_non_ab"};
-              if((defined $ftr_results_HAHR->{$seq_name}[$trim_idx]{"merge_ftr_idx"}) &&
-                 $ftr_results_HAHR->{$seq_name}[$trim_idx]{"merge_ftr_idx"} != $trim_idx) {
-                $ftr_stop_non_ab  = $ftr_results_HAHR->{$seq_name}[($ftr_results_HAHR->{$seq_name}[$trim_idx]{"merge_ftr_idx"})]{"n_stop_non_ab"};
-              }
 
               #printf("set ftr_start_non_ab for ftr: $ftr_idx based on trim_idx: $trim_idx to %s\n", (defined $ftr_start_non_ab) ? $ftr_start_non_ab : "undef");
               #printf("set ftr_stop_non_ab  for ftr: $ftr_idx based on trim_idx: $trim_idx to %s\n", (defined $ftr_stop_non_ab)  ? $ftr_stop_non_ab : "undef");
@@ -11667,45 +11655,19 @@ sub helper_ftable_coords_from_nt_prediction {
   my @is_5trunc_A = ();
   my @is_3trunc_A = ();
 
-  # will we merge another feature onto this one (rare: only occurs for circular genomes)
-  my $merge_ftr_idx = ((defined $ftr_results_AHR->[$ftr_idx]{"merge_ftr_idx"}) &&
-                       $ftr_results_AHR->[$ftr_idx]{"merge_ftr_idx"} != $ftr_idx) ?
-      $ftr_results_AHR->[$ftr_idx]{"merge_ftr_idx"} : undef;
-
   for(my $sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
     if(defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"}) { 
       push(@start_A,     $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"});
       push(@stop_A,      $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstop"});
       push(@strand_A,    $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"strand"});
       push(@is_5trunc_A, $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"5trunc"});
-      if(($sgm_idx == $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}) && (defined $merge_ftr_idx)) {
-        push(@is_3trunc_A, 0);
-      }
-      else { # normal case
-        push(@is_3trunc_A, $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"3trunc"});
-      }
+      push(@is_3trunc_A, $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"3trunc"});
     }
   }
   my $missing_first_sgm = (defined $sgm_results_HAHR->{$seq_name}[($ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"})]{"sstart"}) ? 0 : 1;
   my $missing_final_sgm = (defined $sgm_results_HAHR->{$seq_name}[($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"})]{"sstart"}) ? 0 : 1;
-  my $spans_origin      = (vdr_FeatureSpansOrigin($ftr_info_AHR, $ftr_idx)) ? 1 : 0;
+  my $spans_origin      = (vdr_FeatureSpansOrigin($ftr_info_AHR, $ftr_idx) || vdr_FeatureArtificialSegmentOne($ftr_info_AHR, $ftr_idx)) ? 1 : 0;
       
-  if(defined $merge_ftr_idx) { 
-    for(my $sgm_idx = $ftr_info_AHR->[$merge_ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$merge_ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
-      if(defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"}) { 
-        push(@start_A,     $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"});
-        push(@stop_A,      $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstop"});
-        push(@strand_A,    $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"strand"});
-        push(@is_5trunc_A, 0); # can't be 5' truncated because it spans origin
-        push(@is_3trunc_A, $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"3trunc"});
-      }
-    }
-    $missing_final_sgm = (defined $sgm_results_HAHR->{$seq_name}[($ftr_info_AHR->[$merge_ftr_idx]{"3p_sgm_idx"})]{"sstart"}) ? 0 : 1;
-    #$start_non_ab = undef; # TEMP
-    #$stop_non_ab = undef;  # TEMP
-    $spans_origin = 1;
-  }
-  
   return helper_ftable_start_stop_strand_arrays_to_coords(\@start_A, \@stop_A, \@strand_A, \@is_5trunc_A, \@is_3trunc_A, 
                                                           $start_non_ab, $stop_non_ab, $missing_first_sgm, $missing_final_sgm,
                                                           $spans_origin, $seq_len, $FH_HR);
@@ -13429,12 +13391,6 @@ sub check_for_tabular_ftr_feature_prediction {
 
   my ($results_AHR, $ftr_idx) = (@_);
   
-  if((defined $results_AHR->[$ftr_idx]{"merge_ftr_idx"}) &&
-     ($results_AHR->[$ftr_idx]{"merge_ftr_idx"} == $ftr_idx)) {
-    # this feature will be merged with another, do not output
-    return 0;
-  }
-  
   if((defined $results_AHR->[$ftr_idx]{"n_start"} || 
       defined $results_AHR->[$ftr_idx]{"p_qstart"})) { 
     return 1;
@@ -13466,22 +13422,9 @@ sub check_for_valid_ftbl_feature_prediction {
 
   my ($results_AHR, $ftr_idx, $min_len) = (@_);
 
-  my $merge_ftr_idx = (defined $results_AHR->[$ftr_idx]{"merge_ftr_idx"}) ?
-      $results_AHR->[$ftr_idx]{"merge_ftr_idx"} : undef;
-  
-  if((defined $merge_ftr_idx) && 
-     ($merge_ftr_idx == $ftr_idx)) {
-    # this feature will be merged with another, do not output
-    return 0;
-  }
-
   my $ftr_len = 0;
   if(defined $results_AHR->[$ftr_idx]{"n_len"}) {
     $ftr_len = $results_AHR->[$ftr_idx]{"n_len"};
-    if((defined $merge_ftr_idx) && ($merge_ftr_idx != $ftr_idx) &&
-       (defined $results_AHR->[$merge_ftr_idx]{"n_len"})) {
-      $ftr_len += $results_AHR->[$merge_ftr_idx]{"n_len"};
-    }
   }
   
   if((defined $results_AHR->[$ftr_idx]{"n_start"} || 
@@ -14867,21 +14810,21 @@ sub pick_features_for_circular_genomes {
   my $ftr_idx; 
   my $ftr_idx2; 
   foreach my $seq_name (@{$seq_name_AR}) { 
-    my %sets_completed_H = (); # key is name of a set, value is '1' if we've already completed that set
+    my %sets_completed_H = (); # key is <$set_type>.<$set>, value is '1' if we've already completed that set
     if((defined $ftr_results_HAHR->{$seq_name}) || (defined $alt_ftr_instances_HHHR->{$seq_name})) { 
       for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-        # printf("ftr_idx; $ftr_idx\n");
+        printf("ftr_idx; $ftr_idx\n");
         if(((defined $ftr_results_HAHR->{$seq_name})       && (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx])) || 
            ((defined $alt_ftr_instances_HHHR->{$seq_name}) && (defined $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}))) { 
           my ($set, $set_type) = vdr_FeatureCircularSetValue($ftr_info_AHR, $ftr_idx, $FH_HR); # will fail if both "circular_spanning_ftr_set" and "circular_linear_ftr_set" are 1
-          if((defined $set) && (! defined $sets_completed_H{$set})) { 
-            my @merge_ftr_idx_A = (); # will be filled with the two features indices to potentially merge
+          my $sets_completed_key = (defined $set) ? ($set_type . "." . $set) : undef;;
+          if((defined $set) && (! defined $sets_completed_H{$sets_completed_key})) { 
             my @to_remove_idx_A = (); # will be filled with indices of features to remove, if nec
             if($set_type eq "circular_spanning_ftr_set") { 
               my ($spans_idx, $passes_idx, $trunc3_before_idx, $trunc5_before_idx, $trunc3_after_idx, $trunc5_after_idx, $strand) =
                   vdr_FeatureInfoValidateCircularSpanningFeatureSet($ftr_info_AHR, $set, $circ_len, $FH_HR);
               # printf("\tspans_idx: $spans_idx\n\tpasses_idx: $passes_idx\n\ttrunc3_before: $trunc3_before_idx\n\ttrunc5_before: $trunc5_before_idx\n\ttrunc3_after: $trunc3_after_idx\n\ttrunc5_after: $trunc5_after_idx\n");
-              # figure out which features to keep, merge if nec
+              # figure out which features to keep/remove
               my @sum_len_A = (); # sum of lengths for each possible combo of features
               my @nfatal_A = ();  # number of fatal alerts for each possible combo of features
               # 6 possibilities for how to annotate this circular feature
@@ -14966,85 +14909,75 @@ sub pick_features_for_circular_genomes {
                 # all other possibilities are two features combined, potentially merge them if the span the origin of the model
                 if($nfl_argmin_idx == 1) { # passes_origin + trunc5_before (if +), passes_origin + trunc3_before (if -)
                   if($strand eq "+") { 
-                    push(@merge_ftr_idx_A, ($passes_idx, $trunc5_before_idx));
                     push(@to_remove_idx_A, ($spans_idx, $trunc3_before_idx, $trunc5_after_idx, $trunc3_after_idx));
                     # printf("PASSES ORIGIN + TRUNC5_BEFORE, merge check: $passes_idx $trunc5_before_idx\n");
                   }
                   else {
-                    push(@merge_ftr_idx_A, ($trunc3_before_idx, $passes_idx));
                     push(@to_remove_idx_A, ($spans_idx, $trunc5_before_idx, $trunc5_after_idx, $trunc3_after_idx));
                     # printf("PASSES ORIGIN + TRUNC3_BEFORE, merge check: $passes_idx $trunc3_before_idx\n");
                   }
                 }
                 elsif($nfl_argmin_idx == 2) { # trunc3_after + passes_origin (if +), trunc5_after + passes_origin (if -)
                   if($strand eq "+") { 
-                    push(@merge_ftr_idx_A, ($trunc3_after_idx, $passes_idx));
                     push(@to_remove_idx_A, ($spans_idx, $trunc5_before_idx, $trunc3_before_idx, $trunc5_after_idx));
                     # printf("PASSES ORIGIN + TRUNC3_AFTER, merge check: $passes_idx $trunc3_after_idx\n");
                   }
                   else { 
-                    push(@merge_ftr_idx_A, ($passes_idx, $trunc5_after_idx));
                     push(@to_remove_idx_A, ($spans_idx, $trunc5_before_idx, $trunc3_before_idx, $trunc3_after_idx));
                     # printf("PASSES ORIGIN + TRUNC3_BEFORE, merge check: $passes_idx $trunc5_after_idx\n");
                   }
                 }
                 elsif($nfl_argmin_idx == 3) { # trunc3_before + trunc5_before
-                  push(@merge_ftr_idx_A, ($trunc3_before_idx, $trunc5_before_idx));
                   push(@to_remove_idx_A, ($spans_idx, $passes_idx, $trunc5_after_idx, $trunc3_after_idx));
                   # printf("TRUNC3_BEFORE + TRUNC5_BEFORE, merge check: $trunc3_before_idx $trunc5_before_idx\n");
                 }
                 elsif($nfl_argmin_idx == 4) { # trunc3_before + trunc_5after
-                  push(@merge_ftr_idx_A, ($trunc3_before_idx, $trunc5_after_idx));
                   push(@to_remove_idx_A, ($spans_idx, $passes_idx, $trunc5_before_idx, $trunc3_after_idx));
                   # printf("TRUNC3_BEFORE + TRUNC5_AFTER, merge check: $trunc3_before_idx $trunc5_after_idx\n");
                 }
                 elsif($nfl_argmin_idx == 5) { # trunc5_before + trunc_3after
-                  push(@merge_ftr_idx_A, ($trunc5_before_idx, $trunc3_after_idx));
                   push(@to_remove_idx_A, ($spans_idx, $passes_idx, $trunc3_before_idx, $trunc5_after_idx));
                   # printf("TRUNC5_BEFORE + TRUNC3_AFTER, merge check: $trunc5_before_idx $trunc3_after_idx\n");
                 }
               }
             } # end of 'if($set_type eq "circular_spanning_ftr_set")'
-            elsif($set_type eq "circular_linear_ftr_set") {
-              my ($before_origin_idx, $after_origin_idx, $strand) = 
+            elsif($set_type eq "circular_linear_ftr_set") { 
+              my ($before_idx, $after_idx, $modifiable_idx) =
                   vdr_FeatureInfoValidateCircularLinearFeatureSet($ftr_info_AHR, $set, $circ_len, $FH_HR);
-              # if positive strand, after then before
-              # if negative strand, before then after
-              if($strand eq "+") {
-                push(@merge_ftr_idx_A, ($after_origin_idx, $before_origin_idx));
+              printf("\tbefore_idx: $before_idx\n\tafter_idx: $after_idx\n\tmodifiable_idx: $modifiable_idx\n\n");
+              # figure out which features to keep/remove
+              my @sum_len_A = (); # sum of lengths for each possible combo of features
+              my @nfatal_A = ();  # number of fatal alerts for each possible combo of features
+              # 2 possibilities for how to annotate this circular feature
+              # 1. before_idx + after_idx (or just before_idx (after_idx will be length 0) or just after_idx (before_idx will be length 0))
+              my $combo_len = (defined $ftr_results_HAHR->{$seq_name}[$before_idx]{"n_scoords"}) ?
+                  vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$before_idx]{"n_scoords"}, $FH_HR) : 0;
+              $combo_len += (defined $ftr_results_HAHR->{$seq_name}[$after_idx]{"n_scoords"}) ?
+                  vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$after_idx]{"n_scoords"}, $FH_HR) : 0;
+              my $combo_nfl = alert_feature_instances_count_fatal($seq_name, $before_idx, $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
+              $combo_nfl += alert_feature_instances_count_fatal($seq_name, $after_idx, $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
+              # 2. modifiable idx, will only be winner if sequence spans full model but origin is different from model origin
+              my $modifiable_len = (defined $ftr_results_HAHR->{$seq_name}[$modifiable_idx]{"n_scoords"}) ?
+                  vdr_CoordsLength($ftr_results_HAHR->{$seq_name}[$modifiable_idx]{"n_scoords"}, $FH_HR) : 0;
+              my $modifiable_nfl = alert_feature_instances_count_fatal($seq_name, $modifiable_idx, $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
+
+              # find winner
+              my $combo_wins = 0;
+              printf("combo_len: $combo_len, modifiable_len: $modifiable_len\n");
+              if($modifiable_len == $combo_len) {
+                $combo_wins = ($modifiable_nfl <= $combo_nfl) ? 0 : 1;
+              }
+              else { 
+                $combo_wins = ($modifiable_len > $combo_len) ? 0 : 1;
+              }
+              if($combo_wins) {
+                push(@to_remove_idx_A, $modifiable_idx);
               }
               else {
-                push(@merge_ftr_idx_A, ($before_origin_idx, $after_origin_idx));
-              }
-              # printf("LINEAR merge check: $before_origin_idx, $after_origin_idx\n");
-            }
-            else {
-              ofile_FAIL("ERROR in $sub_name, trying to pick features for duplicates, but a duplicate set doesn't have exactly 4 or 2 features", 1, $FH_HR);
-            }
-
-            if(scalar(@merge_ftr_idx_A) == 2) { 
-              #printf("merge_ftr_idx_A size is 2, $merge_ftr_idx_A[0] $merge_ftr_idx_A[1] n_mcoords: " . $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_mcoords"}  . " and " . $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[1]]{"n_mcoords"} . "\n");
-              if((defined ($ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_mcoords"})) && 
-                 (defined ($ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[1]]{"n_mcoords"})) && 
-                 (vdr_TwoCoordsSpanOrigin($ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_mcoords"},
-                                          $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[1]]{"n_mcoords"}, 
-                                          $circ_len, $FH_HR))) {
-                # merge merge_ftr_idx_A[0] and merge_ftr_idx_A[1], we'll keep merge_ftr_idx_A[0]
-                #$ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_scoords"} .= $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_scoords"}; 
-                #$ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"n_mcoords"} .= $ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[1]]{"n_mcoords"}; 
-                #$ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[0]]{"merge_ftr_idx"} = $merge_ftr_idx_A[1];
-                #$ftr_results_HAHR->{$seq_name}[$merge_ftr_idx_A[1]]{"merge_ftr_idx"} = $merge_ftr_idx_A[1]; # flag to not output this feature
-                # add alerts
-                #foreach my $alt_code (sort keys %{$alt_ftr_instances_HHHR->{$seq_name}{$merge_ftr_idx_A[1]}}) { 
-                #  my @alt_str_A = split(":VADRSEP:", $alt_ftr_instances_HHHR->{$seq_name}{$merge_ftr_idx_A[1]}{$alt_code});
-                #  foreach my $alt_str (@alt_str_A) { 
-                #    alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $merge_ftr_idx_A[0], $alt_str, $FH_HR);
-                #  }
-                #}
-                #%{$alt_ftr_instances_HHHR->{$seq_name}{$merge_ftr_idx_A[1]}} = ();
-                #undef $alt_ftr_instances_HHHR->{$seq_name}{$merge_ftr_idx_A[1]};
+                push(@to_remove_idx_A, ($before_idx, $after_idx));
               }
             }
+            
             # remove features
             if(scalar(@to_remove_idx_A) > 0) {
               foreach my $ftr_idx2 (@to_remove_idx_A) { 
@@ -15064,7 +14997,7 @@ sub pick_features_for_circular_genomes {
                 }
               }
             }
-            $sets_completed_H{$set} = 1;
+            $sets_completed_H{$sets_completed_key} = 1;
           }
         }
       }
