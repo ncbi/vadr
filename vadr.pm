@@ -9308,7 +9308,7 @@ sub vdr_TwoCoordsSpanOrigin {
       $new_nsgm++;
     }
   }
-
+  
   if($new_nsgm != $desired_nsgm) {
     ofile_FAIL("ERROR in $sub_name, problem adding segments in_coords: $in_coords desired_nsgm: $desired_nsgm, returning coords: $new_coords nsg: $new_nsgm", 1, $FH_HR);
   }

@@ -11651,6 +11651,10 @@ sub helper_ftable_coords_from_nt_prediction {
 
   my ($seq_name, $seq_len, $ftr_idx, $start_non_ab, $stop_non_ab, $ftr_info_AHR, $ftr_results_AHR, $sgm_results_HAHR, $FH_HR) = @_;
 
+  my $parent_idx = vdr_FeatureParentIndex($ftr_info_AHR, $ftr_idx);
+  my $parent_has_artificial_segment_one = ($parent_idx >= 0) ? vdr_FeatureArtificialSegmentOne($ftr_info_AHR, $parent_idx) : 0;
+  my $collapsed_flag = 0;
+
   # arrays with per-sgm info
   my @start_A     = ();
   my @stop_A      = ();
@@ -11658,16 +11662,43 @@ sub helper_ftable_coords_from_nt_prediction {
   my @is_5trunc_A = ();
   my @is_3trunc_A = ();
 
+  my $nsgm = $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + 1;
+  
   for(my $sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
     if(defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"}) { 
-      push(@start_A,     $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"});
-      push(@stop_A,      $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstop"});
-      push(@strand_A,    $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"strand"});
-      push(@is_5trunc_A, $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"5trunc"});
-      push(@is_3trunc_A, $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"3trunc"});
+      # check for rare case that we need to collapse two segments into one
+      if(($parent_has_artificial_segment_one) && ($nsgm > 1) && ($sgm_idx == $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) &&
+         ($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"} == $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstop"}) && 
+         ((($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"strand"} eq "+") && (($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"}+1) == $sgm_results_HAHR->{$seq_name}[($sgm_idx+1)]{"sstart"})) || 
+          (($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"strand"} eq "-") && (($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"}-1) == $sgm_results_HAHR->{$seq_name}[($sgm_idx+1)]{"sstart"})))) {
+        # example: 1..1:+,2..100:+, this will occur only if we have a circular genome and we needed to keep the
+        #                           child as two segments even though one segment was missing when we 'shifted'
+        #                           the coords in vdr_FeatureAndSegmentInfoCircularPerSequenceCoordsShift()
+        push(@start_A,     $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"});
+        push(@stop_A,      $sgm_results_HAHR->{$seq_name}[($sgm_idx+1)]{"sstop"});
+        push(@strand_A,    $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"strand"});
+        push(@is_5trunc_A, $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"5trunc"});
+        push(@is_3trunc_A, $sgm_results_HAHR->{$seq_name}[($sgm_idx+1)]{"3trunc"});
+        $sgm_idx++; # skip a segment
+        $collapsed_flag = 1;
+      }
+      else {
+        # normal case
+        push(@start_A,     $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"});
+        push(@stop_A,      $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstop"});
+        push(@strand_A,    $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"strand"});
+        push(@is_5trunc_A, $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"5trunc"});
+        push(@is_3trunc_A, $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"3trunc"});
+      }
     }
   }
-  my $missing_first_sgm = (defined $sgm_results_HAHR->{$seq_name}[($ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"})]{"sstart"}) ? 0 : 1;
+  my $missing_first_sgm = undef;
+  if($collapsed_flag) {
+    (defined $sgm_results_HAHR->{$seq_name}[($ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + 1)]{"sstart"}) ? 0 : 1;
+  }
+  else { 
+    $missing_first_sgm = (defined $sgm_results_HAHR->{$seq_name}[($ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"})]{"sstart"}) ? 0 : 1;
+  }
   my $missing_final_sgm = (defined $sgm_results_HAHR->{$seq_name}[($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"})]{"sstart"}) ? 0 : 1;
   my $spans_origin      = (vdr_FeatureSpansOrigin($ftr_info_AHR, $ftr_idx) || vdr_FeatureArtificialSegmentOne($ftr_info_AHR, $ftr_idx)) ? 1 : 0;
       
