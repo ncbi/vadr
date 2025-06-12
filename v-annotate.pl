@@ -2166,7 +2166,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       my @i_am_child_A = ();
       my @children_AA  = ();
       my $nchildren = vdr_FeatureInfoChildrenArrayOfArrays(\@{$ftr_info_HAH{$mdl_name}}, undef, \@i_am_child_A, \@children_AA, $FH_HR);
-                                                           
+      
       # first pick features from sets that are not composed of any children
       # this will remove features in alternative_ftr_sets that are not picked *and* their children
       if(($has_circulars) && (! opt_Get("--ignore_cfset", \%opt_HH))) { 
@@ -4365,6 +4365,9 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
     ofile_FAIL("ERROR in $sub_name, --forcedcrins enabled but $nseq > 1 seqs in alignment for parsing", 1, $FH_HR);
   }
 
+  my @children_AA = ();
+  vdr_FeatureInfoChildrenArrayOfArrays($ftr_info_AHR, undef, undef, \@children_AA, $FH_HR);
+  
   # for each sequence, go through all segments and fill in the start and stop (unaligned seq) positions
   my $shift_flag = 0; # set to 1 if we shift feature coordinates
   for(my $i = 0; $i < $nseq; $i++) { 
@@ -4384,7 +4387,7 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
       $shift_flag = 0;
     }
     if(($circ_len != -1) && ($spos != 1) && (($epos - $spos + 1) == $circ_len)) { 
-      vdr_FeatureAndSegmentInfoCircularPerSequenceCoordsShift($ftr_info_AHR, $sgm_info_AHR, $spos, $epos, $circ_len, $FH_HR);
+      vdr_FeatureAndSegmentInfoCircularPerSequenceCoordsShift($ftr_info_AHR, $sgm_info_AHR, \@children_AA, $spos, $epos, $circ_len, $FH_HR);
       $shift_flag = 1;
     }
        

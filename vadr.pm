@@ -88,7 +88,6 @@ require "sqp_utils.pm";
 # vdr_FeatureInfoValidateCircularSpanningFeatureSet()
 # vdr_FeatureInfoValidateCircularLinearFeatureSet()
 # vdr_FeatureInfoHasCircularFeatureSets()
-# vdr_FeatureInfoSetOrig()
 # 
 # vdr_SegmentInfoPopulate()
 # 
@@ -123,6 +122,7 @@ require "sqp_utils.pm";
 # vdr_FeatureIs5pTruncated()
 # vdr_FeatureIs3pTruncated()
 # vdr_FeatureImputeOutname()
+# vdr_FeatureRelativeCoordsInParent()
 # 
 # vdr_SegmentStartIdenticalToCds()
 # vdr_SegmentStopIdenticalToCds()
@@ -179,6 +179,7 @@ require "sqp_utils.pm";
 # vdr_CoordsSegmentActualToFractional()
 # vdr_CoordsSegmentFractionalToActual()
 # vdr_CoordsAddConstant()
+# vdr_CoordsNumSegments()
 #
 # Subroutines related to eutils:
 # vdr_EutilsFetchToFile()
@@ -2087,6 +2088,7 @@ sub vdr_FeatureOrSegmentInfoResetOrig {
 # Arguments:
 #   $ftr_info_AHR:  REF to feature information, modified here
 #   $sgm_info_AHR:  REF to feature information, modified here
+#   $children_AAR:  REF to array of arrays of children feature indices, FILLED HERE, can be undef
 #   $spos:          model start position of alignment of current seq
 #   $epos:          model end position of alignment of current seq
 #   $circ_len:      length of circular model (not doubled length)
@@ -2100,10 +2102,10 @@ sub vdr_FeatureOrSegmentInfoResetOrig {
 #################################################################
 sub vdr_FeatureAndSegmentInfoCircularPerSequenceCoordsShift { 
   my $sub_name = "vdr_FeatureAndSegmentInfoPerSequenceCoordsShift";
-  my $nargs_expected = 6;
+  my $nargs_expected = 7;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
   
-  my ($ftr_info_AHR, $sgm_info_AHR, $spos, $epos, $circ_len, $FH_HR) = @_;
+  my ($ftr_info_AHR, $sgm_info_AHR, $children_AAR, $spos, $epos, $circ_len, $FH_HR) = @_;
 
   printf("in $sub_name\n");
   
@@ -2268,14 +2270,38 @@ sub vdr_FeatureAndSegmentInfoCircularPerSequenceCoordsShift {
         $sgm_info_AHR->[$sgm_idx]{"stop"}  = $stop_A[$new_sgm_idx];
       }
       printf("in $sub_name, just shifted ftr_info_AHR->[$shift_idx]{start} from %s to %s\n", $ftr_info_AHR->[$shift_idx]{"ORIG_coords"}, $ftr_info_AHR->[$shift_idx]{"coords"});
-    }
+      # shift children as well
+      my $nchildren = scalar(@{$children_AAR->[$shift_idx]}); 
+      # nchildren will always be '0' if $only_children_flag is '1' because 
+      # children can't have children, enforced in vdr_FeatureInfoValidateParentIndexStrings()
+      for(my $child_idx = 0; $child_idx < $nchildren; $child_idx++) { 
+        my $child_ftr_idx = $children_AAR->[$shift_idx][$child_idx];
+        my $child_rel_coords = vdr_FeatureRelativeCoordsInParent($ftr_info_AHR, $child_ftr_idx);
+        if(! defined $child_rel_coords) {
+          ofile_FAIL("ERROR, trying to shift coords for child ftr_idx $child_ftr_idx of parent ftr idx $shift_idx, but don't have relative coords info", 1, $FH_HR);
+        }
+        my $new_child_abs_coords = vdr_CoordsRelativeToAbsolute($new_coords, $child_rel_coords, $FH_HR);
+        my $new_nsgm  = vdr_CoordsNumSegments($new_child_abs_coords, $FH_HR);
+        my $orig_nsgm = vdr_CoordsNumSegments($ftr_info_AHR->[$child_ftr_idx]{"ORIG_coords"}, $FH_HR);
+        if($new_nsgm > $orig_nsgm) {
+          ofile_FAIL(sprintf("ERROR, trying to shift coords for child ftr_idx $child_ftr_idx of parent ftr idx $shift_idx, but new coords (%s) have more segments than original (%s)", $new_child_abs_coords, $ftr_info_AHR->[$child_ftr_idx]{"ORIG_coords"}), 1, $FH_HR);
+        }
+        elsif($new_nsgm < $orig_nsgm) {
+          $new_child_abs_coords = vdr_CoordsIncreaseNumSegments($new_child_abs_coords, $orig_nsgm, $FH_HR);
+        }
+        $ftr_info_AHR->[$child_ftr_idx]{"coords"} = $new_child_abs_coords;
+        # update segment start/stops
+        @start_A = ();
+        @stop_A = ();
+        vdr_FeatureStartStopStrandArrays($new_child_abs_coords, \@start_A, \@stop_A, undef, $FH_HR);
+        for($sgm_idx = $ftr_info_AHR->[$child_ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$child_ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
+          my $new_sgm_idx = $sgm_idx - $ftr_info_AHR->[$child_ftr_idx]{"5p_sgm_idx"};
+          $sgm_info_AHR->[$sgm_idx]{"start"} = $start_A[$new_sgm_idx];
+          $sgm_info_AHR->[$sgm_idx]{"stop"}  = $stop_A[$new_sgm_idx];
+        }
+      } # end of loop over children 
+    } # end of 'if($shift_flag)'
   } # end of 'for' loop over $ftr_idx
-
-  vdr_CoordsIncreaseNumSegments("1..5:+", 2, $FH_HR);
-  vdr_CoordsIncreaseNumSegments("5..1:-", 2, $FH_HR);
-  vdr_CoordsIncreaseNumSegments("1..10:+", 5, $FH_HR);
-  vdr_CoordsIncreaseNumSegments("1..1:+,2..10:+", 5, $FH_HR);
-  vdr_CoordsIncreaseNumSegments("5..1:-", 5, $FH_HR);
 
   return;
 }
@@ -3439,6 +3465,33 @@ sub vdr_FeatureImputeOutname {
   }
 
   return;
+}
+
+################################################################
+# Subroutine: vdr_FeatureRelativeCoordsInParent()
+# Incept:     EPN, Thu Jun 12 12:58:39 2025
+#
+# Purpose:    Returns $ftr_info_AHR->[$ftr_idx]{"relative_coords_in_parent"}
+#             or undef if it is not defined.
+#
+# Arguments: 
+#   $ftr_info_AHR:  REF to array of hashes of feature info
+#   $ftr_idx:       index to fill
+#
+# Returns:   $ftr_info_AHR->[$ftr_idx]{"relative_coords_in_parent"}
+#
+# Dies: Never, nothing is validated
+# 
+#################################################################
+sub vdr_FeatureRelativeCoordsInParent {
+  my $sub_name  = "vdr_FeatureRelativeCoordsInParent";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($ftr_info_AHR, $ftr_idx) = (@_);
+
+  return (defined $ftr_info_AHR->[$ftr_idx]{"relative_coords_in_parent"}) ?
+      $ftr_info_AHR->[$ftr_idx]{"relative_coords_in_parent"} : undef;
 }
 
 #################################################################
@@ -6482,6 +6535,38 @@ sub vdr_CoordsAddConstant {
 }
 
 #################################################################
+# Subroutine: vdr_CoordsNumSegments()
+# Incept:     EPN, Tue Mar  5 13:05:38 2019
+#
+# Purpose:    Return number of segments in coords $coords_idx
+#
+# Arguments: 
+#  $coords:  coords string
+#  $FH_HR:   ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    Number of segments in $coords
+#
+# Dies: if unable to parse $coords (incorrect format)
+# 
+#################################################################
+sub vdr_CoordsNumSegments { 
+  my $sub_name = "vdr_CoordsNumSegments";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords, $FH_HR) = @_;
+  if(! defined $coords) { 
+    ofile_FAIL("ERROR in $sub_name, coords is undefined", 1, $FH_HR); 
+  }
+  my @sgm_A = split(",", $coords);
+  foreach my $coords_tok (@sgm_A) { 
+    vdr_CoordsSegmentParse($coords_tok, $FH_HR); # this will fail if token is not in correct format
+  }
+
+  return scalar(@sgm_A);
+}
+
+#################################################################
 # Subroutine: vdr_EutilsFetchToFile()
 # Incept:     EPN, Tue Mar 12 12:18:37 2019
 #
@@ -9182,7 +9267,7 @@ sub vdr_TwoCoordsSpanOrigin {
 #           if $in_coords has more segments than $desired_nsgm
 #
 #################################################################
-sub vdr_CoordsIncreaseNumSegments { 
+  sub vdr_CoordsIncreaseNumSegments { 
   my $sub_name = "vdr_CoordsIncreaseNumSegments";
   my $nargs_exp = 3;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
@@ -9230,7 +9315,7 @@ sub vdr_CoordsIncreaseNumSegments {
   
   printf("HEYA in $sub_name, in_coords: $in_coords desired_nsgm: $desired_nsgm, returning coords: $new_coords nsg: $new_nsgm\n");
   return $new_coords;
-}
+  }
 
 ###########################################################################
 # the next line is critical, a perl module must return a true value
