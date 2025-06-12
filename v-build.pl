@@ -1613,10 +1613,10 @@ sub create_circular_feature_sets {
         $spanning_set_idx++;
       }
       else { # does not span the origin
-        # create a 'circular_linear_ftr_set', 2 new features, including a duplicate of the original
+        # create a 'circular_linear_ftr_set', 3 new features, including a duplicate of the original
         $linear_before_coords = $orig_coords;
         $linear_after_coords = vdr_CoordsAddConstant($orig_coords, $orig_mdllen, $FH_HR);
-        for(my $i = 0; $i < 2; $i++) { 
+        for(my $i = 0; $i < 3; $i++) { 
           # first duplicate original to make each new feature, then we'll modify the coords as necessary
           %{$new_ftr_info_AHR->[$new_ftr_idx]} = ();
           $new_ftr_info_AHR->[$new_ftr_idx]{"circular_linear_ftr_set"} = $linear_set_idx;
@@ -1627,9 +1627,28 @@ sub create_circular_feature_sets {
             $new_ftr_info_AHR->[$new_ftr_idx]{"coords"} = $linear_before_coords;
             $new_ftr_idx += add_children_for_circular_feature($new_ftr_info_AHR, $new_ftr_idx, $ftr_info_AHR, $ftr_idx, \@children_AA, "before-linear", $orig_mdllen, $FH_HR);
           }
-          else { # $i == 1
+          elsif($i == 1) {
             $new_ftr_info_AHR->[$new_ftr_idx]{"coords"} = $linear_after_coords;
             $new_ftr_idx += add_children_for_circular_feature($new_ftr_info_AHR, $new_ftr_idx, $ftr_info_AHR, $ftr_idx, \@children_AA, "after-linear", $orig_mdllen, $FH_HR);
+          }
+          else { # $i == 2
+            # create third feature, will have a single position from first ftr in the set, and remaining from second ftr
+            $linear_modifiable_coords = vdr_CoordsSegmentCreateSinglePosition($start_A[0], $FH_HR);
+            for($sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) {
+              if($sgm_idx == 0) {
+                if($strand_A[0] eq "+") {
+                  $linear_modifiable_coords = vdr_CoordsAppendSegment($linear_modifiable_coords, vdr_CoordsSegmentsCreate($start_A[0]+1, $stop_A[0], $strand_A[0], $FH_HR));
+                }
+                else { # - strand
+                  $linear_modifiable_coords = vdr_CoordsAppendSegment($linear_modifiable_coords, vdr_CoordsSegmentsCreate($start_A[0]-1, $stop_A[0], $strand_A[0], $FH_HR));
+                }
+              }
+              else { # sgm_idx > 0
+                $linear_modifiable_coords = vdr_CoordsAppendSegment($linear_modifiable_coords, vdr_CoordsSegmentsCreate($start_A[$sgm_idx], $stop_A[$sgm_idx], $strand_A[$sgm_idx], $FH_HR));
+              }
+            }
+            $new_ftr_info_AHR->[$new_ftr_idx]{"coords"} = $linear_modifiable_coords;
+            $new_ftr_idx += add_children_for_circular_feature($new_ftr_info_AHR, $new_ftr_idx, $ftr_info_AHR, $ftr_idx, \@children_AA, "modifiable-linear", $orig_mdllen, $FH_HR);
           }
           $new_ftr_idx++;
         }
@@ -1659,7 +1678,8 @@ sub create_circular_feature_sets {
 #   $orig_ftr_idx:      idx of parent in @{$orig_ftr_info_AHR}
 #   $orig_children_AAR: ref to array of children arrays for orig_ftrs
 #   $circ_ftr_type:     "spans", "passes", "before-5p", "before-3p",
-#                       "after-5p", "after-3p", "before-linear" or "after-linear"
+#                       "after-5p", "after-3p", "before-linear", "after-linear" or
+#                       "modifiable-linear"
 #   $orig_mdllen:       length of circular genome (NC_003977: 3182)
 #   $FH_HR:             ref to hash of file handles, including "log" and "cmd"
 #
