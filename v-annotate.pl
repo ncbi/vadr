@@ -10597,6 +10597,7 @@ sub output_tabular {
               }
             } # end of 'for' loop over sgms
 
+            # merge any adjacent segments, will only happen if we have a circular model
             my $ftr_nsgm_noannot = $ftr_nsgm - $ftr_nsgm_annot;
             if($ftr_len_by_sgm == 0) { $ftr_len_by_sgm = "-"; }
             if($ftr_alt_str eq "")   { $ftr_alt_str = "-"; }
@@ -10605,6 +10606,9 @@ sub output_tabular {
               push(@data_ftr_AA, []); # empty array -> blank line
               # if (!$do_headers) for --split, we add blank line before first data line to mimic non-split output
             } 
+            if($s_coords_str ne "") { $s_coords_str = vdr_CoordsMergeAllAdjacentSegments($s_coords_str, $FH_HR); }
+            if($m_coords_str ne "") { $m_coords_str = vdr_CoordsMergeAllAdjacentSegments($m_coords_str, $FH_HR); }
+
             if($s_coords_str eq "") { $s_coords_str = "-"; } # will happen only for protein-validation only predictions
             if($m_coords_str eq "") { $m_coords_str = "-"; } # will happen only for protein-validation only predictions
             push(@data_ftr_AA, [$ftr_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_mdl1, $ftr_type2print, $ftr_name2print, $ftr_len_by_sgm, 
