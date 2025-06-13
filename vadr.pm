@@ -2141,28 +2141,67 @@ sub vdr_FeatureAndSegmentInfoCircularPerSequenceCoordsShift {
       if(vdr_CoordsMin($ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, $FH_HR) > $circ_len) {
         ofile_FAIL("ERROR in $sub_name, circular_spanning_ftr_set spanning ftr $ftr_idx ORIG_coords (" . $ftr_info_AHR->[$ftr_idx]{"ORIG_coords"} . ") has positions that exceed circular genome length $circ_len", 1, $FH_HR);
       }
-      if(vdr_CoordsCheckIfSpans($ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, vdr_CoordsSinglePositionSegmentCreate($spos, $strand, $FH_HR), $FH_HR)) {
-        # find the two segments that span the origin, and add spos to the stop of the 5' sgm and start of the 3' sgm
+      my $passes_idx; 
+      (undef, $passes_idx, undef, undef, undef, undef, undef) = 
+          vdr_FeatureInfoValidateCircularSpanningFeatureSet($ftr_info_AHR, $ftr_info_AHR->[$ftr_idx]{"circular_spanning_ftr_set"}, $circ_len, $FH_HR);
+      my $min_passes_coord = vdr_CoordsMin($ftr_info_AHR->[$passes_idx]{"ORIG_coords"}, $FH_HR);
+      my $max_passes_coord = vdr_CoordsMax($ftr_info_AHR->[$passes_idx]{"ORIG_coords"}, $FH_HR);
+      if(($spos > 1) && 
+         (($spos < ($max_passes_coord - $circ_len)) || ($spos > $min_passes_coord))) {
+        # otherwise, either spans_idx will handle this feature (if $spos == 1)
+        # or $passes_idx will handle this feature (if $spos != 1 and neither of inequalities above are satisfied
         @start_A = ();
         @stop_A = ();
-        vdr_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"ORIG_coords"}, \@start_A, \@stop_A, undef, $FH_HR);
-        my $found_spans = 0;
+        vdr_FeatureStartStopStrandArrays($ftr_info_AHR->[$passes_idx]{"ORIG_coords"}, \@start_A, \@stop_A, undef, $FH_HR);
         $nsgm = scalar(@start_A);
-        for(my $sgm_idx = 0; $sgm_idx < ($nsgm-1); $sgm_idx++) {
-          if(vdr_TwoCoordsSpanOrigin(vdr_CoordsSegmentCreate($start_A[$sgm_idx],     $stop_A[$sgm_idx],     $strand, $FH_HR),
-                                     vdr_CoordsSegmentCreate($start_A[($sgm_idx+1)], $stop_A[($sgm_idx+1)], $strand, $FH_HR),
-                                     $circ_len, $FH_HR)) {
-            $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx], $stop_A[$sgm_idx] + ($spos-1), $strand, $FH_HR));
-            $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[($sgm_idx+1)] + ($spos-1), $stop_A[($sgm_idx+1)], $strand, $FH_HR));
-            $sgm_idx++;
-            $found_spans = 1;
+        my $found_spans = 0;
+        if($strand eq "+") { 
+          printf("spos: $spos min_passes_coord\n");
+          if($spos < $min_passes_coord) {
+            printf("\tin if1\n");
+            for(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) {
+              if(($start_A[$sgm_idx] <= $epos) && ($stop_A[$sgm_idx] >= $epos)) {
+                # this segment spans $epos, create two segments
+                $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx], $epos, $strand, $FH_HR));
+                $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($spos,              ($stop_A[$sgm_idx] - $circ_len), $strand, $FH_HR));
+                $found_spans = 1;
+              }
+              else {
+                my $new_start = $start_A[$sgm_idx];
+                my $new_stop = $stop_A[$sgm_idx];
+                if($found_spans) {
+                  $new_start -= $circ_len;
+                  $new_stop  -= $circ_len;
+                }
+              }
+            }
+            if(! $found_spans) {
+              ofile_FAIL("ERROR in $sub_name, circular_spanning_ftr_set passes ftr $passes_idx ORIG_coords (" . $ftr_info_AHR->[$passes_idx]{"ORIG_coords"} . ") unable to find segments spanning epos $epos", 1, $FH_HR);
+            }
           }
-          else {
-            $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx], $stop_A[$sgm_idx], $strand, $FH_HR));
+          else { # $spos > $min_passes_coord (if $spos == $min_passes_coord we won't have entered the if above
+            printf("\tin else\n");
+            for(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) {
+              printf("sgm_idx: $sgm_idx start_A[$sgm_idx] $start_A[$sgm_idx] stop_A[$sgm_idx] $stop_A[$sgm_idx] spos $spos\n");
+              if(($start_A[$sgm_idx] <= $spos) && ($stop_A[$sgm_idx] >= $spos)) {
+                # this segment spans $spos, create two segments
+                $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx] + $circ_len, $epos, $strand, $FH_HR));
+                $new_coords = vdr_CoordsAppendSegment($new_coords, vdr_CoordsSegmentCreate($spos,                          $stop_A[$sgm_idx], $strand, $FH_HR));
+                $found_spans = 1;
+              }
+              else {
+                my $new_start = $start_A[$sgm_idx];
+                my $new_stop = $stop_A[$sgm_idx];
+                if(! $found_spans) {
+                  $new_start += $circ_len;
+                  $new_stop  += $circ_len;
+                }
+              }
+            }
+            if(! $found_spans) {
+              ofile_FAIL("ERROR in $sub_name, circular_spanning_ftr_set passes ftr $passes_idx ORIG_coords (" . $ftr_info_AHR->[$passes_idx]{"ORIG_coords"} . ") unable to find segments spanning spos $spos", 1, $FH_HR);
+            }
           }
-        }
-        if(! $found_spans) {
-          ofile_FAIL("ERROR in $sub_name, circular_spanning_ftr_set spanning ftr $ftr_idx ORIG_coords (" . $ftr_info_AHR->[$ftr_idx]{"ORIG_coords"} . ") unable to find spanning segments", 1, $FH_HR);
         }
         $shift_flag = 1;
         $shift_idx = $ftr_idx;
