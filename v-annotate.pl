@@ -14851,7 +14851,6 @@ sub pick_features_for_circular_genomes {
     my %sets_completed_H = (); # key is <$set_type>.<$set>, value is '1' if we've already completed that set
     if((defined $ftr_results_HAHR->{$seq_name}) || (defined $alt_ftr_instances_HHHR->{$seq_name})) { 
       for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-        printf("ftr_idx; $ftr_idx\n");
         if(((defined $ftr_results_HAHR->{$seq_name})       && (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx])) || 
            ((defined $alt_ftr_instances_HHHR->{$seq_name}) && (defined $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}))) { 
           my ($set, $set_type) = vdr_FeatureCircularSetValue($ftr_info_AHR, $ftr_idx, $FH_HR); # will fail if both "circular_spanning_ftr_set" and "circular_linear_ftr_set" are 1
@@ -14982,7 +14981,6 @@ sub pick_features_for_circular_genomes {
             elsif($set_type eq "circular_linear_ftr_set") { 
               my ($before_idx, $after_idx, $modifiable_idx) =
                   vdr_FeatureInfoValidateCircularLinearFeatureSet($ftr_info_AHR, $set, $circ_len, $FH_HR);
-              printf("\tbefore_idx: $before_idx\n\tafter_idx: $after_idx\n\tmodifiable_idx: $modifiable_idx\n\n");
               # figure out which features to keep/remove
               my @sum_len_A = (); # sum of lengths for each possible combo of features
               my @nfatal_A = ();  # number of fatal alerts for each possible combo of features
@@ -15001,7 +14999,6 @@ sub pick_features_for_circular_genomes {
 
               # find winner
               my $combo_wins = 0;
-              printf("combo_len: $combo_len, modifiable_len: $modifiable_len\n");
               if($modifiable_len == $combo_len) {
                 $combo_wins = ($modifiable_nfl <= $combo_nfl) ? 0 : 1;
               }
