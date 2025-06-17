@@ -956,6 +956,7 @@ $mdl_info_AH[0]{"name"}        = $mdl_name;
 $mdl_info_AH[0]{"length"}      = length($seq_H{$mdl_name_ver});
 if($do_circular) {
   $mdl_info_AH[0]{"is_circular"} = "1";
+  vdr_FeatureInfoImputeSpansOrigin(\@{$ftr_info_HAH{$mdl_name}}, $orig_mdllen, $FH_HR);
 }
 if(defined $cm_file) { 
   $mdl_info_AH[0]{"cmfile"} = utl_RemoveDirPath($cm_file);
@@ -1256,7 +1257,6 @@ sub integerize_parent_index_strings {
   my ($ftr_info_AHR, $FH_HR) = @_;
 
   my $nftr = scalar(@{$ftr_info_AHR});
-  printf(" in $sub_name, nftr: $nftr\n");
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if((defined $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"}) && 
        ($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} ne "GBNULL")) { 
@@ -1268,25 +1268,19 @@ sub integerize_parent_index_strings {
           ofile_FAIL("ERROR in $sub_name, unable to parse temporary parent_idx_str $parent_type_coords_str\n", 1, $FH_HR);
         }
         my ($parent_type, $parent_coords, $parent_outname) = ($el_A[0], $el_A[1], $el_A[2]);
-        printf("checking for $parent_type $parent_coords $parent_outname\n");
         my $parent_ftr_idx = undef;
         # find parent idx in ftr_info_AHR, if it exists
         for(my $ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
           if($ftr_idx2 ne $ftr_idx) { # a feature can't be the parent of itself
             my $outname2 = (defined $ftr_info_AHR->[$ftr_idx2]{"outname"}) ?
                 $ftr_info_AHR->[$ftr_idx2]{"outname"} : "undef";
-            printf("\tchecking ftr_idx: $ftr_idx2 " . $ftr_info_AHR->[$ftr_idx2]{"type"} . " " . $ftr_info_AHR->[$ftr_idx2]{"coords"} . " " . $outname2 . "\n");
             if(($ftr_info_AHR->[$ftr_idx2]{"type"}   eq $parent_type) && 
                ($ftr_info_AHR->[$ftr_idx2]{"coords"} eq $parent_coords) && 
                ($outname2                            eq $parent_outname)) { 
-              printf("\t\tmatch!\n");
               if(defined $parent_ftr_idx) { 
                 ofile_FAIL("ERROR in $sub_name, found two features that qualify as parents of feature $ftr_idx with type $parent_type coords $parent_coords outname: $parent_outname: $parent_ftr_idx and $ftr_idx2", 1, $FH_HR);
               }
               $parent_ftr_idx = $ftr_idx2;
-            }
-            else {
-              printf("\t\tmistmatch\n");
             }
           }
         }
@@ -1297,7 +1291,6 @@ sub integerize_parent_index_strings {
         $new_parent_idx_str .= $parent_ftr_idx;
       }
       $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} = $new_parent_idx_str;
-      printf("HEYA parent_idx_str for $ftr_idx is " . $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} . "\n");
     }
   }
 
@@ -1388,15 +1381,15 @@ sub check_and_add_cds_splice_sites {
               $ss_sqstring =~ tr/U/T/;     # convert to DNA
               if(length($ss_sqstring) != 2) {
                 # exit if --strictss
-                if(opt_Get("--strictss", $opt_HHR)) { 
-                  ofile_FAIL(sprintf("ERROR in $sub_name, with --strictss, splice sites expected to be length 2, but got length of %d for 5' splice site for seq#%d (positions $astart..$astop:$sgm_strand_AA[$ftr_idx][$sgm_idx])", 
+                if(opt_Get("--ssplice", $opt_HHR)) { 
+                  ofile_FAIL(sprintf("ERROR in $sub_name, with --ssplice, splice sites expected to be length 2, but got length of %d for 5' splice site for seq#%d (positions $astart..$astop:$sgm_strand_AA[$ftr_idx][$sgm_idx])", 
                                      length($ss_sqstring), $seq_idx), 1, $FH_HR);
                 }
                 $canon_5p = 0;
               }
               if($ss_sqstring ne "GT") { 
-                if(opt_Get("--strictss", $opt_HHR)) { 
-                  ofile_FAIL(sprintf("ERROR in $sub_name, with --strictss, 5' splice sites expected to be GT, but got %s for 5' splice site for seq#%d (positions $astart..$astop:$sgm_strand_AA[$ftr_idx][$sgm_idx])", 
+                if(opt_Get("--ssplice", $opt_HHR)) { 
+                  ofile_FAIL(sprintf("ERROR in $sub_name, with --ssplice, 5' splice sites expected to be GT, but got %s for 5' splice site for seq#%d (positions $astart..$astop:$sgm_strand_AA[$ftr_idx][$sgm_idx])", 
                                      $ss_sqstring, $seq_idx), 1, $FH_HR);
                 }
                 $canon_5p = 0;
@@ -1417,15 +1410,15 @@ sub check_and_add_cds_splice_sites {
               $ss_sqstring =~ tr/a-z/A-Z/; # convert to uppercase
               $ss_sqstring =~ tr/U/T/;     # convert to DNA
               if(length($ss_sqstring) != 2) {
-                # exit if --strictss
-                if(opt_Get("--strictss", $opt_HHR)) { 
-                  ofile_FAIL(sprintf("ERROR in $sub_name, with --strictss, splice sites expected to be length 2, but got length of %d for 3' splice site for seq#%d (positions $astart..$astop:$sgm_strand_AA[$ftr_idx][$sgm_idx])", 
+                # exit if --ssplice
+                if(opt_Get("--ssplice", $opt_HHR)) { 
+                  ofile_FAIL(sprintf("ERROR in $sub_name, with --ssplice, splice sites expected to be length 2, but got length of %d for 3' splice site for seq#%d (positions $astart..$astop:$sgm_strand_AA[$ftr_idx][$sgm_idx])", 
                                      length($ss_sqstring), $seq_idx), 1, $FH_HR);
                 }
                 $canon_3p = 0;
               }
               if($ss_sqstring ne "AG") { 
-                if(opt_Get("--strictss", $opt_HHR)) { 
+                if(opt_Get("--ssplice", $opt_HHR)) { 
                   ofile_FAIL(sprintf("ERROR in $sub_name, with --strictss, 3' splice sites expected to be AG, but got %s for 5' splice site for seq#%d (positions $astart..$astop:$sgm_strand_AA[$ftr_idx][$sgm_idx])", 
                                      $ss_sqstring, $seq_idx), 1, $FH_HR);
                 }
@@ -1546,7 +1539,7 @@ sub create_circular_feature_sets {
                                                                                                  $stop_A[$sgm_idx] + $orig_mdllen,
                                                                                                  $strand_A[$sgm_idx], $FH_HR));
           
-          if(vdr_TwoCoordsSpanOrigin($sgm_coords_A[$sgm_idx], $sgm_coords_A[$sgm_idx+1], $orig_mdllen, $FH_HR)) {
+          if(vdr_CoordsCheckIfTwoSegmentsSpanOrigin($sgm_coords_A[$sgm_idx], $sgm_coords_A[$sgm_idx+1], $orig_mdllen, $FH_HR)) {
             $spans_origin = 1;
             $passes_coords    = vdr_CoordsAppendSegment($passes_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx],
                                                                                                 ($stop_A[$sgm_idx] + $stop_A[$sgm_idx+1]),
@@ -1641,10 +1634,10 @@ sub create_circular_feature_sets {
               for(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) {
                 if($sgm_idx == 0) {
                   if($strand_A[0] eq "+") {
-                    $linear_modifiable_coords = vdr_CoordsAppendSegment($linear_modifiable_coords, vdr_CoordsSegmentCreate($start_A[0]+1, $stop_A[0], $strand_A[0], $FH_HR));
+                    $linear_modifiable_coords = vdr_CoordsAppendSegment($linear_modifiable_coords, vdr_CoordsAddConstant(vdr_CoordsSegmentCreate($start_A[0]+1, $stop_A[0], $strand_A[0], $FH_HR), $orig_mdllen, $FH_HR));
                   }
                   else { # - strand
-                    $linear_modifiable_coords = vdr_CoordsAppendSegment($linear_modifiable_coords, vdr_CoordsSegmentCreate($start_A[0]-1, $stop_A[0], $strand_A[0], $FH_HR));
+                    $linear_modifiable_coords = vdr_CoordsAppendSegment($linear_modifiable_coords, vdr_CoordsAddConstant(vdr_CoordsSegmentCreate($start_A[0]-1, $stop_A[0], $strand_A[0], $FH_HR), $orig_mdllen, $FH_HR));
                   }
                 }
                 else { # sgm_idx > 0
@@ -1760,7 +1753,7 @@ sub add_children_for_circular_feature {
 #      my $passed_origin_flag = 0;
 #      for(my $orig_child_sgm_idx = 0; $orig_child_sgm_idx < $orig_child_nsgm; $orig_child_sgm_idx++) {
 #        if(($orig_child_sgm_idx < ($orig_child_nsgm-1)) &&
-#           (vdr_TwoCoordsSpanOrigin($orig_child_sgm_coords_A[$orig_child_sgm_idx], $orig_child_sgm_coords_A[$orig_child_sgm_idx+1], $orig_mdllen, $FH_HR))) {
+#           (vdr_CoordsCheckIfTwoSegmentsSpanOrigin($orig_child_sgm_coords_A[$orig_child_sgm_idx], $orig_child_sgm_coords_A[$orig_child_sgm_idx+1], $orig_mdllen, $FH_HR))) {
 #          # this segment spans the origin, update start/stop
 #          $new_abs_child_coords = vdr_CoordsAppendSegment($new_abs_child_coords, vdr_CoordsSegmentCreate($orig_child_start_A[$orig_child_sgm_idx],
 #                                                                                                         ($orig_child_stop_A[$orig_child_sgm_idx] + $orig_child_stop_A[$orig_child_sgm_idx+1]),
@@ -1933,7 +1926,6 @@ sub stringize_parent_index_strings {
       }
       $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} =
           create_parent_index_string($ftr_info_AHR, $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"});
-      printf("in $sub_name, set ftr_info_AHR->[$ftr_idx]{parent_idx_str} to " . $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} . "\n");
     }
   }
 
