@@ -2001,42 +2001,6 @@ sub vdr_FeatureInfoHasCircularFeatureSets {
 }
 
 #################################################################
-# Subroutine: vdr_FeatureInfoHasCircularFeatureSets
-# Incept:     EPN, Tue May 20 11:40:30 2025
-# 
-# Purpose:    Returns '1' if there are any 'circular_spanning_ftr_set'
-#             or 'circular_linear_ftr_set' sets for any features.
-#  
-# Arguments:
-#   $ftr_info_AHR:  REF to feature information, added to here
-#   $FH_HR:         REF to file handles
-#
-# Returns:    '1' if any 'circular_spanning_ftr_set' or
-#             'circular_linear_ftr_set' values are defined,
-#             else '0'
-#
-# Dies:       never
-#
-#################################################################
-sub vdr_FeatureInfoHasCircularFeatureSets {
-  my $sub_name = "vdr_FeatureInfoHasCircularFeatureSets";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
-  
-  my ($ftr_info_AHR, $FH_HR) = @_;
-
-  my $nftr = scalar(@{$ftr_info_AHR});
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
-    my ($set, $set_type) = vdr_FeatureCircularSetValue($ftr_info_AHR, $ftr_idx, $FH_HR); # will fail if both "circular_spanning_ftr_set" and "circular_linear_ftr_set" are 1
-    if((defined $set) && (defined $set_type)) {
-      return 1;
-    }
-  }
-
-  return 0;
-}
-
-#################################################################
 # Subroutine: vdr_FeatureInfoImputeSpansOrigin
 # Incept:     EPN, Tue Jun 17 10:21:24 2025
 # 
@@ -2202,6 +2166,7 @@ sub vdr_FeatureAndSegmentInfoCircularPerSequenceCoordsShift {
   my $new_nsgm    = 0; # number of segments in 'before' ftr in cirular_linear_ftr_set
   my %finished_set_H = (); # set key to name of completed circular_linear_ftr_set when we are done with it
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
+    printf("\t in $sub_name, ftr_idx: $ftr_idx\n");
     $shift_flag = 0;
     $shift_idx  = -1;
     $new_coords = "";
@@ -2258,9 +2223,8 @@ sub vdr_FeatureAndSegmentInfoCircularPerSequenceCoordsShift {
       }
       printf("in $sub_name, just shifted ftr_info_AHR->[$shift_idx]{start} from %s to %s\n", $ftr_info_AHR->[$shift_idx]{"ORIG_coords"}, $ftr_info_AHR->[$shift_idx]{"coords"});
       # shift children as well
+      # (note: children can't have children, enforced in vdr_FeatureInfoValidateParentIndexStrings())
       my $nchildren = scalar(@{$children_AAR->[$shift_idx]}); 
-      # nchildren will always be '0' if $only_children_flag is '1' because 
-      # children can't have children, enforced in vdr_FeatureInfoValidateParentIndexStrings()
       for(my $child_idx = 0; $child_idx < $nchildren; $child_idx++) { 
         my $child_ftr_idx = $children_AAR->[$shift_idx][$child_idx];
         my $child_rel_coords = vdr_FeatureRelativeCoordsInParent($ftr_info_AHR, $child_ftr_idx);
@@ -2325,6 +2289,8 @@ sub vdr_CircularSpanningFeatureSetPerSequenceCoordsShift {
   
   my ($orig_coords, $spos, $epos, $circ_len, $strand, $FH_HR) = @_;
 
+  print("in $sub_name orig_coords: $orig_coords spos: $spos epos: $epos, strand: $strand\n");
+  
   my @start_A   = (); # array of start coords, per sgm
   my @stop_A   = ();  # array of stop coords, per sgm
   my @strand_A = ();  # array of strands, per sgm
@@ -9452,7 +9418,7 @@ sub vdr_CoordsCheckIfTwoSegmentsSpanOrigin {
 
   my ($mdl_coords5p, $mdl_coords3p, $circ_len, $FH_HR) = (@_);
 
-  printf("in $sub_name, mdl_coords5p: $mdl_coords5p, mdl_coords3p: $mdl_coords3p, circ_len: $circ_len\n");
+  #printf("in $sub_name, mdl_coords5p: $mdl_coords5p, mdl_coords3p: $mdl_coords3p, circ_len: $circ_len\n");
   
   my $strand1 = vdr_FeatureSummaryStrand($mdl_coords5p, $FH_HR);
   my $strand2 = vdr_FeatureSummaryStrand($mdl_coords3p, $FH_HR);
@@ -9461,10 +9427,8 @@ sub vdr_CoordsCheckIfTwoSegmentsSpanOrigin {
   my $start2 = vdr_Feature5pMostPosition($mdl_coords3p, $FH_HR);
 
   if(($strand1 eq "+") && ($strand2 eq "+")) {
-    printf("\tstop1: $stop1 start2: $start2\n");
     if(($stop1 >= $circ_len) && ($start2 < $circ_len) && 
        (($stop1 % $circ_len) == (($start2-1) % $circ_len))) { 
-      printf("\t\treturning1\n");
       return 1;
     }
   }
