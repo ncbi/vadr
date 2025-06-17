@@ -514,10 +514,6 @@ if($do_circular) {
   }
 }
 
-#if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
-#  utl_AHDump("Feature information", \@{$ftr_info_HAH{$mdl_name}}, $ofile_info_HH{"FH"}{"ftrinfo"});
-#}
-#exit 0;
 
 #######################################################
 # Prune data read from %ftr_info_HAH, only keeping what
@@ -538,7 +534,7 @@ my %qdf_H      = (); # default qualifiers to keep
 my %qadd_H     = (); # qualifiers to add
 my %qskip_H    = (); # qualifiers to skip
 my %qftr_add_H = (); # if --qftradd, subset of features to add qualifiers in --qadd option for
-process_add_and_skip_options("type,coords,location,product,gene,exception,parent_idx_str,trunc5,trunc3,codon_start,circular_spanning_ftr_set,circular_linear_ftr_set,spans_origin,relative_coords_in_parent",
+process_add_and_skip_options("type,coords,location,product,gene,exception,parent_idx_str,trunc5,trunc3,codon_start,circular_spanning_ftr_set,circular_linear_ftr_set,spans_origin,relative_coords_in_parent,artificial_segment_one",
                              "--qadd", "--qskip", "--qftradd", \%qdf_H, \%qadd_H, \%qskip_H, \%qftr_add_H, \%opt_HH, $FH_HR); 
 # we only need ribosomal_slippage above so we can get the exception:ribosomal slippage 
 # qualifier, if we switch to parsing feature tables instead of GenBank files, then
@@ -739,17 +735,13 @@ ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
 $start_secs = ofile_OutputProgressPrior("Finalizing feature information", $progress_w, $log_FH, *STDOUT);
 
 vdr_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-printf("HEYA1\n");
 vdr_FeatureInfoInitializeParentIndexStrings(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-printf("HEYA2\n");
 
 # Convert parent_index_str values from the strings they were set to in
 # fetch_and_parse_cds_protein_feature_tables to integers, now that all
 # feature pruning is complete
-printf("HEYA3\n");
 vdr_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
 integerize_parent_index_strings(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-printf("HEYA4\n");
 
 # add 'gene' qualifiers to 'CDS' features
 if((! opt_Get("--noaddgene", \%opt_HH)) && (! defined $qskip_H{"gene"})) { 
@@ -1646,8 +1638,8 @@ sub create_circular_feature_sets {
               }
             }
             $new_ftr_info_AHR->[$new_ftr_idx]{"coords"} = $linear_modifiable_coords;
-            $new_ftr_idx += add_children_for_circular_feature($new_ftr_info_AHR, $new_ftr_idx, $ftr_info_AHR, $ftr_idx, \@children_AA, "modifiable-linear", $orig_mdllen, $FH_HR);
             $new_ftr_info_AHR->[$new_ftr_idx]{"artificial_segment_one"} = 1;
+            $new_ftr_idx += add_children_for_circular_feature($new_ftr_info_AHR, $new_ftr_idx, $ftr_info_AHR, $ftr_idx, \@children_AA, "modifiable-linear", $orig_mdllen, $FH_HR);
           }
           $new_ftr_idx++;
         }
@@ -1735,47 +1727,8 @@ sub add_children_for_circular_feature {
     my $is_5trunc = 0;
     my $is_3trunc = 0;
 
-    # we have to handle each type of parent ('spans', passes', 'before-linear', 'after-linear', 'before-5p', 'before-3p', 'after-5p', 'after-3p' differently, hence the if..elsif..elsif block below
-#    if(($circ_ftr_type eq "spans") || ($circ_ftr_type eq "before-linear")) {
-#      # easy case, just create a copy (and update parent idx)
-#      $add_child_flag = 1;
-#      $new_abs_child_coords = $orig_ftr_info_AHR->[$orig_child_ftr_idx]{"coords"}; # unchanged
-#    }
-#    elsif($circ_ftr_type eq "after-linear") { 
-#      # easy case, just add $orig_mdllen to each coord
-#      $add_child_flag = 1; 
-#      $new_abs_child_coords = vdr_CoordsAddConstant($new_abs_child_coords, $orig_mdllen, $FH_HR);
-#    }
-#    elsif($circ_ftr_type eq "passes") {
-#      # all children should be added because our feature is full length, but
-#      # we need to figure out the new coords for each child
-#      $add_child_flag = 1; 
-#      my $passed_origin_flag = 0;
-#      for(my $orig_child_sgm_idx = 0; $orig_child_sgm_idx < $orig_child_nsgm; $orig_child_sgm_idx++) {
-#        if(($orig_child_sgm_idx < ($orig_child_nsgm-1)) &&
-#           (vdr_CoordsCheckIfTwoSegmentsSpanOrigin($orig_child_sgm_coords_A[$orig_child_sgm_idx], $orig_child_sgm_coords_A[$orig_child_sgm_idx+1], $orig_mdllen, $FH_HR))) {
-#          # this segment spans the origin, update start/stop
-#          $new_abs_child_coords = vdr_CoordsAppendSegment($new_abs_child_coords, vdr_CoordsSegmentCreate($orig_child_start_A[$orig_child_sgm_idx],
-#                                                                                                         ($orig_child_stop_A[$orig_child_sgm_idx] + $orig_child_stop_A[$orig_child_sgm_idx+1]),
-#                                                                                                         $orig_child_strand_A[$orig_child_sgm_idx], $FH_HR));
-#          
-#          $orig_child_sgm_idx++;
-#        }
-#        else {
-#          if((($orig_summary_strand eq "+") && ($orig_child_stop_A[$orig_child_sgm_idx]  < $new_ftr_minimum_coord)) ||
-#             (($orig_summary_strand eq "-") && ($orig_child_start_A[$orig_child_sgm_idx] < $new_ftr_minimum_coord))) { 
-#            # entire segment exists after the original feature wrapped the origin, so add $orig_mdl_len to start/stop
-#            $new_abs_child_coords = vdr_CoordsAppendSegment($new_abs_child_coords, vdr_CoordsSegmentCreate($orig_child_start_A[$orig_child_sgm_idx] + $orig_mdllen, 
-#                                                                                                           $orig_child_stop_A[$orig_child_sgm_idx] + $orig_mdllen, 
-#                                                                                                           $orig_child_strand_A[$orig_child_sgm_idx], $FH_HR));
-#            
-#          }
-#          else {
-#            $new_abs_child_coords = vdr_CoordsAppendSegment($new_abs_child_coords, $orig_child_sgm_coords_A[$orig_child_sgm_idx]);              
-#          }
-#        }
-#      }
-#    }
+    # we have to handle each type of parent ('spans', passes', 'before-linear', 'after-linear', 'before-5p',
+    # 'before-3p', 'after-5p', 'after-3p' differently, hence the if..elsif..elsif block below
     if(($circ_ftr_type eq "spans") || ($circ_ftr_type eq "passes") ||
        ($circ_ftr_type eq "before-linear")  || ($circ_ftr_type eq "after-linear") ||
        ($circ_ftr_type eq "modifiable-linear")) {
