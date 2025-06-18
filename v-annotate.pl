@@ -3250,6 +3250,7 @@ sub add_classification_alerts {
     my $mdl_name = undef;
     my $mdl_idx  = undef;
     my $mdl_len  = undef;
+    my $mdl_is_circular = undef;
     my %score_H  = (); # key is $stg_results_HHHR 2D key (search category), value is summed score
     my %scpnt_H  = (); # key is $stg_results_HHHR 2D key (search category), value is summed length
     my $alt_str = "";
@@ -3315,6 +3316,7 @@ sub add_classification_alerts {
         $mdl_name = $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"model"};
         $mdl_idx  = $mdl_idx_H{$mdl_name};
         $mdl_len  = $mdl_info_AHR->[$mdl_idx]{"length"};
+        $mdl_is_circular = ((defined $mdl_info_AH[$mdl_idx]{"is_circular"}) && ($mdl_info_AH[$mdl_idx]{"is_circular"} == 1)) ? 1 : 0;
         foreach my $rkey (keys (%{$stg_results_HHHR->{$seq_name}})) { 
           my @score_A = split(",", $stg_results_HHHR->{$seq_name}{$rkey}{"score"});
           $score_H{$rkey} = utl_ASum(\@score_A);
@@ -3540,7 +3542,7 @@ sub add_classification_alerts {
           }
           
           # inconsistent hits: wrong hit order (discontn)
-          if($nhits > 1) { 
+          if(($nhits > 1) && (! $mdl_is_circular)) { # if mdl is circular, we can't confidently identify distcontn
             my $i;
             my @seq_hit_order_A = (); # array of sequence boundary hit indices in sorted order [0..nhits-1] values are in range 1..nhits
             my @mdl_hit_order_A = (); # array of model    boundary hit indices in sorted order [0..nhits-1] values are in range 1..nhits
@@ -6548,11 +6550,12 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
                 }
                 my $ftr_stop_final_pos = $ftr_nxt_stp_A[1] + $n_nt_skipped_at_5p_end;
                 $ftr_stop_c = $ftr2org_pos_A[$ftr_stop_final_pos];
+                my $org_stop_final_pos = $ftr_stop_c;
 
                 # this is strand agnostic because of use of ftr2org_pos_A map
-                my $ftr_stop_first_pos = $ftr2org_pos_A[($ftr_stop_final_pos-2)];
-                $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_stop_first_pos, $ftr_stop_final_pos, $ftr_strand, $FH_HR) . ";";
-                $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr_stop_first_pos]), abs($ua2rf_AR->[$ftr_stop_final_pos]), $ftr_strand, $FH_HR) . ";";
+                my $org_stop_first_pos = $ftr2org_pos_A[($ftr_stop_final_pos-2)];
+                $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($org_stop_first_pos, $org_stop_final_pos, $ftr_strand, $FH_HR) . ";";
+                $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$org_stop_first_pos]), abs($ua2rf_AR->[$org_stop_final_pos]), $ftr_strand, $FH_HR) . ";";
 
                 $alt_codon = substr($ftr_sqstring_alt_stops, $ftr_nxt_stp_A[1]-3, 3);
                 $alt_codon =~ tr/a-z/A-Z/;
