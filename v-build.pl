@@ -514,10 +514,6 @@ if($do_circular) {
   }
 }
 
-#if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
-#  utl_AHDump("Feature information", \@{$ftr_info_HAH{$mdl_name}}, $ofile_info_HH{"FH"}{"ftrinfo"});
-#}
-#exit 0;
 
 #######################################################
 # Prune data read from %ftr_info_HAH, only keeping what
@@ -538,7 +534,7 @@ my %qdf_H      = (); # default qualifiers to keep
 my %qadd_H     = (); # qualifiers to add
 my %qskip_H    = (); # qualifiers to skip
 my %qftr_add_H = (); # if --qftradd, subset of features to add qualifiers in --qadd option for
-process_add_and_skip_options("type,coords,location,product,gene,exception,parent_idx_str,trunc5,trunc3,codon_start,circular_spanning_ftr_set,circular_linear_ftr_set,spans_origin",
+process_add_and_skip_options("type,coords,location,product,gene,exception,parent_idx_str,trunc5,trunc3,codon_start,circular_spanning_ftr_set,circular_linear_ftr_set,spans_origin,relative_coords_in_parent,artificial_segment_one",
                              "--qadd", "--qskip", "--qftradd", \%qdf_H, \%qadd_H, \%qskip_H, \%qftr_add_H, \%opt_HH, $FH_HR); 
 # we only need ribosomal_slippage above so we can get the exception:ribosomal slippage 
 # qualifier, if we switch to parsing feature tables instead of GenBank files, then
@@ -739,17 +735,13 @@ ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
 $start_secs = ofile_OutputProgressPrior("Finalizing feature information", $progress_w, $log_FH, *STDOUT);
 
 vdr_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-printf("HEYA1\n");
 vdr_FeatureInfoInitializeParentIndexStrings(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-printf("HEYA2\n");
 
 # Convert parent_index_str values from the strings they were set to in
 # fetch_and_parse_cds_protein_feature_tables to integers, now that all
 # feature pruning is complete
-printf("HEYA3\n");
 vdr_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
 integerize_parent_index_strings(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-printf("HEYA4\n");
 
 # add 'gene' qualifiers to 'CDS' features
 if((! opt_Get("--noaddgene", \%opt_HH)) && (! defined $qskip_H{"gene"})) { 
@@ -956,6 +948,7 @@ $mdl_info_AH[0]{"name"}        = $mdl_name;
 $mdl_info_AH[0]{"length"}      = length($seq_H{$mdl_name_ver});
 if($do_circular) {
   $mdl_info_AH[0]{"is_circular"} = "1";
+  vdr_FeatureInfoImputeSpansOrigin(\@{$ftr_info_HAH{$mdl_name}}, $orig_mdllen, $FH_HR);
 }
 if(defined $cm_file) { 
   $mdl_info_AH[0]{"cmfile"} = utl_RemoveDirPath($cm_file);
@@ -1201,6 +1194,7 @@ sub fetch_and_parse_cds_protein_feature_tables {
               $ftr_info_AHR->[$found_ftr_idx]{"parent_idx_str"} .= "!GBSEP!" . $tmp_parent_idx_str;
             }
             $ftr_info_AHR->[$found_ftr_idx]{"protein_coords"} = $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"protein_coords"};
+            $ftr_info_AHR->[$found_ftr_idx]{"relative_coords_in_parent"} = vdr_CoordsProteinToNucleotide($ftr_info_AHR->[$found_ftr_idx]{"protein_coords"}, $FH_HR);
           }
           else { # we didn't find this feature already in the feature info hash, add it
             #printf("adding feature " . $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"type"} . " with coords " . $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"coords"} . "\n");
@@ -1212,6 +1206,7 @@ sub fetch_and_parse_cds_protein_feature_tables {
             # set parent_idx_str to "parent's type" . ":GBSEP:" . "parent's coords", we need to do this because parent's ftr_idx may change when we prune unwanted features
             $ftr_info_AHR->[$nxt_ftr_idx]{"parent_idx_str"} = $tmp_parent_idx_str;
             $ftr_info_AHR->[$nxt_ftr_idx]{"protein_coords"} = $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"protein_coords"};
+            $ftr_info_AHR->[$nxt_ftr_idx]{"relative_coords_in_parent"} = vdr_CoordsProteinToNucleotide($ftr_info_AHR->[$nxt_ftr_idx]{"protein_coords"}, $FH_HR);
           }
         } # end of 'if($prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"type"} ne "CDS") {'
       }
@@ -1254,7 +1249,6 @@ sub integerize_parent_index_strings {
   my ($ftr_info_AHR, $FH_HR) = @_;
 
   my $nftr = scalar(@{$ftr_info_AHR});
-  printf(" in $sub_name, nftr: $nftr\n");
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if((defined $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"}) && 
        ($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} ne "GBNULL")) { 
@@ -1266,25 +1260,19 @@ sub integerize_parent_index_strings {
           ofile_FAIL("ERROR in $sub_name, unable to parse temporary parent_idx_str $parent_type_coords_str\n", 1, $FH_HR);
         }
         my ($parent_type, $parent_coords, $parent_outname) = ($el_A[0], $el_A[1], $el_A[2]);
-        printf("checking for $parent_type $parent_coords $parent_outname\n");
         my $parent_ftr_idx = undef;
         # find parent idx in ftr_info_AHR, if it exists
         for(my $ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
           if($ftr_idx2 ne $ftr_idx) { # a feature can't be the parent of itself
             my $outname2 = (defined $ftr_info_AHR->[$ftr_idx2]{"outname"}) ?
                 $ftr_info_AHR->[$ftr_idx2]{"outname"} : "undef";
-            printf("\tchecking ftr_idx: $ftr_idx2 " . $ftr_info_AHR->[$ftr_idx2]{"type"} . " " . $ftr_info_AHR->[$ftr_idx2]{"coords"} . " " . $outname2 . "\n");
             if(($ftr_info_AHR->[$ftr_idx2]{"type"}   eq $parent_type) && 
                ($ftr_info_AHR->[$ftr_idx2]{"coords"} eq $parent_coords) && 
                ($outname2                            eq $parent_outname)) { 
-              printf("\t\tmatch!\n");
               if(defined $parent_ftr_idx) { 
                 ofile_FAIL("ERROR in $sub_name, found two features that qualify as parents of feature $ftr_idx with type $parent_type coords $parent_coords outname: $parent_outname: $parent_ftr_idx and $ftr_idx2", 1, $FH_HR);
               }
               $parent_ftr_idx = $ftr_idx2;
-            }
-            else {
-              printf("\t\tmistmatch\n");
             }
           }
         }
@@ -1295,7 +1283,6 @@ sub integerize_parent_index_strings {
         $new_parent_idx_str .= $parent_ftr_idx;
       }
       $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} = $new_parent_idx_str;
-      printf("HEYA parent_idx_str for $ftr_idx is " . $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} . "\n");
     }
   }
 
@@ -1386,15 +1373,15 @@ sub check_and_add_cds_splice_sites {
               $ss_sqstring =~ tr/U/T/;     # convert to DNA
               if(length($ss_sqstring) != 2) {
                 # exit if --strictss
-                if(opt_Get("--strictss", $opt_HHR)) { 
-                  ofile_FAIL(sprintf("ERROR in $sub_name, with --strictss, splice sites expected to be length 2, but got length of %d for 5' splice site for seq#%d (positions $astart..$astop:$sgm_strand_AA[$ftr_idx][$sgm_idx])", 
+                if(opt_Get("--ssplice", $opt_HHR)) { 
+                  ofile_FAIL(sprintf("ERROR in $sub_name, with --ssplice, splice sites expected to be length 2, but got length of %d for 5' splice site for seq#%d (positions $astart..$astop:$sgm_strand_AA[$ftr_idx][$sgm_idx])", 
                                      length($ss_sqstring), $seq_idx), 1, $FH_HR);
                 }
                 $canon_5p = 0;
               }
               if($ss_sqstring ne "GT") { 
-                if(opt_Get("--strictss", $opt_HHR)) { 
-                  ofile_FAIL(sprintf("ERROR in $sub_name, with --strictss, 5' splice sites expected to be GT, but got %s for 5' splice site for seq#%d (positions $astart..$astop:$sgm_strand_AA[$ftr_idx][$sgm_idx])", 
+                if(opt_Get("--ssplice", $opt_HHR)) { 
+                  ofile_FAIL(sprintf("ERROR in $sub_name, with --ssplice, 5' splice sites expected to be GT, but got %s for 5' splice site for seq#%d (positions $astart..$astop:$sgm_strand_AA[$ftr_idx][$sgm_idx])", 
                                      $ss_sqstring, $seq_idx), 1, $FH_HR);
                 }
                 $canon_5p = 0;
@@ -1415,15 +1402,15 @@ sub check_and_add_cds_splice_sites {
               $ss_sqstring =~ tr/a-z/A-Z/; # convert to uppercase
               $ss_sqstring =~ tr/U/T/;     # convert to DNA
               if(length($ss_sqstring) != 2) {
-                # exit if --strictss
-                if(opt_Get("--strictss", $opt_HHR)) { 
-                  ofile_FAIL(sprintf("ERROR in $sub_name, with --strictss, splice sites expected to be length 2, but got length of %d for 3' splice site for seq#%d (positions $astart..$astop:$sgm_strand_AA[$ftr_idx][$sgm_idx])", 
+                # exit if --ssplice
+                if(opt_Get("--ssplice", $opt_HHR)) { 
+                  ofile_FAIL(sprintf("ERROR in $sub_name, with --ssplice, splice sites expected to be length 2, but got length of %d for 3' splice site for seq#%d (positions $astart..$astop:$sgm_strand_AA[$ftr_idx][$sgm_idx])", 
                                      length($ss_sqstring), $seq_idx), 1, $FH_HR);
                 }
                 $canon_3p = 0;
               }
               if($ss_sqstring ne "AG") { 
-                if(opt_Get("--strictss", $opt_HHR)) { 
+                if(opt_Get("--ssplice", $opt_HHR)) { 
                   ofile_FAIL(sprintf("ERROR in $sub_name, with --strictss, 3' splice sites expected to be AG, but got %s for 5' splice site for seq#%d (positions $astart..$astop:$sgm_strand_AA[$ftr_idx][$sgm_idx])", 
                                      $ss_sqstring, $seq_idx), 1, $FH_HR);
                 }
@@ -1531,7 +1518,8 @@ sub create_circular_feature_sets {
       vdr_FeatureStartStopStrandArrays($orig_coords, \@start_A, \@stop_A, \@strand_A, $FH_HR);
       vdr_CoordsToSegments($orig_coords, \@sgm_coords_A, $FH_HR);
       my $nsgm = scalar(@sgm_coords_A);
-
+      my $orig_ftr_len = vdr_CoordsLength($orig_coords, $FH_HR);
+      
       # first determine if this feature spans the origin, if there is only 1 segment, it can't
       if($nsgm > 1) { 
         # step through each segment and see if the current segment and the next span the origin
@@ -1543,7 +1531,7 @@ sub create_circular_feature_sets {
                                                                                                  $stop_A[$sgm_idx] + $orig_mdllen,
                                                                                                  $strand_A[$sgm_idx], $FH_HR));
           
-          if(vdr_TwoCoordsSpanOrigin($sgm_coords_A[$sgm_idx], $sgm_coords_A[$sgm_idx+1], $orig_mdllen, $FH_HR)) {
+          if(vdr_CoordsCheckIfTwoSegmentsSpanOrigin($sgm_coords_A[$sgm_idx], $sgm_coords_A[$sgm_idx+1], $orig_mdllen, $FH_HR)) {
             $spans_origin = 1;
             $passes_coords    = vdr_CoordsAppendSegment($passes_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx],
                                                                                                 ($stop_A[$sgm_idx] + $stop_A[$sgm_idx+1]),
@@ -1613,10 +1601,10 @@ sub create_circular_feature_sets {
         $spanning_set_idx++;
       }
       else { # does not span the origin
-        # create a 'circular_linear_ftr_set', 2 new features, including a duplicate of the original
+        # create a 'circular_linear_ftr_set', 3 new features, including a duplicate of the original
         $linear_before_coords = $orig_coords;
         $linear_after_coords = vdr_CoordsAddConstant($orig_coords, $orig_mdllen, $FH_HR);
-        for(my $i = 0; $i < 2; $i++) { 
+        for(my $i = 0; $i < 3; $i++) { 
           # first duplicate original to make each new feature, then we'll modify the coords as necessary
           %{$new_ftr_info_AHR->[$new_ftr_idx]} = ();
           $new_ftr_info_AHR->[$new_ftr_idx]{"circular_linear_ftr_set"} = $linear_set_idx;
@@ -1627,9 +1615,31 @@ sub create_circular_feature_sets {
             $new_ftr_info_AHR->[$new_ftr_idx]{"coords"} = $linear_before_coords;
             $new_ftr_idx += add_children_for_circular_feature($new_ftr_info_AHR, $new_ftr_idx, $ftr_info_AHR, $ftr_idx, \@children_AA, "before-linear", $orig_mdllen, $FH_HR);
           }
-          else { # $i == 1
+          elsif($i == 1) {
             $new_ftr_info_AHR->[$new_ftr_idx]{"coords"} = $linear_after_coords;
             $new_ftr_idx += add_children_for_circular_feature($new_ftr_info_AHR, $new_ftr_idx, $ftr_info_AHR, $ftr_idx, \@children_AA, "after-linear", $orig_mdllen, $FH_HR);
+          }
+          else { # $i == 2
+            # create third feature, will have a single position from first ftr in the set, and remaining from second ftr
+            my $linear_modifiable_coords = vdr_CoordsSinglePositionSegmentCreate($start_A[0], $strand_A[0], $FH_HR);
+            if($orig_ftr_len > 1) { 
+              for(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) {
+                if($sgm_idx == 0) {
+                  if($strand_A[0] eq "+") {
+                    $linear_modifiable_coords = vdr_CoordsAppendSegment($linear_modifiable_coords, vdr_CoordsAddConstant(vdr_CoordsSegmentCreate($start_A[0]+1, $stop_A[0], $strand_A[0], $FH_HR), $orig_mdllen, $FH_HR));
+                  }
+                  else { # - strand
+                    $linear_modifiable_coords = vdr_CoordsAppendSegment($linear_modifiable_coords, vdr_CoordsAddConstant(vdr_CoordsSegmentCreate($start_A[0]-1, $stop_A[0], $strand_A[0], $FH_HR), $orig_mdllen, $FH_HR));
+                  }
+                }
+                else { # sgm_idx > 0
+                  $linear_modifiable_coords = vdr_CoordsAppendSegment($linear_modifiable_coords, vdr_CoordsSegmentCreate($start_A[$sgm_idx], $stop_A[$sgm_idx], $strand_A[$sgm_idx], $FH_HR));
+                }
+              }
+            }
+            $new_ftr_info_AHR->[$new_ftr_idx]{"coords"} = $linear_modifiable_coords;
+            $new_ftr_info_AHR->[$new_ftr_idx]{"artificial_segment_one"} = 1;
+            $new_ftr_idx += add_children_for_circular_feature($new_ftr_info_AHR, $new_ftr_idx, $ftr_info_AHR, $ftr_idx, \@children_AA, "modifiable-linear", $orig_mdllen, $FH_HR);
           }
           $new_ftr_idx++;
         }
@@ -1659,7 +1669,8 @@ sub create_circular_feature_sets {
 #   $orig_ftr_idx:      idx of parent in @{$orig_ftr_info_AHR}
 #   $orig_children_AAR: ref to array of children arrays for orig_ftrs
 #   $circ_ftr_type:     "spans", "passes", "before-5p", "before-3p",
-#                       "after-5p", "after-3p", "before-linear" or "after-linear"
+#                       "after-5p", "after-3p", "before-linear", "after-linear" or
+#                       "modifiable-linear"
 #   $orig_mdllen:       length of circular genome (NC_003977: 3182)
 #   $FH_HR:             ref to hash of file handles, including "log" and "cmd"
 #
@@ -1716,44 +1727,23 @@ sub add_children_for_circular_feature {
     my $is_5trunc = 0;
     my $is_3trunc = 0;
 
-    # we have to handle each type of parent ('spans', passes', 'before-linear', 'after-linear', 'before-5p', 'before-3p', 'after-5p', 'after-3p' differently, hence the if..elsif..elsif block below
-    if(($circ_ftr_type eq "spans") || ($circ_ftr_type eq "before-linear")) {
-      # easy case, just create a copy (and update parent idx)
-      $add_child_flag = 1;
-      $new_abs_child_coords = $orig_ftr_info_AHR->[$orig_child_ftr_idx]{"coords"}; # unchanged
-    }
-    elsif($circ_ftr_type eq "after-linear") { 
-      # easy case, just add $orig_mdllen to each coord
+    # we have to handle each type of parent ('spans', passes', 'before-linear', 'after-linear', 'before-5p',
+    # 'before-3p', 'after-5p', 'after-3p' differently, hence the if..elsif..elsif block below
+    if(($circ_ftr_type eq "spans") || ($circ_ftr_type eq "passes") ||
+       ($circ_ftr_type eq "before-linear")  || ($circ_ftr_type eq "after-linear") ||
+       ($circ_ftr_type eq "modifiable-linear")) {
+      # for all these types the full original feature is maintained so we know
+      # that the full child must be maintained as well, we just need to figure out the
+      # coords
       $add_child_flag = 1; 
-      $new_abs_child_coords = vdr_CoordsAddConstant($new_abs_child_coords, $orig_mdllen, $FH_HR);
-    }
-    elsif($circ_ftr_type eq "passes") {
-      # all children should be added because our feature is full length, but
-      # we need to figure out the new coords for each child
-      $add_child_flag = 1; 
-      my $passed_origin_flag = 0;
-      for(my $orig_child_sgm_idx = 0; $orig_child_sgm_idx < $orig_child_nsgm; $orig_child_sgm_idx++) {
-        if(($orig_child_sgm_idx < ($orig_child_nsgm-1)) &&
-           (vdr_TwoCoordsSpanOrigin($orig_child_sgm_coords_A[$orig_child_sgm_idx], $orig_child_sgm_coords_A[$orig_child_sgm_idx+1], $orig_mdllen, $FH_HR))) {
-          # this segment spans the origin, update start/stop
-          $new_abs_child_coords = vdr_CoordsAppendSegment($new_abs_child_coords, vdr_CoordsSegmentCreate($orig_child_start_A[$orig_child_sgm_idx],
-                                                                                                         ($orig_child_stop_A[$orig_child_sgm_idx] + $orig_child_stop_A[$orig_child_sgm_idx+1]),
-                                                                                                         $orig_child_strand_A[$orig_child_sgm_idx], $FH_HR));
-          
-          $orig_child_sgm_idx++;
-        }
-        else {
-          if((($orig_summary_strand eq "+") && ($orig_child_stop_A[$orig_child_sgm_idx]  < $new_ftr_minimum_coord)) ||
-             (($orig_summary_strand eq "-") && ($orig_child_start_A[$orig_child_sgm_idx] < $new_ftr_minimum_coord))) { 
-            # entire segment exists after the original feature wrapped the origin, so add $orig_mdl_len to start/stop
-            $new_abs_child_coords = vdr_CoordsAppendSegment($new_abs_child_coords, vdr_CoordsSegmentCreate($orig_child_start_A[$orig_child_sgm_idx] + $orig_mdllen, 
-                                                                                                           $orig_child_stop_A[$orig_child_sgm_idx] + $orig_mdllen, 
-                                                                                                           $orig_child_strand_A[$orig_child_sgm_idx], $FH_HR));
-            
-          }
-          else {
-            $new_abs_child_coords = vdr_CoordsAppendSegment($new_abs_child_coords, $orig_child_sgm_coords_A[$orig_child_sgm_idx]);              
-          }
+      $new_abs_child_coords = vdr_CoordsRelativeToAbsolute($new_ftr_info_AHR->[$new_ftr_idx]{"coords"},
+                                                           vdr_FeatureRelativeCoordsInParent($orig_ftr_info_AHR, $orig_child_ftr_idx),
+                                                           $FH_HR);
+      if($circ_ftr_type eq "modifiable-linear") {
+        # vdr_CoordsRelativeToAbsolute() calls vdr_CoordsMergeAllAdjacentSegments() which will collapse the first segment,
+        # we need to create a new segment at the beginning
+        if(vdr_CoordsLength($new_abs_child_coords, $FH_HR) > 1) {
+          $new_abs_child_coords = vdr_CoordsIncreaseNumSegments($new_abs_child_coords, ($orig_child_nsgm+1), $FH_HR);
         }
       }
     }
@@ -1791,11 +1781,11 @@ sub add_children_for_circular_feature {
       # check overlap of parent with child
       # we already have the child in relative coords with respect to the coding sequence 1..L where L=3*AAlength of protein
       # so we convert parent into 1..L by converting protein to nucleotide coords
-      my $rel_child_coords = vdr_CoordsProteinToNucleotide($orig_ftr_info_AHR->[$orig_child_ftr_idx]{"protein_coords"}, $FH_HR);
+      my $rel_child_coords = vdr_FeatureRelativeCoordsInParent($orig_ftr_info_AHR, $orig_child_ftr_idx);
       my @rel_child_start_A = ();
       my @rel_child_stop_A  = ();
       vdr_FeatureStartStopStrandArrays($rel_child_coords, \@rel_child_start_A, \@rel_child_stop_A, undef, $FH_HR);
-      # ensure the protein is a single segement, we can't deal if it is not (and we'll exit in error)
+      # ensure the protein is a single segment, we can't deal if it is not (and we'll exit in error)
       my $rel_nsgm = scalar(@rel_child_start_A);
       if($rel_nsgm != 1) {
         # we might be able to deal with multiple segment children, but it would be more complex than this
@@ -1846,6 +1836,9 @@ sub add_children_for_circular_feature {
       if($is_3trunc) {
         $new_ftr_info_AHR->[$new_idx]{"trunc3"} = 1;
       }
+      if($circ_ftr_type eq "modifiable-linear") {
+        $new_ftr_info_AHR->[$new_idx]{"artificial_segment_one"} = 1;
+      }
       $nftr_added++;
     } # end of 'if($add_child_flag)'
   } # end of 'for(my $child_idx = 0; $child_idx < $nchildren; $child_idx++) { '
@@ -1886,7 +1879,6 @@ sub stringize_parent_index_strings {
       }
       $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} =
           create_parent_index_string($ftr_info_AHR, $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"});
-      printf("in $sub_name, set ftr_info_AHR->[$ftr_idx]{parent_idx_str} to " . $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} . "\n");
     }
   }
 
