@@ -185,6 +185,7 @@ require "sqp_utils.pm";
 # vdr_CoordsCheckIfSpansOrigin()
 # vdr_CoordsCheckIfTwoSegmentsSpanOrigin()
 # vdr_CoordsIncreaseNumSegments()
+# vdr_CoordsModelSpanLength()
 #
 # Subroutines related to eutils:
 # vdr_EutilsFetchToFile()
@@ -2299,7 +2300,7 @@ sub vdr_CircularSpanningFeatureSetPerSequenceCoordsShift {
   my $max_passes_coord = vdr_CoordsMax($orig_coords, $FH_HR);
   my $new_coords = "";
   if(($spos > 1) && 
-     (($spos < ($max_passes_coord - $circ_len)) || ($spos > $min_passes_coord))) {
+     (($spos > $min_passes_coord) || ($epos < $max_passes_coord))) { 
     # otherwise, either spans_idx will handle this feature (if $spos == 1)
     # or $passes_idx will handle this feature (if $spos != 1) and neither of inequalities above are satisfied
     vdr_FeatureStartStopStrandArrays($orig_coords, \@start_A, \@stop_A, \@strand_A, $FH_HR);
@@ -9559,7 +9560,7 @@ sub vdr_CoordsCheckIfSpansOrigin {
   }
   
   return $new_coords;
-  }
+}
 
 ###########################################################################
 # the next line is critical, a perl module must return a true value
