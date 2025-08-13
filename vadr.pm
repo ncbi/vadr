@@ -110,6 +110,7 @@ require "sqp_utils.pm";
 # vdr_FeatureSummaryStrand()
 # vdr_FeaturePositionSpecificValueBreakdown()
 # vdr_FeatureCoordsListBreakdown()
+# vdr_FeatureOmitFromTbl()
 #
 # vdr_SegmentStartIdenticalToCds()
 # vdr_SegmentStopIdenticalToCds()
@@ -2490,6 +2491,34 @@ sub vdr_FeatureLengthBetweenAdjacentSegments {
   # printf("in $sub_name, returning $region_length\n");
 
   return $region_length;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureOmitFromTbl()
+# Incept:     EPN, Mon Jul 28 10:38:30 2025
+#
+# Synopsis: Return '1' if 'omit_from_tbl' defined for this feature
+#           and value is '1', else return '0'.
+# 
+# Arguments:
+#  $ftr_info_AHR: ref to feature info array of hashes, PRE-FILLED
+#  $ftr_idx:      feature idx
+#
+# Returns:  '1' if omit_from_tbl set as '1'
+#
+# Dies: never, nothing is validated
+#################################################################
+sub vdr_FeatureOmitFromTbl { 
+  my $sub_name = "vdr_FeatureOmitFromTbl";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+  
+  if((defined $ftr_info_AHR->[$ftr_idx]{"omit_from_tbl"}) && ($ftr_info_AHR->[$ftr_idx]{"omit_from_tbl"} == "1")) {
+    return 1;
+  }
+  return 0;
 }
 
 #################################################################
