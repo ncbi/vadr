@@ -11184,6 +11184,9 @@ sub output_feature_table {
               # add function, if any
               $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "function", $qval_sep, $ftr_info_AHR, $FH_HR);
 
+              # add regulatory_class qualifiers, if any
+              $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "regulatory_class", $qval_sep, $ftr_info_AHR, $FH_HR);
+
               # add any qualifiers listed in --forcequal <s> string
               foreach my $force_qual (@force_qual_A) { 
                 $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, $force_qual, $qval_sep, $ftr_info_AHR, $FH_HR);
