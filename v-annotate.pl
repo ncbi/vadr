@@ -11094,7 +11094,7 @@ sub output_feature_table {
                  helper_ftable_coords_from_nt_prediction($seq_name, $ftr_idx, $ftr_start_non_ab, $ftr_stop_non_ab, 
                                                          $ftr_info_AHR, \%{$sgm_results_HHAHR->{$mdl_name}}, $FH_HR);
           }
-          if(($ftr_ftbl_coords_str ne "") && ((! vdr_FeatureOmitFromTbl($ftr_info_AHR, $ftr_idx)) || (! opt_Get("--ignore_oft", $opt_HHR)))) { 
+          if(($ftr_ftbl_coords_str ne "") && ((! vdr_FeatureOmitFromTbl($ftr_info_AHR, $ftr_idx)) || (opt_Get("--ignore_oft", $opt_HHR)))) { 
             # if $ftr_ftbl_coords_str is "", we won't output the feature because it was entirely ambiguities
             # fill an array and strings with all alerts for this sequence/feature combo
             my $ftr_alt_str = helper_output_feature_alert_strings($seq_name, $ftr_idx, 0, $alt_info_HHR, \@ftr_alt_code_A, $alt_ftr_instances_HHHR, $FH_HR);
