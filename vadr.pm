@@ -7068,6 +7068,13 @@ sub vdr_ReplacePseudoCoordsStringParse {
 #             it could be possible to convert those to multiple position ranges, 
 #             but we don't do that. We leave those as single position segments.
 #       
+#             Also, since we could have old n and x max{ins,del} we have to 
+#             look at all ins/del exceptions first, and keep max value for each position
+#             then define exception string after seeing them all. If we didn't do
+#             this we may have the same position twice in our exception string
+#             (possibly with different values), and the validation would fail because
+#             that's not allowed.
+#       
 #             This subroutine must be called prior to calling 
 #               vdr_ModelInfoValidateExceptionKeys()
 #               vdr_FeatureInfoValidateExceptionKeys()
@@ -7125,37 +7132,22 @@ sub vdr_BackwardsCompatibilityExceptions {
   }
 
   # move onto ftr_info_AHR
+  # move onto ftr_info_AHR
   my $nftr = scalar(@{$ftr_info_AHR});
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    my %max_values_HH = (); # 1st dim: new exception key, 2nd dim: position, value is max insert/delete for that posn
     foreach my $exc_key (sort keys %{$ftr_info_AHR->[$ftr_idx]}) { 
       if($exc_key =~ /^.+\_exc$/) { 
         # swap ; with ,
         $ftr_info_AHR->[$ftr_idx]{$exc_key} =~ s/\;/\,/g;
         $ftr_info_AHR->[$ftr_idx]{$exc_key} =~ s/\,$//; # remove final ',' if any
       }
+      if($exc_key eq "frameshift_exc") { 
+        $new_key = $alt_info_HHR->{"fstukcfi"}{"exc_key"};
+        $ftr_info_AHR->[$ftr_idx]{$new_key} = $ftr_info_AHR->[$ftr_idx]{$exc_key};
+        delete($ftr_info_AHR->[$ftr_idx]{$exc_key});
+      }
       if(($exc_key eq "nmaxins_exc") || ($exc_key eq "nmaxdel_exc") || ($exc_key eq "xmaxins_exc") || ($exc_key eq "xmaxdel_exc")) { 
-        my $new_value = "";
-        my @posn_value_A = split(",", $ftr_info_AHR->[$ftr_idx]{$exc_key});
-        foreach my $posn_value (@posn_value_A) { 
-          if($posn_value =~ /(\d+)\:(\d+)/) { 
-            my ($posn, $value) = ($1, $2);
-            if($new_value ne "") { $new_value .= ","; }
-            my $nt_posn = $posn; # nt position
-            if(($exc_key eq "xmaxins_exc") || ($exc_key eq "xmaxdel_exc")) { 
-              # convert from protein to nucleotide coords
-              $nt_posn = vdr_Feature3pMostPosition(vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, 
-                                                                                       vdr_CoordsSinglePositionSegmentCreate($posn, "+", $FH_HR),
-                                                                                       $FH_HR), $FH_HR);
-            }
-            $new_value .= vdr_CoordsSinglePositionSegmentCreate($nt_posn, "+", $FH_HR) . ":" . $value;
-          }
-          else { 
-            ofile_FAIL("ERROR, in $sub_name, trying to update old exception key $exc_key, but unable to parse value: $posn_value", 1, $FH_HR);
-          }
-        }
-        if($new_value eq "") { 
-          ofile_FAIL("ERROR, in $sub_name, trying to update old exception key $exc_key, but unable to parse value: " . $ftr_info_AHR->[$ftr_idx]{$exc_key}, 1, $FH_HR);
-        }
         if($exc_key eq "nmaxins_exc") { 
           $new_key = $alt_info_HHR->{"insertnn"}{"exc_key"};
         }
@@ -7168,20 +7160,70 @@ sub vdr_BackwardsCompatibilityExceptions {
         if($exc_key eq "xmaxdel_exc") { 
           $new_key = $alt_info_HHR->{"deletinp"}{"exc_key"};
         }
-        if(! defined $new_key) { 
-          ofile_FAIL("ERROR, in $sub_name, trying to update old exception key $exc_key, but unable to determine new key", 1, $FH_HR);
+        my @posn_value_A = split(",", $ftr_info_AHR->[$ftr_idx]{$exc_key});
+        if(scalar(@posn_value_A) == 0) { 
+          ofile_FAIL("ERROR, in $sub_name, trying to update old exception key $exc_key, but unable to parse value: " . $ftr_info_AHR->[$ftr_idx]{$exc_key}, 1, $FH_HR);
         }
-        $ftr_info_AHR->[$ftr_idx]{$new_key} = $new_value;
-        delete($ftr_info_AHR->[$ftr_idx]{$exc_key});
+        foreach my $posn_value (@posn_value_A) { 
+          if($posn_value =~ /(\d+)\:(\d+)/) { 
+            my ($posn, $value) = ($1, $2);
+            if(($exc_key eq "xmaxins_exc") || ($exc_key eq "xmaxdel_exc")) { 
+              # convert from protein to nucleotide coords
+              my $new_coords = vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, 
+                                                                   vdr_CoordsSinglePositionSegmentCreate($posn, "+", $FH_HR), $FH_HR);
+              my $posn_5p = vdr_Feature5pMostPosition($new_coords, $FH_HR);
+              my $posn_3p = vdr_Feature3pMostPosition($new_coords, $FH_HR);
+              my $new_posn;
+              for($new_posn = $posn_5p; $new_posn <= $posn_3p; $new_posn++) {
+                if((! defined $max_values_HH{$new_key}{$new_posn}) || ($value > $max_values_HH{$new_key}{$new_posn})) {
+                  $max_values_HH{$new_key}{$new_posn} = $value;
+                }
+              }
+            }
+            else {
+              if((! defined $max_values_HH{$new_key}{$posn}) || ($value > $max_values_HH{$new_key}{$posn})) {
+                $max_values_HH{$new_key}{$posn} = $value;
+              }
+            }
+          }
+          else { 
+            ofile_FAIL("ERROR, in $sub_name, trying to update old exception key $exc_key, but unable to parse value: $posn_value", 1, $FH_HR);
+          }
+        }
       }
-      if($exc_key eq "frameshift_exc") { 
-        $new_key = $alt_info_HHR->{"fstukcfi"}{"exc_key"};
-        $ftr_info_AHR->[$ftr_idx]{$new_key} = $ftr_info_AHR->[$ftr_idx]{$exc_key};
+    }
+    # create the new values for the insert and delete maximums
+    my %updated_new_key_H = (); 
+    foreach $exc_key ("nmaxins_exc", "xmaxins_exc", "nmaxdel_exc", "xmaxdel_exc") { 
+      if($exc_key eq "nmaxins_exc") { 
+        $new_key = $alt_info_HHR->{"insertnn"}{"exc_key"};
+      }
+      elsif($exc_key eq "nmaxdel_exc") { 
+        $new_key = $alt_info_HHR->{"deletinn"}{"exc_key"};
+      }
+      if($exc_key eq "xmaxins_exc") { 
+        $new_key = $alt_info_HHR->{"insertnp"}{"exc_key"};
+      }
+      if($exc_key eq "xmaxdel_exc") { 
+        $new_key = $alt_info_HHR->{"deletinp"}{"exc_key"};
+      }
+      if((defined $max_values_HH{$new_key}) && (! defined $updated_new_key_H{$new_key})) {
+        foreach my $posn ( sort { $a <=> $b } keys %{$max_values_HH{$new_key}}) {
+          if(! defined $ftr_info_AHR->[$ftr_idx]{$new_key}) {
+            $ftr_info_AHR->[$ftr_idx]{$new_key} = "";
+          }
+          else {
+            $ftr_info_AHR->[$ftr_idx]{$new_key} .= ",";
+          }
+          $ftr_info_AHR->[$ftr_idx]{$new_key} .= vdr_CoordsSinglePositionSegmentCreate($posn, "+", $FH_HR) . ":" . $max_values_HH{$new_key}{$posn}; 
+        }
+        $updated_new_key_H{$new_key} = 1; # so we don't try to update this new_key again
+      }
+      if(defined $ftr_info_AHR->[$ftr_idx]{$exc_key}) {
         delete($ftr_info_AHR->[$ftr_idx]{$exc_key});
       }
     }
-  }
-
+  } # end of loop over ftr idxes
   return;
 }
 
