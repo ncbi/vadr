@@ -19,14 +19,16 @@
   * [`.rpn` files](#rpn)
   * [`.dcr` files](#dcr)
   * [`.alt.list` files](#altlist)
-  * [extra output files saved with the `--keep` option](#annotate-keep)
+  * [additional output files saved with the `--keep` option](#annotate-keep)
+* [`v-scan.pl` output files](#scan)
+  * [`.lib` files](#lib)
 * [VADR `coords` coordinate string format](#coords)
 * [VADR sequence naming conventions](#seqnames)
 
 ---
 ## Format of generic VADR output files created by all VADR scripts<a name="generic"></a>
 
-All VADR scripts (e.g. `v-build.pl` and `v-annotate.pl`) create a
+All VADR scripts (`v-build.pl`, `v-annotate.pl` and `v-scan.pl`) create a
 common set of three output files. These files are named
 `<outdir>.vadr.<suffix>` where `<suffix>` is either `log`, `cmd` or
 `filelist` and `<outdir>` is the command line argument
@@ -741,6 +743,34 @@ files be output. For example the `--out_stk` option specifies that stockholm ali
 | `.<model_name>.blastx.summary.txt` | summary of `blastx` output used internally by `v-annotate.pl` | no further documentation |
 
 ---
+## Format of `v-scan.pl` output files<a name="scan"></a>
+
+### Explanation of `.lib`-suffixed output files<a name="lib"></a>
+
+The `v-scan.pl` script calls `v-annotate.pl` one or more times, and so
+generates all of the file types listed in the above
+[section](#annotate). Additionally, `v-scan.pl` will generate a file
+with a `lib` suffix named `<outdir>.vadr.lib`, but only when the
+classification stage is run. The classification stage will not be run
+if: the `--only` option is used with a single model library, or if
+`--skip` is used to exclude all but one library, or if there is only
+one libary in the config file.
+
+`.lib` data lines have 4 fields, the names of which appear in the first two
+comment lines in each file. There is one data line for each 'options
+key' that has a model library that was scanned against in the
+`v-scan.pl` classification stage. [Example file](scan-files/va-m5.vadr.lib).
+
+
+| idx | field                 | description |
+|-----|-----------------------|-------------|
+|   1 | `idx`                 | index of options key |
+|   2 | `options key`         | unique key for the specific set of options and associated model directory read from the config file, the first field of a line in the config file |
+|   3 | `model key`           | the model key used for this options key, multiple options keys can use the same model key |
+|   4 | `num seqs`            | the number of sequences in the input fasta file that matched to this options key, the total number in all rows will be lower than the total number of sequences in the file if sampling was performed
+
+---
+
 ### Explanation of VADR `coords` coordinate strings <a name="coords"></a>
 
 VADR using its own format for specifying coordinates for features and
