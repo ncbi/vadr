@@ -1396,7 +1396,7 @@ model files created prior to v1.6 are also compatible with v1.6+.
 
 ---
 
-## <a name="minfo"></a><Other ways to modify default behavior for features by manually changing the `.minfo` file
+## <a name="minfo"></a>Other ways to modify default behavior for features by manually changing the `.minfo` file
 
 In addition to the `misc_not_failure` key and alert exceptions listed
 above, there are additional ways to modify how a feature is treated by
@@ -1404,7 +1404,14 @@ modifying the `.minfo` file. The table below lists them:
 
 | key for `.minfo` file | allowed values | example                          | explanation | 
 |-----------------------|----------------|----------------------------------|-----------------|
-| *alternative_ftr_set* | any string     | `alternative_ftr_set:"M2(gene)"` | defines a feature belongs to a set of alternative features, only the *best* will be annotated (defined as the one with least fatal alerts); for more info see the [advanced build tutorial](advbuild.md#top), specifically [step 6](advbuild.md#step6-alternative) |
+| *alternative_ftr_set* | any string     | `alternative_ftr_set:"M2(gene)"` | states that a feature belongs to a set of alternative features (all with identical *alternative_ftr_set* value); only the *best* feature from this set will be annotated for any sequence (defined as the one with least fatal alerts); for more info see the [advanced build tutorial](advbuild.md#top), specifically [step 6](advbuild.md#step6-alternative) |
+| *alternative_ftr_set_subn* | any string plus `.<n>` (`<str>.<n>`) where `<n>` is a positive integer | `alternative_ftr_set_subn:"M2(CDS).1"` | states that a feature is tied to the `nth` feature in the alternative ftr set which value `<str>`; typically used for `gene` features that should stay consistent with specific `CDS` coordinates; for more info see the [advanced build tutorial](advbuild.md#top), specifically [step 6](advbuild.md#step6-alternative) |
+| *\<str>_exc*, for different values of `<str>` | varies | `insertn_exc:3013..3496:+:117` | specifies an alert exception; see [here](#exceptions) for more |
+| *misc_not_failure* | only `1` | `misc_not_failure:1` | specifies a feature should be changed to a `misc_feature` if certain fatal alerts are reported for it, instead of causing the sequence to fail, see [here](#mnf) |
+| *is_deletable* | only `1` | `is_deletable:1` | specifies that this feature can be completely deleted without resulting in a `deletins` alert |
+| *omit_from_tbl* | only `1` | `omit_from_tbl:1` | specifies that this feature should not be included in the output feature table (`.pass.tbl` or `fail.tbl` files), but will still be included in the `.ftr` output file |
+| *force_first_posn* | only `1` | `force_first_posn:1` | specifies that the first annotated sequence position for this feature must be `1`, requires that the feature be a single segment, and is either `+` strand with a starting model position of `1` or `-` strand with an ending model position of `1`, commmonly used for `5'UTR` features |
+| *force_final_posn* | only `1` | `force_final_posn:1` | specifies that the final annotated sequence position for this feature must be `L` (length of the model), requires that the feature be a single segment, and is either `+` strand with a starting model position of `L` or `-` strand with an ending model position of `L`, commmonly used for `3'UTR` features |
 
 ---
 
