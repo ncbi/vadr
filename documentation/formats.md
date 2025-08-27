@@ -259,10 +259,10 @@ FEATURE NC_039897 type:"mat_peptide" coords:"3872..5401:+" parent_idx_str:"1" pr
 
 | \<key\> | \<value\> | example | relevance | 
 |-------- |-----------|---------|-----------|
-| `misc_not_failure` | must be `1` | if the corresponding feature has specific types of fatal alerts, still allow sequence to pass, just make feature a `misc_feature` in output `.tbl` file, see [here](annotate.md#mnf) for details |
-| `is_deletable` | must be `1` | if the corresponding feature is completely deleted, non-fatal `deletina` alert is reported instead of fatal `deletins` |
-| `alternative_ftr_set` | name of feature set | `v-annotate.pl` will choose 1 feature from each feature set to annotate, see example in RSV model [here](advbuild.md#step6-alternative) |
-| `alternative_ftr_set_subn` | name of feature set followed by period and integer `<d>` | no | `v-annotate.pl` will only annotate this feature if it chooses the corresponding feature number `<d>` in the stated feature set, see example in RSV model [here](advbuild.md#step6-alternative) |
+| `misc_not_failure` | must be `1` | `misc_not_failure:1` | if the corresponding feature has specific types of fatal alerts, still allow sequence to pass, just make feature a `misc_feature` in output `.tbl` file, see [here](annotate.md#mnf) for details |
+| `is_deletable` | must be `1` | `is_deletable:1` | if the corresponding feature is completely deleted, non-fatal `deletina` alert is reported instead of fatal `deletins` |
+| `alternative_ftr_set` | name of feature set | `alternative_ftr_set:"M2(gene)"` | `v-annotate.pl` will choose 1 feature from each feature set to annotate, see example in RSV model [here](advbuild.md#step6-alternative) |
+| `alternative_ftr_set_subn` | name of feature set followed by period and integer `<d>` | `alternative_ftr_set_subn:"M2(CDS).1"` | `v-annotate.pl` will only annotate this feature if it chooses the corresponding feature number `<d>` in the stated feature set, see example in RSV model [here](advbuild.md#step6-alternative) |
 | exceptions (e.g. `fst_exc`) | varies | `insertn_exc:3013..3496:+:117` | defines alert exception for a given model reference position range, see more info [here](annotate.md#exceptions) |
 | *omit_from_tbl* | only `1` | `omit_from_tbl:1` | specifies that this feature should not be included in the output feature table (`.pass.tbl` or `fail.tbl` files), but will still be included in the `.ftr` output file |
 | *force_first_posn* | only `1` | `force_first_posn:1` | specifies that the first annotated sequence position for this feature must be `1`; requires that the feature be a single segment and is either `+` strand with a starting model position of `1` or `-` strand with an ending model position of `1`, commonly used for `5'UTR` features |
