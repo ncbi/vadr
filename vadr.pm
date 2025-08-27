@@ -1603,7 +1603,7 @@ sub vdr_FeatureInfoValidateForcePosn {
     }
     if((defined $ftr_info_AHR->[$ftr_idx]{"force_final_posn"}) && 
        ($ftr_info_AHR->[$ftr_idx]{"force_final_posn"} != 1) && 
-       ($ftr_info_AHR->[$ftr_idx]{"force_fifinal_posn"} != 0)) {
+       ($ftr_info_AHR->[$ftr_idx]{"force_final_posn"} != 0)) {
       $fail_str .= "ftr_idx: $ftr_idx, force_final_posn value is " . $ftr_info_AHR->[$ftr_idx]{"force_final_posn"} . " but should be 1 or 0";
     }
     my $force_first_posn = ((defined $ftr_info_AHR->[$ftr_idx]{"force_first_posn"}) && $ftr_info_AHR->[$ftr_idx]{"force_first_posn"} == 1) ? 1 : 0;
