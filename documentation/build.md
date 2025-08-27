@@ -461,7 +461,7 @@ to certain alerts, and specifying *alternative feature sets* for
 features with different possible model start/end points. There is more
 information on these key/value pairs in this [table](formats.md#optminfo).
 
---
+---
 
 ## How the VADR 1.0 model library was constructed <a name="1.0library"></a>
 
