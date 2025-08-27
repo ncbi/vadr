@@ -1138,6 +1138,7 @@ if(defined $xsub_file) {
 my @ftr_reqd_keys_A = ("type", "coords");
 for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  my $mdl_len  = $mdl_info_AH[$mdl_idx]{"length"};
   utl_AHValidate(\@{$ftr_info_HAH{$mdl_name}}, \@ftr_reqd_keys_A, "ERROR reading feature info for model $mdl_name from $minfo_file", $FH_HR);
   vdr_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoInitializeParentIndexStrings(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
@@ -1155,6 +1156,7 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   vdr_FeatureInfoValidateAndConvertAlternativeFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoValidateCanonSpliceSites(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_SegmentInfoPopulate(\@{$sgm_info_HAH{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  vdr_FeatureInfoValidateForcePosn(\@{$ftr_info_HAH{$mdl_name}}, $mdl_len, $FH_HR); # must be called after SegmentInfoPopulate
   if(! opt_Get("--ignore_exc", \%opt_HH)) { 
     vdr_BackwardsCompatibilityExceptions(\%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, $FH_HR);
     vdr_ModelInfoValidateExceptionKeys(\%{$mdl_info_AH[$mdl_idx]}, \%alt_info_HH, $FH_HR);
@@ -4608,8 +4610,8 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
         }
 
         %{$sgm_results_HAHR->{$seq_name}[$sgm_idx]} = ();
-        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"}    = $start_uapos;
-        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstop"}     = $stop_uapos;
+        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"}    = (vdr_FeatureForceFirstPosn($ftr_info_AHR, $ftr_idx)) ? 1        : $start_uapos;
+        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstop"}     = (vdr_FeatureForceFinalPosn($ftr_info_AHR, $ftr_idx)) ? $seq_len : $stop_uapos;
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"mstart"}    = $start_rfpos;
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"mstop"}     = $stop_rfpos;
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"strand"}    = $sgm_strand;

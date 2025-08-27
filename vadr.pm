@@ -84,6 +84,7 @@ require "sqp_utils.pm";
 # vdr_FeatureInfoMerge()
 # vdr_FeatureInfoCdsStartStopCodonCoords()
 # vdr_FeatureInfoMaxNumCdsSegments()
+# vdr_FeatureInfoValidateForcePosn()
 #
 # vdr_SegmentInfoPopulate()
 # 
@@ -111,6 +112,8 @@ require "sqp_utils.pm";
 # vdr_FeaturePositionSpecificValueBreakdown()
 # vdr_FeatureCoordsListBreakdown()
 # vdr_FeatureOmitFromTbl()
+# vdr_FeatureForceFirstPosn()
+# vdr_FeatureForceFinalPosn()
 #
 # vdr_SegmentStartIdenticalToCds()
 # vdr_SegmentStopIdenticalToCds()
@@ -1557,6 +1560,97 @@ sub vdr_FeatureInfoMaxNumCdsSegments {
 }
 
 #################################################################
+# Subroutine: vdr_FeatureInfoValidateForcePosn
+# Incept:     EPN, Tue Aug 26 15:13:22 2025
+# 
+# Purpose:    Validate "force_first_posn" and "force_final_posn=" values
+#             are either undefined, 0 or 1, and for CDS, mat_peptide
+#             and gene is always either undefined or 0.
+#
+#             if "force_first_posn" is 1 and strand is "+": 5' most position of first segment is 1
+#             if "force_first_posn" is 1 and strand is "-": 5' most position of first segment is $mdl_len
+#             if "force_final_posn" is 1 and strand is "+": 3' most position of first segment is $mdl_len
+#             if "force_final_posn" is 1 and strand is "-": 3' most position of first segment is 1
+#
+#             Must be called after segment info set up (by vdr_SegmentInfoPopulate) because
+#             we calls vdr_FeatureNumSegments().
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $mdl_len:       length of the model this feature pertains to
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if force_first_posn or first_final_posn is invalid for
+#             any feature
+#
+#################################################################
+sub vdr_FeatureInfoValidateForcePosn {
+  my $sub_name = "vdr_FeatureInfoValidateForcePosn";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  
+  my ($ftr_info_AHR, $mdl_len, $FH_HR) = @_;
+  
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $fail_str = ""; # added to if any elements are out of range
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    my $nsgm = vdr_FeatureNumSegments($ftr_info_AHR, $ftr_idx);
+    if((defined $ftr_info_AHR->[$ftr_idx]{"force_first_posn"}) && 
+       ($ftr_info_AHR->[$ftr_idx]{"force_first_posn"} != 1) && 
+       ($ftr_info_AHR->[$ftr_idx]{"force_first_posn"} != 0)) {
+      $fail_str .= "ftr_idx: $ftr_idx, force_first_posn value is " . $ftr_info_AHR->[$ftr_idx]{"force_first_posn"} . " but should be 1 or 0";
+    }
+    if((defined $ftr_info_AHR->[$ftr_idx]{"force_final_posn"}) && 
+       ($ftr_info_AHR->[$ftr_idx]{"force_final_posn"} != 1) && 
+       ($ftr_info_AHR->[$ftr_idx]{"force_fifinal_posn"} != 0)) {
+      $fail_str .= "ftr_idx: $ftr_idx, force_final_posn value is " . $ftr_info_AHR->[$ftr_idx]{"force_final_posn"} . " but should be 1 or 0";
+    }
+    my $force_first_posn = ((defined $ftr_info_AHR->[$ftr_idx]{"force_first_posn"}) && $ftr_info_AHR->[$ftr_idx]{"force_first_posn"} == 1) ? 1 : 0;
+    my $force_final_posn = ((defined $ftr_info_AHR->[$ftr_idx]{"force_final_posn"}) && $ftr_info_AHR->[$ftr_idx]{"force_final_posn"} == 1) ? 1 : 0;
+    if($force_first_posn || $force_final_posn) { 
+      if(vdr_FeatureTypeIsCdsOrMatPeptideOrGene($ftr_info_AHR, $ftr_idx)) {
+        if($force_first_posn) { 
+          $fail_str .= "ftr_idx: $ftr_idx, is CDS, mat_peptide or gene but has \"force_first_posn\" set as 1, this is not allowed\n"; 
+        }
+        if($force_final_posn) {
+          $fail_str .= "ftr_idx: $ftr_idx, is CDS, mat_peptide or gene but has \"force_final_posn\" set as 1, this is not allowed\n"; 
+        }
+        if($nsgm != 1) {
+          $fail_str .= "ftr_idx: $ftr_idx, coords: " . $ftr_info_AHR->[$ftr_idx]{"coords"} . " and \"force_final_posn\" set as 1, but there are multiple segments, this is not allowed\n"; 
+        }
+      }
+      else { 
+        my $strand = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
+        if($force_first_posn) { 
+          if(($strand eq "+") && (vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR) != 1)) { 
+            $fail_str .= "ftr_idx: $ftr_idx, force_first_posn set as 1, strand is +, coords is " .  $ftr_info_AHR->[$ftr_idx]{"coords"} . "; 5' most position is not 1, this is not allowed\n";
+          }
+          if(($strand eq "-") && (vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR) != 1)) {
+            $fail_str .= "ftr_idx: $ftr_idx, force_first_posn set as 1, strand is -, coords is " .  $ftr_info_AHR->[$ftr_idx]{"coords"} . "; 3' most position is not 1, this is not allowed\n";
+          }
+        }
+        if($force_final_posn) { 
+          if(($strand eq "+") && (vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR) != $mdl_len)) { 
+            $fail_str .= "ftr_idx: $ftr_idx, force_final_posn set as 1, strand is +, coords is " .  $ftr_info_AHR->[$ftr_idx]{"coords"} . "; 3' most position is not mdl_len:$mdl_len, this is not allowed\n";
+          }
+          if(($strand eq "-") && (vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR) != $mdl_len)) {
+            $fail_str .= "ftr_idx: $ftr_idx, force_final_posn set as 1, strand is -, coords is " .  $ftr_info_AHR->[$ftr_idx]{"coords"} . "; 5' most position is not mdl_len:$mdl_len, this is not allowed\n";
+          }
+        }
+      }
+    }
+  }
+  
+  if($fail_str ne "") { 
+    ofile_FAIL("ERROR in $sub_name, some force_first_posn and/or force_final_posn values are invalid or don't make sense:\n$fail_str\n", 1, $FH_HR);
+  }
+
+  return;
+}
+
+
+#################################################################
 # Subroutine: vdr_SegmentInfoPopulate()
 # Incept:     EPN, Wed Mar 13 13:55:56 2019
 #
@@ -2516,6 +2610,62 @@ sub vdr_FeatureOmitFromTbl {
   my ($ftr_info_AHR, $ftr_idx) = @_;
   
   if((defined $ftr_info_AHR->[$ftr_idx]{"omit_from_tbl"}) && ($ftr_info_AHR->[$ftr_idx]{"omit_from_tbl"} == "1")) {
+    return 1;
+  }
+  return 0;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureForceFirstPosn()
+# Incept:     EPN, Tue Aug 26 15:04:17 2025
+#
+# Synopsis: Return '1' if 'force_first_posn' defined for this feature
+#           and value is '1', else return '0'.
+# 
+# Arguments:
+#  $ftr_info_AHR: ref to feature info array of hashes, PRE-FILLED
+#  $ftr_idx:      feature idx
+#
+# Returns:  '1' if force_first_posn set as '1'
+#
+# Dies: never, nothing is validated
+#################################################################
+sub vdr_FeatureForceFirstPosn { 
+  my $sub_name = "vdr_FeatureForceFirstPosn";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+  
+  if((defined $ftr_info_AHR->[$ftr_idx]{"force_first_posn"}) && ($ftr_info_AHR->[$ftr_idx]{"force_first_posn"} == "1")) {
+    return 1;
+  }
+  return 0;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureForceFinalPosn()
+# Incept:     EPN, Tue Aug 26 15:05:10 2025
+#
+# Synopsis: Return '1' if 'force_final_posn' defined for this feature
+#           and value is '1', else return '0'.
+# 
+# Arguments:
+#  $ftr_info_AHR: ref to feature info array of hashes, PRE-FILLED
+#  $ftr_idx:      feature idx
+#
+# Returns:  '1' if force_final_posn set as '1'
+#
+# Dies: never, nothing is validated
+#################################################################
+sub vdr_FeatureForceFinalPosn { 
+  my $sub_name = "vdr_FeatureForceFinalPosn";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+  
+  if((defined $ftr_info_AHR->[$ftr_idx]{"force_final_posn"}) && ($ftr_info_AHR->[$ftr_idx]{"force_final_posn"} == "1")) {
     return 1;
   }
   return 0;
