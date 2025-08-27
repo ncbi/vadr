@@ -451,7 +451,7 @@ directories, make sure you also move the corresponding index files
 
 ---
 
-## [Manually modifying the `minfo` file to change behavior for specific features](#minfo)
+## [Manually modifying the `minfo` file to change behavior for specific features]<a name="minfo"></a>
 
 There are some key/value pairs in the modelinfo (`.minfo`) file that
 will change the default behavior of `v-annotate.pl` for features which
