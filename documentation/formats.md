@@ -257,8 +257,8 @@ FEATURE NC_039897 type:"mat_peptide" coords:"3872..5401:+" parent_idx_str:"1" pr
 
 #### <a name="optminfo"></a>Optional FEATURE line `<key>:<value>` pairs that must be manually added (not added by `v-build.pl`)
 
-| \<key\> | \<value\> | example | | relevance | 
-|--------|---------|-------------------|---|
+| \<key\> | \<value\> | example | relevance | 
+|-------- |-----------|---------|-----------|
 | `misc_not_failure` | must be `1` | if the corresponding feature has specific types of fatal alerts, still allow sequence to pass, just make feature a `misc_feature` in output `.tbl` file, see [here](annotate.md#mnf) for details |
 | `is_deletable` | must be `1` | if the corresponding feature is completely deleted, non-fatal `deletina` alert is reported instead of fatal `deletins` |
 | `alternative_ftr_set` | name of feature set | `v-annotate.pl` will choose 1 feature from each feature set to annotate, see example in RSV model [here](advbuild.md#step6-alternative) |
