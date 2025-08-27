@@ -246,19 +246,27 @@ FEATURE NC_039897 type:"mat_peptide" coords:"3872..5401:+" parent_idx_str:"1" pr
 
 #### Common FEATURE line `<key>:<value>` pairs:
 
-| \<key\> | \<value\> | required? | relevance | 
+| \<key\> | \<value\> | required? | example | relevance | 
+|---------|-----------|-----------|---------|-----------|
+| `type`  | feature type, e.g. `CDS` | **yes** | `type:"CDS"` | some alerts are type-specific and some types are handled differently than others; e.g. coding potential of `CDS` and `mat_peptide` features is verified |
+| `coords` | coordinate string that defines model positions and strand for this feature in [this format](#coords) | **yes** | `coords:"26..51:+,740..1007:+" | "used to map/annotate features on sequences via alignment to model |
+| `parent_idx_str` | comma-delimited string that lists *parent* feature indices (in range `[0..<nftr-1>]`) for this feature, `nftr` is the total number of features for this model | no | `parent_idx_str:1` | some alerts are propagated from parent features to children | 
+| `product` | product name for this feature | no | `product:"neuraminidase" | used as name of feature in `.tbl` output files, if present |
+| `gene` | gene name for this feature | no | `gene:"NA"` | used as name of feature in `.tbl` output files, if present and `product` not present |
+| `canon_splice_sites` | must be `1` or `0` | no | `canon_splice_site:"1" | if `1` `v-annotate.pl` will verify GT/AG splice sites, only relevant for `CDS` features |
+
+#### <a name="optminfo"></a>Optional FEATURE line `<key>:<value>` pairs that must be manually added (not added by `v-build.pl`)
+
+| \<key\> | \<value\> | example | | relevance | 
 |--------|---------|-------------------|---|
-| `type`  | feature type, e.g. `CDS` | **yes** | some alerts are type-specific and some types are handled differently than others; e.g. coding potential of `CDS` and `mat_peptide` features is verified |
-| `coords` | coordinate string that defines model positions and strand for this feature in [this format](#coords) | **yes** | used to map/annotate features on sequences via alignment to model |
-| `parent_idx_str` | comma-delimited string that lists *parent* feature indices (in range `[0..<nftr-1>]`) for this feature, `nftr` is the total number of features for this model | no | some alerts are propagated from parent features to children | 
-| `product` | product name for this feature | no | used as name of feature in `.tbl` output files, if present |
-| `gene` | gene name for this feature | no | used as name of feature in `.tbl` output files, if present and `product` not present |
-| `misc_not_failure` | usually `1` | no | if the corresponding feature has specific types of fatal alerts, still allow sequence to pass, just make feature a `misc_feature` in output `.tbl` file, see [here](annotate.md#mnf) for details |
-| `is_deletable` | usually `1` | no | if the corresponding feature is completely deleted, non-fatal `deletina` alert is reported instead of fatal `deletins` |
-| `canon_splice_sites` | usually `1` | no | if `1` `v-annotate.pl` will verify GT/AG splice sites, only relevant for `CDS` features |
-| `alternative_ftr_set` | name of feature set | no | `v-annotate.pl` will choose 1 feature from each feature set to annotate, see example in RSV model [here](advbuild.md#step6-alternative) |
+| `misc_not_failure` | must be `1` | if the corresponding feature has specific types of fatal alerts, still allow sequence to pass, just make feature a `misc_feature` in output `.tbl` file, see [here](annotate.md#mnf) for details |
+| `is_deletable` | must be `1` | if the corresponding feature is completely deleted, non-fatal `deletina` alert is reported instead of fatal `deletins` |
+| `alternative_ftr_set` | name of feature set | `v-annotate.pl` will choose 1 feature from each feature set to annotate, see example in RSV model [here](advbuild.md#step6-alternative) |
 | `alternative_ftr_set_subn` | name of feature set followed by period and integer `<d>` | no | `v-annotate.pl` will only annotate this feature if it chooses the corresponding feature number `<d>` in the stated feature set, see example in RSV model [here](advbuild.md#step6-alternative) |
-| exceptions (e.g. `fst_exc`) | varies | no | defines alert exception for a given model reference position range, see more info [here](annotate.md#exceptions) |
+| exceptions (e.g. `fst_exc`) | varies | `insertn_exc:3013..3496:+:117` | defines alert exception for a given model reference position range, see more info [here](annotate.md#exceptions) |
+| *omit_from_tbl* | only `1` | `omit_from_tbl:1` | specifies that this feature should not be included in the output feature table (`.pass.tbl` or `fail.tbl` files), but will still be included in the `.ftr` output file |
+| *force_first_posn* | only `1` | `force_first_posn:1` | specifies that the first annotated sequence position for this feature must be `1`; requires that the feature be a single segment and is either `+` strand with a starting model position of `1` or `-` strand with an ending model position of `1`, commonly used for `5'UTR` features |
+| *force_final_posn* | only `1` | `force_final_posn:1` | specifies that the final annotated sequence position for this feature must be `L` (length of the model); requires that the feature be a single segment and is either `+` strand with a starting model position of `L` or `-` strand with an ending model position of `L`, commonly used for `3'UTR` features |
 
 #### VADR model library `.minfo` files are just individual model `.minfo` files concatenated together
 

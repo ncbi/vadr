@@ -13,6 +13,7 @@
   * [additional expert options](#options-expert)
 * [Building a VADR model library](#library)
 * [Advanced tutorial: building an RSV model library](advbuild.md#top)
+* [Manually modifying the `minfo` file to change behavior for specific features](#minfo)
 * [How the VADR 1.0 model library was constructed](#1.0library)
   * [Norovirus models](#1.0library-noro)
   * [Dengue virus models](#1.0library-dengue)
@@ -449,6 +450,19 @@ directories, make sure you also move the corresponding index files
 ## [Advanced tutorial: building an RSV model library (link to different page)](advbuild.md#top)
 
 ---
+
+## [Manually modifying the `minfo` file to change behavior for specific features](#minfo)
+
+There are some key/value pairs in the modelinfo (`.minfo`) file that
+will change the default behavior of `v-annotate.pl` for features which
+cannot yet be added automatically by the `v-build.pl` program, but
+rather have to be manually added to the file. These include exceptions
+to certain alerts, and specifying *alternative feature sets* for
+features with different possible model start/end points. There is more
+information on these key/value pairs in this [table](formats.md#optminfo).
+
+--
+
 ## How the VADR 1.0 model library was constructed <a name="1.0library"></a>
 
 The VADR 1.0 library was built with version 1.0 of VADR. It has not
