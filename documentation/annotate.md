@@ -1401,7 +1401,7 @@ model files created prior to v1.6 are also compatible with v1.6+.
 In addition to the `misc_not_failure` key and alert exceptions listed
 above, there are additional key/value pairs which can be added to
 to `FEATURE` lines in the modelinfo (`.minfo`) that modify how a feature is treated.
-These are listed in this [table](#formats.md#optminfo).
+These are listed in this [table](formats.md#optminfo).
 
 ---
 
