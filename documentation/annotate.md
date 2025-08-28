@@ -27,6 +27,7 @@
 * [Additional information on `v-annotate.pl` alerts](#alerts2)
 * [Non-essential features: allowing sequences to pass despite fatal alerts for specific features](#mnf)
 * [Alert *exceptions*: ignoring alerts in specific model position ranges](#exceptions)
+* [Other ways to modify default behavior for features by manually changing the `.minfo` file](#minfo)
 * [Limiting memory usage and multi-threading](#memory)
 * [Alternative parallelization using a cluster](#altparallel)
 
@@ -1392,6 +1393,15 @@ Prior to VADR version 1.6, some alert exceptions in model info files
 were permitted in different formats. As of version 1.6, the formats
 above are enforced, but the formats present in publicly available
 model files created prior to v1.6 are also compatible with v1.6+.
+
+---
+
+## <a name="minfo"></a>Other ways to modify default behavior for features by manually changing the `.minfo` file
+
+In addition to the `misc_not_failure` key and alert exceptions listed
+above, there are additional key/value pairs which can be added to
+to `FEATURE` lines in the modelinfo (`.minfo`) that modify how a feature is treated.
+These are listed in this [table](formats.md#optminfo).
 
 ---
 
