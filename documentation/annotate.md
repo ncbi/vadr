@@ -3,6 +3,7 @@
 * [`v-annotate.pl` example usage](#exampleusage)
   * [example annotation of norovirus sequences](#examplebasic)
   * [example of using `--alt_pass` to change alerts from fatal to non-fatal](#examplealtpass)
+* [Running `v-annotate.pl` inside the `v-scan.pl` wrapper](#scan)
 * [`v-annotate.pl` command-line options](#options)
   * [basic options](#options-basic)
   * [options for specifying expected sequence classification](#options-classification)
@@ -26,6 +27,7 @@
 * [Additional information on `v-annotate.pl` alerts](#alerts2)
 * [Non-essential features: allowing sequences to pass despite fatal alerts for specific features](#mnf)
 * [Alert *exceptions*: ignoring alerts in specific model position ranges](#exceptions)
+* [Other ways to modify default behavior for features by manually changing the `.minfo` file](#minfo)
 * [Limiting memory usage and multi-threading](#memory)
 * [Alternative parallelization using a cluster](#altparallel)
 
@@ -557,6 +559,18 @@ in `<s>` should be [non-fatal by default](#nonfatal1).
 Alternatively, if you want to relax the stringency of alerts *only for
 specific features* you can do that by modifying the `modelinfo` input
 file as explained [below](#mnf).
+
+---
+## Running `v-annotate.pl` inside the `v-scan.pl` wrapper](#scan)
+
+The `v-scan.pl` script can be used as a simple wrapper for
+`v-annotate.pl` if you want to use multiple model
+libraries. `v-scan.pl` reads a list of model libraries and command-line
+options for each from an input config file, determines which model
+library to use for each sequence in the input fasta file and runs
+`v-annotate.pl` using the options specified in the config file.
+
+For more information see [this page](scan.md)
 
 ---
 ## `v-annotate.pl` command-line options<a name="options"></a>
@@ -1382,6 +1396,15 @@ model files created prior to v1.6 are also compatible with v1.6+.
 
 ---
 
+## <a name="minfo"></a>Other ways to modify default behavior for features by manually changing the `.minfo` file
+
+In addition to the `misc_not_failure` key and alert exceptions listed
+above, there are additional key/value pairs which can be added to
+to `FEATURE` lines in the modelinfo (`.minfo`) that modify how a feature is treated.
+These are listed in this [table](formats.md#optminfo).
+
+---
+
 ## <a name="memory"></a>Limiting memory usage and parallelization with multi-threading
 
 The `v-annotate.pl` script, in particular the alignment step, is memory intensive.
@@ -1471,8 +1494,6 @@ Usage of `-p` will not affect the output of `v-annotate.pl` other than
 these lines about the status of jobs, but it can make processing of
 large sequence files significantly faster depending on how busy the
 cluster is.
-
-
 
 ---
 

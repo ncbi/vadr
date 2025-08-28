@@ -245,6 +245,7 @@ opt_Add("--ignore_cfset",     "boolean",  0,       $g,     undef, undef,    "ign
 opt_Add("--ignore_canonss",   "boolean",  0,       $g,     undef, undef,    "ignore 'canon_splice_sites' values in .minfo file (never check intron splice sites)",        "ignore 'canon_splice_sites' values in .minfo file (never check intron splice sites)", \%opt_HH, \@opt_order_A);
 opt_Add("--force_canonss",    "boolean",  0,       $g,     undef,"--ignore_canonss", "force 'canon_splice_sites' is 1 for all CDS with qualifying introns",               "force 'canon_splice_sites' is 1 for all CDS with qualifying introns", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_exc",       "boolean",  0,       $g,     undef, undef,    "ignore all exception keys '*_exc' in .minfo file",                                           "ignore all exception keys '*_exc' in .minfo file", \%opt_HH, \@opt_order_A);
+opt_Add("--ignore_oft",       "boolean",  0,       $g,     undef, undef,    "ignore all 'omit_from_tbl' keys in .minfo file",                                             "ignore all 'omit_from_tbl' keys in .minfo file", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to model files";
 #        option               type default  group  requires incompat   preamble-output                                                                   help-output    
@@ -471,6 +472,7 @@ my $options_okay =
                 "ignore_canonss"   => \$GetOptions_H{"--ignore_canonss"},
                 "force_canonss"    => \$GetOptions_H{"--force_canonss"},
                 "ignore_exc"       => \$GetOptions_H{"--ignore_exc"},
+                "ignore_oft"       => \$GetOptions_H{"--ignore_oft"},
 # options related to model files
                 'm=s'           => \$GetOptions_H{"-m"}, 
                 'a=s'           => \$GetOptions_H{"-a"}, 
@@ -651,7 +653,6 @@ my $releasedate   = "Jun 2024";
 my $pkgname       = "VADR";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
-# it is printed to
 select *STDOUT;
 $| = 1;
 
@@ -1139,6 +1140,7 @@ if(defined $xsub_file) {
 my @ftr_reqd_keys_A = ("type", "coords");
 for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  my $mdl_len  = $mdl_info_AH[$mdl_idx]{"length"};
   utl_AHValidate(\@{$ftr_info_HAH{$mdl_name}}, \@ftr_reqd_keys_A, "ERROR reading feature info for model $mdl_name from $minfo_file", $FH_HR);
   vdr_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoInitializeParentIndexStrings(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
@@ -1161,6 +1163,7 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   }
   vdr_FeatureInfoValidateCanonSpliceSites(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_SegmentInfoPopulate(\@{$sgm_info_HAH{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  vdr_FeatureInfoValidateForcePosn(\@{$ftr_info_HAH{$mdl_name}}, $mdl_len, $FH_HR); # must be called after SegmentInfoPopulate
   if(! opt_Get("--ignore_exc", \%opt_HH)) { 
     vdr_BackwardsCompatibilityExceptions(\%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, $FH_HR);
     vdr_ModelInfoValidateExceptionKeys(\%{$mdl_info_AH[$mdl_idx]}, \%alt_info_HH, $FH_HR);
@@ -4664,8 +4667,8 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
         }
 
         %{$sgm_results_HAHR->{$seq_name}[$sgm_idx]} = ();
-        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"}    = $start_uapos;
-        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstop"}     = $stop_uapos;
+        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"}    = (vdr_FeatureForceFirstPosn($ftr_info_AHR, $ftr_idx)) ? 1        : $start_uapos;
+        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstop"}     = (vdr_FeatureForceFinalPosn($ftr_info_AHR, $ftr_idx)) ? $seq_len : $stop_uapos;
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"mstart"}    = $start_rfpos;
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"mstop"}     = $stop_rfpos;
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"strand"}    = $sgm_strand;
@@ -11249,7 +11252,8 @@ sub output_feature_table {
                  helper_ftable_coords_from_nt_prediction($seq_name, $seq_len, $ftr_idx, $ftr_start_non_ab, $ftr_stop_non_ab, 
                                                          $ftr_info_AHR, \@{$ftr_results_HAHR->{$seq_name}}, \%{$sgm_results_HHAHR->{$mdl_name}}, $FH_HR);
           }
-          if($ftr_ftbl_coords_str ne "") { # if $ftr_ftbl_coords_str is "", we won't output the feature because it was entirely ambiguities
+          if(($ftr_ftbl_coords_str ne "") && ((! vdr_FeatureOmitFromTbl($ftr_info_AHR, $ftr_idx)) || (opt_Get("--ignore_oft", $opt_HHR)))) { 
+            # if $ftr_ftbl_coords_str is "", we won't output the feature because it was entirely ambiguities
             # fill an array and strings with all alerts for this sequence/feature combo
             my $ftr_alt_str = helper_output_feature_alert_strings($seq_name, $ftr_idx, 0, $alt_info_HHR, \@ftr_alt_code_A, $alt_ftr_instances_HHHR, $FH_HR);
             my ($have_fatal_alt, $have_misc_alt) = helper_ftable_process_feature_alerts($ftr_alt_str, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_HHHR, \@seq_alert_A, $FH_HR);
@@ -11336,6 +11340,9 @@ sub output_feature_table {
 
               # add function, if any
               $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "function", $qval_sep, $ftr_info_AHR, $FH_HR);
+
+              # add regulatory_class qualifiers, if any
+              $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "regulatory_class", $qval_sep, $ftr_info_AHR, $FH_HR);
 
               # add any qualifiers listed in --forcequal <s> string
               foreach my $force_qual (@force_qual_A) { 

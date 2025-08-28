@@ -19,14 +19,16 @@
   * [`.rpn` files](#rpn)
   * [`.dcr` files](#dcr)
   * [`.alt.list` files](#altlist)
-  * [extra output files saved with the `--keep` option](#annotate-keep)
+  * [additional output files saved with the `--keep` option](#annotate-keep)
+* [`v-scan.pl` output files](#scan)
+  * [`.lib` files](#lib)
 * [VADR `coords` coordinate string format](#coords)
 * [VADR sequence naming conventions](#seqnames)
 
 ---
 ## Format of generic VADR output files created by all VADR scripts<a name="generic"></a>
 
-All VADR scripts (e.g. `v-build.pl` and `v-annotate.pl`) create a
+All VADR scripts (`v-build.pl`, `v-annotate.pl` and `v-scan.pl`) create a
 common set of three output files. These files are named
 `<outdir>.vadr.<suffix>` where `<suffix>` is either `log`, `cmd` or
 `filelist` and `<outdir>` is the command line argument
@@ -244,19 +246,27 @@ FEATURE NC_039897 type:"mat_peptide" coords:"3872..5401:+" parent_idx_str:"1" pr
 
 #### Common FEATURE line `<key>:<value>` pairs:
 
-| \<key\> | \<value\> | required? | relevance | 
-|--------|---------|-------------------|---|
-| `type`  | feature type, e.g. `CDS` | **yes** | some alerts are type-specific and some types are handled differently than others; e.g. coding potential of `CDS` and `mat_peptide` features is verified |
-| `coords` | coordinate string that defines model positions and strand for this feature in [this format](#coords) | **yes** | used to map/annotate features on sequences via alignment to model |
-| `parent_idx_str` | comma-delimited string that lists *parent* feature indices (in range `[0..<nftr-1>]`) for this feature, `nftr` is the total number of features for this model | no | some alerts are propagated from parent features to children | 
-| `product` | product name for this feature | no | used as name of feature in `.tbl` output files, if present |
-| `gene` | gene name for this feature | no | used as name of feature in `.tbl` output files, if present and `product` not present |
-| `misc_not_failure` | usually `1` | no | if the corresponding feature has specific types of fatal alerts, still allow sequence to pass, just make feature a `misc_feature` in output `.tbl` file, see [here](annotate.md#mnf) for details |
-| `is_deletable` | usually `1` | no | if the corresponding feature is completely deleted, non-fatal `deletina` alert is reported instead of fatal `deletins` |
-| `canon_splice_sites` | usually `1` | no | if `1` `v-annotate.pl` will verify GT/AG splice sites, only relevant for `CDS` features |
-| `alternative_ftr_set` | name of feature set | no | `v-annotate.pl` will choose 1 feature from each feature set to annotate, see example in RSV model [here](advbuild.md#step6-alternative) |
-| `alternative_ftr_set_subn` | name of feature set followed by period and integer `<d>` | no | `v-annotate.pl` will only annotate this feature if it chooses the corresponding feature number `<d>` in the stated feature set, see example in RSV model [here](advbuild.md#step6-alternative) |
-| exceptions (e.g. `fst_exc`) | varies | no | defines alert exception for a given model reference position range, see more info [here](annotate.md#exceptions) |
+| \<key\> | \<value\> | required? | example | relevance | 
+|---------|-----------|-----------|---------|-----------|
+| `type`  | feature type, e.g. `CDS` | **yes** | `type:"CDS"` | some alerts are type-specific and some types are handled differently than others; e.g. coding potential of `CDS` and `mat_peptide` features is verified |
+| `coords` | coordinate string that defines model positions and strand for this feature in [this format](#coords) | **yes** | `coords:"26..51:+,740..1007:+" | "used to map/annotate features on sequences via alignment to model |
+| `parent_idx_str` | comma-delimited string that lists *parent* feature indices (in range `[0..<nftr-1>]`) for this feature, `nftr` is the total number of features for this model | no | `parent_idx_str:1` | some alerts are propagated from parent features to children | 
+| `product` | product name for this feature | no | `product:"neuraminidase" | used as name of feature in `.tbl` output files, if present |
+| `gene` | gene name for this feature | no | `gene:"NA"` | used as name of feature in `.tbl` output files, if present and `product` not present |
+| `canon_splice_sites` | must be `1` or `0` | no | `canon_splice_site:"1" | if `1` `v-annotate.pl` will verify GT/AG splice sites, only relevant for `CDS` features |
+
+#### <a name="optminfo"></a>Optional FEATURE line `<key>:<value>` pairs that must be manually added (not added by `v-build.pl`)
+
+| \<key\> | \<value\> | example | relevance | 
+|-------- |-----------|---------|-----------|
+| `alternative_ftr_set` | name of feature set | `alternative_ftr_set:"M2(gene)"` | `v-annotate.pl` will choose 1 feature from each feature set to annotate, see example in RSV model [here](advbuild.md#step6-alternative) |
+| `alternative_ftr_set_subn` | name of feature set followed by period and integer `<d>` | `alternative_ftr_set_subn:"M2(CDS).1"` | `v-annotate.pl` will only annotate this feature if it chooses the corresponding feature number `<d>` in the stated feature set, see example in RSV model [here](advbuild.md#step6-alternative) |
+| exceptions (e.g. `insertn_exc`) | varies | `insertn_exc:3013..3496:+:117` | defines alert exception for a given model reference position range, see more info [here](annotate.md#exceptions) |
+| `misc_not_failure` | must be `1` | `misc_not_failure:"1"` | if the corresponding feature has specific types of fatal alerts, still allow sequence to pass, just make feature a `misc_feature` in output `.tbl` file, see [here](annotate.md#mnf) for details |
+| `is_deletable` | must be `1` | `is_deletable:"1"` | if the corresponding feature is completely deleted, non-fatal `deletina` alert is reported instead of fatal `deletins` |
+| `omit_from_tbl` | must be `1` | `omit_from_tbl:1` | specifies that this feature should not be included in the output feature table (`.pass.tbl` or `fail.tbl` files), but will still be included in the `.ftr` output file |
+| `force_first_posn` | must be `1` | `force_first_posn:1` | specifies that the first annotated sequence position for this feature must be `1`; requires that the feature be a single segment and is either `+` strand with a starting model position of `1` or `-` strand with an ending model position of `1`, commonly used for `5'UTR` features |
+| `force_final_posn` | must be `1` | `force_final_posn:1` | specifies that the final annotated sequence position for this feature must be `L` (length of the model); requires that the feature be a single segment and is either `+` strand with a starting model position of `L` or `-` strand with an ending model position of `L`, commonly used for `3'UTR` features |
 
 #### VADR model library `.minfo` files are just individual model `.minfo` files concatenated together
 
@@ -741,6 +751,34 @@ files be output. For example the `--out_stk` option specifies that stockholm ali
 | `.<model_name>.blastx.summary.txt` | summary of `blastx` output used internally by `v-annotate.pl` | no further documentation |
 
 ---
+## Format of `v-scan.pl` output files<a name="scan"></a>
+
+### Explanation of `.lib`-suffixed output files<a name="lib"></a>
+
+The `v-scan.pl` script calls `v-annotate.pl` one or more times, and so
+generates all of the file types listed in the above
+[section](#annotate). Additionally, `v-scan.pl` will generate a file
+with a `lib` suffix named `<outdir>.vadr.lib`, but only when the
+classification stage is run. The classification stage will not be run
+if: the `--only` option is used with a single model library, or if
+`--skip` is used to exclude all but one library, or if there is only
+one libary in the config file.
+
+`.lib` data lines have 4 fields, the names of which appear in the first two
+comment lines in each file. There is one data line for each 'options
+key' that has a model library that was scanned against in the
+`v-scan.pl` classification stage. [Example file](scan-files/va-m5.vadr.lib).
+
+
+| idx | field                 | description |
+|-----|-----------------------|-------------|
+|   1 | `idx`                 | index of options key |
+|   2 | `options key`         | unique key for the specific set of options and associated model directory read from the config file, the first field of a line in the config file |
+|   3 | `model key`           | the model key used for this options key, multiple options keys can use the same model key |
+|   4 | `num seqs`            | the number of sequences in the input fasta file that matched to this options key, the total number in all rows will be lower than the total number of sequences in the file if sampling was performed
+
+---
+
 ### Explanation of VADR `coords` coordinate strings <a name="coords"></a>
 
 VADR using its own format for specifying coordinates for features and
