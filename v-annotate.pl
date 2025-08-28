@@ -1191,7 +1191,7 @@ if(opt_Get("--val_only", \%opt_HH)) {
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
   my $start_secs = ofile_OutputProgressPrior("Validating CM file contains all models from model info file", $progress_w, $log_FH, *STDOUT);
-  # make sure $cm_file includes CMs for all models we just read in $minfo_file, unless --cmval_skip used
+  # make sure $cm_file includes CMs for all models we just read in $minfo_file
   my $cm_name_file = $out_root . ".cm.namelist";
   my $grep_cmd = "grep ^NAME $cm_file | sed 's/^NAME *//' > $cm_name_file";
   utl_RunCommand($grep_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
@@ -1210,6 +1210,37 @@ if(opt_Get("--val_only", \%opt_HH)) {
   ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
   exit(0); 
 }
+
+# check if we will define classifications after the alignment stage, based on nearest neighbor
+# if so, make sure the alignment file we need used to build the CM exists and has the correct
+# RF length (we should actually check that it can be merged with a cmalign output alignment
+# using the model, but that would be too expensive, if that won't work we'll fail during
+# the alignment stage
+my @mdl_alninfo_AHH = ();
+for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
+  %{$mdl_alninfo_AHH[$mdl_idx]} = ();
+  if(defined $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"}) {
+    # if this was set in the minfo file (it shouldn't have been), undefine it
+    $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"} = undef;
+  }    
+  if((defined $mdl_info_AH[$mdl_idx]{"group"}) &&
+     ($mdl_info_AH[$mdl_idx]{"group"} =~ /^\:FILE\:(.+)$/)) {
+    $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"} = $model_dir . "/" . $1;
+  }
+  if((defined $mdl_info_AH[$mdl_idx]{"subgroup"}) &&
+     ($mdl_info_AH[$mdl_idx]{"subgroup"} =~ /^\:FILE\:(.+)$/)) {
+    if(! defined $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"}) {
+      ofile_FAIL("ERROR, for model " . $mdl_info_AH[$mdl_idx]{"name"} . " subgroup meant to be read from an alignment file but not group, this is not supported", 1, $FH_HR);
+    }
+    if($mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"} ne ($model_dir . "/" . $1)) {
+      ofile_FAIL("ERROR, for model " . $mdl_info_AH[$mdl_idx]{"name"} . " group and subgroup are meant to be read from an alignment file but not the same alignment file, this is not supported", 1, $FH_HR);
+    }
+  }
+  if(defined $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"}) {
+    validate_classification_alignment_file(\%{$mdl_alninfo_AHH[$mdl_idx]}, $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"}, $mdl_info_AH[$mdl_idx]{"name"}, $mdl_info_AH[$mdl_idx]{"length"}, $FH_HR);
+  }
+}
+
 
 ###########################################
 # Copy and validate the input sequence file
@@ -1954,16 +1985,19 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     # parse the stk alignments
     for(my $a = 0; $a < scalar(@{$stk_file_HA{$mdl_name}}); $a++) { 
       if(-s $stk_file_HA{$mdl_name}[$a]) { # skip empty alignments, which may exist if all seqs were not alignable
-        parse_stk_and_add_alignment_cds_and_mp_alerts($stk_file_HA{$mdl_name}[$a], \$in_sqfile, 
-                                                      \%seq_len_H, \%seq_inserts_HH, \@{$sgm_info_HAH{$mdl_name}},
-                                                      \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, \%stg_results_HHH,
-                                                      \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
-                                                      \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, \%dcr_output_HAH,
-                                                      \@mdl_info_AH, $mdl_idx, \@ftr_fileroot_A, \@ftr_outroot_A, 
-                                                      $$sqfile_for_cds_mp_alerts_R, $$sqfile_for_output_fastas_R, $$sqfile_for_pv_R,
-                                                      $do_separate_cds_fa_files_for_protein_validation, \@to_remove_A,
-                                                      ($do_replace_ns) ? \%rpn_output_HH : undef, 
-                                                      $out_root, \%opt_HH, \%ofile_info_HH);
+        my $stk_nseq = parse_stk_and_add_alignment_cds_and_mp_alerts($stk_file_HA{$mdl_name}[$a], \$in_sqfile, 
+                                                                     \%seq_len_H, \%seq_inserts_HH, \@{$sgm_info_HAH{$mdl_name}},
+                                                                     \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, \%stg_results_HHH,
+                                                                     \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
+                                                                     \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, \%dcr_output_HAH,
+                                                                     \@mdl_info_AH, $mdl_idx, \@ftr_fileroot_A, \@ftr_outroot_A, 
+                                                                     $$sqfile_for_cds_mp_alerts_R, $$sqfile_for_output_fastas_R, $$sqfile_for_pv_R,
+                                                                     $do_separate_cds_fa_files_for_protein_validation, \@to_remove_A,
+                                                                     ($do_replace_ns) ? \%rpn_output_HH : undef, 
+                                                                     $out_root, \%opt_HH, \%ofile_info_HH);
+        if(defined $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"}) {
+          classify_based_on_alignment($execs_H{"esl-alimerge"}, $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"}, $stk_file_HA{$mdl_name}[$a], $stk_nseq, \%{$mdl_alninfo_AHH[$mdl_idx]}, \%cls_output_HH, \@to_remove_A, $FH_HR);
+        }
       }
       push(@to_remove_A, ($stk_file_HA{$mdl_name}[$a]));
     }
@@ -4258,7 +4292,7 @@ sub cmalign_or_glsearch_run {
 #  $opt_HHR:                   REF to 2D hash of option values
 #  $ofile_info_HHR:            REF to 2D hash of output file information
 #
-# Returns:    void
+# Returns:    number of seqs in the alignment
 #
 # Dies:
 #
@@ -4977,7 +5011,7 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
   }
 
   undef $msa;
-  return;
+  return $nseq;
 }
 
 #################################################################
@@ -10649,9 +10683,14 @@ sub output_tabular {
       $mdl_tbl_idx++;
       $mdl_idx = $mdl_idx_H{$mdl_name};
       my $mdl_ant_ct = (defined $mdl_ant_ct_HR->{$mdl_name}) ? $mdl_ant_ct_HR->{$mdl_name} : 0;
+      my $mdl_group    = (defined $mdl_info_AHR->[$mdl_idx]{"group"})    ? $mdl_info_AHR->[$mdl_idx]{"group"}    : "-";
+      my $mdl_subgroup = (defined $mdl_info_AHR->[$mdl_idx]{"subgroup"}) ? $mdl_info_AHR->[$mdl_idx]{"subgroup"} : "-";
+      if($mdl_group    =~ m/^\:FILE\:/) { $mdl_group    = "*multiple*"; }
+      if($mdl_subgroup =~ m/^\:FILE\:/) { $mdl_subgroup = "*multiple*"; }
+
       push(@data_mdl_AA, [$mdl_tbl_idx, $mdl_name, 
-                          (defined $mdl_info_AHR->[$mdl_idx]{"group"})    ? $mdl_info_AHR->[$mdl_idx]{"group"}    : "-", 
-                          (defined $mdl_info_AHR->[$mdl_idx]{"subgroup"}) ? $mdl_info_AHR->[$mdl_idx]{"subgroup"} : "-", 
+                          $mdl_group, 
+                          $mdl_subgroup,
                           $mdl_cls_ct_HR->{$mdl_name},
                           (defined $mdl_pass_ct_H{$mdl_name}) ? $mdl_pass_ct_H{$mdl_name} : 0, 
                           (defined $mdl_fail_ct_H{$mdl_name}) ? $mdl_fail_ct_H{$mdl_name} : 0]); 
@@ -14940,4 +14979,140 @@ sub determine_intron_index {
 
   # should never be reached
   return $intron_idx;
+}
+
+#################################################################
+# Subroutine: validate_classification_alignment_file
+# Incept:     EPN, Thu Aug 28 13:15:02 2025
+#
+# Purpose:    Validate that a classification alignment for a model
+#             is valid, in that it has the appropriate nongap RF
+#             length, and store all the group and subgroup information
+#             in it in %{$mdl_alninfo_HH}.
+#
+# Arguments:
+#  $mdl_alninfo_HH:  REF to 2D hash to store group/subgroup information in 
+#  $aln_file:        path to alignment file
+#  $mdl_name:        model name (only used for informative error messages)
+#  $mdl_length:      model length
+#  $FH_HR:           ref to hash of file handles
+#
+# Returns:  void
+#           
+# Dies:     if alignment does not have RF annotation
+#           if alignment nongap RF length is not equal to $mdl_length
+#
+#################################################################
+sub validate_classification_alignment_file { 
+  my $sub_name = "validate_classification_alignment_file";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mdl_alninfo_HHR, $aln_file, $mdl_name, $mdl_length, $FH_HR) = (@_);
+
+  # make sure the alignment exists, and is the correct RF length
+  if(! -e $aln_file) {
+    ofile_FAIL("ERROR, for model $mdl_name group and/or subgroup are meant to be read from an alignment file but the file ($aln_file) does not exist", 1, $FH_HR);
+  }
+  my $msa = Bio::Easel::MSA->new({
+    fileLocation => $aln_file,
+      isDna => 1});
+  if(! $msa->has_rf) {
+    ofile_FAIL("ERROR, for model $mdl_name group and/or subgroup are meant to be read from an alignment file but that alignment doesn't have RF annotation", 1, $FH_HR);
+  }
+  my $nongap_msa_rf = $msa->get_rf;
+  $nongap_msa_rf =~ s/[\.\-\~]//g;
+  if(length($nongap_msa_rf) != $mdl_length) {
+    ofile_FAIL("ERROR, for model $mdl_name group and/or subgroup are meant to be read from an alignment file but the RF annotation length (" . length($nongap_msa_rf) . ") doesn't match expected model length ($mdl_length)", 1, $FH_HR);
+  }
+
+  # store GP and SG info
+  my $i; 
+  my $gp_idx = ($msa->hasGS_any_sqidx_given_tag("GP")) ? $msa->getGS_tagidx("GP") : undef;
+  my $sg_idx = ($msa->hasGS_any_sqidx_given_tag("SG")) ? $msa->getGS_tagidx("SG") : undef;
+  if((defined $gp_idx) || (defined $sg_idx)) { 
+    for($i = 0; $i < $msa->nseq; $i++) {
+      my $seqname = $msa->get_sqname($i);
+      if((defined $gp_idx) && ($msa->hasGS_given_tagidx_sqidx($gp_idx, $i))) { 
+        $mdl_alninfo_HHR->{$seqname}{"group"} = $msa->getGS_given_tagidx_sqidx($gp_idx, $i);
+        printf("HEYA set mdl_alninfo_HHR->{$seqname}{{group} to " . $mdl_alninfo_HHR->{$seqname}{"group"} . "\n");
+      }
+      if((defined $sg_idx) && ($msa->hasGS_given_tagidx_sqidx($sg_idx, $i))) { 
+        $mdl_alninfo_HHR->{$seqname}{"subgroup"} = $msa->getGS_given_tagidx_sqidx($sg_idx, $i);
+        printf("HEYA set mdl_alninfo_HHR->{$seqname}{subgroup}to " . $mdl_alninfo_HHR->{$seqname}{"subgroup"} . "\n");
+      }
+    }
+  }
+
+  undef $msa;
+  return;
+}
+
+#################################################################
+# Subroutine: classify_based_on_alignment
+# Incept:     EPN, Thu Aug 28 15:10:05 2025
+#
+# Purpose:    Given an alignment of input sequences, merge it with
+#             the alignment used to build the model, and classify
+#             sequences based on the nearest neighbors.
+#
+# Arguments:
+#  $esl_alimerge:    path to esl-alimerge executable
+#  $mdl_stk_file:    path to stockholm alignment file with alignment of model sequences
+#  $in_stk_file:     path to stockholm alignment file with alignment of 1 or more input sequences
+#  $nseq_in_stk:     number of sequences in $in_stk_file
+#  $mdl_alninfo_HH:  REF to 2D hash with group/subgroup information in 
+#  $cls_output_HHR:  REF to 2D hash of classification output info, possibly modified here
+#  $to_remove_AR:    REF to array of alignment files to remove
+#  $FH_HR:           ref to hash of file handles
+#
+# Returns:  void
+#           
+#################################################################
+sub classify_based_on_alignment {
+  my $sub_name = "classify_based_on_alignment";
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($esl_alimerge, $mdl_stk_file, $in_stk_file, $nseq_in_stk, $mdl_alninfo_HHR, $cls_output_HHR, $to_remove_AR, $FH_HR) = (@_);
+
+  # merge the two alignments
+  my $merged_stk_file = $in_stk_file;
+  $merged_stk_file =~ s/\.stk$//;
+  $merged_stk_file .= ".merged.stk";
+
+  my $merge_cmd = "$esl_alimerge $in_stk_file $mdl_stk_file > $merged_stk_file";
+  utl_RunCommand($merge_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+
+  my $msa = Bio::Easel::MSA->new({
+    fileLocation => $merged_stk_file,
+    isDna => 1});
+
+  my $nseq_merged = $msa->nseq;
+  my @is_mdl_A = ();
+  my $i;
+  for($i = 0; $i < $nseq_in_stk; $i++) {
+    $is_mdl_A[$i] = 0;
+  }
+  for($i = $nseq_in_stk; $i < $nseq_merged; $i++) {
+    $is_mdl_A[$i] = 1;
+  }
+  for(my $i = 0; $i < $nseq_in_stk; $i++) {
+    my $seqname = $msa->get_sqname($i);
+    my ($avg_pid, $min_pid, $min_idx, $max_pid, $max_idx) = $msa->avg_min_max_pid_to_seq($i, \@is_mdl_A);
+    my $max_seqname = $msa->get_sqname($max_idx);
+    printf("max_seqname: $max_seqname\n");
+    if(defined $mdl_alninfo_HHR->{$max_seqname}{"group"}) {
+      $cls_output_HHR->{$seqname}{"group1"} = $mdl_alninfo_HHR->{$max_seqname}{"group"};
+      print($msa->get_sqname($i) . " group is " . $mdl_alninfo_HHR->{$max_seqname}{"group"} . " pid: $max_pid to $max_seqname\n");
+    }
+    if(defined $mdl_alninfo_HHR->{$max_seqname}{"subgroup"}) {
+      $cls_output_HHR->{$seqname}{"subgroup1"} = $mdl_alninfo_HHR->{$max_seqname}{"subgroup"};
+      print($msa->get_sqname($i) . " subgroup is " . $mdl_alninfo_HHR->{$max_seqname}{"subgroup"} . " pid: $max_pid to $max_seqname\n");
+    }
+  }
+  push(@{$to_remove_AR}, $merged_stk_file);
+  
+  undef $msa;
+  return;
 }
