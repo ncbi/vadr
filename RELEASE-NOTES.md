@@ -1,14 +1,21 @@
 # VADR 1.x release notes 
 
 ### VADR 1.7 release (September 2025): Major update
-  * removes unnecessary file
-    `testfiles/github-issues/iss70-cdsstopn3p/.#1.ntlist` that was
-    accidentally included in versions 1.6 to 1.6.3, and which
-    causes a problem for the bioconda recipe (github issue #78)
-  * adds `use Mozilla::CA` to `v-build.pl` to help with issue on Mac
-    OS/X (github issue #80) and adds note about requirement of this
-    module to documentation on installation
-
+  * introduces `v-scan.pl` script for autodetection of
+    appropriate model library and annotation using that library
+    for each input sequence
+  * adds sars-cov-2, flu, rsv, corona, and mpxv model libraries
+    to default set that is downloaded by install script
+  * adds support for `force_first_posn` and `force_final_posn`
+    keys in `modelinfo` files for 5' and 3' UTR features
+  * adds `--cls_only` option to `v-annotate.pl` for quickly
+    classifying best model and then exiting
+  * adds `--3rules` option to `fasta-trim-terminal-ambigs.pl`
+    miniscript to mimic how GenBank trims ambiguous nucleotides
+    from sequence ends
+  * adds `annotate-tbl2gff.pl` miniscript 
+  * fixes several bugs (github issues #83 and #84)
+  
 ---
 ### VADR 1.6.4 release (June 2024): Bug fix release
   * no code changes (results should be identical to 1.6.3)
