@@ -1237,7 +1237,7 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     }
   }
   if(defined $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"}) {
-    validate_classification_alignment_file(\%{$mdl_alninfo_AHH[$mdl_idx]}, $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"}, $mdl_info_AH[$mdl_idx]{"name"}, $mdl_info_AH[$mdl_idx]{"length"}, $FH_HR);
+    validate_and_copy_classification_alignment_file(\%{$mdl_info_AH[$mdl_idx]}, \%{$mdl_alninfo_AHH[$mdl_idx]}, $out_root, \%opt_HH, \%ofile_info_HH);
   }
 }
 
@@ -1282,6 +1282,10 @@ ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "seqstat", $seqstat_file, 1, 1,
 sqf_EslSeqstatOptAParse($seqstat_file, \@seq_name_A, \%seq_len_H, $FH_HR);
 
 # make sure that no sequence names exceed our max_length, unless --noseqnamemax used
+# also make sure that no sequences begin with the output directory name, if we are
+# going to classify sequences based on nearest-neighbors in model alignment file,
+# we will rename those model sequences with the output directory name as a prefix,
+# and we don't want any possible duplicates
 my $max_seqname_length = 50; # hard-coded
 my $lcl_max_seqname_length = $max_seqname_length + length("lcl|"); # NCBI allows length 54 if it starts with lcl|
 if(! opt_Get("--noseqnamemax", \%opt_HH)) { 
@@ -1295,6 +1299,9 @@ if(! opt_Get("--noseqnamemax", \%opt_HH)) {
       if(length($seq_name) > $max_seqname_length) { 
         ofile_FAIL("ERROR, at least one sequence name exceeds the maximum GenBank allowed length of $max_seqname_length:\n$seq_name\nTo bypass this restriction, rerun with the --noseqnamemax option enabled.\n", 1, $FH_HR);
       }
+    }
+    if($seq_name =~ /^$dir_tail/) { 
+      ofile_FAIL("ERROR, at least one sequence name ($seq_name) begins with $dir_tail. This is not allowed, please rename sequences or choose a different output directory name.\n", 1, $FH_HR);
     }
   }
 }
@@ -1996,7 +2003,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                                                      ($do_replace_ns) ? \%rpn_output_HH : undef, 
                                                                      $out_root, \%opt_HH, \%ofile_info_HH);
         if(defined $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"}) {
-          classify_based_on_alignment($execs_H{"esl-alimerge"}, $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"}, $stk_file_HA{$mdl_name}[$a], $stk_nseq, \%{$mdl_alninfo_AHH[$mdl_idx]}, \%cls_output_HH, \@to_remove_A, $FH_HR);
+          classify_based_on_alignment($execs_H{"esl-alimerge"}, $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"}, $stk_file_HA{$mdl_name}[$a], $stk_nseq, \%{$mdl_alninfo_AHH[$mdl_idx]}, \%cls_output_HH, \@to_remove_A, $dir_tail, $FH_HR);
         }
       }
       push(@to_remove_A, ($stk_file_HA{$mdl_name}[$a]));
@@ -14982,20 +14989,22 @@ sub determine_intron_index {
 }
 
 #################################################################
-# Subroutine: validate_classification_alignment_file
+# Subroutine: validate_and_copy_classification_alignment_file
 # Incept:     EPN, Thu Aug 28 13:15:02 2025
 #
 # Purpose:    Validate that a classification alignment for a model
 #             is valid, in that it has the appropriate nongap RF
 #             length, and store all the group and subgroup information
-#             in it in %{$mdl_alninfo_HH}.
+#             in it in %{$mdl_alninfo_HH}. Also create a copy of it
+#             after adding a prefix to all sequence names to avoid
+#             name clashes with input sequences.
 #
 # Arguments:
-#  $mdl_alninfo_HH:  REF to 2D hash to store group/subgroup information in 
-#  $aln_file:        path to alignment file
-#  $mdl_name:        model name (only used for informative error messages)
-#  $mdl_length:      model length
-#  $FH_HR:           ref to hash of file handles
+#  $mdl_info_HR:     REF to model info for current model
+#  $mdl_alninfo_HHR: REF to 2D hash to store group/subgroup information in 
+#  $out_root:        root for output file naming: <dir>/<dir_tail>.vadr
+#  $opt_HHR:         REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:  ref to output file hash of hashes
 #
 # Returns:  void
 #           
@@ -15003,19 +15012,27 @@ sub determine_intron_index {
 #           if alignment nongap RF length is not equal to $mdl_length
 #
 #################################################################
-sub validate_classification_alignment_file { 
+sub validate_and_copy_classification_alignment_file { 
   my $sub_name = "validate_classification_alignment_file";
   my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($mdl_alninfo_HHR, $aln_file, $mdl_name, $mdl_length, $FH_HR) = (@_);
+  my ($mdl_info_HR, $mdl_alninfo_HHR, $out_root, $opt_HHR, $ofile_info_HHR) = (@_);
 
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+  my $mdl_name      = $mdl_info_HR->{"name"};
+  my $mdl_length    = $mdl_info_HR->{"length"};
+  my $orig_aln_file = $mdl_info_HR->{"CLASS_ALN_FILE"};
+  if(! defined $orig_aln_file) {
+    ofile_FAIL("ERROR, in $sub_name for model $mdl_name, but no CLASS_ALN_FILE defined", 1, $FH_HR);
+  }
+  
   # make sure the alignment exists, and is the correct RF length
-  if(! -e $aln_file) {
-    ofile_FAIL("ERROR, for model $mdl_name group and/or subgroup are meant to be read from an alignment file but the file ($aln_file) does not exist", 1, $FH_HR);
+  if(! -e $orig_aln_file) {
+    ofile_FAIL("ERROR, for model $mdl_name group and/or subgroup are meant to be read from an alignment file but the file ($orig_aln_file) does not exist", 1, $FH_HR);
   }
   my $msa = Bio::Easel::MSA->new({
-    fileLocation => $aln_file,
+    fileLocation => $orig_aln_file,
       isDna => 1});
   if(! $msa->has_rf) {
     ofile_FAIL("ERROR, for model $mdl_name group and/or subgroup are meant to be read from an alignment file but that alignment doesn't have RF annotation", 1, $FH_HR);
@@ -15026,8 +15043,24 @@ sub validate_classification_alignment_file {
     ofile_FAIL("ERROR, for model $mdl_name group and/or subgroup are meant to be read from an alignment file but the RF annotation length (" . length($nongap_msa_rf) . ") doesn't match expected model length ($mdl_length)", 1, $FH_HR);
   }
 
-  # store GP and SG info
   my $i; 
+  my $dir_tail = $out_root;
+  $dir_tail =~ s/^.+\///;
+  $dir_tail =~ s/\.vadr//;
+  my $output_aln_file = $out_root . ".model.stk";
+
+  # modify the sequence names so that we know we won't ever have an input sequence
+  # that is identical to a sequence in this alignment (which would cause a problem when
+  # merging an eventual input sequence alignment with this alignment)
+  for($i = 0; $i < $msa->nseq; $i++) {
+    my $new_name = $dir_tail . "/" . $msa->get_sqname($i); 
+    $msa->set_sqname($i, $new_name);
+  }
+  $msa->write_msa($output_aln_file, "pfam", 0);
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "class_model_stk_file($mdl_name)", $output_aln_file, 0, opt_Get("--keep", $opt_HHR), "model $mdl_name aln file for classification");
+  $mdl_info_HR->{"CLASS_ALN_FILE"} = $output_aln_file;
+  
+  # store GP and SG info
   my $gp_idx = ($msa->hasGS_any_sqidx_given_tag("GP")) ? $msa->getGS_tagidx("GP") : undef;
   my $sg_idx = ($msa->hasGS_any_sqidx_given_tag("SG")) ? $msa->getGS_tagidx("SG") : undef;
   if((defined $gp_idx) || (defined $sg_idx)) { 
@@ -15064,6 +15097,7 @@ sub validate_classification_alignment_file {
 #  $mdl_alninfo_HH:  REF to 2D hash with group/subgroup information in 
 #  $cls_output_HHR:  REF to 2D hash of classification output info, possibly modified here
 #  $to_remove_AR:    REF to array of alignment files to remove
+#  $dir_tail:        prefix added to model sequence names
 #  $FH_HR:           ref to hash of file handles
 #
 # Returns:  void
@@ -15071,10 +15105,10 @@ sub validate_classification_alignment_file {
 #################################################################
 sub classify_based_on_alignment {
   my $sub_name = "classify_based_on_alignment";
-  my $nargs_exp = 8;
+  my $nargs_exp = 9;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($esl_alimerge, $mdl_stk_file, $in_stk_file, $nseq_in_stk, $mdl_alninfo_HHR, $cls_output_HHR, $to_remove_AR, $FH_HR) = (@_);
+  my ($esl_alimerge, $mdl_stk_file, $in_stk_file, $nseq_in_stk, $mdl_alninfo_HHR, $cls_output_HHR, $to_remove_AR, $dir_tail, $FH_HR) = (@_);
 
   # merge the two alignments
   my $merged_stk_file = $in_stk_file;
@@ -15101,6 +15135,7 @@ sub classify_based_on_alignment {
     my $seqname = $msa->get_sqname($i);
     my ($avg_pid, $min_pid, $min_idx, $max_pid, $max_idx) = $msa->avg_min_max_pid_to_seq($i, \@is_mdl_A);
     my $max_seqname = $msa->get_sqname($max_idx);
+#    $max_seqname =~ s/^$dir_tail//;
     printf("max_seqname: $max_seqname\n");
     if(defined $mdl_alninfo_HHR->{$max_seqname}{"group"}) {
       $cls_output_HHR->{$seqname}{"group1"} = $mdl_alninfo_HHR->{$max_seqname}{"group"};
