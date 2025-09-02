@@ -185,6 +185,7 @@ if [ "$DOWNLOADORBUILD" != "build" ]; then
     cd ..
     echo "------------------------------------------------------------"
 
+
     echo "Downloading Infernal version $IVERSION src distribution"
     curl -k -L -o infernal.tar.gz http://eddylab.org/infernal/infernal-$IVERSION.tar.gz
     tar xfz infernal.tar.gz
@@ -410,7 +411,7 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
     echo ""
     echo "export VADRINSTALLDIR=\"$VADRINSTALLDIR\""
     echo "export VADRSCRIPTSDIR=\"\$VADRINSTALLDIR/vadr\""
-    echo "export VADRCONFIGFILE=\"\$VADRINSTALLDIR/vadr.config\""
+    echo "export VADRCONFIGFILE=\"\$VADRSCRIPTSDIR/vadr.config\""
     echo "export VADRMODELDIR=\"\$VADRINSTALLDIR/vadr-models-calici\""
     echo "export VADRINFERNALDIR=\"\$VADRINSTALLDIR/infernal/binaries\""
     echo "export VADREASELDIR=\"\$VADRINSTALLDIR/infernal/binaries\""
@@ -439,7 +440,7 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
     echo ""
     echo "setenv VADRINSTALLDIR \"$VADRINSTALLDIR\""
     echo "setenv VADRSCRIPTSDIR \"\$VADRINSTALLDIR/vadr\""
-    echo "setenv VADRCONFIGFILE \"\$VADRINSTALLDIR/vadr.config\""
+    echo "setenv VADRCONFIGFILE \"\$VADRSCRIPTSDIR/vadr.config\""
     echo "setenv VADRMODELDIR \"\$VADRINSTALLDIR/vadr-models-calici\""
     echo "setenv VADRINFERNALDIR \"\$VADRINSTALLDIR/infernal/binaries\""
     echo "setenv VADRHMMERDIR \"\$VADRINSTALLDIR/infernal/binaries\""
