@@ -30,11 +30,11 @@ set -e
 VADRINSTALLDIR=$PWD
 
 # versions
-VERSION="1.6.4"
+VERSION="1.7"
 # bio-easel (need this version info here only so we can check out correct easel branch in Bio-Easel/src)
-BEVERSION="Bio-Easel-0.16"
+BEVERSION="Bio-Easel-0.17"
 # blast+
-BVERSION="2.15.0"
+BVERSION="2.17.0"
 # infernal
 IVERSION="1.1.5"
 # fasta
@@ -42,13 +42,13 @@ FVERSION="36.3.8h"
 FVERSIONGIT="v36.3.8h_04-May-2020"
 FVERSIONGITNOV="36.3.8h_04-May-2020"
 # minimap2
-MM2VERSIONGIT="v2.26"
-MM2VERSIONGITNOV="2.26"
+MM2VERSIONGIT="v2.30"
+MM2VERSIONGITNOV="2.30"
 # dependency git tag
 VVERSION="vadr-$VERSION"
 # vadr models
 CALICIVERSION="1.2-1"
-FLAVIVERSION="1.2-1"
+FLAVIVERSION="1.7-1"
 CORONAVERSION="1.3-3"
 SARSCOV2VERSION="1.3-2"
 FLUVERSION="1.6.3-2"
@@ -164,14 +164,14 @@ if [ "$DOWNLOADORBUILD" != "build" ]; then
     echo "------------------------------------------------------------"
     # vadr
     echo "Downloading vadr ... "
-    curl -k -L -o $VVERSION.zip https://github.com/ncbi/vadr/archive/$VVERSION.zip; unzip $VVERSION.zip; mv vadr-$VVERSION vadr; rm $VVERSION.zip
+    #curl -k -L -o $VVERSION.zip https://github.com/ncbi/vadr/archive/$VVERSION.zip; unzip $VVERSION.zip; mv vadr-$VVERSION vadr; rm $VVERSION.zip
     # for a test build of a release, comment out above curl and uncomment block below
     # ------------------------------------------------------------
-    #git clone https://github.com/ncbi/vadr.git vadr
-    #cd vadr
-    #git checkout release-$VERSION
-    #rm -rf .git
-    #cd ..
+    git clone https://github.com/ncbi/vadr.git vadr
+    cd vadr
+    git checkout release-$VERSION
+    rm -rf .git
+    cd ..
     # ----------------------------------------------------------------------------
  
     # sequip and Bio-Easel
