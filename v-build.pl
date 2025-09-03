@@ -215,8 +215,8 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-build.pl";
 my $usage         = "Usage: $executable [-options] <accession> <path to output directory to create>\n";
 my $synopsis      = "$executable :: build homology model of a single sequence for feature annotation";
 my $date          = scalar localtime();
-my $version       = "1.6.4";
-my $releasedate   = "Jun 2024";
+my $version       = "1.7";
+my $releasedate   = "Sep 2025";
 my $pkgname       = "VADR";
 
 # print help and exit if necessary
@@ -668,6 +668,7 @@ ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-ndb", $blastn_fa_file 
 ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-not", $blastn_fa_file . ".not", 1, 1, "BLAST db .not file for $mdl_name");
 ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-ntf", $blastn_fa_file . ".ntf", 1, 1, "BLAST db .ntf file for $mdl_name");
 ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nto", $blastn_fa_file . ".nto", 1, 1, "BLAST db .nto file for $mdl_name");
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-njs", $blastn_fa_file . ".njs", 1, 1, "BLAST db .njs file for $mdl_name");
 
 if(! opt_Get("--keep", \%opt_HH)) { 
   utl_FileRemoveUsingSystemRm($tmp_blastn_fa_file, "v-build.pl main", \%opt_HH, $FH_HR);

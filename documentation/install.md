@@ -154,6 +154,7 @@ of v10.15 (Catalina)), add the following lines to the end of your
 
 export VADRINSTALLDIR=<full path to directory in which you ran vadr-install.sh>
 export VADRSCRIPTSDIR="$VADRINSTALLDIR/vadr"
+export VADRCONFIGFILE="$VADRSCRIPTSDIR/vadr.config"
 export VADRMODELDIR="$VADRINSTALLDIR/vadr-models-calici"
 export VADRINFERNALDIR="$VADRINSTALLDIR/infernal/binaries"
 export VADREASELDIR="$VADRINSTALLDIR/infernal/binaries"
@@ -182,6 +183,7 @@ directory:
 
 setenv VADRINSTALLDIR "<full path to directory in which you ran vadr-install.sh>"
 setenv VADRSCRIPTSDIR "$VADRINSTALLDIR/vadr"
+setenv VADRCONFIGFILE "$VADRSCRIPTSDIR/vadr.config"
 setenv VADRMODELDIR "$VADRINSTALLDIR/vadr-models-calici"
 setenv VADRINFERNALDIR "$VADRINSTALLDIR/infernal/binaries"
 setenv VADRHMMERDIR "$VADRINSTALLDIR/infernal/binaries"
@@ -384,6 +386,7 @@ and it is recommended to use the `-s` and `--glsearch` options with `v-annotate.
 ---
 ## <a name="further"></a> Further information
 
+* [`v-scan.pl` example usage and command-line options](scan.md#top)
 * [`v-build.pl` example usage and command-line options](build.md#top)
 * [`v-annotate.pl` example usage, command-line options and alert information](annotate.md#top)
 * [Explanations and examples of `v-annotate.pl` detailed alert and error messages](alerts.md#top)

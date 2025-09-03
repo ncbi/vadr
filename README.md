@@ -1,35 +1,93 @@
 # VADR - Viral Annotation DefineR <a name="top"></a>
-#### Version 1.6.4; June 2024
+#### Version 1.7; September 2025
 #### https://github.com/ncbi/vadr.git
 
 VADR is a suite of tools for classifying and analyzing sequences
 homologous to a set of reference models of viral genomes or gene
-families. It has been mainly tested for analysis of Norovirus, Dengue,
-and SARS-CoV-2 virus sequences in preparation for submission to the
-GenBank database.
+families. It includes models that can be used to validate and annotate
+Norovirus, Dengue virus, SARS-CoV-2 virus as well as other
+flaviviruses, caliciviruses, and coronaviruses, plus influenza virus,
+mpox virus, and respiratory syncitial virus (RSV). Additional models
+are [available to download](#models) or can be created using the
+`v-build.pl` program.
 
-The VADR `v-annotate.pl` script is used to classify a sequence, by
-determining which in a set of reference models it is most similar to,
-and then annotate that sequence based on that most similar model.
-Example usage of `v-annotate.pl` can be found
-[here](documentation/annotate.md#top).  Another VADR script,
-`v-build.pl`, is used to create the models from NCBI RefSeq sequences
-or from input multiple sequence alignments, potentially with secondary
-structure annotation. `v-build.pl` stores the RefSeq feature
-annotation in the model, and `v-annotate.pl` maps that annotation
-(e.g. CDS coordinates) onto the sequences it annotates.  
+---
+## Quick-start: install VADR and classify and annotate viral sequences using `v-scan.pl`<a name="quickstart"></a>
 
-VADR includes 205 prebuilt models of *Flaviviridae* and
-*Caliciviridae* viral RefSeq genomes, created with a process similar
-to the one described
-[here](documentation/build.md#1.0library). Example usage of
-`v-build.pl` can be found [here](documentation/build.md#top). An
-advanced tutorial on building VADR models using RSV as an example can
-be found [here](documentation/advbuild.md#top). To use `v-annotate.pl`
-with viruses other than the default set of 205, see ['Available VADR
-models'](#models). For instructions on using VADR for SARS-CoV-2
-annotation see [this
-page](https://github.com/ncbi/vadr/wiki/Coronavirus-annotation).
+#### Install VADR:
+
+Download this file:
+
+```
+https://raw.githubusercontent.com/ncbi/vadr/master/vadr-install.sh
+```
+
+possibly with a command like:
+```
+curl -o vadr-install.sh https://raw.githubusercontent.com/ncbi/vadr/master/vadr-install.sh
+```
+
+And execute it, with one of the following commands depending on your
+system type:
+
+```
+sh ./vadr-install.sh linux
+```
+
+OR
+
+```
+sh ./vadr-install.sh macosx-silicon
+```
+
+OR
+
+```
+sh ./vadr-install.sh macosx-intel
+```
+
+Then follow the instructions output at the end of the installation for
+updating your `.bashrc` or `.cshrc` file and defining important
+environment variables that VADR relies on.
+
+#### Run `v-scan.pl` to annotate viral sequences
+
+Given a fasta sequence file called `my.fa` with any combination of flavivirus,
+calicivirus, coronavirus, influenza, RSV, or Mpox sequences, run:
+
+`v-scan.pl -m in.fa out`
+
+This will list each stage of the processing and
+ultimately create an output directory called `out` and fill it with 
+output files. Short descriptions of the output files will be printed to the
+screen. More detailed explanation of output file types can be found
+[here](documentation/formats.md#annotate). For a more detailed walk-through example
+of `v-scan.pl` see [this page](documentation/scan.md#longwalk).
+
+---
+## VADR programs
+
+The VADR `v-scan.pl` script classifies and annotates sequences that
+match to any of your VADR model libraries. 
+Once `v-scan.pl` determines the library to use for a given set of
+sequences, it runs a different VADR program called `v-annotate.pl`
+which identifies the appropriate model in the library to use for each
+sequence and defines the annotation based on that most similar model.
+`v-scan.pl` will automatically run `v-annotate.pl` using the
+recommended settings (`v-annotate.pl` command-line options) for each
+library but alternatively, users can run the `v-annotate.pl`
+separately. Example usage of `v-annotate.pl` can be found
+[here](documentation/annotate.md#top).
+
+Another VADR script, `v-build.pl`, is used to create the models from
+individual sequences from GenBank or from input multiple sequence
+alignments, potentially with secondary structure
+annotation. `v-build.pl` stores the GenBank feature annotation in the
+model, and `v-annotate.pl` maps that annotation (e.g. CDS coordinates)
+onto the sequences it annotates.  Example usage of `v-build.pl` can be
+found [here](documentation/build.md#top). An advanced tutorial on
+building VADR models using RSV as an example can be found
+[here](documentation/advbuild.md#top).
 
 `v-annotate.pl` identifies unexpected or divergent attributes of the
 sequences it annotates (e.g. invalid or early stop codons in CDS
@@ -47,29 +105,21 @@ FASTA, MINIMAP2 and BLAST software packages, which are downloaded and installed
 with [VADR installation](documentation/install.md#top).
 
 ---
-## SARS-CoV-2 annotation using VADR
 
-The `v-annotate.pl` script includes some special options specifically
-developed for SARS-CoV-2 annotation that increase speed (`-s` and
-`--glsearch` options) and provide better annotation for sequences with
-stretches of Ns (`-r` option). See [this
-page](https://github.com/ncbi/vadr/wiki/Coronavirus-annotation) for
-more information on using VADR to annotate SARS-CoV-2 sequences.
+## VADR model libraries <a name="models"></a>
 
----
-## Available VADR models <a name="models"></a>
+[VADR installation](documentation/install.md#top) includes the following model libraries:
 
-VADR installation includes a default set of *Caliciviridae* models
-including Norovirus virus. The installation also includes a set of
-*Flaviviridae* models including Dengue virus.  You can download
-additional pre-built models to use to validate and annotate viruses,
-including SARS-CoV-2, RSV, or cox1 genes. Importantly, to
-use a set of models other than the default *Caliciviridae* set, you
-will need to use either the `--mdir` and `--mkey` options, or the the
-`-m`, `-i`, `-x` and possibly `-n` options as described
-[here](documentation/annotate.md#options).
+| library      | model key (short name) | rigorously tested? | number of models | notes | 
+|--------------|------------------------|--------------------|------------------|-------|
+| *Caliciviridae*      | calici | norovirus models only      | 49  | norovirus models used by GenBank |
+| *Flaviviridae*       | flavi  | dengue and HCV models only | 156 | dengue models used by GenBank |
+| *Coronaviridae*      | corona | SARS-CoV-2 only            | 55  | SARS-CoV-2 models used by GenBank |
+| influenza            | flu    | yes                        | 70  | [described in Database article](https://pubmed.ncbi.nlm.nih.gov/39297389/) |
+| Mpox                 | mpxv   | yes                        | 1   | | 
+| respiratory syncitial virus (RSV) | rsv    | yes                        | 2   | | 
 
-See [this
+Additional models are available. See [this
 page](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files)
 for a list of all available models and additional information.
 
@@ -88,9 +138,15 @@ for a list of all available models and additional information.
   * [How the VADR 1.0 model library was constructed](documentation/build.md#1.0library)
 * [`v-annotate.pl` example usage, command-line options and alert information](documentation/annotate.md#top)
   * [`v-annotate.pl` example usage](documentation/annotate.md#exampleusage)
+  * [Running `v-annotate.pl` inside the `v-scan.pl` wrapper](documentation/annotate.md#scan)
   * [`v-annotate.pl` command-line options](documentation/annotate.md#options)
   * [Basic Information on `v-annotate.pl` alerts](documentation/annotate.md#alerts)
   * [Additional information on `v-annotate.pl` alerts](documentation/annotate.md#alerts2)
+* [`v-scan.pl` example usage and command-line options](documentation/scan.md#top)
+  * [Quickstart `v-scan.pl` examples](documentation/scan.md#quickstart)
+  * [The `v-scan.pl` config file](documentation/scan.md#config)
+  * [Walk-throughs of `v-scan.pl` examples](documentation/scan.md#longwalk)
+  * [`v-scan.pl` command-line options](documentation/scan.md#options)
 * [***Advanced tutorial: building an RSV model library***](documentation/advbuild.md#top)
 * [Explanations and examples of `v-annotate.pl` detailed alert and error messages](documentation/alerts.md#top)
   * [Output fields with detailed alert and error messages](documentation/alerts.md#files)
@@ -143,12 +199,17 @@ for a list of all available models and additional information.
 ---
 ## Reference <a name="reference"></a>
 
+* The recommended citation for influenza analysis using VADR is:
+  *Vincent C Calhoun, Eneida L Hatcher, Linda Yankie, Eric P Nawrocki; 
+  Influenza sequence validation and annotation using VADR. Database.
+  baae091. (2024).* https://doi.org/10.1093/database/baae091
+
 * The recommended citation for using VADR for SARS-CoV-2 analysis:
   *Eric P Nawrocki; Faster SARS-CoV-2 sequence validation and
   annotation for GenBank using VADR. NAR Genom Bioinform. 2023 Jan
   20;5(1)::lqad002. (2023).* https://doi.org/10.1093/nargab/lqad002
 
-* The recommended citation for non-SARS-CoV-2 use of VADR is:
+* The recommended citation for all other uses of VADR is:
   *Alejandro A Schäffer, Eneida L Hatcher, Linda Yankie, Lara Shonkwiler,
   J Rodney Brister, Ilene Karsch-Mizrachi, Eric P Nawrocki; VADR:
   validation and annotation of virus sequence submissions to

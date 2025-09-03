@@ -84,6 +84,7 @@ require "sqp_utils.pm";
 # vdr_FeatureInfoMerge()
 # vdr_FeatureInfoCdsStartStopCodonCoords()
 # vdr_FeatureInfoMaxNumCdsSegments()
+# vdr_FeatureInfoValidateForcePosn()
 #
 # vdr_SegmentInfoPopulate()
 # 
@@ -110,6 +111,9 @@ require "sqp_utils.pm";
 # vdr_FeatureSummaryStrand()
 # vdr_FeaturePositionSpecificValueBreakdown()
 # vdr_FeatureCoordsListBreakdown()
+# vdr_FeatureOmitFromTbl()
+# vdr_FeatureForceFirstPosn()
+# vdr_FeatureForceFinalPosn()
 #
 # vdr_SegmentStartIdenticalToCds()
 # vdr_SegmentStopIdenticalToCds()
@@ -1556,6 +1560,97 @@ sub vdr_FeatureInfoMaxNumCdsSegments {
 }
 
 #################################################################
+# Subroutine: vdr_FeatureInfoValidateForcePosn
+# Incept:     EPN, Tue Aug 26 15:13:22 2025
+# 
+# Purpose:    Validate "force_first_posn" and "force_final_posn=" values
+#             are either undefined, 0 or 1, and for CDS, mat_peptide
+#             and gene is always either undefined or 0.
+#
+#             if "force_first_posn" is 1 and strand is "+": 5' most position of first segment is 1
+#             if "force_first_posn" is 1 and strand is "-": 5' most position of first segment is $mdl_len
+#             if "force_final_posn" is 1 and strand is "+": 3' most position of first segment is $mdl_len
+#             if "force_final_posn" is 1 and strand is "-": 3' most position of first segment is 1
+#
+#             Must be called after segment info set up (by vdr_SegmentInfoPopulate) because
+#             we calls vdr_FeatureNumSegments().
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $mdl_len:       length of the model this feature pertains to
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if force_first_posn or first_final_posn is invalid for
+#             any feature
+#
+#################################################################
+sub vdr_FeatureInfoValidateForcePosn {
+  my $sub_name = "vdr_FeatureInfoValidateForcePosn";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  
+  my ($ftr_info_AHR, $mdl_len, $FH_HR) = @_;
+  
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $fail_str = ""; # added to if any elements are out of range
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    my $nsgm = vdr_FeatureNumSegments($ftr_info_AHR, $ftr_idx);
+    if((defined $ftr_info_AHR->[$ftr_idx]{"force_first_posn"}) && 
+       ($ftr_info_AHR->[$ftr_idx]{"force_first_posn"} != 1) && 
+       ($ftr_info_AHR->[$ftr_idx]{"force_first_posn"} != 0)) {
+      $fail_str .= "ftr_idx: $ftr_idx, force_first_posn value is " . $ftr_info_AHR->[$ftr_idx]{"force_first_posn"} . " but should be 1 or 0";
+    }
+    if((defined $ftr_info_AHR->[$ftr_idx]{"force_final_posn"}) && 
+       ($ftr_info_AHR->[$ftr_idx]{"force_final_posn"} != 1) && 
+       ($ftr_info_AHR->[$ftr_idx]{"force_final_posn"} != 0)) {
+      $fail_str .= "ftr_idx: $ftr_idx, force_final_posn value is " . $ftr_info_AHR->[$ftr_idx]{"force_final_posn"} . " but should be 1 or 0";
+    }
+    my $force_first_posn = ((defined $ftr_info_AHR->[$ftr_idx]{"force_first_posn"}) && $ftr_info_AHR->[$ftr_idx]{"force_first_posn"} == 1) ? 1 : 0;
+    my $force_final_posn = ((defined $ftr_info_AHR->[$ftr_idx]{"force_final_posn"}) && $ftr_info_AHR->[$ftr_idx]{"force_final_posn"} == 1) ? 1 : 0;
+    if($force_first_posn || $force_final_posn) { 
+      if(vdr_FeatureTypeIsCdsOrMatPeptideOrGene($ftr_info_AHR, $ftr_idx)) {
+        if($force_first_posn) { 
+          $fail_str .= "ftr_idx: $ftr_idx, is CDS, mat_peptide or gene but has \"force_first_posn\" set as 1, this is not allowed\n"; 
+        }
+        if($force_final_posn) {
+          $fail_str .= "ftr_idx: $ftr_idx, is CDS, mat_peptide or gene but has \"force_final_posn\" set as 1, this is not allowed\n"; 
+        }
+        if($nsgm != 1) {
+          $fail_str .= "ftr_idx: $ftr_idx, coords: " . $ftr_info_AHR->[$ftr_idx]{"coords"} . " and \"force_final_posn\" set as 1, but there are multiple segments, this is not allowed\n"; 
+        }
+      }
+      else { 
+        my $strand = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
+        if($force_first_posn) { 
+          if(($strand eq "+") && (vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR) != 1)) { 
+            $fail_str .= "ftr_idx: $ftr_idx, force_first_posn set as 1, strand is +, coords is " .  $ftr_info_AHR->[$ftr_idx]{"coords"} . "; 5' most position is not 1, this is not allowed\n";
+          }
+          if(($strand eq "-") && (vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR) != 1)) {
+            $fail_str .= "ftr_idx: $ftr_idx, force_first_posn set as 1, strand is -, coords is " .  $ftr_info_AHR->[$ftr_idx]{"coords"} . "; 3' most position is not 1, this is not allowed\n";
+          }
+        }
+        if($force_final_posn) { 
+          if(($strand eq "+") && (vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR) != $mdl_len)) { 
+            $fail_str .= "ftr_idx: $ftr_idx, force_final_posn set as 1, strand is +, coords is " .  $ftr_info_AHR->[$ftr_idx]{"coords"} . "; 3' most position is not mdl_len:$mdl_len, this is not allowed\n";
+          }
+          if(($strand eq "-") && (vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR) != $mdl_len)) {
+            $fail_str .= "ftr_idx: $ftr_idx, force_final_posn set as 1, strand is -, coords is " .  $ftr_info_AHR->[$ftr_idx]{"coords"} . "; 5' most position is not mdl_len:$mdl_len, this is not allowed\n";
+          }
+        }
+      }
+    }
+  }
+  
+  if($fail_str ne "") { 
+    ofile_FAIL("ERROR in $sub_name, some force_first_posn and/or force_final_posn values are invalid or don't make sense:\n$fail_str\n", 1, $FH_HR);
+  }
+
+  return;
+}
+
+
+#################################################################
 # Subroutine: vdr_SegmentInfoPopulate()
 # Incept:     EPN, Wed Mar 13 13:55:56 2019
 #
@@ -2490,6 +2585,90 @@ sub vdr_FeatureLengthBetweenAdjacentSegments {
   # printf("in $sub_name, returning $region_length\n");
 
   return $region_length;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureOmitFromTbl()
+# Incept:     EPN, Mon Jul 28 10:38:30 2025
+#
+# Synopsis: Return '1' if 'omit_from_tbl' defined for this feature
+#           and value is '1', else return '0'.
+# 
+# Arguments:
+#  $ftr_info_AHR: ref to feature info array of hashes, PRE-FILLED
+#  $ftr_idx:      feature idx
+#
+# Returns:  '1' if omit_from_tbl set as '1'
+#
+# Dies: never, nothing is validated
+#################################################################
+sub vdr_FeatureOmitFromTbl { 
+  my $sub_name = "vdr_FeatureOmitFromTbl";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+  
+  if((defined $ftr_info_AHR->[$ftr_idx]{"omit_from_tbl"}) && ($ftr_info_AHR->[$ftr_idx]{"omit_from_tbl"} == "1")) {
+    return 1;
+  }
+  return 0;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureForceFirstPosn()
+# Incept:     EPN, Tue Aug 26 15:04:17 2025
+#
+# Synopsis: Return '1' if 'force_first_posn' defined for this feature
+#           and value is '1', else return '0'.
+# 
+# Arguments:
+#  $ftr_info_AHR: ref to feature info array of hashes, PRE-FILLED
+#  $ftr_idx:      feature idx
+#
+# Returns:  '1' if force_first_posn set as '1'
+#
+# Dies: never, nothing is validated
+#################################################################
+sub vdr_FeatureForceFirstPosn { 
+  my $sub_name = "vdr_FeatureForceFirstPosn";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+  
+  if((defined $ftr_info_AHR->[$ftr_idx]{"force_first_posn"}) && ($ftr_info_AHR->[$ftr_idx]{"force_first_posn"} == "1")) {
+    return 1;
+  }
+  return 0;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureForceFinalPosn()
+# Incept:     EPN, Tue Aug 26 15:05:10 2025
+#
+# Synopsis: Return '1' if 'force_final_posn' defined for this feature
+#           and value is '1', else return '0'.
+# 
+# Arguments:
+#  $ftr_info_AHR: ref to feature info array of hashes, PRE-FILLED
+#  $ftr_idx:      feature idx
+#
+# Returns:  '1' if force_final_posn set as '1'
+#
+# Dies: never, nothing is validated
+#################################################################
+sub vdr_FeatureForceFinalPosn { 
+  my $sub_name = "vdr_FeatureForceFinalPosn";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+  
+  if((defined $ftr_info_AHR->[$ftr_idx]{"force_final_posn"}) && ($ftr_info_AHR->[$ftr_idx]{"force_final_posn"} == "1")) {
+    return 1;
+  }
+  return 0;
 }
 
 #################################################################
@@ -7039,6 +7218,13 @@ sub vdr_ReplacePseudoCoordsStringParse {
 #             it could be possible to convert those to multiple position ranges, 
 #             but we don't do that. We leave those as single position segments.
 #       
+#             Also, since we could have old n and x max{ins,del} we have to 
+#             look at all ins/del exceptions first, and keep max value for each position
+#             then define exception string after seeing them all. If we didn't do
+#             this we may have the same position twice in our exception string
+#             (possibly with different values), and the validation would fail because
+#             that's not allowed.
+#       
 #             This subroutine must be called prior to calling 
 #               vdr_ModelInfoValidateExceptionKeys()
 #               vdr_FeatureInfoValidateExceptionKeys()
@@ -7096,37 +7282,22 @@ sub vdr_BackwardsCompatibilityExceptions {
   }
 
   # move onto ftr_info_AHR
+  # move onto ftr_info_AHR
   my $nftr = scalar(@{$ftr_info_AHR});
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    my %max_values_HH = (); # 1st dim: new exception key, 2nd dim: position, value is max insert/delete for that posn
     foreach my $exc_key (sort keys %{$ftr_info_AHR->[$ftr_idx]}) { 
       if($exc_key =~ /^.+\_exc$/) { 
         # swap ; with ,
         $ftr_info_AHR->[$ftr_idx]{$exc_key} =~ s/\;/\,/g;
         $ftr_info_AHR->[$ftr_idx]{$exc_key} =~ s/\,$//; # remove final ',' if any
       }
+      if($exc_key eq "frameshift_exc") { 
+        $new_key = $alt_info_HHR->{"fstukcfi"}{"exc_key"};
+        $ftr_info_AHR->[$ftr_idx]{$new_key} = $ftr_info_AHR->[$ftr_idx]{$exc_key};
+        delete($ftr_info_AHR->[$ftr_idx]{$exc_key});
+      }
       if(($exc_key eq "nmaxins_exc") || ($exc_key eq "nmaxdel_exc") || ($exc_key eq "xmaxins_exc") || ($exc_key eq "xmaxdel_exc")) { 
-        my $new_value = "";
-        my @posn_value_A = split(",", $ftr_info_AHR->[$ftr_idx]{$exc_key});
-        foreach my $posn_value (@posn_value_A) { 
-          if($posn_value =~ /(\d+)\:(\d+)/) { 
-            my ($posn, $value) = ($1, $2);
-            if($new_value ne "") { $new_value .= ","; }
-            my $nt_posn = $posn; # nt position
-            if(($exc_key eq "xmaxins_exc") || ($exc_key eq "xmaxdel_exc")) { 
-              # convert from protein to nucleotide coords
-              $nt_posn = vdr_Feature3pMostPosition(vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, 
-                                                                                       vdr_CoordsSinglePositionSegmentCreate($posn, "+", $FH_HR),
-                                                                                       $FH_HR), $FH_HR);
-            }
-            $new_value .= vdr_CoordsSinglePositionSegmentCreate($nt_posn, "+", $FH_HR) . ":" . $value;
-          }
-          else { 
-            ofile_FAIL("ERROR, in $sub_name, trying to update old exception key $exc_key, but unable to parse value: $posn_value", 1, $FH_HR);
-          }
-        }
-        if($new_value eq "") { 
-          ofile_FAIL("ERROR, in $sub_name, trying to update old exception key $exc_key, but unable to parse value: " . $ftr_info_AHR->[$ftr_idx]{$exc_key}, 1, $FH_HR);
-        }
         if($exc_key eq "nmaxins_exc") { 
           $new_key = $alt_info_HHR->{"insertnn"}{"exc_key"};
         }
@@ -7139,20 +7310,70 @@ sub vdr_BackwardsCompatibilityExceptions {
         if($exc_key eq "xmaxdel_exc") { 
           $new_key = $alt_info_HHR->{"deletinp"}{"exc_key"};
         }
-        if(! defined $new_key) { 
-          ofile_FAIL("ERROR, in $sub_name, trying to update old exception key $exc_key, but unable to determine new key", 1, $FH_HR);
+        my @posn_value_A = split(",", $ftr_info_AHR->[$ftr_idx]{$exc_key});
+        if(scalar(@posn_value_A) == 0) { 
+          ofile_FAIL("ERROR, in $sub_name, trying to update old exception key $exc_key, but unable to parse value: " . $ftr_info_AHR->[$ftr_idx]{$exc_key}, 1, $FH_HR);
         }
-        $ftr_info_AHR->[$ftr_idx]{$new_key} = $new_value;
-        delete($ftr_info_AHR->[$ftr_idx]{$exc_key});
+        foreach my $posn_value (@posn_value_A) { 
+          if($posn_value =~ /(\d+)\:(\d+)/) { 
+            my ($posn, $value) = ($1, $2);
+            if(($exc_key eq "xmaxins_exc") || ($exc_key eq "xmaxdel_exc")) { 
+              # convert from protein to nucleotide coords
+              my $new_coords = vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, 
+                                                                   vdr_CoordsSinglePositionSegmentCreate($posn, "+", $FH_HR), $FH_HR);
+              my $posn_5p = vdr_Feature5pMostPosition($new_coords, $FH_HR);
+              my $posn_3p = vdr_Feature3pMostPosition($new_coords, $FH_HR);
+              my $new_posn;
+              for($new_posn = $posn_5p; $new_posn <= $posn_3p; $new_posn++) {
+                if((! defined $max_values_HH{$new_key}{$new_posn}) || ($value > $max_values_HH{$new_key}{$new_posn})) {
+                  $max_values_HH{$new_key}{$new_posn} = $value;
+                }
+              }
+            }
+            else {
+              if((! defined $max_values_HH{$new_key}{$posn}) || ($value > $max_values_HH{$new_key}{$posn})) {
+                $max_values_HH{$new_key}{$posn} = $value;
+              }
+            }
+          }
+          else { 
+            ofile_FAIL("ERROR, in $sub_name, trying to update old exception key $exc_key, but unable to parse value: $posn_value", 1, $FH_HR);
+          }
+        }
       }
-      if($exc_key eq "frameshift_exc") { 
-        $new_key = $alt_info_HHR->{"fstukcfi"}{"exc_key"};
-        $ftr_info_AHR->[$ftr_idx]{$new_key} = $ftr_info_AHR->[$ftr_idx]{$exc_key};
+    }
+    # create the new values for the insert and delete maximums
+    my %updated_new_key_H = (); 
+    foreach $exc_key ("nmaxins_exc", "xmaxins_exc", "nmaxdel_exc", "xmaxdel_exc") { 
+      if($exc_key eq "nmaxins_exc") { 
+        $new_key = $alt_info_HHR->{"insertnn"}{"exc_key"};
+      }
+      elsif($exc_key eq "nmaxdel_exc") { 
+        $new_key = $alt_info_HHR->{"deletinn"}{"exc_key"};
+      }
+      if($exc_key eq "xmaxins_exc") { 
+        $new_key = $alt_info_HHR->{"insertnp"}{"exc_key"};
+      }
+      if($exc_key eq "xmaxdel_exc") { 
+        $new_key = $alt_info_HHR->{"deletinp"}{"exc_key"};
+      }
+      if((defined $max_values_HH{$new_key}) && (! defined $updated_new_key_H{$new_key})) {
+        foreach my $posn ( sort { $a <=> $b } keys %{$max_values_HH{$new_key}}) {
+          if(! defined $ftr_info_AHR->[$ftr_idx]{$new_key}) {
+            $ftr_info_AHR->[$ftr_idx]{$new_key} = "";
+          }
+          else {
+            $ftr_info_AHR->[$ftr_idx]{$new_key} .= ",";
+          }
+          $ftr_info_AHR->[$ftr_idx]{$new_key} .= vdr_CoordsSinglePositionSegmentCreate($posn, "+", $FH_HR) . ":" . $max_values_HH{$new_key}{$posn}; 
+        }
+        $updated_new_key_H{$new_key} = 1; # so we don't try to update this new_key again
+      }
+      if(defined $ftr_info_AHR->[$ftr_idx]{$exc_key}) {
         delete($ftr_info_AHR->[$ftr_idx]{$exc_key});
       }
     }
-  }
-
+  } # end of loop over ftr idxes
   return;
 }
 

@@ -11,6 +11,9 @@
 # or to only download files:
 # vadr-install.sh <"linux" or "macosx-silicon" or "macosx-intel"> download
 #
+# or to only download files, and minimize number of models downloaded:
+# vadr-install.sh <"linux" or "macosx-silicon" or "macosx-intel"> download
+#
 # or to only build files (after running in 'download' mode):
 # vadr-install.sh <"linux" or "macosx-silicon" or "macosx-intel"> download
 # 
@@ -27,11 +30,11 @@ set -e
 VADRINSTALLDIR=$PWD
 
 # versions
-VERSION="1.6.4"
+VERSION="1.7"
 # bio-easel (need this version info here only so we can check out correct easel branch in Bio-Easel/src)
-BEVERSION="Bio-Easel-0.16"
+BEVERSION="Bio-Easel-0.17"
 # blast+
-BVERSION="2.15.0"
+BVERSION="2.17.0"
 # infernal
 IVERSION="1.1.5"
 # fasta
@@ -39,12 +42,18 @@ FVERSION="36.3.8h"
 FVERSIONGIT="v36.3.8h_04-May-2020"
 FVERSIONGITNOV="36.3.8h_04-May-2020"
 # minimap2
-MM2VERSIONGIT="v2.26"
-MM2VERSIONGITNOV="2.26"
+MM2VERSIONGIT="v2.30"
+MM2VERSIONGITNOV="2.30"
 # dependency git tag
 VVERSION="vadr-$VERSION"
 # vadr models
-MVERSION="1.2-1"
+CALICIVERSION="1.2-1"
+FLAVIVERSION="1.7-1"
+CORONAVERSION="1.3-3"
+SARSCOV2VERSION="1.3-2"
+FLUVERSION="1.6.3-2"
+RSVVERSION="1.5-2"
+MPXVVERSION="1.4.2-1"
 # hmmer (not needed in this release, we can use infernal's hmmer executables)
 #HVERSION="3.4"
 
@@ -176,6 +185,7 @@ if [ "$DOWNLOADORBUILD" != "build" ]; then
     cd ..
     echo "------------------------------------------------------------"
 
+
     echo "Downloading Infernal version $IVERSION src distribution"
     curl -k -L -o infernal.tar.gz http://eddylab.org/infernal/infernal-$IVERSION.tar.gz
     tar xfz infernal.tar.gz
@@ -215,12 +225,54 @@ if [ "$DOWNLOADORBUILD" != "build" ]; then
     mv ncbi-blast-$BVERSION+ ncbi-blast
     echo "------------------------------------------------------------"
 
-    # download vadr models, calici and flavi model sets only
-    for v in calici flavi; do 
-        echo "Downloading VADR ${v}viridae models ($MVERSION) ... "
-        curl -k -L -o vadr-models-$v.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/${v}viridae/$MVERSION/vadr-models-$v-$MVERSION.tar.gz
+    # download vadr models
+    for v in calici; do 
+        echo "Downloading VADR $v models ($CALICIVERSION) ... "
+        curl -k -L -o vadr-models-$v.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/${v}viridae/$CALICIVERSION/vadr-models-$v-$CALICIVERSION.tar.gz
         tar xfz vadr-models-$v.tar.gz
-        mv vadr-models-$v-$MVERSION vadr-models-$v
+        mv vadr-models-$v-$CALICIVERSION vadr-models-$v
+        rm vadr-models-$v.tar.gz
+    done
+    for v in flavi; do 
+        echo "Downloading VADR $v models ($FLAVIVERSION) ... "
+        curl -k -L -o vadr-models-$v.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/${v}viridae/$FLAVIVERSION/vadr-models-$v-$FLAVIVERSION.tar.gz
+        tar xfz vadr-models-$v.tar.gz
+        mv vadr-models-$v-$FLAVIVERSION vadr-models-$v
+        rm vadr-models-$v.tar.gz
+    done
+    for v in corona; do 
+        echo "Downloading VADR $v models ($CORONAVERSION) ... "
+        curl -k -L -o vadr-models-$v.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/${v}viridae/$CORONAVERSION/vadr-models-$v-$CORONAVERSION.tar.gz
+        tar xfz vadr-models-$v.tar.gz
+        mv vadr-models-$v-$CORONAVERSION vadr-models-$v
+        rm vadr-models-$v.tar.gz
+    done
+    for v in sarscov2; do 
+        echo "Downloading VADR $v models ($SARSCOV2VERSION) ... "
+        curl -k -L -o vadr-models-$v.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/$v/$SARSCOV2VERSION/vadr-models-$v-$SARSCOV2VERSION.tar.gz
+        tar xfz vadr-models-$v.tar.gz
+        mv vadr-models-$v-$SARSCOV2VERSION vadr-models-$v
+        rm vadr-models-$v.tar.gz
+    done
+    for v in flu; do 
+        echo "Downloading VADR $v models ($FLUVERSION) ... "
+        curl -k -L -o vadr-models-$v.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/$v/$FLUVERSION/vadr-models-$v-$FLUVERSION.tar.gz
+        tar xfz vadr-models-$v.tar.gz
+        mv vadr-models-$v-$FLUVERSION vadr-models-$v
+        rm vadr-models-$v.tar.gz
+    done
+    for v in rsv; do 
+        echo "Downloading VADR $v models ($RSVVERSION) ... "
+        curl -k -L -o vadr-models-$v.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/$v/$RSVVERSION/vadr-models-$v-$RSVVERSION.tar.gz
+        tar xfz vadr-models-$v.tar.gz
+        mv vadr-models-$v-$RSVVERSION vadr-models-$v
+        rm vadr-models-$v.tar.gz
+    done
+    for v in mpxv; do 
+        echo "Downloading VADR $v models ($MPXVVERSION) ... "
+        curl -k -L -o vadr-models-$v.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/$v/$MPXVVERSION/vadr-models-$v-$MPXVVERSION.tar.gz
+        tar xfz vadr-models-$v.tar.gz
+        mv vadr-models-$v-$MPXVVERSION vadr-models-$v
         rm vadr-models-$v.tar.gz
     done
     echo "------------------------------------------------------------"
@@ -359,6 +411,7 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
     echo ""
     echo "export VADRINSTALLDIR=\"$VADRINSTALLDIR\""
     echo "export VADRSCRIPTSDIR=\"\$VADRINSTALLDIR/vadr\""
+    echo "export VADRCONFIGFILE=\"\$VADRSCRIPTSDIR/vadr.config\""
     echo "export VADRMODELDIR=\"\$VADRINSTALLDIR/vadr-models-calici\""
     echo "export VADRINFERNALDIR=\"\$VADRINSTALLDIR/infernal/binaries\""
     echo "export VADREASELDIR=\"\$VADRINSTALLDIR/infernal/binaries\""
@@ -387,6 +440,7 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
     echo ""
     echo "setenv VADRINSTALLDIR \"$VADRINSTALLDIR\""
     echo "setenv VADRSCRIPTSDIR \"\$VADRINSTALLDIR/vadr\""
+    echo "setenv VADRCONFIGFILE \"\$VADRSCRIPTSDIR/vadr.config\""
     echo "setenv VADRMODELDIR \"\$VADRINSTALLDIR/vadr-models-calici\""
     echo "setenv VADRINFERNALDIR \"\$VADRINSTALLDIR/infernal/binaries\""
     echo "setenv VADRHMMERDIR \"\$VADRINSTALLDIR/infernal/binaries\""
