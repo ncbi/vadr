@@ -67,7 +67,7 @@ this file or modify a copy of it, and specify that a different file
 changing the value of `$VADRCONFIGFILE` to point to a different file. 
 
 Here is the config file that is included with VADR and is used by
-default in [vadr/default.vadr.config](../default.vadr.config) with
+default in [vadr/vadr.config](../vadr.config) with
 comment lines removed for brevity (all lines that begin with a `#` are
 comment lines):
 
@@ -207,9 +207,9 @@ v-scan.pl -h
 You'll see something like the following output:
 ```
 # v-scan.pl :: scan and annotate sequences against VADR model libraries 
-# VADR 1.7 (Mar 2025)
+# VADR 1.7 (Sep 2025)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Wed Mar  5 10:39:19 2025
+# date:    Tue Sep  2 10:39:19 2025
 #
 Usage: v-scan.pl [-options] <fasta file to annotate> <output directory to create>
 ```
@@ -249,8 +249,8 @@ variables, the command line arguments used and any command line
 options used:
 
 ```
-# date:             Tue Mar  4 14:16:40 2025
-# $VADRCONFIGFILE:  /home/nawrocki/vadr-install-dir/default.vadr.config
+# date:             Tue Sep  2 14:16:40 2025
+# $VADRCONFIGFILE:  /home/nawrocki/vadr-install-dir/vadr.config
 # $VADRSCRIPTSDIR:  /home/nawrocki/vadr-install-dir
 #
 # sequence file:     /home/nawrocki/vadr-install-dir/documentation/scan-files/n5.fa
@@ -476,8 +476,8 @@ integer.
 | `-m`             | multiple-library mode, allow matches to multiple model libraries, without this option matches to only one library are allowed and the program will exit if matches to multiple libraries are found |
 | `-c <s>`         | use the config file `<s>` instead of the config file in $VADRCONFIGFILE |
 | `-v`             | *verbose* mode: all commands will be output to standard output as they are run | 
-| `--cpu <n>`      | parallelize classification stage across <n> CPU workers, requires `-m`, only impacts the initial classification stage, parallelization of annotation stage can be controlled by adding `--split --cpu <n>` to options strings in the config file |
 | `--first`        | specify that if a sequence matches to more than one library, use the first one; by default the higher scoring match is used |
+| `--cpu <n>`      | parallelize classification stage across <n> CPU workers, requires `-m`, only impacts the initial classification stage, parallelization of annotation stage can be controlled by adding `--split --cpu <n>` to options strings in the config file |
 | `--lone`         | exit if at least one sequence matches to multiple libraries |
 | `--origfa`       | do not copy the input fasta file into output directory prior to analysis, use the original |
 | `--keep`         | keep [additional `v-annotate.pl` output files](formats.md#annotate-keep) that are normally removed |
@@ -530,7 +530,7 @@ v-scan.pl --l_dir
 ```
 ############################################################
 #
-# VADR 1.7 (Mar 2025)
+# VADR 1.7 (Sep 2025)
 #
 # config file: /home/nawrocki/vadr-install-dir/default.vadr.config
 #
@@ -543,6 +543,13 @@ hcv           flavi      /home/nawrocki/vadr-install-dir/vadr-models-flavi
 flavi         "          /home/nawrocki/vadr-install-dir/vadr-models-flavi
 norovirus     calici     /home/nawrocki/vadr-install-dir/vadr-models-calici
 calici        "          /home/nawrocki/vadr-install-dir/vadr-models-calici
+sarscov2      "          /home/nawrocki/vadr-install-dir/vadr-models-sarscov2
+corona        "          /home/nawrocki/vadr-install-dir/vadr-models-corona
+flu           "          /home/nawrocki/vadr-install-dir/vadr-models-flu
+rsv           "          /home/nawrocki/vadr-install-dir/vadr-models-rsv
+mpxv          "          /home/nawrocki/vadr-install-dir/vadr-models-mpxv
+#
+
 #
 ```
 
@@ -560,67 +567,65 @@ v-scan.pl --l_opt
 #options key  v-annotate.pl options
 #-----------  ---------------------
 dengue        --split --cpu 1 --group Dengue --nomisc --noprotid --mkey flavi -r
-hcv           --split --cpu 4 -r --mkey flavi --group HCV
+hcv           --split --cpu 1 -r --mkey flavi --group HCV
 flavi         --split --cpu 1 -r --nomisc
 norovirus     --split --cpu 1 --group Norovirus --nomisc --noprotid --mkey calici -r
 calici        --split --cpu 1 -r --nomisc
+sarscov2      --split --cpu 4 -s -r --nomisc --lowsim5seq 6 --lowsim3seq 6 --alt_fail lowscore,insertnn,deletinn --glsearch
+corona        --split --cpu 1 -s -r --nomisc --lowsim5seq 6 --lowsim3seq 6 --alt_fail lowscore,insertnn,deletinn --glsearch
+flu           --split --cpu 2 -r --atgonly --alt_fail extrant5,extrant3 --xnocomp --nomisc --forcegene
+rsv           --split --cpu 1 -r --xnocomp --nomisc
+mpxv          --split --cpu 1 --glsearch --minimap2 -s -r --nomisc --r_lowsimok --r_lowsimxd 100 --r_lowsimxl 2000 --alt_pass discontn,dupregin --s_overhang 150
 #
 ```
 
 ---
 
-List the `v-annotate.pl` options in the config file, for all libraries:
+List all models in the model libraries in the config file:
 
 ```
-v-scan.pl --l_opt
+v-scan.pl --l_mdl
 ```
 ```
 # List of models in each library:
 #
-#idx   model key  options key  model name  length  group      subgroup
-#----  ---------  -----------  ----------  ------  ---------  --------
-#----  ---------  -----------  ----------  ------  ---------  --------
-1.1    flavi      dengue       NC_001477    10735  Dengue     1       
-1.2    flavi      dengue       NC_001474    10723  Dengue     2       
-1.3    flavi      dengue       NC_001475    10707  Dengue     3       
-1.4    flavi      dengue       NC_002640    10649  Dengue     4       
-1.5    flavi      hcv          NC_004102     9646  HCV        1       
-1.6    flavi      hcv          NC_038882     9599  HCV        1       
-1.7    flavi      hcv          NC_009823     9711  HCV        2       
-1.8    flavi      hcv          NC_009824     9456  HCV        3       
-1.9    flavi      hcv          NC_009825     9355  HCV        4       
-1.10   flavi      hcv          NC_009826     9343  HCV        5       
-1.11   flavi      hcv          NC_009827     9628  HCV        6       
-1.12   flavi      hcv          NC_030791     9443  HCV        7       
-1.13   flavi      "            NC_040815     8684  -          -       
-1.14   flavi      "            NC_040788    10311  -          -       
-1.15   flavi      "            NC_040776    10794  -          -       
+#idx   model key  options key  model name  length  group          subgroup
+#----  ---------  -----------  ----------  ------  -------------  --------
+1.1    flavi      dengue       NC_001477    10735  Dengue         1       
+1.2    flavi      dengue       NC_001474    10723  Dengue         2       
+1.3    flavi      dengue       NC_001475    10707  Dengue         3       
+1.4    flavi      dengue       NC_002640    10649  Dengue         4       
+1.5    flavi      hcv          NC_004102     9646  HCV            1       
+1.6    flavi      hcv          NC_038882     9599  HCV            1       
+1.7    flavi      hcv          NC_009823     9711  HCV            2       
+1.8    flavi      hcv          NC_009824     9456  HCV            3       
+1.9    flavi      hcv          NC_009825     9355  HCV            4       
+1.10   flavi      hcv          NC_009826     9343  HCV            5       
+1.11   flavi      hcv          NC_009827     9628  HCV            6       
+1.12   flavi      hcv          NC_030791     9443  HCV            7       
+1.13   flavi      "            NC_040815     8684  -              -       
+1.14   flavi      "            NC_040788    10311  -              -       
+1.15   flavi      "            NC_040776    10794  -              -       
 ..snip..
-1.153  flavi      "            NC_001837     9550  -          -       
-1.154  flavi      "            NC_001710     9392  -          -       
-1.155  flavi      "            NC_001461    12573  -          -       
-1.156  flavi      "            NC_031327    10588  -          -       
-#----  ---------  -----------  ----------  ------  ---------  --------
-2.1    calici     norovirus    NC_001959     7654  Norovirus  GI      
-2.2    calici     norovirus    NC_008311     7382  Norovirus  GV      
-2.3    calici     norovirus    NC_029645     7313  Norovirus  GIII    
-2.4    calici     norovirus    NC_029646     7518  Norovirus  GII     
+1.153  flavi      "            NC_001837     9550  -              -       
+1.154  flavi      "            NC_001710     9392  -              -       
+1.155  flavi      "            NC_001461    12573  -              -       
+1.156  flavi      "            NC_031327    10588  -              -       
+#----  ---------  -----------  ----------  ------  -------------  --------
+2.1    calici     norovirus    NC_001959     7654  Norovirus      GI      
+2.2    calici     norovirus    NC_008311     7382  Norovirus      GV      
+2.3    calici     norovirus    NC_029645     7313  Norovirus      GIII    
+2.4    calici     norovirus    NC_029646     7518  Norovirus      GII     
 ..snip..
-2.35   calici     "            NC_002551     8284  -          -       
-2.36   calici     "            NC_001543     7437  -          -       
-2.37   calici     "            NC_000940     7320  -          -       
-2.38   calici     norovirus    NC_039897     7745  Norovirus  GI      
-2.39   calici     "            NC_040674     6453  -          -       
-2.40   calici     norovirus    NC_040876     7521  Norovirus  GII     
-2.41   calici     norovirus    NC_044045     7551  Norovirus  GIX     
-2.42   calici     norovirus    NC_044046     7543  Norovirus  GVIII   
-2.43   calici     norovirus    NC_044047     7637  Norovirus  GVII    
-2.44   calici     norovirus    NC_044853     7677  Norovirus  GI      
-2.45   calici     norovirus    NC_044854     7693  Norovirus  GI      
-2.46   calici     norovirus    NC_044855     7419  Norovirus  GIV     
-2.47   calici     norovirus    NC_044856     7734  Norovirus  GI      
-2.48   calici     norovirus    NC_044932     7525  Norovirus  GII     
-2.49   calici     norovirus    NC_045762     7839  Norovirus  GIV     
+5.67   flu        "            CY125947      1426  fluA-seg6      N11     
+5.68   flu        "            CY125948      1027  fluA-seg7      -       
+5.69   flu        "            CY125949       895  fluA-seg8      -       
+5.70   flu        "            ON637239      1686  fluA-seg4      H19     
+#----  ---------  -----------  ----------  ------  -------------  --------
+6.1    rsv        "            KY654518     15277  RSV            A       
+6.2    rsv        "            MZ516105     15276  RSV            B       
+#----  ---------  -----------  ----------  ------  -------------  --------
+7.1    mpxv       "            NC_063383   197209  Orthopoxvirus  Monkeypox_virus
 ```
 
 ---

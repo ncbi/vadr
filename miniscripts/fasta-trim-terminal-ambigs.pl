@@ -1,4 +1,5 @@
 #!/usr/bin/env perl
+# version: 1.7 [Sep 2025]
 
 use strict;
 use warnings;

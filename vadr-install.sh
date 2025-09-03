@@ -30,11 +30,11 @@ set -e
 VADRINSTALLDIR=$PWD
 
 # versions
-VERSION="1.6.4"
+VERSION="1.7"
 # bio-easel (need this version info here only so we can check out correct easel branch in Bio-Easel/src)
-BEVERSION="Bio-Easel-0.16"
+BEVERSION="Bio-Easel-0.17"
 # blast+
-BVERSION="2.15.0"
+BVERSION="2.17.0"
 # infernal
 IVERSION="1.1.5"
 # fasta
@@ -42,13 +42,13 @@ FVERSION="36.3.8h"
 FVERSIONGIT="v36.3.8h_04-May-2020"
 FVERSIONGITNOV="36.3.8h_04-May-2020"
 # minimap2
-MM2VERSIONGIT="v2.26"
-MM2VERSIONGITNOV="2.26"
+MM2VERSIONGIT="v2.30"
+MM2VERSIONGITNOV="2.30"
 # dependency git tag
 VVERSION="vadr-$VERSION"
 # vadr models
 CALICIVERSION="1.2-1"
-FLAVIVERSION="1.2-1"
+FLAVIVERSION="1.7-1"
 CORONAVERSION="1.3-3"
 SARSCOV2VERSION="1.3-2"
 FLUVERSION="1.6.3-2"
@@ -184,6 +184,7 @@ if [ "$DOWNLOADORBUILD" != "build" ]; then
     (cd src; curl -k -L -o easel-$BEVERSION.zip https://github.com/EddyRivasLab/easel/archive/$BEVERSION.zip; unzip easel-$BEVERSION.zip; mv easel-$BEVERSION easel; rm easel-$BEVERSION.zip; cd easel; autoconf)
     cd ..
     echo "------------------------------------------------------------"
+
 
     echo "Downloading Infernal version $IVERSION src distribution"
     curl -k -L -o infernal.tar.gz http://eddylab.org/infernal/infernal-$IVERSION.tar.gz
@@ -410,7 +411,7 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
     echo ""
     echo "export VADRINSTALLDIR=\"$VADRINSTALLDIR\""
     echo "export VADRSCRIPTSDIR=\"\$VADRINSTALLDIR/vadr\""
-    echo "export VADRCONFIGFILE=\"\$VADRINSTALLDIR/vadr.config\""
+    echo "export VADRCONFIGFILE=\"\$VADRSCRIPTSDIR/vadr.config\""
     echo "export VADRMODELDIR=\"\$VADRINSTALLDIR/vadr-models-calici\""
     echo "export VADRINFERNALDIR=\"\$VADRINSTALLDIR/infernal/binaries\""
     echo "export VADREASELDIR=\"\$VADRINSTALLDIR/infernal/binaries\""
@@ -439,7 +440,7 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
     echo ""
     echo "setenv VADRINSTALLDIR \"$VADRINSTALLDIR\""
     echo "setenv VADRSCRIPTSDIR \"\$VADRINSTALLDIR/vadr\""
-    echo "setenv VADRCONFIGFILE \"\$VADRINSTALLDIR/vadr.config\""
+    echo "setenv VADRCONFIGFILE \"\$VADRSCRIPTSDIR/vadr.config\""
     echo "setenv VADRMODELDIR \"\$VADRINSTALLDIR/vadr-models-calici\""
     echo "setenv VADRINFERNALDIR \"\$VADRINSTALLDIR/infernal/binaries\""
     echo "setenv VADRHMMERDIR \"\$VADRINSTALLDIR/infernal/binaries\""
