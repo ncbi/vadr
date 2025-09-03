@@ -1,5 +1,5 @@
 # VADR - Viral Annotation DefineR <a name="top"></a>
-#### Version 1.6.4; June 2024
+#### Version 1.7; September 2025
 #### https://github.com/ncbi/vadr.git
 
 VADR is a suite of tools for classifying and analyzing sequences
@@ -61,8 +61,8 @@ This will list each stage of the processing and
 ultimately create an output directory called `out` and fill it with 
 output files. Short descriptions of the output files will be printed to the
 screen. More detailed explanation of output file types can be found
-[here](formats.md#annotate). For a more detailed walk-through example
-of `v-scan.pl` see [this page](scan.md#longwalk).
+[here](documentation/formats.md#annotate). For a more detailed walk-through example
+of `v-scan.pl` see [this page](documentation/scan.md#longwalk).
 
 ---
 ## VADR programs
@@ -108,7 +108,7 @@ with [VADR installation](documentation/install.md#top).
 
 ## VADR model libraries <a name="models"></a>
 
-[VADR installation](install.md#top) includes the following model libraries:
+[VADR installation](documentation/install.md#top) includes the following model libraries:
 
 | library      | model key (short name) | rigorously tested? | number of models | notes | 
 |--------------|------------------------|--------------------|------------------|-------|

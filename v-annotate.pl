@@ -648,8 +648,8 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-annotate.pl";
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a model library";
 my $date          = scalar localtime();
-my $version       = "1.6.4";
-my $releasedate   = "Jun 2024";
+my $version       = "1.7";
+my $releasedate   = "Sep 2025";
 my $pkgname       = "VADR";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
@@ -5273,7 +5273,16 @@ sub add_frameshift_alerts_for_one_sequence {
                     # (($rfpos-$rfpos_prv)-1) part is number of deleted reference positions we just covered
                   } 
                   # and begin the next frame 'token' that will describe the contiguous subsequence that is in the previous frame
-                  my $nins = (defined $F_prv) ? (abs($uapos - $uapos_prv) - 1) : (abs($uapos - $ftr_sstart)); # RHS is part of github issue #83 fix
+                  my $nins = undef;
+                  if(defined $F_prv) {
+                    $nins = abs($uapos - $uapos_prv) - 1;
+                  }
+                  elsif($is_first_sgm) {
+                    $nins = (abs($uapos - $ftr_sstart)); # part of github issue #83 fix
+                  }
+                  else {
+                    $nins = 0;
+                  }
                   my $ins_str = "I" . $nins;
                   $frame_stok_str .= $F_cur . "," . $ins_str . "," . $uapos . "..";
                   $frame_mtok_str .= $F_cur . "," . $rfpos . "..";

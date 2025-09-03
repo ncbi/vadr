@@ -628,6 +628,7 @@ integer.
 | `--ignore_canonss`   | ignore non-zero 'canon_splice_sites' values in `modelinfo` file |
 | `--force_canonss`    | force 'canon_splice_sites' value is 1 for all CDS with qualifying introns (gaps between segments >= `<n>` nucleotides from `--intlen` option, by default `<n>` is `40`), this will force a check for GT/AG splice sites in all introns |
 | `--ignore_exc`       | do not allow any exceptions, ignoring all exception keys (`*_exc`) in the model info file | 
+| `--ignore_oft`       | force all feature types to output to feature table, ignoring any `omit_from_tbl` keys in the model info file | 
 
 
 ### `v-annotate.pl` options related to model files<a name="options-modelfiles"></a>
