@@ -6,15 +6,19 @@
     for each input sequence
   * adds sars-cov-2, flu, rsv, corona, and mpxv model libraries
     to default set that is downloaded by install script
+  * adds `--cls_only` option to `v-annotate.pl` for quickly
+    classifying best model per sequence and then exiting
   * adds support for `force_first_posn` and `force_final_posn`
     keys in `modelinfo` files for 5' and 3' UTR features
-  * adds `--cls_only` option to `v-annotate.pl` for quickly
-    classifying best model and then exiting
-  * adds `--3rules` option to `fasta-trim-terminal-ambigs.pl`
-    miniscript to mimic how GenBank trims ambiguous nucleotides
+  * adds `--3rules` option to `miniscripts/fasta-trim-terminal-ambigs.pl`
+    to mimic how GenBank trims ambiguous nucleotides
     from sequence ends
-  * adds `annotate-tbl2gff.pl` miniscript 
+  * adds `miniscripts/annotate-tbl2gff.pl` script
   * fixes several bugs (github issues #83 and #84)
+  * updates dependencies installed with VADR:
+    - blast+ version 2.17.0
+    - Bio-Easel version 0.17
+    - Minimap version 2.30
   
 ---
 ### VADR 1.6.4 release (June 2024): Bug fix release
