@@ -149,8 +149,8 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-scan.pl";
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>";
 my $synopsis      = "$executable :: scan and annotate sequences against VADR model libraries ";
 my $date          = scalar localtime();
-my $version       = "1.7dev0";
-my $releasedate   = "Feb 2025";
+my $version       = "1.7";
+my $releasedate   = "Sep 2025";
 my $pkgname       = "VADR";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
