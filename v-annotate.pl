@@ -2002,11 +2002,19 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                                                      $do_separate_cds_fa_files_for_protein_validation, \@to_remove_A,
                                                                      ($do_replace_ns) ? \%rpn_output_HH : undef, 
                                                                      $out_root, \%opt_HH, \%ofile_info_HH);
-        if(defined $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"}) {
-          classify_based_on_alignment($execs_H{"esl-alimerge"}, $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"}, $stk_file_HA{$mdl_name}[$a], $stk_nseq, \%{$mdl_alninfo_AHH[$mdl_idx]}, \%cls_output_HH, \@to_remove_A, $dir_tail, $FH_HR);
-        }
       }
       push(@to_remove_A, ($stk_file_HA{$mdl_name}[$a]));
+    }
+    if(defined $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"}) {
+      my $mdl_msa = Bio::Easel::MSA->new({
+	fileLocation => $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"},
+	isDna => 1});
+      $mdl_msa->remove_rf_gap_columns(".-~");
+      for(my $a = 0; $a < scalar(@{$stk_file_HA{$mdl_name}}); $a++) { 
+	if(-s $stk_file_HA{$mdl_name}[$a]) { # skip empty alignments, which may exist if all seqs were not alignable
+          classify_based_on_alignment($mdl_msa, $stk_file_HA{$mdl_name}[$a], \%{$mdl_alninfo_AHH[$mdl_idx]}, \%cls_output_HH, \@to_remove_A, $FH_HR);
+        }
+      }
     }
 
     # Create option-defined output alignments, if any. 
@@ -15091,7 +15099,7 @@ sub validate_and_copy_classification_alignment_file {
 }
 
 #################################################################
-# Subroutine: classify_based_on_alignment
+# Subroutine: OLD_classify_based_on_alignment
 # Incept:     EPN, Thu Aug 28 15:10:05 2025
 #
 # Purpose:    Given an alignment of input sequences, merge it with
@@ -15112,7 +15120,7 @@ sub validate_and_copy_classification_alignment_file {
 # Returns:  void
 #           
 #################################################################
-sub classify_based_on_alignment {
+sub OLD_classify_based_on_alignment {
   my $sub_name = "classify_based_on_alignment";
   my $nargs_exp = 9;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
@@ -15158,5 +15166,107 @@ sub classify_based_on_alignment {
   push(@{$to_remove_AR}, $merged_stk_file);
   
   undef $msa;
+  return;
+}
+
+#################################################################
+# Subroutine: classify_based_on_alignment
+# Incept:     EPN, Thu Aug 28 15:10:05 2025
+#
+# Purpose:    Given an alignment of input sequences, merge it with
+#             the alignment used to build the model, and classify
+#             sequences based on the nearest neighbors.
+#
+# Arguments:
+#  $mdl_msa:         the model MSA
+#  $in_stk_file:     path to stockholm alignment file with alignment of 1 or more input sequences
+#  $mdl_alninfo_HH:  REF to 2D hash with group/subgroup information in 
+#  $cls_output_HHR:  REF to 2D hash of classification output info, possibly modified here
+#  $to_remove_AR:    REF to array of alignment files to remove
+#  $FH_HR:           ref to hash of file handles
+#
+# Returns:  void
+#           
+#################################################################
+sub classify_based_on_alignment {
+  my $sub_name = "classify_based_on_alignment";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mdl_msa, $in_stk_file, $mdl_alninfo_HHR, $cls_output_HHR, $to_remove_AR, $FH_HR) = (@_);
+
+  # read in the input alignment
+  my $seq_msa = Bio::Easel::MSA->new({
+    fileLocation => $in_stk_file,
+    isDna => 1});
+  # remove gap RF columns
+  $seq_msa->remove_rf_gap_columns(".-~");
+
+  if($mdl_msa->alen != $seq_msa->alen) { 
+    ofile_FAIL(sprintf("ERROR, in $sub_name, model and sequence MSAs have different lengths after removing gap RF positions (%d != %d)\n",
+		       $mdl_msa->alen, $seq_msa->alen), 1, $FH_HR);
+  }
+
+  my $alen = $seq_msa->alen;
+  my $mdl_nseq = $mdl_msa->nseq;
+  my $seq_nseq = $seq_msa->nseq;
+  for(my $sidx = 0; $sidx < $seq_nseq; $sidx++) {
+    #    my $seqname = $msa->get_sqname($i);
+    my $seqname = $seq_msa->get_sqname($sidx);
+    my $seq_sqstring = $seq_msa->get_sqstring_aligned($sidx);
+    $seq_sqstring =~ tr/a-z/A-Z/; # shouldn't be necessary, but just to be safe
+    my @seq_sqstring_A = split("", $seq_sqstring);
+    my @fwd_AA = ();
+    my @bck_AA = ();
+    my $apos;
+    for(my $midx = 0; $midx < $mdl_nseq; $midx++) { 
+      my $mdl_sqstring = $mdl_msa->get_sqstring_aligned($midx);
+      $mdl_sqstring =~ tr/a-z/A-Z/; # shouldn't be necessary, but just to be safe
+      my @mdl_sqstring_A = split("", $mdl_sqstring);
+      @{$fwd_AA[$midx]} = ();
+      $fwd_AA[$midx][0] = ($seq_sqstring_A[0] eq $mdl_sqstring_A[0]) ? 1 : 0;
+      for($apos = 1; $apos < $alen; $apos++) {
+	if($seq_sqstring_A[$apos] eq $mdl_sqstring_A[$apos]) { 
+	  $fwd_AA[$midx][$apos] = $fwd_AA[$midx][($apos-1)] + 1;
+	}
+	else {
+	  $fwd_AA[$midx][$apos] = $fwd_AA[$midx][($apos-1)];
+	}
+      }
+      $bck_AA[$midx][($alen-1)] = ($seq_sqstring_A[($alen-1)] eq $mdl_sqstring_A[($alen-1)]) ? 1 : 0;
+      for($apos = ($alen-2); $apos >= 0; $apos--) {
+	if($seq_sqstring_A[$apos] eq $mdl_sqstring_A[$apos]) { 
+	  $bck_AA[$midx][$apos] = $bck_AA[$midx][($apos+1)] + 1;
+	}
+	else {
+	  $bck_AA[$midx][$apos] = $bck_AA[$midx][($apos+1)];
+	}
+      }
+    }
+    # find closest matching model sequence for this sequence
+    my $argmax = 0;
+    my $max = $fwd_AA[0][($alen-1)];
+    my $win_mdl_sqname = undef;
+    printf("\t\tfwd_AA[0][%d]: %d\n", ($alen-1), $fwd_AA[0][$alen-1]);    
+    for(my $midx = 1; $midx < $mdl_nseq; $midx++) { 
+      if($fwd_AA[$midx][($alen-1)] > $max) {
+	$max = $fwd_AA[$midx][($alen-1)];
+	$argmax = $midx;
+      }
+      printf("\t\tfwd_AA[$midx][%d]: %d\n", ($alen-1), $fwd_AA[$midx][$alen-1]);    
+    }
+    $win_mdl_sqname = $mdl_msa->get_sqname($argmax);
+    printf("\twinner for $seqname is $win_mdl_sqname ($max)\n");
+
+    if(defined $mdl_alninfo_HHR->{$win_mdl_sqname}{"group"}) {
+      $cls_output_HHR->{$seqname}{"group1"} = $mdl_alninfo_HHR->{$win_mdl_sqname}{"group"};
+      printf("\tgroup: " . $mdl_alninfo_HHR->{$win_mdl_sqname}{"group"} . "\n");
+    }
+    if(defined $mdl_alninfo_HHR->{$win_mdl_sqname}{"subgroup"}) {
+      $cls_output_HHR->{$seqname}{"subgroup1"} = $mdl_alninfo_HHR->{$win_mdl_sqname}{"subgroup"};
+      printf("\tsubgroup: " . $mdl_alninfo_HHR->{$win_mdl_sqname}{"subgroup"} . "\n");
+    }
+  }
+  undef $seq_msa;
   return;
 }
