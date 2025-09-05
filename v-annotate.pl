@@ -15210,52 +15210,122 @@ sub classify_based_on_alignment {
   my $alen = $seq_msa->alen;
   my $mdl_nseq = $mdl_msa->nseq;
   my $seq_nseq = $seq_msa->nseq;
+
+  my $sidx; # index over sequences in $seq_msa
+  my $midx; # index over sequences in $mdl_msa
+  # store group and subgroup names for each model sequence
+  my @mdl_group_subgroup_A = ();
+  for($midx = 0; $midx < $mdl_nseq; $midx++) {
+    $mdl_group_subgroup_A[$midx] =  (defined $mdl_alninfo_HHR->{$mdl_msa->get_sqname($midx)}{"group"}) ? $mdl_alninfo_HHR->{$mdl_msa->get_sqname($midx)}{"group"} : "";
+    $mdl_group_subgroup_A[$midx] .= (defined $mdl_alninfo_HHR->{$mdl_msa->get_sqname($midx)}{"subgroup"}) ? "." . $mdl_alninfo_HHR->{$mdl_msa->get_sqname($midx)}{"subgroup"} : "";
+  }    
+  
   for(my $sidx = 0; $sidx < $seq_nseq; $sidx++) {
     #    my $seqname = $msa->get_sqname($i);
     my $seqname = $seq_msa->get_sqname($sidx);
     my $seq_sqstring = $seq_msa->get_sqstring_aligned($sidx);
     $seq_sqstring =~ tr/a-z/A-Z/; # shouldn't be necessary, but just to be safe
     my @seq_sqstring_A = split("", $seq_sqstring);
-    my @fwd_AA = ();
-    my @bck_AA = ();
-    my $apos;
+    my @fwd_nmatch_AA = ();
+    my @bck_nmatch_AA = ();
+    my @fwd_denom_AA = ();
+    my @bck_denom_AA = ();
+    my ($apos, $seq_char, $mdl_char, $seq_is_res, $mdl_is_res);
     for(my $midx = 0; $midx < $mdl_nseq; $midx++) { 
       my $mdl_sqstring = $mdl_msa->get_sqstring_aligned($midx);
       $mdl_sqstring =~ tr/a-z/A-Z/; # shouldn't be necessary, but just to be safe
       my @mdl_sqstring_A = split("", $mdl_sqstring);
-      @{$fwd_AA[$midx]} = ();
-      $fwd_AA[$midx][0] = ($seq_sqstring_A[0] eq $mdl_sqstring_A[0]) ? 1 : 0;
-      for($apos = 1; $apos < $alen; $apos++) {
-	if($seq_sqstring_A[$apos] eq $mdl_sqstring_A[$apos]) { 
-	  $fwd_AA[$midx][$apos] = $fwd_AA[$midx][($apos-1)] + 1;
-	}
-	else {
-	  $fwd_AA[$midx][$apos] = $fwd_AA[$midx][($apos-1)];
-	}
+      @{$fwd_nmatch_AA[$midx]} = ();
+      @{$fwd_denom_AA[$midx]} = ();
+      for($apos = 0; $apos < $alen; $apos++) {
+        $seq_char = $seq_sqstring_A[$apos];
+        $mdl_char = $mdl_sqstring_A[$apos];
+        $seq_is_res = ($seq_char =~ m/[A-Z]/) ? 1 : 0;
+        $mdl_is_res = ($mdl_char =~ m/[A-Z]/) ? 1 : 0;
+        $fwd_nmatch_AA[$midx][$apos] = ($apos > 0) ? $fwd_nmatch_AA[$midx][($apos-1)] : 0;
+        $fwd_denom_AA[$midx][$apos]  = ($apos > 0) ? $fwd_denom_AA[$midx][($apos-1)]  : 0;
+        if(($seq_is_res) && ($mdl_is_res)) {
+          $fwd_denom_AA[$midx][$apos]++;
+          if($seq_char eq $mdl_char) {
+            $fwd_nmatch_AA[$midx][$apos]++;
+          }
+        }
       }
-      $bck_AA[$midx][($alen-1)] = ($seq_sqstring_A[($alen-1)] eq $mdl_sqstring_A[($alen-1)]) ? 1 : 0;
-      for($apos = ($alen-2); $apos >= 0; $apos--) {
-	if($seq_sqstring_A[$apos] eq $mdl_sqstring_A[$apos]) { 
-	  $bck_AA[$midx][$apos] = $bck_AA[$midx][($apos+1)] + 1;
-	}
-	else {
-	  $bck_AA[$midx][$apos] = $bck_AA[$midx][($apos+1)];
-	}
+      @{$bck_nmatch_AA[$midx]} = ();
+      @{$bck_denom_AA[$midx]} = ();
+      for($apos = ($alen-1); $apos >= 0; $apos--) {
+        $seq_char = $seq_sqstring_A[$apos];
+        $mdl_char = $mdl_sqstring_A[$apos];
+        $seq_is_res = ($seq_char =~ m/[A-Z]/) ? 1 : 0;
+        $mdl_is_res = ($mdl_char =~ m/[A-Z]/) ? 1 : 0;
+        $bck_nmatch_AA[$midx][$apos] = ($apos < ($alen-1)) ? $bck_nmatch_AA[$midx][($apos+1)] : 0;
+        $bck_denom_AA[$midx][$apos]  = ($apos < ($alen-1)) ? $bck_denom_AA[$midx][($apos+1)]  : 0;
+        if(($seq_is_res) && ($mdl_is_res)) {
+          $bck_denom_AA[$midx][$apos]++;
+          if($seq_char eq $mdl_char) {
+            $bck_nmatch_AA[$midx][$apos]++;
+          }
+        }
       }
     }
+    my $fwd_max = undef;
+    my $bck_max = undef;
+    my $fwd_argmax = undef;
+    my $bck_argmax = undef;
+    my $fwd_argmax_gsg = undef;
+    my $bck_argmax_gsg = undef;
+    # convert to fractional ids, and determine highest scoring model at each position
+    for($apos = 0; $apos < $alen; $apos++) {
+      # find max in fwd and bck matrix
+      if($fwd_denom_AA[0][$apos] > 0) { $fwd_nmatch_AA[0][$apos] = $fwd_nmatch_AA[0][$apos] / $fwd_denom_AA[0][$apos]; }
+      if($bck_denom_AA[0][$apos] > 0) { $bck_nmatch_AA[0][$apos] = $bck_nmatch_AA[0][$apos] / $bck_denom_AA[0][$apos]; }
+      $fwd_max = $fwd_nmatch_AA[0][$apos];
+      $bck_max = $bck_nmatch_AA[0][$apos];
+      $fwd_argmax = 0;
+      $bck_argmax = 0;
+      $fwd_argmax_gsg = $mdl_group_subgroup_A[$fwd_argmax];
+      $bck_argmax_gsg = $mdl_group_subgroup_A[$bck_argmax];
+      for(my $midx = 1; $midx < $mdl_nseq; $midx++) { 
+        if($fwd_denom_AA[$midx][$apos] > 0) { $fwd_nmatch_AA[$midx][$apos] = $fwd_nmatch_AA[$midx][$apos] / $fwd_denom_AA[$midx][$apos]; }
+        if($bck_denom_AA[$midx][$apos] > 0) { $bck_nmatch_AA[$midx][$apos] = $bck_nmatch_AA[$midx][$apos] / $bck_denom_AA[$midx][$apos]; }
+	if($fwd_nmatch_AA[$midx][$apos] > $fwd_max) {
+	  $fwd_max = $fwd_nmatch_AA[$midx][$apos];
+	  $fwd_argmax = $midx;
+	  $fwd_argmax_gsg = $mdl_group_subgroup_A[$fwd_argmax];
+	}
+	if($bck_nmatch_AA[$midx][$apos] > $bck_max) {
+	  $bck_max = $bck_nmatch_AA[$midx][$apos];
+	  $bck_argmax = $midx;
+	  $bck_argmax_gsg = $mdl_group_subgroup_A[$bck_argmax];
+	}
+      }
+      if($fwd_argmax_gsg ne $bck_argmax_gsg) {
+        if((abs($fwd_nmatch_AA[$fwd_argmax][$apos] - $fwd_nmatch_AA[$bck_argmax][$apos]) > 0.00001) &&
+           (abs($bck_nmatch_AA[$fwd_argmax][$apos] - $bck_nmatch_AA[$bck_argmax][$apos]) > 0.00001)) { 
+#          printf("apos: $apos [(%s) sum: %d fwd_argmax_gsg: $fwd_argmax_gsg fwd: $fwd_max bck: $bck_nmatch_AA[$fwd_argmax][$apos]] [(%s) sum: %d bck_argmax_gsg : $bck_argmax_gsg fwd: $fwd_nmatch_AA[$bck_argmax][$apos] bck: $bck_max]\n", $mdl_msa->get_sqname($fwd_argmax), (($fwd_nmatch_AA[$fwd_argmax][$apos] * $fwd_denom_AA[$fwd_argmax][$apos]) + ($bck_nmatch_AA[$fwd_argmax][$apos] * $bck_denom_AA[$fwd_argmax][$apos])), $mdl_msa->get_sqname($bck_argmax), (($fwd_nmatch_AA[$bck_argmax][$apos] * $fwd_denom_AA[$bck_argmax][$apos]) + ($bck_nmatch_AA[$bck_argmax][$apos] * $bck_denom_AA[$bck_argmax][$apos])));
+          my $fwd_contri = ($fwd_denom_AA[$fwd_argmax][$apos] + $fwd_denom_AA[$bck_argmax][$apos]) / 2.;
+          my $bck_contri = ($bck_denom_AA[$bck_argmax][$apos] + $bck_denom_AA[$fwd_argmax][$apos]) / 2.;
+          my $fwd_wgt    = $fwd_contri / ($fwd_contri + $bck_contri);
+          my $bck_wgt    = $bck_contri / ($fwd_contri + $bck_contri);
+          my $fwd_diff   = $fwd_nmatch_AA[$fwd_argmax][$apos] - $fwd_nmatch_AA[$bck_argmax][$apos];
+          my $bck_diff   = $bck_nmatch_AA[$bck_argmax][$apos] - $bck_nmatch_AA[$fwd_argmax][$apos];
+          printf("apos: $apos [(%s) fwd_argmax_gsg: %s fwd: %.5f bck: %.5f] [(%s) bck_argmax_gsg: %s fwd: %.5f bck: %.5f] [fwddiff: %.7f wgt: %.5f bckdiff: %.7f wgt: %.5f wavgdiff: %.7f]\n", $mdl_msa->get_sqname($fwd_argmax), $fwd_argmax_gsg, $fwd_max, $bck_nmatch_AA[$fwd_argmax][$apos], $mdl_msa->get_sqname($bck_argmax), $bck_argmax_gsg, $fwd_nmatch_AA[$bck_argmax][$apos], $bck_max, $fwd_diff, $fwd_wgt, $bck_diff, $bck_wgt, (($fwd_diff * $fwd_wgt) + ($bck_diff * $bck_wgt)));
+        }
+      }
+    }
+    
     # find closest matching model sequence for this sequence
     my $argmax = 0;
-    my $max = $fwd_AA[0][($alen-1)];
-    my $win_mdl_sqname = undef;
-    printf("\t\tfwd_AA[0][%d]: %d\n", ($alen-1), $fwd_AA[0][$alen-1]);    
+    my $max = $fwd_nmatch_AA[0][($alen-1)];
+    printf("\t\tfwd_nmatch_AA[0][%d]: %d\n", ($alen-1), $fwd_nmatch_AA[0][$alen-1]);    
     for(my $midx = 1; $midx < $mdl_nseq; $midx++) { 
-      if($fwd_AA[$midx][($alen-1)] > $max) {
-	$max = $fwd_AA[$midx][($alen-1)];
+      if($fwd_nmatch_AA[$midx][($alen-1)] > $max) {
+	$max = $fwd_nmatch_AA[$midx][($alen-1)];
 	$argmax = $midx;
       }
-      printf("\t\tfwd_AA[$midx][%d]: %d\n", ($alen-1), $fwd_AA[$midx][$alen-1]);    
+      printf("\t\tfwd_nmatch_AA[$midx][%d]: %d\n", ($alen-1), $fwd_nmatch_AA[$midx][$alen-1]);    
     }
-    $win_mdl_sqname = $mdl_msa->get_sqname($argmax);
+    my $win_mdl_sqname = $mdl_msa->get_sqname($argmax);
     printf("\twinner for $seqname is $win_mdl_sqname ($max)\n");
 
     if(defined $mdl_alninfo_HHR->{$win_mdl_sqname}{"group"}) {
