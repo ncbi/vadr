@@ -15231,6 +15231,7 @@ sub classify_based_on_alignment {
     my @fwd_denom_AA = ();
     my @bck_denom_AA = ();
     my ($apos, $seq_char, $mdl_char, $seq_is_res, $mdl_is_res);
+    my $out_weighted_avg_diff = "";
     for(my $midx = 0; $midx < $mdl_nseq; $midx++) { 
       my $mdl_sqstring = $mdl_msa->get_sqstring_aligned($midx);
       $mdl_sqstring =~ tr/a-z/A-Z/; # shouldn't be necessary, but just to be safe
@@ -15274,6 +15275,8 @@ sub classify_based_on_alignment {
     my $bck_argmax = undef;
     my $fwd_argmax_gsg = undef;
     my $bck_argmax_gsg = undef;
+    my $max_weighted_avg_diff = 0;
+    my $argmax_weighted_avg_diff = -1;
     # convert to fractional ids, and determine highest scoring model at each position
     for($apos = 0; $apos < $alen; $apos++) {
       # find max in fwd and bck matrix
@@ -15309,7 +15312,13 @@ sub classify_based_on_alignment {
           my $bck_wgt    = $bck_contri / ($fwd_contri + $bck_contri);
           my $fwd_diff   = $fwd_nmatch_AA[$fwd_argmax][$apos] - $fwd_nmatch_AA[$bck_argmax][$apos];
           my $bck_diff   = $bck_nmatch_AA[$bck_argmax][$apos] - $bck_nmatch_AA[$fwd_argmax][$apos];
-          printf("apos: $apos [(%s) fwd_argmax_gsg: %s fwd: %.5f bck: %.5f] [(%s) bck_argmax_gsg: %s fwd: %.5f bck: %.5f] [fwddiff: %.7f wgt: %.5f bckdiff: %.7f wgt: %.5f wavgdiff: %.7f]\n", $mdl_msa->get_sqname($fwd_argmax), $fwd_argmax_gsg, $fwd_max, $bck_nmatch_AA[$fwd_argmax][$apos], $mdl_msa->get_sqname($bck_argmax), $bck_argmax_gsg, $fwd_nmatch_AA[$bck_argmax][$apos], $bck_max, $fwd_diff, $fwd_wgt, $bck_diff, $bck_wgt, (($fwd_diff * $fwd_wgt) + ($bck_diff * $bck_wgt)));
+          my $weighted_avg_diff = (($fwd_diff * $fwd_wgt) + ($bck_diff * $bck_wgt));
+          if($weighted_avg_diff > $max_weighted_avg_diff) {
+            $max_weighted_avg_diff = $weighted_avg_diff;
+            $argmax_weighted_avg_diff = $apos;
+            $out_weighted_avg_diff = sprintf("$seqname apos: $apos [(%s) fwd_argmax_gsg: %s fwd: %.5f bck: %.5f] [(%s) bck_argmax_gsg: %s fwd: %.5f bck: %.5f] [fwddiff: %.7f wgt: %.5f bckdiff: %.7f wgt: %.5f wavgdiff: %.7f]\n", $mdl_msa->get_sqname($fwd_argmax), $fwd_argmax_gsg, $fwd_max, $bck_nmatch_AA[$fwd_argmax][$apos], $mdl_msa->get_sqname($bck_argmax), $bck_argmax_gsg, $fwd_nmatch_AA[$bck_argmax][$apos], $bck_max, $fwd_diff, $fwd_wgt, $bck_diff, $bck_wgt, $max_weighted_avg_diff);
+          }
+        #          printf("apos: $apos [(%s) fwd_argmax_gsg: %s fwd: %.5f bck: %.5f] [(%s) bck_argmax_gsg: %s fwd: %.5f bck: %.5f] [fwddiff: %.7f wgt: %.5f bckdiff: %.7f wgt: %.5f wavgdiff: %.7f]\n", $mdl_msa->get_sqname($fwd_argmax), $fwd_argmax_gsg, $fwd_max, $bck_nmatch_AA[$fwd_argmax][$apos], $mdl_msa->get_sqname($bck_argmax), $bck_argmax_gsg, $fwd_nmatch_AA[$bck_argmax][$apos], $bck_max, $fwd_diff, $fwd_wgt, $bck_diff, $bck_wgt, (($fwd_diff * $fwd_wgt) + ($bck_diff * $bck_wgt)));
         }
       }
     }
@@ -15317,7 +15326,6 @@ sub classify_based_on_alignment {
     # find closest matching model sequence for this sequence
     my $argmax = 0;
     my $max = $fwd_nmatch_AA[0][($alen-1)];
-    printf("\t\tfwd_nmatch_AA[0][%d]: %d\n", ($alen-1), $fwd_nmatch_AA[0][$alen-1]);    
     for(my $midx = 1; $midx < $mdl_nseq; $midx++) { 
       if($fwd_nmatch_AA[$midx][($alen-1)] > $max) {
 	$max = $fwd_nmatch_AA[$midx][($alen-1)];
@@ -15336,7 +15344,9 @@ sub classify_based_on_alignment {
       $cls_output_HHR->{$seqname}{"subgroup1"} = $mdl_alninfo_HHR->{$win_mdl_sqname}{"subgroup"};
       printf("\tsubgroup: " . $mdl_alninfo_HHR->{$win_mdl_sqname}{"subgroup"} . "\n");
     }
-  }
+    print $out_weighted_avg_diff;
+  } # end of loop over sequences
+
   undef $seq_msa;
   return;
 }
