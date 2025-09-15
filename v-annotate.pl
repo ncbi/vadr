@@ -2010,13 +2010,16 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 	fileLocation => $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"},
 	isDna => 1});
       $mdl_msa->remove_rf_gap_columns(".-~");
+      my @mdl_fwd_AAA = ();
+      my @mdl_bck_AAA = ();
+      count_model_sequence_pairwise_differences($mdl_msa, \@mdl_fwd_AAA, \@mdl_bck_AAA, $FH_HR);
       for(my $a = 0; $a < scalar(@{$stk_file_HA{$mdl_name}}); $a++) { 
 	if(-s $stk_file_HA{$mdl_name}[$a]) { # skip empty alignments, which may exist if all seqs were not alignable
           classify_based_on_alignment($mdl_msa, $stk_file_HA{$mdl_name}[$a], \%{$mdl_alninfo_AHH[$mdl_idx]}, \%cls_output_HH, \@to_remove_A, $FH_HR);
         }
       }
     }
-
+    
     # Create option-defined output alignments, if any. 
     if(opt_Get("--keep", \%opt_HH) || opt_Get("--out_stk", \%opt_HH) || opt_Get("--out_afa", \%opt_HH) || opt_Get("--out_rpstk", \%opt_HH) || opt_Get("--out_rpafa", \%opt_HH)) { 
       if(scalar(@{$stk_file_HA{$mdl_name}}) > 0) { 
@@ -15169,6 +15172,82 @@ sub OLD_classify_based_on_alignment {
   return;
 }
 
+#################################################################
+# Subroutine: count_model_sequence_pairwise_differences
+# Incept:     EPN, Sat Sep  6 12:49:16 2025
+#
+# Purpose:    Count the number of differences between each pair
+#             of sequences in the model alignment and store them
+#             in @{$mdiff_fwd_AAAR} and @{$mdiff_bck_AAAR}.
+#
+# Arguments:
+#  $mdl_msa:         the model MSA
+#  $mdiff_fwd_AAAR:  [0..i..mdl_nseq][0..j..mdl_nseq][1..apos..mdl_msa->alen]
+#                    number of differences between aligned sequence i and j
+#                    from position 1..apos in $mdl_msa, only filled for i < j
+#  $mdiff_bwck_AAAR: [0..i..mdl_nseq][0..j..mdl_nseq][1..apos..mdl_msa->alen]
+#                    number of differences between aligned sequence i and j
+#                    from apos+1..alen in $mdl_msa, only filled for i < j
+#  $FH_HR:           ref to hash of file handles
+#
+# Returns:  void
+#           
+#################################################################
+sub count_model_sequence_pairwise_differences {
+  my $sub_name = "count_model_sequence_pairwise_differences";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mdl_msa, $mdiff_fwd_AAAR, $mdiff_bck_AAAR, $FH_HR) = (@_);
+
+  my $mdl_nseq = $mdl_msa->nseq;
+  my ($i, $j, $apos);
+  my $i_seq = undef;
+  my $j_seq = undef;
+  my @i_seq_A = ();
+  my @j_seq_A = ();
+  my $alen = $mdl_msa->alen;
+  my ($i_char, $j_char, $i_is_res, $j_is_res);
+  
+  for($i = 0; $i < $mdl_nseq; $i++) {
+    my $i_seq = $mdl_msa->get_sqstring_aligned($i);
+    $i_seq =~ tr/a-z/A-Z/; # shouldn't be necessary, but just to be safe
+    @i_seq_A = split("", $i_seq);
+    @{$mdiff_fwd_AAAR->[$i]} = ();
+    @{$mdiff_bck_AAAR->[$i]} = ();
+    for($j = 0; $j < $i; $j++) {
+      @{$mdiff_fwd_AAAR->[$i][$j]} = ();
+      @{$mdiff_bck_AAAR->[$i][$j]} = ();
+      my $j_seq = $mdl_msa->get_sqstring_aligned($j);
+      $j_seq =~ tr/a-z/A-Z/; # shouldn't be necessary, but just to be safe
+      @j_seq_A = split("", $j_seq);
+      for($apos = 0; $apos < $alen; $apos++) {
+        my $i_char = $i_seq_A[$apos];
+        my $j_char = $j_seq_A[$apos];
+        my $i_is_res = ($i_char =~ m/[A-Z]/) ? 1 : 0;
+        my $j_is_res = ($j_char =~ m/[A-Z]/) ? 1 : 0;
+        $mdiff_fwd_AAAR->[$i][$j][$apos] = ($apos > 0) ? $mdiff_fwd_AAAR->[$i][$j][($apos-1)] : 0;
+        if(($i_is_res) && ($j_is_res) && ($i_char eq $j_char)) {
+          $mdiff_fwd_AAAR->[$i][$j][$apos]++;
+        }
+      }
+      for($apos = ($alen-2); $apos >= 0; $apos--) { 
+        $i_char = $i_seq_A[($apos+1)]; # bc bck[i][j][apos] doesn't include apos 
+        $j_char = $j_seq_A[($apos+1)]; # bc bck[i][j][apos] doesn't include apos 
+        $i_is_res = ($i_char =~ m/[A-Z]/) ? 1 : 0; 
+        $j_is_res = ($j_char =~ m/[A-Z]/) ? 1 : 0;
+        $mdiff_bck_AAAR->[$i][$j][$apos] = ($apos < ($alen-1)) ? $mdiff_bck_AAAR->[$i][$j][($apos+1)] : 0;
+        if(($i_is_res) && ($j_is_res) && ($i_char eq $j_char)) {
+          $mdiff_fwd_AAAR->[$i][$j][$apos]++;
+        }
+      }
+    }
+    for($j = $i; $j < $mdl_nseq; $j++) {
+      @{$mdiff_fwd_AAAR->[$i][$j]} = ();
+    }
+  }
+  return 0;
+}
 #################################################################
 # Subroutine: classify_based_on_alignment
 # Incept:     EPN, Thu Aug 28 15:10:05 2025
