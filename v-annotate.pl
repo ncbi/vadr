@@ -382,6 +382,7 @@ opt_Add("--r_pvorig",     "boolean",      0,   $g,    "-r", undef,    "use origi
 opt_Add("--r_prof",       "boolean",      0,   $g,    "-r", undef,    "use slower profile methods, not blastn, to identify Ns to replace",            "use slower profile methods, not blastn, to identify Ns to replace",       \%opt_HH, \@opt_order_A);
 opt_Add("--r_list",       "string",   undef,   $g,    "-r", undef,    "with -r, only use models listed in file <s> for N replacement stage",          "with -r, only use models listed in file <s> for N replacement stage",     \%opt_HH, \@opt_order_A);
 opt_Add("--r_only",       "string",   undef,   $g,    "-r","--r_list","with -r, only use model named <s> for N replacement stage",                    "with -r, only use model named <s> for N replacement stage",               \%opt_HH, \@opt_order_A);
+opt_Add("--r_file",       "string",   undef,   $g,    "-r","--r_prof",      "for -r, use blastn db in file <s>",                                      "for -r, use blastn db in file <s>",                                       \%opt_HH, \@opt_order_A);
 opt_Add("--r_blastnws",   "integer",      7,   $g,    "-r", undef,          "for -r, set blastn -word_size <n> to <n>",                               "for -r, set blastn -word_size <n> to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--r_blastnrw",   "integer",      1,   $g,    "-r", undef,          "for -r, set blastn -reward <n> to <n>",                                  "for -r, set blastn -reward <n> to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--r_blastnpn",   "integer",     -2,   $g,    "-r", undef,          "for -r, set blastn -penalty <n> to <n>",                                 "for -r, set blastn -penalty <n> to <n>", \%opt_HH, \@opt_order_A);
@@ -588,6 +589,7 @@ my $options_okay =
                 'r_prof'           => \$GetOptions_H{"--r_prof"},
                 'r_list=s'         => \$GetOptions_H{"--r_list"},
                 'r_only=s'         => \$GetOptions_H{"--r_only"},
+                'r_file=s'         => \$GetOptions_H{"--r_file"},
                 'r_blastnws=s'     => \$GetOptions_H{"--r_blastnws"},
                 'r_blastnrw=s'     => \$GetOptions_H{"--r_blastnrw"},
                 'r_blastnpn=s'     => \$GetOptions_H{"--r_blastnpn"},
@@ -926,6 +928,7 @@ my $opt_mdir_used  = opt_IsUsed("--mdir", \%opt_HH);
 my $opt_mkey_used  = opt_IsUsed("--mkey", \%opt_HH);
 my $opt_mlist_used = opt_IsUsed("--mlist", \%opt_HH);
 my $opt_rlist_used = opt_IsUsed("--r_list", \%opt_HH);
+my $opt_rfile_used = opt_IsUsed("--r_file", \%opt_HH);
 my $opt_m_used     = opt_IsUsed("-m", \%opt_HH);
 my $opt_a_used     = opt_IsUsed("-a", \%opt_HH);
 my $opt_i_used     = opt_IsUsed("-i", \%opt_HH);
@@ -937,17 +940,18 @@ my $opt_xsub_used  = opt_IsUsed("--xsub", \%opt_HH);
 
 my $model_key      = opt_Get("--mkey", \%opt_HH); # special case, default value is set in option definition
 
-my $model_dir      = ($opt_mdir_used)  ? opt_Get("--mdir",     \%opt_HH) : $env_vadr_model_dir;
-my $model_list     = ($opt_mlist_used) ? opt_Get("--mlist",    \%opt_HH) : undef;
-my $replace_list   = ($opt_rlist_used) ? opt_Get("--r_list",   \%opt_HH) : undef;
-my $cm_file        = ($opt_m_used)     ? opt_Get("-m",         \%opt_HH) : $model_dir . "/" . $model_key . ".cm";
-my $hmm_pt_file    = ($opt_a_used)     ? opt_Get("-a",         \%opt_HH) : $model_dir . "/" . $model_key . ".hmm";
-my $minfo_file     = ($opt_i_used)     ? opt_Get("-i",         \%opt_HH) : $model_dir . "/" . $model_key . ".minfo";
-my $blastn_db_file = ($opt_n_used)     ? opt_Get("-n",         \%opt_HH) : $model_dir . "/" . $model_key . ".fa";
-my $blastx_db_dir  = ($opt_x_used)     ? opt_Get("-x",         \%opt_HH) : $model_dir;
-my $qsubinfo_file  = ($opt_q_used)     ? opt_Get("-q",         \%opt_HH) : $env_vadr_scripts_dir . "/vadr.qsubinfo";
-my $msub_file      = ($opt_msub_used)  ? opt_Get("--msub",     \%opt_HH) : undef;
-my $xsub_file      = ($opt_xsub_used)  ? opt_Get("--xsub",     \%opt_HH) : undef;
+my $model_dir        = ($opt_mdir_used)  ? opt_Get("--mdir",     \%opt_HH) : $env_vadr_model_dir;
+my $model_list       = ($opt_mlist_used) ? opt_Get("--mlist",    \%opt_HH) : undef;
+my $replace_list     = ($opt_rlist_used) ? opt_Get("--r_list",   \%opt_HH) : undef;
+my $r_blastn_db_file = ($opt_rfile_used) ? opt_Get("--r_file",   \%opt_HH) : undef;
+my $cm_file          = ($opt_m_used)     ? opt_Get("-m",         \%opt_HH) : $model_dir . "/" . $model_key . ".cm";
+my $hmm_pt_file      = ($opt_a_used)     ? opt_Get("-a",         \%opt_HH) : $model_dir . "/" . $model_key . ".hmm";
+my $minfo_file       = ($opt_i_used)     ? opt_Get("-i",         \%opt_HH) : $model_dir . "/" . $model_key . ".minfo";
+my $blastn_db_file   = ($opt_n_used)     ? opt_Get("-n",         \%opt_HH) : $model_dir . "/" . $model_key . ".fa";
+my $blastx_db_dir    = ($opt_x_used)     ? opt_Get("-x",         \%opt_HH) : $model_dir;
+my $qsubinfo_file    = ($opt_q_used)     ? opt_Get("-q",         \%opt_HH) : $env_vadr_scripts_dir . "/vadr.qsubinfo";
+my $msub_file        = ($opt_msub_used)  ? opt_Get("--msub",     \%opt_HH) : undef;
+my $xsub_file        = ($opt_xsub_used)  ? opt_Get("--xsub",     \%opt_HH) : undef;
 my $cm_extra_string       = "";
 my $pthmm_extra_string    = "";
 my $minfo_extra_string    = "";
@@ -1041,6 +1045,14 @@ if(defined $replace_list) {
   utl_FileValidateExistsAndNonEmpty($replace_list, "replacement model list file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
 
+# only check for -r sequence file if --r_file used
+if(defined $r_blastn_db_file) { 
+  utl_FileValidateExistsAndNonEmpty($r_blastn_db_file, "replacement sequence file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+  foreach my $sfx (".nhr", ".nin", ".nsq", ".ndb", ".not", ".nto", ".ntf") { 
+    utl_FileValidateExistsAndNonEmpty($r_blastn_db_file . $sfx, "replace blastn $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+  }
+}
+
 ###########################
 # Parse the model info file
 ###########################
@@ -1079,6 +1091,10 @@ if(opt_IsUsed("--subgroup", \%opt_HH)) {
     ofile_FAIL("ERROR with --group $exp_group and --subgroup $exp_subgroup,\ndid not read any models with group defined as $exp_group and subgroup defined as $exp_subgroup in model info file:\n$minfo_file", 1, $FH_HR);
   }
 }
+
+# if we will use the blastn db file, make sure we have exactly 1 sequence
+
+
 
 # if --mlist used ($model_list will be defined) validate all models listed 
 # in $model_list are in model info file
@@ -1462,10 +1478,16 @@ my $in_sqfile  = Bio::Easel::SqFile->new({ fileLocation => $in_fa_file }); # the
 my $rpn_sqfile = undef;
 # open the blastn_db sequence file too, if we need it
 my $blastn_db_sqfile = undef;
+my $r_blastn_db_sqfile = undef;
 my $r_subset_blastn_db_file = undef;
 if(($do_blastn_any) || ($do_replace_ns) || ($do_glsearch) || ($do_minimap2)) { 
   $blastn_db_sqfile = Bio::Easel::SqFile->new({ fileLocation => $blastn_db_file });
-
+  if(defined $r_blastn_db_file) {
+    $r_blastn_db_sqfile = Bio::Easel::SqFile->new({ fileLocation => $r_blastn_db_file });
+  }
+  else {
+    $r_blastn_db_sqfile = $blastn_db_sqfile;
+  }
   # deal with the --r_list or --r_only option (they are incompatible so we can only have one or the other)
   if((defined $replace_list) || (opt_IsUsed("--r_only", \%opt_HH))) { 
     # create the blastn db file that we will use with -r, which must
@@ -1523,9 +1545,11 @@ my $rpn_fa_file = undef;
 if($do_replace_ns) { 
   my %seq_replaced_H = ();
   my %mdl_seq_name_HA = ();
-  classification_stage(\%execs_H, "rpn.cls", $cm_file,
-                       ((defined $r_subset_blastn_db_file) ? $r_subset_blastn_db_file : $blastn_db_file),
-                       $blastn_in_fa_file, \%seq_len_H,
+  my $blastn_db_file2use = (defined $r_blastn_db_file) ? $r_blastn_db_file : $blastn_db_file;
+  if(defined $r_subset_blastn_db_file) {
+    $blastn_db_file2use = $r_subset_blastn_db_file;
+  }
+  classification_stage(\%execs_H, "rpn.cls", $cm_file, $blastn_db_file2use, $blastn_in_fa_file, \%seq_len_H,
                        $qsub_prefix, $qsub_suffix, \@mdl_info_AH, \%stg_results_HHH, 
                        $out_root, $progress_w, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
   coverage_determination_stage(\%execs_H, "rpn.cdt", $cm_file, \$in_sqfile, \@seq_name_A, \%seq_len_H,
@@ -1546,7 +1570,7 @@ if($do_replace_ns) {
     $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
     if(defined $mdl_seq_name_HA{$mdl_name}) { 
       my $tblout_file = $ofile_info_HH{"fullpath"}{"rpn.cdt.$mdl_name.tblout"};
-      $nseq_replaced += new_parse_cdt_tblout_file_and_replace_ns($tblout_file, \$in_sqfile, \$blastn_db_sqfile, \@mdl_info_AH, $mdl_name, $mdl_idx,
+      $nseq_replaced += new_parse_cdt_tblout_file_and_replace_ns($tblout_file, \$in_sqfile, \$r_blastn_db_sqfile, \@mdl_info_AH, $mdl_name, $mdl_idx,
 								 \@seq_name_A, \%seq_len_H, \%seq_replaced_H, \%rpn_output_HH, 
 								 \%alt_info_HH, \%alt_seq_instances_HH, $out_root, \%opt_HH, \%ofile_info_HH);
     }
