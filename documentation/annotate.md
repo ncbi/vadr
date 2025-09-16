@@ -1395,10 +1395,10 @@ running `v-annotate.pl` with the `--alt_list` option.
 the coords must be `<mdllen>..<mdllen>:+` where `<mdllen>` is the
 length of the reference model.
 
-`**` For `indf5lc_exc` the `coords` must be `<n>..<n>:+` where `<n>` is the
+`**` For `indf5lc_exc` the `coords` must be `<n>..<n>:+` or `<n>..<n>:-` where `<n>` is the
 5'-most position of the feature.
 
-`***` For `indf3lc_exc` the `coords` must be `<n>..<n>:+` where `<n>` is the
+`***` For `indf3lc_exc` the `coords` must be `<n>..<n>:+` or `<n>..<n>:-` where `<n>` is the
 3'-most position of the feature.
 
 Prior to VADR version 1.6, some alert exceptions in model info files
