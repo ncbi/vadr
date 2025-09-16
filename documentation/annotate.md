@@ -877,6 +877,7 @@ with format described [here](formats.md#rpn).
 | `--r_prof`          | for `-r`, use slower profile methods, not blastn, to identify Ns to replaced |
 | `--r_list`          | for `-r`, only use models listed in file `<s>` for N replacement stage |
 | `--r_only <s>`      | for `-r`, only use model named `<s>` for N replacement stage |
+| `--r_file <s>`      | for `-r`, use blastn db in file `<s>`, can have multiple seqs per model but all sequence names must either equal a model name, or be `<seqname>:MODEL:<mdlname>` where `<mdlname>` is a model name |
 | `--r_blastnws <n>`  | for `-r`, set the blastn `-word_size` parameter to `<n>`, the default value for `<n>` is `7` |
 | `--r_blastnrw <n>`  | for `-r`, set the blastn `-reward` parameter to `<n>`, the default value for `<n>` is `1` |
 | `--r_blastnpn <n>`  | for `-r`, set the blastn `-penalty` parameter to `<n>`, the default value for `<n>` is `-2` |
