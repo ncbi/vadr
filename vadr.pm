@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # 
-# version: 1.6.4 [Jun 2024]
+# version: 1.7 [Sep 2025]
 #
 # vadr.pm
 # Eric Nawrocki
