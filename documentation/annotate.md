@@ -1355,6 +1355,10 @@ should be added to the model line (line starting with `MODEL`):
 | *fstlocfi*   | POSSIBLE_FRAMESHIFT_LOW_CONF   | `fst_exc`       | coords-only          | feature (CDS)|
 | *extrant5*   | EXTRA_SEQUENCE_START           | `extrant5_exc`  | coords-value*        | model | 
 | *extrant3*   | EXTRA_SEQUENCE_END             | `extrant3_exc`  | coords-value*        | model | 
+| *indf5lcn*   | INDEFINITE_ANNOTATION_START    | `indf5lc_exc`   | coords-value**       | feature (non-CDS) |
+| *indf5lcc*   | INDEFINITE_ANNOTATION_START    | `indf5lc_exc`   | coords-value**       | feature (CDS)     |
+| *indf3lcn*   | INDEFINITE_ANNOTATION_START    | `indf3lc_exc`   | coords-value***      | feature (non-CDS) |
+| *indf3lcc*   | INDEFINITE_ANNOTATION_START    | `indf3lc_exc`   | coords-value***      | feature (CDS)     |
 
 If you specify a given exception key and value in the model info file,
 it will mean that all alerts with that specific key will have
@@ -1387,9 +1391,15 @@ multiple position ranges and values, separate with commas.
 The alert codes which allow exception ranges can also be viewed by
 running `v-annotate.pl` with the `--alt_list` option.
 
-For `extrant5_exc` the `coords` must be `1..1:+`. For `extrant3_exc`,
+`*` For `extrant5_exc` the `coords` must be `1..1:+`. For `extrant3_exc`,
 the coords must be `<mdllen>..<mdllen>:+` where `<mdllen>` is the
 length of the reference model.
+
+`**` For `indf5lc_exc` the `coords` must be `<n>..<n>:+` where `<n>` is the
+5'-most position of the feature.
+
+`***` For `indf3lc_exc` the `coords` must be `<n>..<n>:+` where `<n>` is the
+3'-most position of the feature.
 
 Prior to VADR version 1.6, some alert exceptions in model info files
 were permitted in different formats. As of version 1.6, the formats

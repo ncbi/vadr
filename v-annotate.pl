@@ -4349,7 +4349,64 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
   my $msa_doctor_flag  = 0; # set to 1 if we end up doctoring any sequence, if 1 at end
                             # we have to rewrite the stockholm MSA file to save doctored changes
 
-  # move through each sequence in the alignment and determine its boundaries for each model region
+  # deal with indf{5,3}l_exc exceptions in model info file
+  my $ftr_idx;
+  my $sgm_idx; 
+  my %sgm_indf5lc_exc_H = ();
+  my %sgm_indf3lc_exc_H = ();
+  my %indflc_sgm_exc_H = ();
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
+    %indflc_sgm_exc_H = ();
+    if(! opt_Get("--ignore_exc", $opt_HHR)) { 
+      # deal with indf5lc_exc:
+      if((defined $alt_info_HHR->{"indf5lcn"}{"exc_key"}) && 
+         (defined $ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"indf5lcn"}{"exc_key"}})) { 
+	vdr_ExceptionCoordsAndValuesToSegmentsAndValues($ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"indf5lcn"}{"exc_key"}}, undef, \%indflc_sgm_exc_H, $FH_HR);
+	my $ftr_5p_pos = vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
+	my $ftr_strand = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
+	my $exp_ftr_5p_pos_coords = vdr_CoordsSinglePositionSegmentCreate($ftr_5p_pos, $ftr_strand, $FH_HR);
+	my $errmsg = "ERROR, in $sub_name, indf5lc_exc in model info file should have exactly 1 coordinate span: \'$ftr_5p_pos..$ftr_5p_pos:$ftr_strand\'";
+	if(scalar(keys %indflc_sgm_exc_H) != 1) { 
+	  ofile_FAIL($errmsg, 1, $FH_HR);
+	}
+	my $indflc_exc = undef;
+	foreach my $key (keys %indflc_sgm_exc_H) { 
+	  if($key ne $exp_ftr_5p_pos_coords) { 
+	    ofile_FAIL($errmsg . ", but read $key", 1, $FH_HR);
+	  }
+	  $indflc_exc = $indflc_sgm_exc_H{$key};
+	}
+	for($sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <=$ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) {
+	  $sgm_indf5lc_exc_H{$sgm_idx} = $indflc_exc;
+	}
+      }
+      # deal with indf3lc_exc:
+      if((defined $alt_info_HHR->{"indf3lcn"}{"exc_key"}) && 
+         (defined $ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"indf3lcn"}{"exc_key"}})) { 
+	vdr_ExceptionCoordsAndValuesToSegmentsAndValues($ftr_info_AHR->[$ftr_idx]{$alt_info_HHR->{"indf3lcn"}{"exc_key"}}, undef, \%indflc_sgm_exc_H, $FH_HR);
+	my $ftr_3p_pos = vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
+	my $ftr_strand = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
+	my $exp_ftr_3p_pos_coords = vdr_CoordsSinglePositionSegmentCreate($ftr_3p_pos, $ftr_strand, $FH_HR);
+	my $errmsg = "ERROR, in $sub_name, indf3lc_exc in model info file should have exactly 1 coordinate span: \'$ftr_3p_pos..$ftr_3p_pos:$ftr_strand\'";
+	if(scalar(keys %indflc_sgm_exc_H) != 1) { 
+	  ofile_FAIL($errmsg, 1, $FH_HR);
+	}
+	my $indflc_exc = undef;
+	foreach my $key (keys %indflc_sgm_exc_H) { 
+	  if($key ne $exp_ftr_3p_pos_coords) { 
+	    ofile_FAIL($errmsg . ", but read $key", 1, $FH_HR);
+	  }
+	  $indflc_exc = $indflc_sgm_exc_H{$key};
+	}
+	for($sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <=$ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) {
+	  $sgm_indf3lc_exc_H{$sgm_idx} = $indflc_exc;
+	}
+      }
+    }
+  }
+
+
+  # for each sequence, go through all segments and fill in the start and stop (unaligned seq) positions
   my $nseq = $msa->nseq; 
   if($do_glsearch && ($nseq != 1)) { 
     ofile_FAIL("ERROR in $sub_name, --glsearch enabled but $nseq > 1 seqs in alignment for parsing", 1, $FH_HR);
@@ -4357,8 +4414,6 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
   if($do_forcedcrins && ($nseq != 1)) { 
     ofile_FAIL("ERROR in $sub_name, --forcedcrins enabled but $nseq > 1 seqs in alignment for parsing", 1, $FH_HR);
   }
-
-  # for each sequence, go through all segments and fill in the start and stop (unaligned seq) positions
   for(my $i = 0; $i < $nseq; $i++) { 
     my $seq_name = $msa->get_sqname($i);
     if(! exists $seq_len_HR->{$seq_name}) { 
@@ -4554,8 +4609,6 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
     #        hit rf span is from A[rfpos] to B[rfpos]
 
     # now we have all the info we need for this sequence to determine sequence boundaries for each model segment
-    my $sgm_idx; 
-    my $ftr_idx;
     my %ftr_deletinf_alt_msg_HA = (); # key is $ftr_idx, value is an array of alert messages for deletinf alerts, one per 
                                       # segment for $ftr_idx that is completely deleted. This is rare and *not identifying*
                                       # these is github issue 21
@@ -4564,8 +4617,15 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
       my $sgm_stop_rfpos  = $sgm_info_AHR->[$sgm_idx]{"stop"};
       my $sgm_strand      = $sgm_info_AHR->[$sgm_idx]{"strand"};
       $ftr_idx = $sgm_info_AHR->[$sgm_idx]{"map_ftr"};
-      my $ftr_pp_thresh = (vdr_FeatureTypeIsMatPeptide($ftr_info_AHR, $ftr_idx)) ? $pp_thresh_mp : $pp_thresh_non_mp;
-      my $ftr_pp_msg    = (vdr_FeatureTypeIsMatPeptide($ftr_info_AHR, $ftr_idx)) ? " (mat_peptide feature)" : "";
+      my $ftr_pp_5p_thresh = (vdr_FeatureTypeIsMatPeptide($ftr_info_AHR, $ftr_idx)) ? $pp_thresh_mp : $pp_thresh_non_mp;
+      my $ftr_pp_3p_thresh = (vdr_FeatureTypeIsMatPeptide($ftr_info_AHR, $ftr_idx)) ? $pp_thresh_mp : $pp_thresh_non_mp;
+      if(defined $sgm_indf5lc_exc_H{$sgm_idx}) {
+	$ftr_pp_5p_thresh = $sgm_indf5lc_exc_H{$sgm_idx};
+      }
+      if(defined $sgm_indf3lc_exc_H{$sgm_idx}) {
+	$ftr_pp_3p_thresh = $sgm_indf3lc_exc_H{$sgm_idx};
+      }
+      my $ftr_pp_msg = (vdr_FeatureTypeIsMatPeptide($ftr_info_AHR, $ftr_idx)) ? " (mat_peptide feature)" : "";
 
 #####################################
 # Debugging print block
@@ -4795,7 +4855,7 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
             push(@alt_mcoords_A, sprintf("mdl:%s;", vdr_CoordsSinglePositionSegmentCreate($sgm_start_rfpos, $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"strand"}, $FH_HR)));
             push(@alt_ftr_A,     $ftr_idx);
           } 
-          elsif((! $do_glsearch) && (($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"} - $ftr_pp_thresh) < (-1 * $small_value))) { # only check PP if it's not a gap
+          elsif((! $do_glsearch) && (($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"} - $ftr_pp_5p_thresh) < (-1 * $small_value))) { # only check PP if it's not a gap
             # report indf5lcc or indf5lcn
             # indf5lcc: if this segment is 5'-most segment of a CDS or 5'-most segment of a feature that has same start position as a CDS
             # indf5lcn: if not indf5lcc
@@ -4807,7 +4867,7 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
             else { 
               push(@alt_code_A, "indf5lcn");
             }
-            push(@alt_str_A,     sprintf("%.2f<%.2f%s%s", $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}, $ftr_pp_thresh, $ftr_pp_msg, vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx)));
+            push(@alt_str_A,     sprintf("%.2f<%.2f%s%s", $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}, $ftr_pp_5p_thresh, $ftr_pp_msg, vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx)));
             push(@alt_scoords_A, sprintf("seq:%s;", vdr_CoordsSinglePositionSegmentCreate($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"}, 
                                                                                          $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"strand"}, $FH_HR)));
             push(@alt_mcoords_A, sprintf("mdl:%s;", vdr_CoordsSinglePositionSegmentCreate($sgm_start_rfpos, $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"strand"}, $FH_HR)));
@@ -4830,7 +4890,7 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
             push(@alt_mcoords_A, sprintf("mdl:%s;", vdr_CoordsSinglePositionSegmentCreate($sgm_stop_rfpos, $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"strand"}, $FH_HR)));
             push(@alt_ftr_A,     $ftr_idx);
           }
-          elsif((! $do_glsearch) && (($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"} - $ftr_pp_thresh) < (-1 * $small_value))) { # only check PP if it's not a gap
+          elsif((! $do_glsearch) && (($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"} - $ftr_pp_3p_thresh) < (-1 * $small_value))) { # only check PP if it's not a gap
             # report indf3lcc or indf3lcn
             # indf5lcc: if this segment is 3'-most segment of a CDS or 3'-most segment of a feature that has same stop position as a CDS
             # indf5lcn: if not indf5lcc
@@ -4842,7 +4902,7 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
             else { 
               push(@alt_code_A, "indf3lcn");
             }
-            push(@alt_str_A,     sprintf("%.2f<%.2f%s%s", $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}, $ftr_pp_thresh, $ftr_pp_msg, vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx)));
+            push(@alt_str_A,     sprintf("%.2f<%.2f%s%s", $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}, $ftr_pp_3p_thresh, $ftr_pp_msg, vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx)));
             push(@alt_scoords_A, sprintf("seq:%s;", vdr_CoordsSinglePositionSegmentCreate($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstop"}, 
                                                                                          $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"strand"}, $FH_HR)));
             push(@alt_mcoords_A, sprintf("mdl:%s;", vdr_CoordsSinglePositionSegmentCreate($sgm_stop_rfpos, $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"strand"}, $FH_HR)));
