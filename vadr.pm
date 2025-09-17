@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # 
-# version: 1.6.4 [Jun 2024]
+# version: 1.7 [Sep 2025]
 #
 # vadr.pm
 # Eric Nawrocki
@@ -3093,13 +3093,13 @@ sub vdr_AlertInfoInitialize {
   vdr_AlertInfoAdd($alt_info_HHR, "indf5lcc", "feature",
                    "INDEFINITE_ANNOTATION_START", # short description
                    "alignment to homology model has low confidence at 5' boundary for feature that is or matches a CDS", # long description
-                   0, 0, 0, 1, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   0, 0, 0, 1, "indf5lc_exc", "coords-value", # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indf5lcn", "feature",
                    "INDEFINITE_ANNOTATION_START", # short description
                    "alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS", # long description
-                   0, 1, 0, 1, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   0, 1, 0, 1, "indf5lc_exc", "coords-value", # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indf5plg", "feature",
@@ -3123,13 +3123,13 @@ sub vdr_AlertInfoInitialize {
   vdr_AlertInfoAdd($alt_info_HHR, "indf3lcc", "feature",
                    "INDEFINITE_ANNOTATION_END", # short description
                    "alignment to homology model has low confidence at 3' boundary for feature that is or matches a CDS", # long description
-                   0, 0, 0, 1, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   0, 0, 0, 1, "indf3lc_exc", "coords-value", # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indf3lcn", "feature",
                    "INDEFINITE_ANNOTATION_END", # short description
                    "alignment to homology model has low confidence at 3' boundary for feature that does not match a CDS", # long description
-                   0, 1, 0, 1, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   0, 1, 0, 1, "indf3lc_exc", "coords-value", # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indf3plg", "feature",
@@ -6012,9 +6012,9 @@ sub vdr_ModelInfoFileParse {
 #             '_exc', and dies if any such keys are not valid.
 #             
 # Arguments: 
-#  $mdl_info_HR:    ref to the model info hash (for one model)
+#  $mdl_info_HR:  ref to the model info hash (for one model)
 #  $alt_info_HHR: ref to the alert info hash of hashes
-#  $FH_HR:          ref to hash of file handles, including "log" and "cmd"
+#  $FH_HR:        ref to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
 #
