@@ -11204,7 +11204,7 @@ sub output_feature_table {
             # yes if:
             # - --nomisc not enabled OR we have >=1 'misc_not_failure' feature/alert but zero fatal alerts
             # AND 
-            # - feature type is not one of our hard-coded list of feature types that never get misc_feature-ized
+            # - feature type is one of our hard-coded list of feature types that get misc_feature-ized (CDS)
             if($have_fatal_alt || $have_misc_alt) { 
               if((! $do_nomisc) || ((! $have_fatal_alt) && ($have_misc_alt))) { 
                 if(vdr_FeatureTypeCanBecomeMiscFeature($ftr_info_AHR, $ftr_idx)) { 

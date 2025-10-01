@@ -2079,7 +2079,7 @@ sub vdr_FeatureTypeIsCdsOrMatPeptideOrGene {
 # Purpose:    Can feature $ftr_idx become a misc_feature?
 #             Currently the definition of which feature types
 #             cannot become misc_features is hard-coded in this
-#             subroutine.
+#             subroutine (currently ONLY CDS can become misc_features).
 #
 # Arguments: 
 #  $ftr_info_AHR:   ref to the feature info array of hashes 
@@ -2097,10 +2097,10 @@ sub vdr_FeatureTypeCanBecomeMiscFeature {
 
   my ($ftr_info_AHR, $ftr_idx) = @_;
 
-  return (($ftr_info_AHR->[$ftr_idx]{"type"} ne "gene") && 
-          ($ftr_info_AHR->[$ftr_idx]{"type"} ne "5'UTR") && 
-          ($ftr_info_AHR->[$ftr_idx]{"type"} ne "3'UTR") && 
-          ($ftr_info_AHR->[$ftr_idx]{"type"} ne "operon")) ? 1 : 0;
+  # prior to version 1.7.1, this subroutine returned '1' if feature type was
+  # not any of: "gene", "5'UTR", "3'UTR", and "operon".
+  # now it only returns '1' if type is "CDS"
+  return ($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") ? 1 : 0;
 }
 
 #################################################################
