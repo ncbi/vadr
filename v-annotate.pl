@@ -245,6 +245,7 @@ opt_Add("--ignore_canonss",   "boolean",  0,       $g,     undef, undef,    "ign
 opt_Add("--force_canonss",    "boolean",  0,       $g,     undef,"--ignore_canonss", "force 'canon_splice_sites' is 1 for all CDS with qualifying introns",               "force 'canon_splice_sites' is 1 for all CDS with qualifying introns", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_exc",       "boolean",  0,       $g,     undef, undef,    "ignore all exception keys '*_exc' in .minfo file",                                           "ignore all exception keys '*_exc' in .minfo file", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_oft",       "boolean",  0,       $g,     undef, undef,    "ignore all 'omit_from_tbl' keys in .minfo file",                                             "ignore all 'omit_from_tbl' keys in .minfo file", \%opt_HH, \@opt_order_A);
+opt_Add("--ignore_nnclass",   "boolean",  0,       $g,     undef, undef,    "ignore group/subgroup FILE keys in .minfo file specifying groups are in an aln file",        "ignore group/subgroup FILE keys in .minfo file specifying groups are in an aln file", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to model files";
 #        option               type default  group  requires incompat   preamble-output                                                                   help-output    
@@ -443,6 +444,7 @@ opt_Add("--nodcr",        "boolean", 0,             $g,    undef,   undef,    "d
 opt_Add("--forcedcrins",  "boolean", 0,             $g,"--cmindi",  undef,    "force insert type alignment doctoring, requires --cmindi",               "force insert type alignment doctoring, requires --cmindi", \%opt_HH, \@opt_order_A);
 opt_Add("--xnoid",        "boolean", 0,             $g,    undef,"--pv_hmmer,--pv_skip", "ignore blastx hits that are full length and 100% identical",  "ignore blastx hits that are full length and 100% identical", \%opt_HH, \@opt_order_A);
 opt_Add("--intlen",       "integer", 40,            $g,    undef,"--ignore_canonss", "set min length of intron to check for splice sites to <n>",       "set min length of intron to check for splice sites to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--nnclasslen",   "integer", 40,            $g,    undef,"--ignore_nnclass", "set min subsequence length for NN-based classification to <n>",   "set min subsequence length for NN-based classification to <n>", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -472,6 +474,7 @@ my $options_okay =
                 "force_canonss"    => \$GetOptions_H{"--force_canonss"},
                 "ignore_exc"       => \$GetOptions_H{"--ignore_exc"},
                 "ignore_oft"       => \$GetOptions_H{"--ignore_oft"},
+                "ignore_nnclass"   => \$GetOptions_H{"--ignore_nnclass"},
 # options related to model files
                 'm=s'           => \$GetOptions_H{"-m"}, 
                 'a=s'           => \$GetOptions_H{"-a"}, 
@@ -640,7 +643,8 @@ my $options_okay =
                 'nodcr'         => \$GetOptions_H{"--nodcr"},
                 'forcedcrins'   => \$GetOptions_H{"--forcedcrins"},
                 'xnoid'         => \$GetOptions_H{"--xnoid"},
-                'intlen=s'      => \$GetOptions_H{"--intlen"});
+                'intlen=s'      => \$GetOptions_H{"--intlen"},
+                'nnclasslen=s'  => \$GetOptions_H{"--nnclasslen"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
@@ -2045,7 +2049,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 	if(-s $stk_file_HA{$mdl_name}[$a]) { # skip empty alignments, which may exist if all seqs were not alignable
 	  my $rf_start_pos = (defined $mdl_info_AH[$mdl_idx]{"CLASS_RF_START_POS"}) ? $mdl_info_AH[$mdl_idx]{"CLASS_RF_START_POS"} : 1;
 	  my $rf_stop_pos  = (defined $mdl_info_AH[$mdl_idx]{"CLASS_RF_STOP_POS"})  ? $mdl_info_AH[$mdl_idx]{"CLASS_RF_STOP_POS"}  : $mdl_len;
-          classify_based_on_alignment($mdl_msa, $stk_file_HA{$mdl_name}[$a], $rf_start_pos, $rf_stop_pos, \%{$mdl_alninfo_AHH[$mdl_idx]}, \%cls_output_HH, \@to_remove_A, $FH_HR);
+          classify_based_on_alignment($mdl_msa, $stk_file_HA{$mdl_name}[$a], $rf_start_pos, $rf_stop_pos, \%{$mdl_alninfo_AHH[$mdl_idx]}, \%cls_output_HH, \@to_remove_A, \%opt_HH, $FH_HR);
         }
 	ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
       }
@@ -15646,11 +15650,9 @@ sub validate_and_copy_classification_alignment_file {
       my $seqname = $msa->get_sqname($i);
       if((defined $gp_idx) && ($msa->hasGS_given_tagidx_sqidx($gp_idx, $i))) { 
         $mdl_alninfo_HHR->{$seqname}{"group"} = $msa->getGS_given_tagidx_sqidx($gp_idx, $i);
-        printf("HEYA set mdl_alninfo_HHR->{$seqname}{{group} to " . $mdl_alninfo_HHR->{$seqname}{"group"} . "\n");
       }
       if((defined $sg_idx) && ($msa->hasGS_given_tagidx_sqidx($sg_idx, $i))) { 
         $mdl_alninfo_HHR->{$seqname}{"subgroup"} = $msa->getGS_given_tagidx_sqidx($sg_idx, $i);
-        printf("HEYA set mdl_alninfo_HHR->{$seqname}{subgroup}to " . $mdl_alninfo_HHR->{$seqname}{"subgroup"} . "\n");
       }
     }
   }
@@ -15857,6 +15859,7 @@ sub count_model_sequence_pairwise_differences {
 #  $mdl_alninfo_HH:  REF to 2D hash with group/subgroup information in 
 #  $cls_output_HHR:  REF to 2D hash of classification output info, possibly modified here
 #  $to_remove_AR:    REF to array of alignment files to remove
+#  $opt_HHR:         ref to hash of file handles
 #  $FH_HR:           ref to hash of file handles
 #
 # Returns:  void
@@ -15864,10 +15867,10 @@ sub count_model_sequence_pairwise_differences {
 #################################################################
 sub classify_based_on_alignment {
   my $sub_name = "classify_based_on_alignment";
-  my $nargs_exp = 8;
+  my $nargs_exp = 9;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($mdl_msa, $in_stk_file, $rf_start_pos, $rf_stop_pos, $mdl_alninfo_HHR, $cls_output_HHR, $to_remove_AR, $FH_HR) = (@_);
+  my ($mdl_msa, $in_stk_file, $rf_start_pos, $rf_stop_pos, $mdl_alninfo_HHR, $cls_output_HHR, $to_remove_AR, $opt_HHR, $FH_HR) = (@_);
 
   # read in the input alignment
   my $seq_msa = Bio::Easel::MSA->new({
@@ -15881,12 +15884,10 @@ sub classify_based_on_alignment {
 		       $mdl_msa->alen, $seq_msa->alen), 1, $FH_HR);
   }
 
+  my $min_nnclass_length = opt_Get("--nnclasslen", $opt_HHR);
   my $alen = $seq_msa->alen;
   my $mdl_nseq = $mdl_msa->nseq;
   my $seq_nseq = $seq_msa->nseq;
-  my $apos_start = $rf_start_pos - 1;
-  my $apos_stop  = $rf_stop_pos  - 1;
-  my $alen_p = ($apos_stop) - ($apos_start) + 1;
   
   my $sidx; # index over sequences in $seq_msa
   my $midx; # index over sequences in $mdl_msa
@@ -15898,27 +15899,68 @@ sub classify_based_on_alignment {
   }    
   
   for(my $sidx = 0; $sidx < $seq_nseq; $sidx++) {
-    #    my $seqname = $msa->get_sqname($i);
     my $seqname = $seq_msa->get_sqname($sidx);
     my $seq_sqstring = $seq_msa->get_sqstring_aligned($sidx);
     $seq_sqstring =~ tr/a-z/A-Z/; # shouldn't be necessary, but just to be safe
-    my @seq_sqstring_A = split("", $seq_sqstring);
+    # find first and final rf positions with a nongap, if none, these will stay 1
+    my $seq_rf_start = 1;
+    my $seq_rf_stop  = 1;
+    if($seq_sqstring =~ /[^.\-~]/) {
+      $seq_rf_start = $-[0] + 1;
+    }
+    my $rev_seq_sqstring = reverse($seq_sqstring);
+    if ($rev_seq_sqstring =~ /[^.\-~]/) {
+      my $pos_rev = $-[0];            # index from the right side
+      $seq_rf_stop = length($rev_seq_sqstring) - 1 - $pos_rev + 1;  # convert to left-side index
+    }
+    # determine the first and final positions we will compare to model sequences
+    printf("seq_rf_start: $seq_rf_start seq_rf_stop: $seq_rf_stop\n");
+    printf("rf_start:   $rf_start_pos rf_stop: $rf_stop_pos\n");
+    my $apos_start = undef;  # nongap RF alignment start position for region we will compare to model for this sequence
+    my $apos_stop  = undef;  # nongap RF alignment stop  position for region we will compare to model for this sequence
+    if(($seq_rf_start > $rf_stop_pos) ||
+       ($seq_rf_stop  < $rf_start_pos)) {
+      # entire rf_start_pos..rf_stop_pos is outside seq_rf_start..seq_rf_stop, use seq_rf_start..seq_rf_stop
+      ($apos_start, $apos_stop) = ($seq_rf_start, $seq_rf_stop);
+    }
+    else {
+      # at least one nucleotide in rf_start_pos..rf_stop_pos overlaps with seq_rf_start..seq_rf_stop
+      $apos_start = ($seq_rf_start > $rf_start_pos) ? $seq_rf_start : $rf_start_pos;
+      $apos_stop  = ($seq_rf_stop  < $rf_stop_pos)  ? $seq_rf_stop  : $rf_stop_pos;
+    }
+    my $possibly_subseq_sqstring = substr($seq_sqstring, ($apos_start - 1), ($apos_stop - $apos_start + 1));
+    my $possibly_subseq_sqstring_nongap = $possibly_subseq_sqstring;
+    $possibly_subseq_sqstring_nongap =~ s/\.\-\~//g;
+    my $nongap_len = length($possibly_subseq_sqstring_nongap);
+    if($nongap_len < $min_nnclass_length) {
+      # region defined by rf_start_pos..rf_stop_pos has less than $min_nnclass_length nongap chars
+      # revert to full sequence (seq_rf_start..seq_rf_stop includes all nongap chars, and excludes terminal gaps)
+      $apos_start = $seq_rf_start;
+      $apos_stop  = $seq_rf_stop;
+      $possibly_subseq_sqstring = substr($seq_sqstring, ($apos_start - 1), ($apos_stop - $apos_start + 1));
+    }
+    my @seq_sqstring_A = split("", $possibly_subseq_sqstring);
+    my $alen_p = ($apos_stop) - ($apos_start) + 1;
+    printf("apos_start: $apos_start apos_stop: $apos_stop seq_rf_start: $seq_rf_start, seq_rf_stop: $seq_rf_stop, alen_p: $alen_p, scalar(seq_sqstring_A): " . scalar(@seq_sqstring_A) . "\n");
+    if(scalar(@seq_sqstring_A) != $alen_p) {
+      ofile_FAIL("ERROR, in $sub_name, apos_start: $apos_start apos_stop: $apos_stop seq_rf_start: $seq_rf_start, seq_rf_stop: $seq_rf_stop, alen_p: $alen_p, scalar(seq_sqstring_A): " . scalar(@seq_sqstring_A) . "\n", 1, $FH_HR);
+    }					    
     my @fwd_nmatch_AA = ();
     my @bck_nmatch_AA = ();
     my @fwd_denom_AA = ();
     my @bck_denom_AA = ();
-    my ($apos, $seq_char, $mdl_char, $seq_is_res, $mdl_is_res);
+    my ($apos_p, $seq_char, $mdl_char, $seq_is_res, $mdl_is_res);
     my $out_weighted_avg_diff = "";
     for(my $midx = 0; $midx < $mdl_nseq; $midx++) { 
       my $mdl_sqstring = $mdl_msa->get_sqstring_aligned($midx);
       $mdl_sqstring =~ tr/a-z/A-Z/; # shouldn't be necessary, but just to be safe
-      my @mdl_sqstring_A = split("", $mdl_sqstring);
+      my $possibly_submdl_sqstring = substr($mdl_sqstring, ($apos_start - 1), ($apos_stop - $apos_start + 1));
+      my @mdl_sqstring_A = split("", $possibly_submdl_sqstring);
       @{$fwd_nmatch_AA[$midx]} = ();
       @{$fwd_denom_AA[$midx]} = ();
-      for($apos = $apos_start; $apos <= $apos_stop; $apos++) {
-	my $apos_p = $apos - $apos_start;
-        $seq_char = $seq_sqstring_A[$apos];
-        $mdl_char = $mdl_sqstring_A[$apos];
+      for($apos_p = 0; $apos_p < $alen_p; $apos_p++) {
+        $seq_char = $seq_sqstring_A[$apos_p];
+        $mdl_char = $mdl_sqstring_A[$apos_p];
         $seq_is_res = ($seq_char =~ m/[A-Z]/) ? 1 : 0;
         $mdl_is_res = ($mdl_char =~ m/[A-Z]/) ? 1 : 0;
         $fwd_nmatch_AA[$midx][$apos_p] = ($apos_p > 0) ? $fwd_nmatch_AA[$midx][($apos_p-1)] : 0;
@@ -15932,10 +15974,9 @@ sub classify_based_on_alignment {
       }
       @{$bck_nmatch_AA[$midx]} = ();
       @{$bck_denom_AA[$midx]} = ();
-      for($apos = $apos_stop; $apos >= $apos_start; $apos--) {
-	my $apos_p = $apos - $apos_start;
-        $seq_char = $seq_sqstring_A[$apos];
-        $mdl_char = $mdl_sqstring_A[$apos];
+      for($apos_p = ($alen_p-1); $apos_p >= 0; $apos_p--) {
+        $seq_char = $seq_sqstring_A[$apos_p];
+        $mdl_char = $mdl_sqstring_A[$apos_p];
         $seq_is_res = ($seq_char =~ m/[A-Z]/) ? 1 : 0;
         $mdl_is_res = ($mdl_char =~ m/[A-Z]/) ? 1 : 0;
         $bck_nmatch_AA[$midx][$apos_p] = ($apos_p < ($alen_p-1)) ? $bck_nmatch_AA[$midx][($apos_p+1)] : 0;
@@ -15957,10 +15998,7 @@ sub classify_based_on_alignment {
     my $max_weighted_avg_diff = 0;
     my $argmax_weighted_avg_diff = -1;
     # convert to fractional ids, and determine highest scoring model at each position
-    printf("\t\t\tapos_start: $apos_start apos_stop: $apos_stop\n");
-    for($apos = $apos_start; $apos <= $apos_stop; $apos++) {
-      my $apos_p = $apos - $apos_start;
-      printf("\t\t\tapos: $apos apos_p: $apos_p\n");
+    for($apos_p = 0; $apos_p < $alen_p; $apos_p++) {
       # find max in fwd and bck matrix
       if($fwd_denom_AA[0][$apos_p] > 0) { $fwd_nmatch_AA[0][$apos_p] = $fwd_nmatch_AA[0][$apos_p] / $fwd_denom_AA[0][$apos_p]; }
       if($bck_denom_AA[0][$apos_p] > 0) { $bck_nmatch_AA[0][$apos_p] = $bck_nmatch_AA[0][$apos_p] / $bck_denom_AA[0][$apos_p]; }
@@ -15987,7 +16025,7 @@ sub classify_based_on_alignment {
       if($fwd_argmax_gsg ne $bck_argmax_gsg) {
         if((abs($fwd_nmatch_AA[$fwd_argmax][$apos_p] - $fwd_nmatch_AA[$bck_argmax][$apos_p]) > 0.00001) &&
            (abs($bck_nmatch_AA[$fwd_argmax][$apos_p] - $bck_nmatch_AA[$bck_argmax][$apos_p]) > 0.00001)) { 
-          printf("apos_p: $apos_p [(%s) sum: %d fwd_argmax_gsg: $fwd_argmax_gsg fwd: $fwd_max bck: $bck_nmatch_AA[$fwd_argmax][$apos_p]] [(%s) sum: %d bck_argmax_gsg : $bck_argmax_gsg fwd: $fwd_nmatch_AA[$bck_argmax][$apos_p] bck: $bck_max]\n", $mdl_msa->get_sqname($fwd_argmax), (($fwd_nmatch_AA[$fwd_argmax][$apos_p] * $fwd_denom_AA[$fwd_argmax][$apos_p]) + ($bck_nmatch_AA[$fwd_argmax][$apos_p] * $bck_denom_AA[$fwd_argmax][$apos_p])), $mdl_msa->get_sqname($bck_argmax), (($fwd_nmatch_AA[$bck_argmax][$apos_p] * $fwd_denom_AA[$bck_argmax][$apos_p]) + ($bck_nmatch_AA[$bck_argmax][$apos_p] * $bck_denom_AA[$bck_argmax][$apos_p])));
+#          printf("apos_p: $apos_p [(%s) sum: %d fwd_argmax_gsg: $fwd_argmax_gsg fwd: $fwd_max bck: $bck_nmatch_AA[$fwd_argmax][$apos_p]] [(%s) sum: %d bck_argmax_gsg : $bck_argmax_gsg fwd: $fwd_nmatch_AA[$bck_argmax][$apos_p] bck: $bck_max]\n", $mdl_msa->get_sqname($fwd_argmax), (($fwd_nmatch_AA[$fwd_argmax][$apos_p] * $fwd_denom_AA[$fwd_argmax][$apos_p]) + ($bck_nmatch_AA[$fwd_argmax][$apos_p] * $bck_denom_AA[$fwd_argmax][$apos_p])), $mdl_msa->get_sqname($bck_argmax), (($fwd_nmatch_AA[$bck_argmax][$apos_p] * $fwd_denom_AA[$bck_argmax][$apos_p]) + ($bck_nmatch_AA[$bck_argmax][$apos_p] * $bck_denom_AA[$bck_argmax][$apos_p])));
           my $fwd_contri = ($fwd_denom_AA[$fwd_argmax][$apos_p] + $fwd_denom_AA[$bck_argmax][$apos_p]) / 2.;
           my $bck_contri = ($bck_denom_AA[$bck_argmax][$apos_p] + $bck_denom_AA[$fwd_argmax][$apos_p]) / 2.;
           my $fwd_wgt    = $fwd_contri / ($fwd_contri + $bck_contri);
@@ -16000,7 +16038,7 @@ sub classify_based_on_alignment {
             $argmax_weighted_avg_diff = $apos_p;
             $out_weighted_avg_diff = sprintf("$seqname apos_p: $apos_p [(%s) fwd_argmax_gsg: %s fwd: %.5f bck: %.5f] [(%s) bck_argmax_gsg: %s fwd: %.5f bck: %.5f] [fwddiff: %.7f wgt: %.5f bckdiff: %.7f wgt: %.5f wavgdiff: %.7f]\n", $mdl_msa->get_sqname($fwd_argmax), $fwd_argmax_gsg, $fwd_max, $bck_nmatch_AA[$fwd_argmax][$apos_p], $mdl_msa->get_sqname($bck_argmax), $bck_argmax_gsg, $fwd_nmatch_AA[$bck_argmax][$apos_p], $bck_max, $fwd_diff, $fwd_wgt, $bck_diff, $bck_wgt, $max_weighted_avg_diff);
           }
-	  printf("apos_p: $apos_p [(%s) fwd_argmax_gsg: %s fwd: %.5f bck: %.5f] [(%s) bck_argmax_gsg: %s fwd: %.5f bck: %.5f] [fwddiff: %.7f wgt: %.5f bckdiff: %.7f wgt: %.5f wavgdiff: %.7f]\n", $mdl_msa->get_sqname($fwd_argmax), $fwd_argmax_gsg, $fwd_max, $bck_nmatch_AA[$fwd_argmax][$apos_p], $mdl_msa->get_sqname($bck_argmax), $bck_argmax_gsg, $fwd_nmatch_AA[$bck_argmax][$apos_p], $bck_max, $fwd_diff, $fwd_wgt, $bck_diff, $bck_wgt, (($fwd_diff * $fwd_wgt) + ($bck_diff * $bck_wgt)));
+#	  printf("apos_p: $apos_p [(%s) fwd_argmax_gsg: %s fwd: %.5f bck: %.5f] [(%s) bck_argmax_gsg: %s fwd: %.5f bck: %.5f] [fwddiff: %.7f wgt: %.5f bckdiff: %.7f wgt: %.5f wavgdiff: %.7f]\n", $mdl_msa->get_sqname($fwd_argmax), $fwd_argmax_gsg, $fwd_max, $bck_nmatch_AA[$fwd_argmax][$apos_p], $mdl_msa->get_sqname($bck_argmax), $bck_argmax_gsg, $fwd_nmatch_AA[$bck_argmax][$apos_p], $bck_max, $fwd_diff, $fwd_wgt, $bck_diff, $bck_wgt, (($fwd_diff * $fwd_wgt) + ($bck_diff * $bck_wgt)));
         }
       }
     }
@@ -16008,13 +16046,12 @@ sub classify_based_on_alignment {
     # find closest matching model sequence for this sequence
     my $argmax = 0;
     my $max = $fwd_nmatch_AA[0][($alen_p-1)];
-    my $alen_p = ($apos_stop) - ($apos_start) + 1;
     for(my $midx = 1; $midx < $mdl_nseq; $midx++) { 
       if($fwd_nmatch_AA[$midx][($alen_p-1)] > $max) {
 	$max = $fwd_nmatch_AA[$midx][($alen_p-1)];
 	$argmax = $midx;
       }
-      printf("\t\tfwd_nmatch_AA[$midx][%d]: %d\n", ($alen_p-1), $fwd_nmatch_AA[$midx][$alen_p-1]);    
+      printf("\t\tfwd_nmatch_AA[$midx][%d]: %.3f\n", ($alen_p-1), $fwd_nmatch_AA[$midx][($alen_p-1)]);    
     }
     my $win_mdl_sqname = $mdl_msa->get_sqname($argmax);
     printf("\twinner for $seqname is $win_mdl_sqname ($max)\n");
