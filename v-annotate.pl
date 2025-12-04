@@ -2034,13 +2034,20 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 	fileLocation => $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"},
 	isDna => 1});
       $mdl_msa->remove_rf_gap_columns(".-~");
-      my @mdl_fwd_AAA = ();
-      my @mdl_bck_AAA = ();
-      count_model_sequence_pairwise_differences($mdl_msa, \@mdl_fwd_AAA, \@mdl_bck_AAA, $FH_HR);
+      ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+      #$start_secs = ofile_OutputProgressPrior("TEMP calculating model pairwise distances", $progress_w, $log_FH, *STDOUT);
+      #my @mdl_fwd_AAA = ();
+      #my @mdl_bck_AAA = ();
+      #count_model_sequence_pairwise_differences($mdl_msa, \@mdl_fwd_AAA, \@mdl_bck_AAA, $FH_HR);
+      #ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+      $start_secs = ofile_OutputProgressPrior("TEMP classifying based on alignment", $progress_w, $log_FH, *STDOUT);
       for(my $a = 0; $a < scalar(@{$stk_file_HA{$mdl_name}}); $a++) { 
 	if(-s $stk_file_HA{$mdl_name}[$a]) { # skip empty alignments, which may exist if all seqs were not alignable
-          classify_based_on_alignment($mdl_msa, $stk_file_HA{$mdl_name}[$a], \%{$mdl_alninfo_AHH[$mdl_idx]}, \%cls_output_HH, \@to_remove_A, $FH_HR);
+	  my $rf_start_pos = (defined $mdl_info_AH[$mdl_idx]{"CLASS_RF_START_POS"}) ? $mdl_info_AH[$mdl_idx]{"CLASS_RF_START_POS"} : 1;
+	  my $rf_stop_pos  = (defined $mdl_info_AH[$mdl_idx]{"CLASS_RF_STOP_POS"})  ? $mdl_info_AH[$mdl_idx]{"CLASS_RF_STOP_POS"}  : $mdl_len;
+          classify_based_on_alignment($mdl_msa, $stk_file_HA{$mdl_name}[$a], $rf_start_pos, $rf_stop_pos, \%{$mdl_alninfo_AHH[$mdl_idx]}, \%cls_output_HH, \@to_remove_A, $FH_HR);
         }
+	ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
       }
     }
     
@@ -15591,8 +15598,8 @@ sub validate_and_copy_classification_alignment_file {
   my ($mdl_info_HR, $mdl_alninfo_HHR, $out_root, $opt_HHR, $ofile_info_HHR) = (@_);
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
-  my $mdl_name      = $mdl_info_HR->{"name"};
-  my $mdl_length    = $mdl_info_HR->{"length"};
+  my $mdl_name   = $mdl_info_HR->{"name"};
+  my $mdl_len    = $mdl_info_HR->{"length"};
   my $orig_aln_file = $mdl_info_HR->{"CLASS_ALN_FILE"};
   if(! defined $orig_aln_file) {
     ofile_FAIL("ERROR, in $sub_name for model $mdl_name, but no CLASS_ALN_FILE defined", 1, $FH_HR);
@@ -15610,8 +15617,8 @@ sub validate_and_copy_classification_alignment_file {
   }
   my $nongap_msa_rf = $msa->get_rf;
   $nongap_msa_rf =~ s/[\.\-\~]//g;
-  if(length($nongap_msa_rf) != $mdl_length) {
-    ofile_FAIL("ERROR, for model $mdl_name group and/or subgroup are meant to be read from an alignment file but the RF annotation length (" . length($nongap_msa_rf) . ") doesn't match expected model length ($mdl_length)", 1, $FH_HR);
+  if(length($nongap_msa_rf) != $mdl_len) {
+    ofile_FAIL("ERROR, for model $mdl_name group and/or subgroup are meant to be read from an alignment file but the RF annotation length (" . length($nongap_msa_rf) . ") doesn't match expected model length ($mdl_len)", 1, $FH_HR);
   }
 
   my $i; 
@@ -15646,6 +15653,41 @@ sub validate_and_copy_classification_alignment_file {
         printf("HEYA set mdl_alninfo_HHR->{$seqname}{subgroup}to " . $mdl_alninfo_HHR->{$seqname}{"subgroup"} . "\n");
       }
     }
+  }
+
+  # store rf start and stop pos information, if any
+  my @gf_tag_A;
+  my @gf_value_A = ();
+  $msa->get_all_GF(\@gf_tag_A, \@gf_value_A);
+  my $ngf = scalar(@gf_tag_A);
+  my $rf_start_pos = undef;
+  my $rf_stop_pos  = undef;
+  for(my $a = 0; $a < $ngf; $a++) {
+    if($gf_tag_A[$a] eq "VADR-classification-rf-start-pos") {
+      $rf_start_pos = $gf_value_A[$a];
+    }
+    if($gf_tag_A[$a] eq "VADR-classification-rf-stop-pos") {
+      $rf_stop_pos = $gf_value_A[$a];
+    }
+  }
+  if((defined $rf_start_pos) && (! defined $rf_stop_pos)) { 
+    ofile_FAIL("ERROR, for model $mdl_name alignment file $orig_aln_file has #=GF VADR-classification-rf-start-pos annotation but not #=GF VADR-classification-rf-stop-pos annotation", 1, $FH_HR);
+  }
+  if((! defined $rf_start_pos) && (defined $rf_stop_pos)) { 
+    ofile_FAIL("ERROR, for model $mdl_name alignment file $orig_aln_file has #=GF VADR-classification-rf-stop-pos annotation but not #=GF VADR-classification-rf-start-pos annotation", 1, $FH_HR);
+  }
+  if((defined $rf_start_pos) && (defined $rf_stop_pos)) {
+    if(($rf_start_pos < 1) || ($rf_start_pos > $mdl_len)) {
+      ofile_FAIL("ERROR, for model $mdl_name alignment file $orig_aln_file has #=GF VADR-classification-rf-start-pos $rf_start_pos, but $rf_start_pos is an invalid position (must be 1..$mdl_len)", 1, $FH_HR);
+    }
+    if(($rf_stop_pos < 1) || ($rf_stop_pos > $mdl_len)) {
+      ofile_FAIL("ERROR, for model $mdl_name alignment file $orig_aln_file has #=GF VADR-classification-rf-stop-pos $rf_stop_pos, but $rf_stop_pos is an invalid position (must be 1..$mdl_len)", 1, $FH_HR);
+    }
+    if($rf_start_pos > $rf_stop_pos) { 
+      ofile_FAIL("ERROR, for model $mdl_name alignment file $orig_aln_file has #=GF VADR-classification-rf-start/stop-pos, but start ($rf_start_pos) > stop ($rf_stop_pos)", 1, $FH_HR);
+    }
+    $mdl_info_HR->{"CLASS_RF_START_POS"} = $rf_start_pos;
+    $mdl_info_HR->{"CLASS_RF_STOP_POS"} = $rf_stop_pos;
   }
 
   undef $msa;
@@ -15810,6 +15852,8 @@ sub count_model_sequence_pairwise_differences {
 # Arguments:
 #  $mdl_msa:         the model MSA
 #  $in_stk_file:     path to stockholm alignment file with alignment of 1 or more input sequences
+#  $rf_start_pos:    the first RF start position to use for the nearest-neighbor classification, 1 to start at beginning
+#  $rf_stop_pos:     the final RF start position to use for the nearest-neighbor classification, $mdl_len to end at end
 #  $mdl_alninfo_HH:  REF to 2D hash with group/subgroup information in 
 #  $cls_output_HHR:  REF to 2D hash of classification output info, possibly modified here
 #  $to_remove_AR:    REF to array of alignment files to remove
@@ -15820,10 +15864,10 @@ sub count_model_sequence_pairwise_differences {
 #################################################################
 sub classify_based_on_alignment {
   my $sub_name = "classify_based_on_alignment";
-  my $nargs_exp = 6;
+  my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($mdl_msa, $in_stk_file, $mdl_alninfo_HHR, $cls_output_HHR, $to_remove_AR, $FH_HR) = (@_);
+  my ($mdl_msa, $in_stk_file, $rf_start_pos, $rf_stop_pos, $mdl_alninfo_HHR, $cls_output_HHR, $to_remove_AR, $FH_HR) = (@_);
 
   # read in the input alignment
   my $seq_msa = Bio::Easel::MSA->new({
@@ -15840,7 +15884,10 @@ sub classify_based_on_alignment {
   my $alen = $seq_msa->alen;
   my $mdl_nseq = $mdl_msa->nseq;
   my $seq_nseq = $seq_msa->nseq;
-
+  my $apos_start = $rf_start_pos - 1;
+  my $apos_stop  = $rf_stop_pos  - 1;
+  my $alen_p = ($apos_stop) - ($apos_start) + 1;
+  
   my $sidx; # index over sequences in $seq_msa
   my $midx; # index over sequences in $mdl_msa
   # store group and subgroup names for each model sequence
@@ -15868,33 +15915,35 @@ sub classify_based_on_alignment {
       my @mdl_sqstring_A = split("", $mdl_sqstring);
       @{$fwd_nmatch_AA[$midx]} = ();
       @{$fwd_denom_AA[$midx]} = ();
-      for($apos = 0; $apos < $alen; $apos++) {
+      for($apos = $apos_start; $apos <= $apos_stop; $apos++) {
+	my $apos_p = $apos - $apos_start;
         $seq_char = $seq_sqstring_A[$apos];
         $mdl_char = $mdl_sqstring_A[$apos];
         $seq_is_res = ($seq_char =~ m/[A-Z]/) ? 1 : 0;
         $mdl_is_res = ($mdl_char =~ m/[A-Z]/) ? 1 : 0;
-        $fwd_nmatch_AA[$midx][$apos] = ($apos > 0) ? $fwd_nmatch_AA[$midx][($apos-1)] : 0;
-        $fwd_denom_AA[$midx][$apos]  = ($apos > 0) ? $fwd_denom_AA[$midx][($apos-1)]  : 0;
+        $fwd_nmatch_AA[$midx][$apos_p] = ($apos_p > 0) ? $fwd_nmatch_AA[$midx][($apos_p-1)] : 0;
+        $fwd_denom_AA[$midx][$apos_p]  = ($apos_p > 0) ? $fwd_denom_AA[$midx][($apos_p-1)]  : 0;
         if(($seq_is_res) && ($mdl_is_res)) {
-          $fwd_denom_AA[$midx][$apos]++;
+          $fwd_denom_AA[$midx][$apos_p]++;
           if($seq_char eq $mdl_char) {
-            $fwd_nmatch_AA[$midx][$apos]++;
+            $fwd_nmatch_AA[$midx][$apos_p]++;
           }
         }
       }
       @{$bck_nmatch_AA[$midx]} = ();
       @{$bck_denom_AA[$midx]} = ();
-      for($apos = ($alen-1); $apos >= 0; $apos--) {
+      for($apos = $apos_stop; $apos >= $apos_start; $apos--) {
+	my $apos_p = $apos - $apos_start;
         $seq_char = $seq_sqstring_A[$apos];
         $mdl_char = $mdl_sqstring_A[$apos];
         $seq_is_res = ($seq_char =~ m/[A-Z]/) ? 1 : 0;
         $mdl_is_res = ($mdl_char =~ m/[A-Z]/) ? 1 : 0;
-        $bck_nmatch_AA[$midx][$apos] = ($apos < ($alen-1)) ? $bck_nmatch_AA[$midx][($apos+1)] : 0;
-        $bck_denom_AA[$midx][$apos]  = ($apos < ($alen-1)) ? $bck_denom_AA[$midx][($apos+1)]  : 0;
+        $bck_nmatch_AA[$midx][$apos_p] = ($apos_p < ($alen_p-1)) ? $bck_nmatch_AA[$midx][($apos_p+1)] : 0;
+        $bck_denom_AA[$midx][$apos_p]  = ($apos_p < ($alen_p-1)) ? $bck_denom_AA[$midx][($apos_p+1)]  : 0;
         if(($seq_is_res) && ($mdl_is_res)) {
-          $bck_denom_AA[$midx][$apos]++;
+          $bck_denom_AA[$midx][$apos_p]++;
           if($seq_char eq $mdl_char) {
-            $bck_nmatch_AA[$midx][$apos]++;
+            $bck_nmatch_AA[$midx][$apos_p]++;
           }
         }
       }
@@ -15908,60 +15957,64 @@ sub classify_based_on_alignment {
     my $max_weighted_avg_diff = 0;
     my $argmax_weighted_avg_diff = -1;
     # convert to fractional ids, and determine highest scoring model at each position
-    for($apos = 0; $apos < $alen; $apos++) {
+    printf("\t\t\tapos_start: $apos_start apos_stop: $apos_stop\n");
+    for($apos = $apos_start; $apos <= $apos_stop; $apos++) {
+      my $apos_p = $apos - $apos_start;
+      printf("\t\t\tapos: $apos apos_p: $apos_p\n");
       # find max in fwd and bck matrix
-      if($fwd_denom_AA[0][$apos] > 0) { $fwd_nmatch_AA[0][$apos] = $fwd_nmatch_AA[0][$apos] / $fwd_denom_AA[0][$apos]; }
-      if($bck_denom_AA[0][$apos] > 0) { $bck_nmatch_AA[0][$apos] = $bck_nmatch_AA[0][$apos] / $bck_denom_AA[0][$apos]; }
-      $fwd_max = $fwd_nmatch_AA[0][$apos];
-      $bck_max = $bck_nmatch_AA[0][$apos];
+      if($fwd_denom_AA[0][$apos_p] > 0) { $fwd_nmatch_AA[0][$apos_p] = $fwd_nmatch_AA[0][$apos_p] / $fwd_denom_AA[0][$apos_p]; }
+      if($bck_denom_AA[0][$apos_p] > 0) { $bck_nmatch_AA[0][$apos_p] = $bck_nmatch_AA[0][$apos_p] / $bck_denom_AA[0][$apos_p]; }
+      $fwd_max = $fwd_nmatch_AA[0][$apos_p];
+      $bck_max = $bck_nmatch_AA[0][$apos_p];
       $fwd_argmax = 0;
       $bck_argmax = 0;
       $fwd_argmax_gsg = $mdl_group_subgroup_A[$fwd_argmax];
       $bck_argmax_gsg = $mdl_group_subgroup_A[$bck_argmax];
       for(my $midx = 1; $midx < $mdl_nseq; $midx++) { 
-        if($fwd_denom_AA[$midx][$apos] > 0) { $fwd_nmatch_AA[$midx][$apos] = $fwd_nmatch_AA[$midx][$apos] / $fwd_denom_AA[$midx][$apos]; }
-        if($bck_denom_AA[$midx][$apos] > 0) { $bck_nmatch_AA[$midx][$apos] = $bck_nmatch_AA[$midx][$apos] / $bck_denom_AA[$midx][$apos]; }
-	if($fwd_nmatch_AA[$midx][$apos] > $fwd_max) {
-	  $fwd_max = $fwd_nmatch_AA[$midx][$apos];
+        if($fwd_denom_AA[$midx][$apos_p] > 0) { $fwd_nmatch_AA[$midx][$apos_p] = $fwd_nmatch_AA[$midx][$apos_p] / $fwd_denom_AA[$midx][$apos_p]; }
+        if($bck_denom_AA[$midx][$apos_p] > 0) { $bck_nmatch_AA[$midx][$apos_p] = $bck_nmatch_AA[$midx][$apos_p] / $bck_denom_AA[$midx][$apos_p]; }
+	if($fwd_nmatch_AA[$midx][$apos_p] > $fwd_max) {
+	  $fwd_max = $fwd_nmatch_AA[$midx][$apos_p];
 	  $fwd_argmax = $midx;
 	  $fwd_argmax_gsg = $mdl_group_subgroup_A[$fwd_argmax];
 	}
-	if($bck_nmatch_AA[$midx][$apos] > $bck_max) {
-	  $bck_max = $bck_nmatch_AA[$midx][$apos];
+	if($bck_nmatch_AA[$midx][$apos_p] > $bck_max) {
+	  $bck_max = $bck_nmatch_AA[$midx][$apos_p];
 	  $bck_argmax = $midx;
 	  $bck_argmax_gsg = $mdl_group_subgroup_A[$bck_argmax];
 	}
       }
       if($fwd_argmax_gsg ne $bck_argmax_gsg) {
-        if((abs($fwd_nmatch_AA[$fwd_argmax][$apos] - $fwd_nmatch_AA[$bck_argmax][$apos]) > 0.00001) &&
-           (abs($bck_nmatch_AA[$fwd_argmax][$apos] - $bck_nmatch_AA[$bck_argmax][$apos]) > 0.00001)) { 
-#          printf("apos: $apos [(%s) sum: %d fwd_argmax_gsg: $fwd_argmax_gsg fwd: $fwd_max bck: $bck_nmatch_AA[$fwd_argmax][$apos]] [(%s) sum: %d bck_argmax_gsg : $bck_argmax_gsg fwd: $fwd_nmatch_AA[$bck_argmax][$apos] bck: $bck_max]\n", $mdl_msa->get_sqname($fwd_argmax), (($fwd_nmatch_AA[$fwd_argmax][$apos] * $fwd_denom_AA[$fwd_argmax][$apos]) + ($bck_nmatch_AA[$fwd_argmax][$apos] * $bck_denom_AA[$fwd_argmax][$apos])), $mdl_msa->get_sqname($bck_argmax), (($fwd_nmatch_AA[$bck_argmax][$apos] * $fwd_denom_AA[$bck_argmax][$apos]) + ($bck_nmatch_AA[$bck_argmax][$apos] * $bck_denom_AA[$bck_argmax][$apos])));
-          my $fwd_contri = ($fwd_denom_AA[$fwd_argmax][$apos] + $fwd_denom_AA[$bck_argmax][$apos]) / 2.;
-          my $bck_contri = ($bck_denom_AA[$bck_argmax][$apos] + $bck_denom_AA[$fwd_argmax][$apos]) / 2.;
+        if((abs($fwd_nmatch_AA[$fwd_argmax][$apos_p] - $fwd_nmatch_AA[$bck_argmax][$apos_p]) > 0.00001) &&
+           (abs($bck_nmatch_AA[$fwd_argmax][$apos_p] - $bck_nmatch_AA[$bck_argmax][$apos_p]) > 0.00001)) { 
+          printf("apos_p: $apos_p [(%s) sum: %d fwd_argmax_gsg: $fwd_argmax_gsg fwd: $fwd_max bck: $bck_nmatch_AA[$fwd_argmax][$apos_p]] [(%s) sum: %d bck_argmax_gsg : $bck_argmax_gsg fwd: $fwd_nmatch_AA[$bck_argmax][$apos_p] bck: $bck_max]\n", $mdl_msa->get_sqname($fwd_argmax), (($fwd_nmatch_AA[$fwd_argmax][$apos_p] * $fwd_denom_AA[$fwd_argmax][$apos_p]) + ($bck_nmatch_AA[$fwd_argmax][$apos_p] * $bck_denom_AA[$fwd_argmax][$apos_p])), $mdl_msa->get_sqname($bck_argmax), (($fwd_nmatch_AA[$bck_argmax][$apos_p] * $fwd_denom_AA[$bck_argmax][$apos_p]) + ($bck_nmatch_AA[$bck_argmax][$apos_p] * $bck_denom_AA[$bck_argmax][$apos_p])));
+          my $fwd_contri = ($fwd_denom_AA[$fwd_argmax][$apos_p] + $fwd_denom_AA[$bck_argmax][$apos_p]) / 2.;
+          my $bck_contri = ($bck_denom_AA[$bck_argmax][$apos_p] + $bck_denom_AA[$fwd_argmax][$apos_p]) / 2.;
           my $fwd_wgt    = $fwd_contri / ($fwd_contri + $bck_contri);
           my $bck_wgt    = $bck_contri / ($fwd_contri + $bck_contri);
-          my $fwd_diff   = $fwd_nmatch_AA[$fwd_argmax][$apos] - $fwd_nmatch_AA[$bck_argmax][$apos];
-          my $bck_diff   = $bck_nmatch_AA[$bck_argmax][$apos] - $bck_nmatch_AA[$fwd_argmax][$apos];
+          my $fwd_diff   = $fwd_nmatch_AA[$fwd_argmax][$apos_p] - $fwd_nmatch_AA[$bck_argmax][$apos_p];
+          my $bck_diff   = $bck_nmatch_AA[$bck_argmax][$apos_p] - $bck_nmatch_AA[$fwd_argmax][$apos_p];
           my $weighted_avg_diff = (($fwd_diff * $fwd_wgt) + ($bck_diff * $bck_wgt));
           if($weighted_avg_diff > $max_weighted_avg_diff) {
             $max_weighted_avg_diff = $weighted_avg_diff;
-            $argmax_weighted_avg_diff = $apos;
-            $out_weighted_avg_diff = sprintf("$seqname apos: $apos [(%s) fwd_argmax_gsg: %s fwd: %.5f bck: %.5f] [(%s) bck_argmax_gsg: %s fwd: %.5f bck: %.5f] [fwddiff: %.7f wgt: %.5f bckdiff: %.7f wgt: %.5f wavgdiff: %.7f]\n", $mdl_msa->get_sqname($fwd_argmax), $fwd_argmax_gsg, $fwd_max, $bck_nmatch_AA[$fwd_argmax][$apos], $mdl_msa->get_sqname($bck_argmax), $bck_argmax_gsg, $fwd_nmatch_AA[$bck_argmax][$apos], $bck_max, $fwd_diff, $fwd_wgt, $bck_diff, $bck_wgt, $max_weighted_avg_diff);
+            $argmax_weighted_avg_diff = $apos_p;
+            $out_weighted_avg_diff = sprintf("$seqname apos_p: $apos_p [(%s) fwd_argmax_gsg: %s fwd: %.5f bck: %.5f] [(%s) bck_argmax_gsg: %s fwd: %.5f bck: %.5f] [fwddiff: %.7f wgt: %.5f bckdiff: %.7f wgt: %.5f wavgdiff: %.7f]\n", $mdl_msa->get_sqname($fwd_argmax), $fwd_argmax_gsg, $fwd_max, $bck_nmatch_AA[$fwd_argmax][$apos_p], $mdl_msa->get_sqname($bck_argmax), $bck_argmax_gsg, $fwd_nmatch_AA[$bck_argmax][$apos_p], $bck_max, $fwd_diff, $fwd_wgt, $bck_diff, $bck_wgt, $max_weighted_avg_diff);
           }
-        #          printf("apos: $apos [(%s) fwd_argmax_gsg: %s fwd: %.5f bck: %.5f] [(%s) bck_argmax_gsg: %s fwd: %.5f bck: %.5f] [fwddiff: %.7f wgt: %.5f bckdiff: %.7f wgt: %.5f wavgdiff: %.7f]\n", $mdl_msa->get_sqname($fwd_argmax), $fwd_argmax_gsg, $fwd_max, $bck_nmatch_AA[$fwd_argmax][$apos], $mdl_msa->get_sqname($bck_argmax), $bck_argmax_gsg, $fwd_nmatch_AA[$bck_argmax][$apos], $bck_max, $fwd_diff, $fwd_wgt, $bck_diff, $bck_wgt, (($fwd_diff * $fwd_wgt) + ($bck_diff * $bck_wgt)));
+	  printf("apos_p: $apos_p [(%s) fwd_argmax_gsg: %s fwd: %.5f bck: %.5f] [(%s) bck_argmax_gsg: %s fwd: %.5f bck: %.5f] [fwddiff: %.7f wgt: %.5f bckdiff: %.7f wgt: %.5f wavgdiff: %.7f]\n", $mdl_msa->get_sqname($fwd_argmax), $fwd_argmax_gsg, $fwd_max, $bck_nmatch_AA[$fwd_argmax][$apos_p], $mdl_msa->get_sqname($bck_argmax), $bck_argmax_gsg, $fwd_nmatch_AA[$bck_argmax][$apos_p], $bck_max, $fwd_diff, $fwd_wgt, $bck_diff, $bck_wgt, (($fwd_diff * $fwd_wgt) + ($bck_diff * $bck_wgt)));
         }
       }
     }
     
     # find closest matching model sequence for this sequence
     my $argmax = 0;
-    my $max = $fwd_nmatch_AA[0][($alen-1)];
+    my $max = $fwd_nmatch_AA[0][($alen_p-1)];
+    my $alen_p = ($apos_stop) - ($apos_start) + 1;
     for(my $midx = 1; $midx < $mdl_nseq; $midx++) { 
-      if($fwd_nmatch_AA[$midx][($alen-1)] > $max) {
-	$max = $fwd_nmatch_AA[$midx][($alen-1)];
+      if($fwd_nmatch_AA[$midx][($alen_p-1)] > $max) {
+	$max = $fwd_nmatch_AA[$midx][($alen_p-1)];
 	$argmax = $midx;
       }
-      printf("\t\tfwd_nmatch_AA[$midx][%d]: %d\n", ($alen-1), $fwd_nmatch_AA[$midx][$alen-1]);    
+      printf("\t\tfwd_nmatch_AA[$midx][%d]: %d\n", ($alen_p-1), $fwd_nmatch_AA[$midx][$alen_p-1]);    
     }
     my $win_mdl_sqname = $mdl_msa->get_sqname($argmax);
     printf("\twinner for $seqname is $win_mdl_sqname ($max)\n");
