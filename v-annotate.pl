@@ -245,7 +245,8 @@ opt_Add("--ignore_canonss",   "boolean",  0,       $g,     undef, undef,    "ign
 opt_Add("--force_canonss",    "boolean",  0,       $g,     undef,"--ignore_canonss", "force 'canon_splice_sites' is 1 for all CDS with qualifying introns",               "force 'canon_splice_sites' is 1 for all CDS with qualifying introns", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_exc",       "boolean",  0,       $g,     undef, undef,    "ignore all exception keys '*_exc' in .minfo file",                                           "ignore all exception keys '*_exc' in .minfo file", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_oft",       "boolean",  0,       $g,     undef, undef,    "ignore all 'omit_from_tbl' keys in .minfo file",                                             "ignore all 'omit_from_tbl' keys in .minfo file", \%opt_HH, \@opt_order_A);
-opt_Add("--ignore_nnclass",   "boolean",  0,       $g,     undef, undef,    "ignore group/subgroup FILE keys in .minfo file specifying groups are in an aln file",        "ignore group/subgroup FILE keys in .minfo file specifying groups are in an aln file", \%opt_HH, \@opt_order_A);
+opt_Add("--ignore_nnclass",   "boolean",  0,       $g,     undef, undef,    "ignore group/subgroup FILE keys in .minfo file enabling nearest-neighbor based classification", "ignore group/subgroup FILE keys in .minfo file enabling nearest-neighbor based classification", \%opt_HH, \@opt_order_A);
+opt_Add("--ignore_nnregion",  "boolean",  0,       $g,     undef,"--ignore_nnclass","ignore classification region start/stop keys for nn-based classification",           "ignore classification region start/stop keys for nn-based classification", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to model files";
 #        option               type default  group  requires incompat   preamble-output                                                                   help-output    
@@ -444,7 +445,7 @@ opt_Add("--nodcr",        "boolean", 0,             $g,    undef,   undef,    "d
 opt_Add("--forcedcrins",  "boolean", 0,             $g,"--cmindi",  undef,    "force insert type alignment doctoring, requires --cmindi",               "force insert type alignment doctoring, requires --cmindi", \%opt_HH, \@opt_order_A);
 opt_Add("--xnoid",        "boolean", 0,             $g,    undef,"--pv_hmmer,--pv_skip", "ignore blastx hits that are full length and 100% identical",  "ignore blastx hits that are full length and 100% identical", \%opt_HH, \@opt_order_A);
 opt_Add("--intlen",       "integer", 40,            $g,    undef,"--ignore_canonss", "set min length of intron to check for splice sites to <n>",       "set min length of intron to check for splice sites to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--nnclasslen",   "integer", 40,            $g,    undef,"--ignore_nnclass", "set min subsequence length for NN-based classification to <n>",   "set min subsequence length for NN-based classification to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--nnregionlen",  "integer", 40,            $g,    undef,"--ignore_nnclass,--ignore_nnregion", "set min subsequence length for NN-based classification to <n>",   "set min subsequence length for NN-based classification to <n>", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -475,6 +476,7 @@ my $options_okay =
                 "ignore_exc"       => \$GetOptions_H{"--ignore_exc"},
                 "ignore_oft"       => \$GetOptions_H{"--ignore_oft"},
                 "ignore_nnclass"   => \$GetOptions_H{"--ignore_nnclass"},
+                "ignore_nnregion"  => \$GetOptions_H{"--ignore_nnregion"},
 # options related to model files
                 'm=s'           => \$GetOptions_H{"-m"}, 
                 'a=s'           => \$GetOptions_H{"-a"}, 
@@ -644,7 +646,7 @@ my $options_okay =
                 'forcedcrins'   => \$GetOptions_H{"--forcedcrins"},
                 'xnoid'         => \$GetOptions_H{"--xnoid"},
                 'intlen=s'      => \$GetOptions_H{"--intlen"},
-                'nnclasslen=s'  => \$GetOptions_H{"--nnclasslen"});
+                'nnregionlen=s' => \$GetOptions_H{"--nnregionlen"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
@@ -1237,30 +1239,33 @@ if(opt_Get("--val_only", \%opt_HH)) {
 # using the model, but that would be too expensive, if that won't work we'll fail during
 # the alignment stage)
 my @mdl_alninfo_AHH = ();
-for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
-  %{$mdl_alninfo_AHH[$mdl_idx]} = ();
-  if(defined $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"}) {
-    # if this was set in the minfo file (it shouldn't have been), undefine it
-    $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"} = undef;
-  }    
-  if((defined $mdl_info_AH[$mdl_idx]{"group"}) &&
-     ($mdl_info_AH[$mdl_idx]{"group"} =~ /^\:FILE\:(.+)$/)) {
-    $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"} = $model_dir . "/" . $1;
-  }
-  if((defined $mdl_info_AH[$mdl_idx]{"subgroup"}) &&
-     ($mdl_info_AH[$mdl_idx]{"subgroup"} =~ /^\:FILE\:(.+)$/)) {
-    if(! defined $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"}) {
-      ofile_FAIL("ERROR, for model " . $mdl_info_AH[$mdl_idx]{"name"} . " subgroup meant to be read from an alignment file but not group, this is not supported", 1, $FH_HR);
+my $do_scn_file = 0;
+if((! $do_clsonly) && (! opt_Get("--ignore_nnclass", \%opt_HH))) { 
+  for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
+    %{$mdl_alninfo_AHH[$mdl_idx]} = ();
+    if(defined $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"}) {
+      # if this was set in the minfo file (it shouldn't have been), undefine it
+      $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"} = undef;
+    }    
+    if((defined $mdl_info_AH[$mdl_idx]{"group"}) &&
+       ($mdl_info_AH[$mdl_idx]{"group"} =~ /^\:FILE\:(.+)$/)) {
+      $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"} = $model_dir . "/" . $1;
     }
-    if($mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"} ne ($model_dir . "/" . $1)) {
-      ofile_FAIL("ERROR, for model " . $mdl_info_AH[$mdl_idx]{"name"} . " group and subgroup are meant to be read from an alignment file but not the same alignment file, this is not supported", 1, $FH_HR);
+    if((defined $mdl_info_AH[$mdl_idx]{"subgroup"}) &&
+       ($mdl_info_AH[$mdl_idx]{"subgroup"} =~ /^\:FILE\:(.+)$/)) {
+      if(! defined $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"}) {
+	ofile_FAIL("ERROR, for model " . $mdl_info_AH[$mdl_idx]{"name"} . " subgroup meant to be read from an alignment file but not group, this is not supported", 1, $FH_HR);
+      }
+      if($mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"} ne ($model_dir . "/" . $1)) {
+	ofile_FAIL("ERROR, for model " . $mdl_info_AH[$mdl_idx]{"name"} . " group and subgroup are meant to be read from different alignment files, this is not supported", 1, $FH_HR);
+      }
     }
-  }
-  if(defined $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"}) {
-    validate_and_copy_classification_alignment_file(\%{$mdl_info_AH[$mdl_idx]}, \%{$mdl_alninfo_AHH[$mdl_idx]}, $out_root, \%opt_HH, \%ofile_info_HH);
+    if(defined $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"}) {
+      validate_and_copy_classification_alignment_file(\%{$mdl_info_AH[$mdl_idx]}, \%{$mdl_alninfo_AHH[$mdl_idx]}, $out_root, \%opt_HH, \%ofile_info_HH);
+      $do_scn_file = 1;
+    }
   }
 }
-
 
 ###########################################
 # Copy and validate the input sequence file
@@ -2048,7 +2053,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 
       my $rf_start_pos = 1; 
       my $rf_stop_pos  = $mdl_len;
-      if(! opt_Get("--ignore_nnclass", \%opt_HH)) { 
+      if(! opt_Get("--ignore_nnregion", \%opt_HH)) { 
 	if(defined $mdl_info_AH[$mdl_idx]{"CLASS_RF_START_POS"}) {
 	  $rf_start_pos = $mdl_info_AH[$mdl_idx]{"CLASS_RF_START_POS"};
 	}
@@ -2293,6 +2298,9 @@ if(! $do_clsonly) {
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alt",      $out_root . ".alt", 1, 1, "per-alert tabular summary file");
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alc",      $out_root . ".alc", 1, 1, "alert count tabular summary file");
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "dcr",      $out_root . ".dcr", 1, 1, "alignment doctoring tabular summary file");
+  if($do_scn_file) { 
+    ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "scn",    $out_root . ".scn", 1, 1, "per-sequence tabular nn-based classification summary file");
+  }
   if($do_blastn_ali) {
     ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sda",    $out_root . ".sda", 1, 1, "seed alignment summary file (-s)");
   }
@@ -10267,6 +10275,7 @@ sub alert_feature_instances_count_fatal {
 # Arguments:
 #  $mdl_info_AHR:            REF to array of hashes with model info
 #  $mdl_cls_ct_HR:           REF to hash with counts of seqs classified per model
+#  $mdl_nn_cls_ct_HR:        REF to hash with counts of seqs classified per model/group/subgroup for nn-based classification
 #  $mdl_ant_ct_HR:           REF to hash with counts of seqs annotated per model
 #  $seq_name_AR:             REF to array of sequence names
 #  $seq_len_HR:              REF to hash of sequence lengths
@@ -10355,6 +10364,12 @@ sub output_tabular {
   my @clj_cls_A   = ();
   helper_tabular_fill_header_and_justification_arrays("cls", \@head_cls_AA, \@clj_cls_A, $FH_HR);
 
+  # optional .scn file
+  my @head_scn_AA = ();
+  my @data_scn_AA = ();
+  my @clj_scn_A   = ();
+  helper_tabular_fill_header_and_justification_arrays("scn", \@head_scn_AA, \@clj_scn_A, $FH_HR);
+  
   my @head_ftr_AA = ();
   my @data_ftr_AA = ();
   my @clj_ftr_A   = ();
@@ -10398,6 +10413,15 @@ sub output_tabular {
   my @data_rpn_AA = ();
   my @clj_rpn_A   = ();
   helper_tabular_fill_header_and_justification_arrays("rpn", \@head_rpn_AA, \@clj_rpn_A, $FH_HR);
+
+  # optional .scn file
+  my $do_scn = 0;
+  # if any model is using an alignment file for classification we will output the .scn file
+  for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    if(defined $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"}) {
+      $do_scn = 1;
+    }
+  }
 
   my $zero_classifications = 1; # set to '0' below if we have >= 1 seqs that are classified ($seq_mdl1 ne "-")
 
@@ -10714,6 +10738,11 @@ sub output_tabular {
                             helper_tabular_replace_spaces($seq_subgrp2), 
                             $seq_scdiff, $seq_diffpnt, $seq_alt_str]);
 
+    push(@data_scn_AA, [$seq_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_annot, $seq_mdl1, 
+			helper_tabular_replace_spaces($seq_grp1), 
+			helper_tabular_replace_spaces($seq_subgrp1), 
+			"0.0"]);
+
     if(defined $dcr_output_HAHR->{$seq_name}) { 
       my $ndcr = scalar(@{$dcr_output_HAHR->{$seq_name}});
       for(my $dcr_idx = 0; $dcr_idx < $ndcr; $dcr_idx++) { 
@@ -10899,6 +10928,9 @@ sub output_tabular {
       if($do_rpn) {
         ofile_TableHumanOutput(\@data_rpn_AA, \@head_rpn_AA, \@clj_rpn_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"rpn"}, undef, $FH_HR);
       }
+      if(($do_scn) && (scalar(@data_scn_AA) > 0)) {
+	ofile_TableHumanOutput(\@data_scn_AA, \@head_scn_AA, \@clj_scn_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"scn"}, undef, $FH_HR);
+      }
     }
   }
   else { 
@@ -10917,6 +10949,9 @@ sub output_tabular {
       }
       if(($do_rpn) && (scalar(@data_rpn_AA) > 0)) {
         ofile_TableHumanOutput(\@data_rpn_AA, undef, \@clj_rpn_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"rpn"}, undef, $FH_HR);
+      }
+      if(($do_scn) && (scalar(@data_scn_AA) > 0)) {
+	ofile_TableHumanOutput(\@data_scn_AA, undef, \@clj_scn_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"scn"}, undef, $FH_HR);
       }
     }      
   }
@@ -15055,6 +15090,11 @@ sub helper_tabular_fill_header_and_justification_arrays {
     @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "ant", "model1", "grp1", "grp1", "score", "sc/nt", "cov", "cov", "bias", "hits", "str", "model2", "grp2", "grp2", "diff",  "nt",    "alerts");
     @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0,       0,       0,     0,     0,      0,      0,     1,        1,      1,      0,       0,       1);
   }
+  elsif($ofile_key eq "scn") {
+    @{$head_AAR->[0]} = ("seq", "seq",  "seq", "",    "",    "",       "",     "sub",  "");
+    @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "ant", "model1", "grp1", "grp1", "pid");
+    @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0);
+  }
   elsif($ofile_key eq "ftr") {
     @{$head_AAR->[0]} = ("",    "seq",  "seq", "",    "",      "ftr",  "ftr",  "ftr", "ftr", "par", "",    "",       "",     "",        "",    "",     "",     "",       "",     "",        "",     "",    "",    "seq",    "model",  "ftr");
     @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "model", "type", "name", "len", "idx", "idx", "str", "n_from", "n_to", "n_instp", "trc", "5'N",  "3'N",  "p_from", "p_to", "p_instp", "p_sc", "nsa", "nsn", "coords", "coords", "alerts");
@@ -15925,7 +15965,7 @@ sub classify_based_on_alignment {
 		       $mdl_msa->alen, $seq_msa->alen), 1, $FH_HR);
   }
 
-  my $min_nnclass_length = opt_Get("--nnclasslen", $opt_HHR);
+  my $min_nnregion_length = opt_Get("--nnregionlen", $opt_HHR);
   my $alen = $seq_msa->alen;
   my $mdl_nseq = $mdl_msa->nseq;
   my $seq_nseq = $seq_msa->nseq;
@@ -15971,8 +16011,8 @@ sub classify_based_on_alignment {
     my $possibly_subseq_sqstring_nongap = $possibly_subseq_sqstring;
     $possibly_subseq_sqstring_nongap =~ s/\.\-\~//g;
     my $nongap_len = length($possibly_subseq_sqstring_nongap);
-    if($nongap_len < $min_nnclass_length) {
-      # region defined by rf_start_pos..rf_stop_pos has less than $min_nnclass_length nongap chars
+    if($nongap_len < $min_nnregion_length) {
+      # region defined by rf_start_pos..rf_stop_pos has less than $min_nnregion_length nongap chars
       # revert to full sequence (seq_rf_start..seq_rf_stop includes all nongap chars, and excludes terminal gaps)
       $apos_start = $seq_rf_start;
       $apos_stop  = $seq_rf_stop;
