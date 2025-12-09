@@ -10747,7 +10747,8 @@ sub output_tabular {
                             $seq_scdiff, $seq_diffpnt, $seq_alt_str]);
 
     if($do_scn) { 
-      my $nnreg_seq_fract2print = ($seq_nnreg_seq eq "-") && ($seq_nnreg_mdl eq "-") ? "-" :
+      my $seq_nn_diff2print = (($seq_nn_pid1 ne "-") && ($seq_nn_pid2 ne "-")) ? sprintf("%.4f", ($seq_nn_pid1 - $seq_nn_pid2)) : "-";
+      my $seq_nnreg_seq_fract2print = ($seq_nnreg_seq eq "-") && ($seq_nnreg_mdl eq "-") ? "-" :
 	  sprintf("%.4f", (vdr_CoordsLength($seq_nnreg_seq, $FH_HR) / vdr_CoordsLength($seq_nnreg_mdl, $FH_HR)));
       push(@data_scn_AA, [$seq_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_annot, $seq_mdl1, 
 			  helper_tabular_replace_spaces($seq_grp1), 
@@ -10756,7 +10757,8 @@ sub output_tabular {
 			  helper_tabular_replace_spaces($seq_grp2), 
 			  helper_tabular_replace_spaces($seq_subgrp2), 
 			  $seq_nn_pid2, $seq_nn_seq2,
-			  $seq_nnreg_seq, $seq_nnreg_mdl, $nnreg_seq_fract2print]);
+			  $seq_nn_diff2print, 
+			  $seq_nnreg_seq, $seq_nnreg_mdl, $seq_nnreg_seq_fract2print]);
     }
 
     if(defined $dcr_output_HAHR->{$seq_name}) { 
@@ -10879,7 +10881,6 @@ sub output_tabular {
 #      if($mdl_subgroup =~ m/^\:FILE\:/) { $mdl_subgroup = "*multiple*"; }
 
       if(defined $mdl_nn_cls_ct_HHR->{$mdl_name}) {
-	printf("HEYA mdl_nn_cls_ct_HHR defined for $mdl_name\n");
 	# potentially > 1 group(s)/subgroup(s) for this model
 	my @grp_subgrp_tbl_order_A = (sort { $mdl_nn_cls_ct_HHR->{$mdl_name}{$b} <=> $mdl_nn_cls_ct_HHR->{$mdl_name}{$a} or 
 						 $a cmp $b 
@@ -15107,9 +15108,9 @@ sub helper_tabular_fill_header_and_justification_arrays {
     @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0,       0,       0,     0,     0,      0,      0,     1,        1,      1,      0,       0,       1);
   }
   elsif($ofile_key eq "scn") {
-    @{$head_AAR->[0]} = ("seq", "seq",  "seq", "",    "",    "",       "",     "sub",  "",      "",      "",      "sub",  "",     "",      "nnregion",   "nnregion",   "nnregion");
-    @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "ant", "model1", "grp1", "grp1", "pid1",  "seq1",  "grp2",  "grp2", "pid2", "seq2", " seq_coords", "mdl_coords", "covrg");
-    @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0,            1,      1,       1,      0,      1,             0,            0,         0);
+    @{$head_AAR->[0]} = ("seq", "seq",  "seq", "",    "",    "",       "",     "sub",  "",      "",      "",      "sub",  "",     "",     "pid",  "nnregion",    "nnregion",   "nnregion");
+    @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "ant", "model1", "grp1", "grp1", "pid1",  "seq1",  "grp2",  "grp2", "pid2", "seq2", "diff", " seq_coords", "mdl_coords", "covrg");
+    @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0,            1,      1,       1,      0,      1,  0,      0,             0,            0);
   }
   elsif($ofile_key eq "ftr") {
     @{$head_AAR->[0]} = ("",    "seq",  "seq", "",    "",      "ftr",  "ftr",  "ftr", "ftr", "par", "",    "",       "",     "",        "",    "",     "",     "",       "",     "",        "",     "",    "",    "seq",    "model",  "ftr");
@@ -16163,7 +16164,7 @@ sub classify_based_on_alignment {
 	if((! defined $max2) ||
 	   (($cur_pid > $max2) && (! $cur_matches_max1_subgrp))) {
 	  # update max2 to be equal to old max1
-	  ($max2, $argmax2, $max2_sqname, $max2_subgrp) = ($max1, $argmax1, $max1_sqname, $max1_subgrp);
+	  ($max2, $argmax2, $max2_sqname, $max2_grp, $max2_subgrp) = ($max1, $argmax1, $max1_sqname, $max1_grp, $max1_subgrp);
 	}	  
 	# update max1
 	($max1, $argmax1, $max1_sqname, $max1_grp, $max1_subgrp) = ($cur_pid, $midx, $cur_sqname, $cur_grp, $cur_subgrp);
