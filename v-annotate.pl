@@ -10458,9 +10458,12 @@ sub output_tabular {
     my $seq_mdl_rpn = ((defined $cls_output_HR) && (defined $cls_output_HR->{"rpn.model1"})) ? $cls_output_HR->{"rpn.model1"} : "-";
 
     # scn file data
-    my $seq_mdl_pid      = ((defined $cls_output_HR) && (defined $cls_output_HR->{"model1_pid"}))   ? sprintf("%.4f", $cls_output_HR->{"model1_pid"}) : "-";
-    my $seq_nnregion_mdl = ((defined $cls_output_HR) && (defined $cls_output_HR->{"nnregion_mdl"})) ? $cls_output_HR->{"nnregion_mdl"} : "-";
-    my $seq_nnregion_seq = ((defined $cls_output_HR) && (defined $cls_output_HR->{"nnregion_seq"})) ? $cls_output_HR->{"nnregion_seq"} : "-";
+    my $seq_nn_pid1    = ((defined $cls_output_HR) && (defined $cls_output_HR->{"model1_pid"}))   ? sprintf("%.4f", $cls_output_HR->{"model1_pid"}) : "-";
+    my $seq_nn_seq1    = ((defined $cls_output_HR) && (defined $cls_output_HR->{"model1_seq"}))   ? $cls_output_HR->{"model1_seq"} : "-";
+    my $seq_nn_pid2    = ((defined $cls_output_HR) && (defined $cls_output_HR->{"model2_pid"}))   ? sprintf("%.4f", $cls_output_HR->{"model2_pid"}) : "-";
+    my $seq_nn_seq2    = ((defined $cls_output_HR) && (defined $cls_output_HR->{"model2_seq"}))   ? $cls_output_HR->{"model2_seq"} : "-";
+    my $seq_nnreg_seq  = ((defined $cls_output_HR) && (defined $cls_output_HR->{"nnregion_seq"})) ? $cls_output_HR->{"nnregion_seq"} : "-";
+    my $seq_nnreg_mdl  = ((defined $cls_output_HR) && (defined $cls_output_HR->{"nnregion_mdl"})) ? $cls_output_HR->{"nnregion_mdl"} : "-";
 
     my $sda_output_HR = (($do_sda) && (defined $sda_output_HHR->{$seq_name})) ? \%{$sda_output_HHR->{$seq_name}} : undef;
     my $sda_seq       = (($do_sda) && (defined $sda_output_HR->{"sda_seq"}))  ? $sda_output_HR->{"sda_seq"} : "-";
@@ -10744,12 +10747,16 @@ sub output_tabular {
                             $seq_scdiff, $seq_diffpnt, $seq_alt_str]);
 
     if($do_scn) { 
-      my $nnregion_seq_fract2print = ($seq_nnregion_seq eq "-") && ($seq_nnregion_mdl eq "-") ? "-" :
-	  sprintf("%.4f", (vdr_CoordsLength($seq_nnregion_seq, $FH_HR) / vdr_CoordsLength($seq_nnregion_mdl, $FH_HR)));
+      my $nnreg_seq_fract2print = ($seq_nnreg_seq eq "-") && ($seq_nnreg_mdl eq "-") ? "-" :
+	  sprintf("%.4f", (vdr_CoordsLength($seq_nnreg_seq, $FH_HR) / vdr_CoordsLength($seq_nnreg_mdl, $FH_HR)));
       push(@data_scn_AA, [$seq_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_annot, $seq_mdl1, 
 			  helper_tabular_replace_spaces($seq_grp1), 
 			  helper_tabular_replace_spaces($seq_subgrp1), 
-			  $seq_mdl_pid, $seq_nnregion_seq, $seq_nnregion_mdl, $nnregion_seq_fract2print]);
+			  $seq_nn_pid1, $seq_nn_seq1,
+			  helper_tabular_replace_spaces($seq_grp2), 
+			  helper_tabular_replace_spaces($seq_subgrp2), 
+			  $seq_nn_pid2, $seq_nn_seq2,
+			  $seq_nnreg_seq, $seq_nnreg_mdl, $nnreg_seq_fract2print]);
     }
 
     if(defined $dcr_output_HAHR->{$seq_name}) { 
@@ -15100,9 +15107,9 @@ sub helper_tabular_fill_header_and_justification_arrays {
     @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0,       0,       0,     0,     0,      0,      0,     1,        1,      1,      0,       0,       1);
   }
   elsif($ofile_key eq "scn") {
-    @{$head_AAR->[0]} = ("seq", "seq",  "seq", "",    "",    "",       "",     "sub",  "",      "nnregion",   "nnreg",      "nnreg");
-    @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "ant", "model1", "grp1", "grp1", "pid1",  "seq_coords", "mdl_coords", "covrg");
-    @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0,       0,            0,            0);
+    @{$head_AAR->[0]} = ("seq", "seq",  "seq", "",    "",    "",       "",     "sub",  "",      "",      "",      "sub",  "",     "",      "nnregion",   "nnregion",   "nnregion");
+    @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "ant", "model1", "grp1", "grp1", "pid1",  "seq1",  "grp2",  "grp2", "pid2", "seq2", " seq_coords", "mdl_coords", "covrg");
+    @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0,            1,      1,       1,      0,      1,             0,            0,         0);
   }
   elsif($ofile_key eq "ftr") {
     @{$head_AAR->[0]} = ("",    "seq",  "seq", "",    "",      "ftr",  "ftr",  "ftr", "ftr", "par", "",    "",       "",     "",        "",    "",     "",     "",       "",     "",        "",     "",    "",    "seq",    "model",  "ftr");
@@ -15683,7 +15690,7 @@ sub determine_intron_index {
 #
 #################################################################
 sub validate_and_copy_classification_alignment_file { 
-  my $sub_name = "validate_classification_alignment_file";
+  my $sub_name = "validate_and_copy_classification_alignment_file";
   my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -16134,32 +16141,68 @@ sub classify_based_on_alignment {
     }
     
     # find closest matching model sequence for this sequence
-    my $argmax = 0;
-    my $max = $fwd_nmatch_AA[0][($alen_p-1)];
+    my $max1 = $fwd_nmatch_AA[0][($alen_p-1)]; # max fractional id across all seqs
+    my $argmax1 = 0;  # mdl idx of current max1
+    my $max1_sqname = $mdl_msa->get_sqname($argmax1);
+    my $max1_grp    = (defined $mdl_alninfo_HHR->{$max1_sqname}{"group"})    ? $mdl_alninfo_HHR->{$max1_sqname}{"group"} : "-";
+    my $max1_subgrp = (defined $mdl_alninfo_HHR->{$max1_sqname}{"subgroup"}) ? $mdl_alninfo_HHR->{$max1_sqname}{"subgroup"} : "-";
+
+    my $max2 = undef; # second best fractional id across all seqs in different subgroup from $max1 (if subgroup undef it is different from all subgroups)
+    my $argmax2 = 0;  # mdl idx of current max2
+    my $max2_sqname = undef;
+    my $max2_grp    = undef;
+    my $max2_subgrp = undef;
     for(my $midx = 1; $midx < $mdl_nseq; $midx++) { 
-      if($fwd_nmatch_AA[$midx][($alen_p-1)] > $max) {
-	$max = $fwd_nmatch_AA[$midx][($alen_p-1)];
-	$argmax = $midx;
+      my $cur_pid    = $fwd_nmatch_AA[$midx][($alen_p-1)];
+      my $cur_sqname = $mdl_msa->get_sqname($midx);
+      my $cur_grp    = (defined $mdl_alninfo_HHR->{$cur_sqname}{"group"})    ? $mdl_alninfo_HHR->{$cur_sqname}{"group"} : "-";
+      my $cur_subgrp = (defined $mdl_alninfo_HHR->{$cur_sqname}{"subgroup"}) ? $mdl_alninfo_HHR->{$cur_sqname}{"subgroup"} : "-";
+      if($cur_pid > $max1) { 
+	# new max1, first update max2 if necessary
+	my $cur_matches_max1_subgrp = (($max1_grp ne "-") && ($max1_subgrp ne "-") && ($max1_grp eq $cur_grp) && ($max1_subgrp eq $cur_subgrp)) ? 1 : 0; 
+	if((! defined $max2) ||
+	   (($cur_pid > $max2) && (! $cur_matches_max1_subgrp))) {
+	  # update max2 to be equal to old max1
+	  ($max2, $argmax2, $max2_sqname, $max2_subgrp) = ($max1, $argmax1, $max1_sqname, $max1_subgrp);
+	}	  
+	# update max1
+	($max1, $argmax1, $max1_sqname, $max1_grp, $max1_subgrp) = ($cur_pid, $midx, $cur_sqname, $cur_grp, $cur_subgrp);
+      }
+      else { # not a new max, but maybe a new max2
+	my $cur_matches_max2_subgrp = ((defined $max2) && ($max2_grp ne "-") && ($max2_subgrp ne "-") && ($max2_grp eq $cur_grp) && ($max2_subgrp eq $cur_subgrp)) ? 1 : 0; 
+	if((! defined $max2) ||
+	   (($cur_pid > $max2) && (! $cur_matches_max2_subgrp))) { 
+	  # update max2 to be equal to old max1
+	  ($max2, $argmax2, $max2_sqname, $max2_grp, $max2_subgrp) = ($cur_pid, $midx, $cur_sqname, $cur_grp, $cur_subgrp);
+	}	  
       }
       #printf("\t\tfwd_nmatch_AA[$midx][%d]: %.3f (%s)\n", ($alen_p-1), $fwd_nmatch_AA[$midx][($alen_p-1)], $mdl_msa->get_sqname($midx));    
     }
-    my $win_mdl_sqname = $mdl_msa->get_sqname($argmax);
-    $cls_output_HHR->{$seqname}{"model1_pid"} = $max;
-    #printf("\twinner for $seqname is $win_mdl_sqname ($max)\n");
+    $cls_output_HHR->{$seqname}{"model1_pid"} = $max1;
+    my $max1_sqname2print = $max1_sqname;
+    $max1_sqname2print =~ s/^.+\///; # remove dir added by validate_and_copy_classification_alignment_file()
+    $cls_output_HHR->{$seqname}{"model1_seq"} = $max1_sqname2print;
+    $cls_output_HHR->{$seqname}{"group1"}     = (defined $max1_grp) ? $max1_grp : "-";
+    $cls_output_HHR->{$seqname}{"subgroup1"}  = (defined $max1_subgrp) ? $max1_subgrp : "-";
+    #printf("\twinner for $seqname is $max1_sqname ($max)\n");
 
-    my $win_mdl_grp = "-";
-    my $win_mdl_subgrp = "-";
-    if(defined $mdl_alninfo_HHR->{$win_mdl_sqname}{"group"}) {
-      $win_mdl_grp = $mdl_alninfo_HHR->{$win_mdl_sqname}{"group"};
-      $cls_output_HHR->{$seqname}{"group1"} = $win_mdl_grp;
-      #printf("\tgroup: $win_mdl_grp\n");
+    if(defined $max2) { 
+      $cls_output_HHR->{$seqname}{"model2_pid"} = $max2;
+      my $max2_sqname2print = $max2_sqname;
+      $max2_sqname2print =~ s/^.+\///; # remove dir added by validate_and_copy_classification_alignment_file()
+      $cls_output_HHR->{$seqname}{"model2_seq"} = $max2_sqname2print;
+      $cls_output_HHR->{$seqname}{"group2"}     = (defined $max2_grp) ? $max2_grp : "-";
+      $cls_output_HHR->{$seqname}{"subgroup2"}  = (defined $max2_subgrp) ? $max2_subgrp : "-";
+      #printf("\twinner for $seqname is $max1_sqname ($max)\n");
     }
-    if(defined $mdl_alninfo_HHR->{$win_mdl_sqname}{"subgroup"}) {
-      $win_mdl_subgrp = $mdl_alninfo_HHR->{$win_mdl_sqname}{"subgroup"};
-      $cls_output_HHR->{$seqname}{"subgroup1"} = $win_mdl_subgrp;
-      #printf("\tsubgroup: $win_mdl_subgrp\n");
+    else { # $max2 is undef
+      $cls_output_HHR->{$seqname}{"model2_pid"} = "-";
+      $cls_output_HHR->{$seqname}{"model2_seq"} = "-";
+      $cls_output_HHR->{$seqname}{"group2"}     = "-";
+      $cls_output_HHR->{$seqname}{"subgroup2"}  = "-";
     }
-    my $mdl_nn_cls_key = ":GROUP:" . $win_mdl_grp . ":SUBGROUP:" . $win_mdl_subgrp;
+    
+    my $mdl_nn_cls_key = ":GROUP:" . $max1_grp . ":SUBGROUP:" . $max1_subgrp;
     if(! defined $mdl_nn_cls_ct_HHR->{$mdl_name}{$mdl_nn_cls_key}) {
       $mdl_nn_cls_ct_HHR->{$mdl_name}{$mdl_nn_cls_key} = 0;
     }
