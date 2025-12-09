@@ -10473,15 +10473,24 @@ sub output_tabular {
     if(($seq_mdl1 ne "-") && (defined $mdl_sub_HR) && (defined $mdl_sub_HR->{$seq_mdl1})) { 
       $tmp_mdl = $mdl_sub_HR->{$seq_mdl1};
     }
-
+    my $tmp_mdl_grp_subgrp = $seq_mdl1 . ":GROUP:" . $seq_grp1 . ":SUBGROUP:" . $seq_subgrp1; # should this be $tmp_mdl instead of $seq_mdl1?
+    
     my $seq_pass_fail = (check_if_sequence_passes($seq_name, (($tmp_mdl ne "-") ? \@{$ftr_info_HAHR->{$tmp_mdl}} : undef), $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $FH_HR)) ? "PASS" : "FAIL";
     my $seq_annot     = (check_if_sequence_was_annotated($seq_name, $cls_output_HHR)) ? "yes" : "no";
 
     if($seq_mdl1 ne "-") { 
       if(! defined $mdl_pass_ct_H{$tmp_mdl}) { $mdl_pass_ct_H{$tmp_mdl} = 0; }
       if(! defined $mdl_fail_ct_H{$tmp_mdl}) { $mdl_fail_ct_H{$tmp_mdl} = 0; }
-      if($seq_pass_fail eq "PASS") { $mdl_pass_ct_H{$tmp_mdl}++; }
-      if($seq_pass_fail eq "FAIL") { $mdl_fail_ct_H{$tmp_mdl}++; }
+      if(! defined $mdl_pass_ct_H{$tmp_mdl_grp_subgrp}) { $mdl_pass_ct_H{$tmp_mdl_grp_subgrp} = 0; }
+      if(! defined $mdl_fail_ct_H{$tmp_mdl_grp_subgrp}) { $mdl_fail_ct_H{$tmp_mdl_grp_subgrp} = 0; }
+      if($seq_pass_fail eq "PASS") {
+	$mdl_pass_ct_H{$tmp_mdl}++;
+	$mdl_pass_ct_H{$tmp_mdl_grp_subgrp}++;
+      }
+      if($seq_pass_fail eq "FAIL") {
+	$mdl_fail_ct_H{$tmp_mdl}++;
+	$mdl_fail_ct_H{$tmp_mdl_grp_subgrp}++;
+      }
       $zero_classifications = 0;
     }
 
@@ -10827,15 +10836,20 @@ sub output_tabular {
       if(defined $mdl_nn_cls_ct_HHR->{$mdl_name}) {
 	printf("HEYA mdl_nn_cls_ct_HHR defined for $mdl_name\n");
 	# potentially > 1 group(s)/subgroup(s) for this model
-	foreach my $grp_subgrp (sort keys (%{$mdl_nn_cls_ct_HHR->{$mdl_name}})) {
-	  printf("\tgrp_subgrp: $grp_subgrp\n");
+	my @grp_subgrp_tbl_order_A = (sort { $mdl_nn_cls_ct_HHR->{$mdl_name}{$b} <=> $mdl_nn_cls_ct_HHR->{$mdl_name}{$a} or 
+						 $a cmp $b 
+				      } keys (%{$mdl_nn_cls_ct_HHR->{$mdl_name}}));
+
+	foreach my $grp_subgrp (@grp_subgrp_tbl_order_A) { 
 	  if($grp_subgrp =~ /^:GROUP:(\S+):SUBGROUP:(\S+)$/) {
 	    ($mdl_group, $mdl_subgroup) = ($1, $2); 
+	    my $mdl_grp_subgrp = $mdl_name . $grp_subgrp;
 	    push(@data_mdl_AA, [$mdl_tbl_idx, $mdl_name, 
 				$mdl_group, 
 				$mdl_subgroup,
 				$mdl_nn_cls_ct_HHR->{$mdl_name}{$grp_subgrp},
-				0, 0]);
+				(defined $mdl_pass_ct_H{$mdl_grp_subgrp}) ? $mdl_pass_ct_H{$mdl_grp_subgrp} : 0,
+				(defined $mdl_fail_ct_H{$mdl_grp_subgrp}) ? $mdl_fail_ct_H{$mdl_grp_subgrp} : 0]);
 	  }
 	}
       }
@@ -16076,29 +16090,28 @@ sub classify_based_on_alignment {
 	$max = $fwd_nmatch_AA[$midx][($alen_p-1)];
 	$argmax = $midx;
       }
-      printf("\t\tfwd_nmatch_AA[$midx][%d]: %.3f (%s)\n", ($alen_p-1), $fwd_nmatch_AA[$midx][($alen_p-1)], $mdl_msa->get_sqname($midx));    
+      #printf("\t\tfwd_nmatch_AA[$midx][%d]: %.3f (%s)\n", ($alen_p-1), $fwd_nmatch_AA[$midx][($alen_p-1)], $mdl_msa->get_sqname($midx));    
     }
     my $win_mdl_sqname = $mdl_msa->get_sqname($argmax);
-    printf("\twinner for $seqname is $win_mdl_sqname ($max)\n");
+    #printf("\twinner for $seqname is $win_mdl_sqname ($max)\n");
 
     my $win_mdl_grp = "-";
     my $win_mdl_subgrp = "-";
     if(defined $mdl_alninfo_HHR->{$win_mdl_sqname}{"group"}) {
       $win_mdl_grp = $mdl_alninfo_HHR->{$win_mdl_sqname}{"group"};
       $cls_output_HHR->{$seqname}{"group1"} = $win_mdl_grp;
-      printf("\tgroup: $win_mdl_grp\n");
+      #printf("\tgroup: $win_mdl_grp\n");
     }
     if(defined $mdl_alninfo_HHR->{$win_mdl_sqname}{"subgroup"}) {
       $win_mdl_subgrp = $mdl_alninfo_HHR->{$win_mdl_sqname}{"subgroup"};
       $cls_output_HHR->{$seqname}{"subgroup1"} = $win_mdl_subgrp;
-      printf("\tsubgroup: $win_mdl_subgrp\n");
+      #printf("\tsubgroup: $win_mdl_subgrp\n");
     }
     my $mdl_nn_cls_key = ":GROUP:" . $win_mdl_grp . ":SUBGROUP:" . $win_mdl_subgrp;
     if(! defined $mdl_nn_cls_ct_HHR->{$mdl_name}{$mdl_nn_cls_key}) {
       $mdl_nn_cls_ct_HHR->{$mdl_name}{$mdl_nn_cls_key} = 0;
     }
     $mdl_nn_cls_ct_HHR->{$mdl_name}{$mdl_nn_cls_key}++;
-    printf("HEYA set mdl_nn_cls_ct_HHR->{$mdl_name}{$mdl_nn_cls_key} to " . $mdl_nn_cls_ct_HHR->{$mdl_name}{$mdl_nn_cls_key} . "\n");
     
     #print $out_weighted_avg_diff;
   } # end of loop over sequences
