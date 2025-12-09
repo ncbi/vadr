@@ -10457,6 +10457,11 @@ sub output_tabular {
 
     my $seq_mdl_rpn = ((defined $cls_output_HR) && (defined $cls_output_HR->{"rpn.model1"})) ? $cls_output_HR->{"rpn.model1"} : "-";
 
+    # scn file data
+    my $seq_mdl_pid      = ((defined $cls_output_HR) && (defined $cls_output_HR->{"model1_pid"}))   ? sprintf("%.4f", $cls_output_HR->{"model1_pid"}) : "-";
+    my $seq_nnregion_mdl = ((defined $cls_output_HR) && (defined $cls_output_HR->{"nnregion_mdl"})) ? $cls_output_HR->{"nnregion_mdl"} : "-";
+    my $seq_nnregion_seq = ((defined $cls_output_HR) && (defined $cls_output_HR->{"nnregion_seq"})) ? $cls_output_HR->{"nnregion_seq"} : "-";
+
     my $sda_output_HR = (($do_sda) && (defined $sda_output_HHR->{$seq_name})) ? \%{$sda_output_HHR->{$seq_name}} : undef;
     my $sda_seq       = (($do_sda) && (defined $sda_output_HR->{"sda_seq"}))  ? $sda_output_HR->{"sda_seq"} : "-";
     my $sda_mdl       = (($do_sda) && (defined $sda_output_HR->{"sda_mdl"}))  ? $sda_output_HR->{"sda_mdl"} : "-";
@@ -10738,10 +10743,14 @@ sub output_tabular {
                             helper_tabular_replace_spaces($seq_subgrp2), 
                             $seq_scdiff, $seq_diffpnt, $seq_alt_str]);
 
-    push(@data_scn_AA, [$seq_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_annot, $seq_mdl1, 
-			helper_tabular_replace_spaces($seq_grp1), 
-			helper_tabular_replace_spaces($seq_subgrp1), 
-			"0.0"]);
+    if($do_scn) { 
+      my $nnregion_seq_fract2print = ($seq_nnregion_seq eq "-") && ($seq_nnregion_mdl eq "-") ? "-" :
+	  sprintf("%.4f", (vdr_CoordsLength($seq_nnregion_seq, $FH_HR) / vdr_CoordsLength($seq_nnregion_mdl, $FH_HR)));
+      push(@data_scn_AA, [$seq_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_annot, $seq_mdl1, 
+			  helper_tabular_replace_spaces($seq_grp1), 
+			  helper_tabular_replace_spaces($seq_subgrp1), 
+			  $seq_mdl_pid, $seq_nnregion_seq, $seq_nnregion_mdl, $nnregion_seq_fract2print]);
+    }
 
     if(defined $dcr_output_HAHR->{$seq_name}) { 
       my $ndcr = scalar(@{$dcr_output_HAHR->{$seq_name}});
@@ -15091,9 +15100,9 @@ sub helper_tabular_fill_header_and_justification_arrays {
     @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0,       0,       0,     0,     0,      0,      0,     1,        1,      1,      0,       0,       1);
   }
   elsif($ofile_key eq "scn") {
-    @{$head_AAR->[0]} = ("seq", "seq",  "seq", "",    "",    "",       "",     "sub",  "");
-    @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "ant", "model1", "grp1", "grp1", "pid");
-    @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0);
+    @{$head_AAR->[0]} = ("seq", "seq",  "seq", "",    "",    "",       "",     "sub",  "",      "nnregion",   "nnreg",      "nnreg");
+    @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "ant", "model1", "grp1", "grp1", "pid1",  "seq_coords", "mdl_coords", "covrg");
+    @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0,       0,            0,            0);
   }
   elsif($ofile_key eq "ftr") {
     @{$head_AAR->[0]} = ("",    "seq",  "seq", "",    "",      "ftr",  "ftr",  "ftr", "ftr", "par", "",    "",       "",     "",        "",    "",     "",     "",       "",     "",        "",     "",    "",    "seq",    "model",  "ftr");
@@ -15959,7 +15968,7 @@ sub classify_based_on_alignment {
     isDna => 1});
   # remove gap RF columns
   $seq_msa->remove_rf_gap_columns(".-~");
-
+  
   if($mdl_msa->alen != $seq_msa->alen) { 
     ofile_FAIL(sprintf("ERROR, in $sub_name, model and sequence MSAs have different lengths after removing gap RF positions (%d != %d)\n",
 		       $mdl_msa->alen, $seq_msa->alen), 1, $FH_HR);
@@ -15997,10 +16006,12 @@ sub classify_based_on_alignment {
     # determine the first and final positions we will compare to model sequences
     my $apos_start = undef;  # nongap RF alignment start position for region we will compare to model for this sequence
     my $apos_stop  = undef;  # nongap RF alignment stop  position for region we will compare to model for this sequence
+    my $using_defined_nn_region = (($rf_start_pos == 1) && ($rf_stop_pos == $alen)) ? 0 : 1;
     if(($seq_rf_start > $rf_stop_pos) ||
        ($seq_rf_stop  < $rf_start_pos)) {
       # entire rf_start_pos..rf_stop_pos is outside seq_rf_start..seq_rf_stop, use seq_rf_start..seq_rf_stop
       ($apos_start, $apos_stop) = ($seq_rf_start, $seq_rf_stop);
+      $using_defined_nn_region = 0; # if we were trying to, no sequence was within the region
     }
     else {
       # at least one nucleotide in rf_start_pos..rf_stop_pos overlaps with seq_rf_start..seq_rf_stop
@@ -16133,6 +16144,7 @@ sub classify_based_on_alignment {
       #printf("\t\tfwd_nmatch_AA[$midx][%d]: %.3f (%s)\n", ($alen_p-1), $fwd_nmatch_AA[$midx][($alen_p-1)], $mdl_msa->get_sqname($midx));    
     }
     my $win_mdl_sqname = $mdl_msa->get_sqname($argmax);
+    $cls_output_HHR->{$seqname}{"model1_pid"} = $max;
     #printf("\twinner for $seqname is $win_mdl_sqname ($max)\n");
 
     my $win_mdl_grp = "-";
@@ -16152,7 +16164,11 @@ sub classify_based_on_alignment {
       $mdl_nn_cls_ct_HHR->{$mdl_name}{$mdl_nn_cls_key} = 0;
     }
     $mdl_nn_cls_ct_HHR->{$mdl_name}{$mdl_nn_cls_key}++;
-    
+
+    $cls_output_HHR->{$seqname}{"nnregion_mdl"} = ($using_defined_nn_region) ?
+	vdr_CoordsSegmentCreate($rf_start_pos, $rf_stop_pos, "+", $FH_HR) : 
+	vdr_CoordsSegmentCreate(1, $alen, "+", $FH_HR);
+    $cls_output_HHR->{$seqname}{"nnregion_seq"} = vdr_CoordsSegmentCreate($apos_start, $apos_stop, "+", $FH_HR);
     #print $out_weighted_avg_diff;
   } # end of loop over sequences
 
