@@ -1258,11 +1258,8 @@ if((! $do_clsonly) && (! opt_Get("--ignore_nnclass", \%opt_HH))) {
     if(defined $aln_file_grp) { 
       my $class_aln_file = $model_dir . "/" . $aln_file_grp;
       vdr_ModelInfoSetClassificationAlignmentFile(\%{$mdl_info_AH[$mdl_idx]}, $class_aln_file, $FH_HR);
-      my $tmp1 = vdr_ModelInfoGetClassificationAlignmentFile(\%{$mdl_info_AH[$mdl_idx]}, $FH_HR);
       %{$mdl_alninfo_AHH[$mdl_idx]} = ();
       validate_and_copy_classification_alignment_file(\%{$mdl_info_AH[$mdl_idx]}, \%{$mdl_alninfo_AHH[$mdl_idx]}, $out_root, \%opt_HH, \%ofile_info_HH);
-      my $tmp2 = vdr_ModelInfoGetClassificationAlignmentFile(\%{$mdl_info_AH[$mdl_idx]}, $FH_HR);
-      printf("HEYA\ntmp1: $tmp1\ntmp2: $tmp2\n");
       $do_scn_file = 1;
     }
   }

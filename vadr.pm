@@ -6236,7 +6236,6 @@ sub vdr_ModelInfoCheckForFileKey {
   if($value =~ /^\:FILE\:(.+)$/) {
     $retval = $1;
   }
-  printf("HEYA in $sub_name, value: $value, retval: $retval\n");
   return $retval;
 }
 
@@ -6767,7 +6766,7 @@ sub vdr_MergeOutputGetFileList {
 # Dies: if $check_exists is 1 and a file to merge does not exist
 # 
 ################################################################# 
-sub vdr_MergeOutputMdlTabularFile { 
+sub OLD_vdr_MergeOutputMdlTabularFile { 
   my $nargs_exp = 6;
   my $sub_name = "vdr_MergeOutputMdlTabularFile";
   if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
@@ -6869,6 +6868,143 @@ sub vdr_MergeOutputMdlTabularFile {
   push(@data_mdl_AA, ["-", $model, $group_H{$model}, $subgroup_H{$model}, $num_seqs_H{$model}, $num_pass_H{$model}, $num_fail_H{$model}]);
   $model = "*none*";
   push(@data_mdl_AA, ["-", $model, $group_H{$model}, $subgroup_H{$model}, $num_seqs_H{$model}, $num_pass_H{$model}, $num_fail_H{$model}]);
+  push(@data_mdl_AA, []); # separator line
+
+  my $merged_file = $out_root_no_vadr . ".vadr" . $out_sfx; # merged file to create by concatenating files in chunk dirs
+  ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "mdl", $merged_file, 1, 1, "per-model tabular summary file");
+  ofile_TableHumanOutput(\@data_mdl_AA, \@head_mdl_AA, \@clj_mdl_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"mdl"}, undef, $FH_HR);
+
+  return;
+}
+
+#################################################################
+# Subroutine:  vdr_MergeOutputMdlTabularFile()
+# Incept:      EPN, Fri Mar 19 13:27:00 2021
+#
+# Purpose:    With --split, merge .mdl tabular output files from 
+#             multiple output directories in @{$chunk_outdir_AR} 
+#             into a single file.
+#
+# Arguments: 
+#   $out_root_no_vadr:  root name for output file names, without '.vadr' suffix
+#   $ofile_desc:        description for %{$ofile_info_HHR}
+#   $do_check_exists:   '1' to check if all files to merge exist before concatenating and fail if not
+#   $chunk_outdir_AR:   ref to array of output directories with files we are merging
+#   $opt_HHR:           ref to 2D hash of option values, see top of sqp_opts.pm for description
+#   $ofile_info_HHR:    ref to the 2D hash of output file information, ADDED TO HERE 
+#
+# Returns:     void
+# 
+# Dies: if $check_exists is 1 and a file to merge does not exist
+# 
+################################################################# 
+sub vdr_MergeOutputMdlTabularFile { 
+  my $nargs_exp = 6;
+  my $sub_name = "vdr_MergeOutputMdlTabularFile";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($out_root_no_vadr, $ofile_desc, $do_check_exists, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+  my $out_sfx   = ".mdl";
+
+  my $out_dir_tail = utl_RemoveDirPath($out_root_no_vadr);
+
+  # make list of files to concatenate
+  my @filelist_A = (); # array of files to concatenate to make $merged_file
+  vdr_MergeOutputGetFileList($out_root_no_vadr, $out_sfx, $do_check_exists, \@filelist_A, $chunk_outdir_AR, $FH_HR);
+
+  # th head_* definitions should be (manually) kept consistent with output_tabular()
+  # alternatively we could parse the header lines in the files we want to merge,
+  # but not doing that currently
+  my @head_mdl_AA = ();
+  my @data_mdl_AA = ();
+  @{$head_mdl_AA[0]} = ("",    "",      "",      "",         "num",  "num",  "num");
+  @{$head_mdl_AA[1]} = ("idx", "model", "group", "subgroup", "seqs", "pass", "fail");
+  my @clj_mdl_A      = (1,     1,       1,       1,          0,      0,      0);
+
+  # read each .mdl file and store info in it
+  my ($idx, $model, $group, $subgroup, $num_seqs, $num_pass, $num_fail);
+  #my %group_H    = (); # key: model name, value: group
+  #my %subgroup_H = (); # key: model name, value: subgroup
+  my %num_seqs_mdl_H   = (); # key1: model name, value num seqs
+  my %num_seqs_HH      = (); # key1: model name, key2: "GROUP:<group>:SUBGROUP:<subgroup>", value: num seqs
+  my %num_pass_HH      = (); # key1: model name, key2: "GROUP:<group>:SUBGROUP:<subgroup>", value: num passing seqs
+  my %num_fail_HH      = (); # key1: model name, key2: "GROUP:<group>:SUBGROUP:<subgroup>", value: num failing seqs
+  for(my $i = 0; $i < scalar(@filelist_A); $i++) { 
+    open(IN, $filelist_A[$i]) || ofile_FileOpenFailure($filelist_A[$i], $sub_name, $!, "reading", $FH_HR);
+    while(my $line = <IN>) { 
+      ##                                                    num   num   num
+      ##idx  model               group         subgroup    seqs  pass  fail
+      ##---  ------------------  ------------  ----------  ----  ----  ----
+      #1     NC_045512           Sarbecovirus  SARS-CoV-2     2     1     1
+      #2     NC_045512-MW422255  Sarbecovirus  SARS-CoV-2     1     1     0
+      ##---  ------------------  ------------  ----------  ----  ----  ----
+      #-     *all*               -             -              3     2     1
+      #-     *none*              -             -              0     0     0
+      ##---  ------------------  ------------  ----------  ----  ----  ----
+      if($line !~ m/^\#/) { 
+        chomp $line;
+        if($line =~ m/^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\d+)\s+(\d+)\s+(\d+)$/) { 
+          ($idx, $model, $group, $subgroup, $num_seqs, $num_pass, $num_fail) = ($1, $2, $3, $4, $5, $6, $7);
+        }
+        else { 
+          ofile_FAIL("ERROR in $sub_name unable to parse $filelist_A[$i] file line:\n$line\n", 1, $FH_HR);
+        }
+        if(! defined $num_seqs_HH{$model}) {
+	  %{$num_seqs_HH{$model}} = ();
+	  %{$num_pass_HH{$model}} = ();
+	  %{$num_fail_HH{$model}} = ();
+	}
+	my $grp_subgrp = ":GROUP:$group:SUBGROUP:$subgroup";
+        if(! defined $num_seqs_HH{$model}{$grp_subgrp}) {
+	  $num_seqs_HH{$model}{$grp_subgrp} = 0;
+	  $num_pass_HH{$model}{$grp_subgrp} = 0;
+	  $num_fail_HH{$model}{$grp_subgrp} = 0;
+	}
+        $num_seqs_mdl_H{$model} += $num_seqs;
+        $num_seqs_HH{$model}{$grp_subgrp} += $num_seqs;
+        $num_pass_HH{$model}{$grp_subgrp} += $num_pass;
+        $num_fail_HH{$model}{$grp_subgrp} += $num_fail;
+      }
+    }
+  }
+
+  my @tmp_mdl_tbl_order_A = (sort { $num_seqs_mdl_H{$b} <=> $num_seqs_mdl_H{$a} or 
+                                        $a cmp $b 
+                             } keys (%num_seqs_mdl_H));
+
+  # remove special "*all*" and "*none*" lines from @tmp_mdl_order_A to make @mdl_order_A
+  my $mdl_tbl_idx = 0;
+  my @mdl_grp_subgrp_tbl_order_A = ();
+  my $grp_subgrp;
+  foreach $model (@tmp_mdl_tbl_order_A) { 
+    if(($model ne "*all*") && ($model ne "*none*")) { 
+      my @grp_subgrp_tbl_order_A = (sort { $num_seqs_HH{$model}{$b} <=> $num_seqs_HH{$model}{$a} or 
+					       $a cmp $b 
+				    } keys (%{$num_seqs_HH{$model}}));
+      
+      foreach $grp_subgrp (@grp_subgrp_tbl_order_A) {
+	if($num_seqs_HH{$model}{$grp_subgrp} > 0) { 
+	  $mdl_tbl_idx++;
+	  if($grp_subgrp =~ /^:GROUP:(\S+):SUBGROUP:(\S+)$/) {
+	    my ($mdl_group, $mdl_subgroup) = ($1, $2); 
+	    push(@data_mdl_AA, [$mdl_tbl_idx, $model, $mdl_group, $mdl_subgroup, $num_seqs_HH{$model}{$grp_subgrp}, $num_pass_HH{$model}{$grp_subgrp}, $num_fail_HH{$model}{$grp_subgrp}]);
+	  }
+	  else {
+	    ofile_FAIL("ERROR in $sub_name unable to parse :GROUP:<group>:SUBGROUP:<subgroup> group/subgroup key $grp_subgrp", 1, $FH_HR);
+	  }
+	}
+      }
+    }
+  }
+  # add mdl summary line
+  push(@data_mdl_AA, []); # separator line
+  $model = "*all*";
+  $grp_subgrp = ":GROUP:-:SUBGROUP:-";
+  push(@data_mdl_AA, ["-", $model, "-", "-", $num_seqs_HH{$model}{$grp_subgrp}, $num_pass_HH{$model}{$grp_subgrp}, $num_fail_HH{$model}{$grp_subgrp}]);
+  $model = "*none*";
+  push(@data_mdl_AA, ["-", $model, "-", "-", $num_seqs_HH{$model}{$grp_subgrp}, $num_pass_HH{$model}{$grp_subgrp}, $num_fail_HH{$model}{$grp_subgrp}]);
   push(@data_mdl_AA, []); # separator line
 
   my $merged_file = $out_root_no_vadr . ".vadr" . $out_sfx; # merged file to create by concatenating files in chunk dirs
