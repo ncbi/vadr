@@ -1267,7 +1267,7 @@ if((! $do_clsonly) && (! opt_Get("--ignore_nnclass", \%opt_HH))) {
 
 ###########################################
 # Copy and validate the input sequence file
-###########################################
+##########################################
 my $in_fa_file        = undef;
 my $blastn_in_fa_file = undef;
 if(opt_Get("--origfa", \%opt_HH)) { 
@@ -1493,6 +1493,10 @@ if($do_split) {
     if($do_replace_ns) { 
       helper_tabular_fill_header_and_justification_arrays("rpn", \@head_AA, \@cljust_A, $FH_HR);
       vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".rpn", "rpn", "replaced stretches of Ns summary file (-r)", $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+    }
+    if($do_scn_file) { 
+      helper_tabular_fill_header_and_justification_arrays("scn", \@head_AA, \@cljust_A, $FH_HR);
+      vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".scn", "scn", "per-sequence tabular nn-based classification summary file", $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
     }
   }
 
@@ -2298,14 +2302,14 @@ if(! $do_clsonly) {
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alt",      $out_root . ".alt", 1, 1, "per-alert tabular summary file");
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alc",      $out_root . ".alc", 1, 1, "alert count tabular summary file");
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "dcr",      $out_root . ".dcr", 1, 1, "alignment doctoring tabular summary file");
-  if($do_scn_file) { 
-    ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "scn",    $out_root . ".scn", 1, 1, "per-sequence tabular nn-based classification summary file");
-  }
   if($do_blastn_ali) {
     ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sda",    $out_root . ".sda", 1, 1, "seed alignment summary file (-s)");
   }
   if($do_replace_ns) { 
     ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "rpn",    $out_root . ".rpn", 1, 1, "replaced stretches of Ns summary file (-r)");
+  }
+  if($do_scn_file) { 
+    ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "scn",    $out_root . ".scn", 1, 1, "per-sequence tabular nn-based classification summary file");
   }
 }
 
