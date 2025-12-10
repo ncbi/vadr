@@ -177,9 +177,13 @@ require "sqp_utils.pm";
 # Subroutines related to model info files:
 # vdr_ModelInfoFileWrite()
 # vdr_ModelInfoFileParse()
-# vdr_ModelInfoCoordListValueBreakdown()
-# vdr_ModelInfoValidateExceptionKeys()
-#
+# vdr_ModelInfoValidateExceptionsKeys()
+# vdr_ModelInfoSetClassificationAlignmentFile()
+# vdr_ModelInfoGetClassificationAlignmentFile()
+# vdr_ModelInfoSetClassificationRefStartStopPositions()
+# vdr_ModelInfoGetClassificationRefStartStopPositions()
+# vdr_ModelInfoCheckForFileKey()
+# 
 # Subroutines related to cmalign output:
 # vdr_CmalignCheckStdOutput()
 # vdr_CmalignParseInsertFile()
@@ -6057,6 +6061,183 @@ sub vdr_ModelInfoValidateExceptionKeys {
     }
   }
   return;
+}
+
+#################################################################
+# Subroutine: vdr_ModelInfoSetClassificationAlignmentFile()
+# Incept:     EPN, Tue Dec  9 16:04:43 2025
+#
+# Purpose:    Set the "CLASS_ALN_FILE" key for a model, if 
+#             existing group/subgroup values indicate a file
+#             should be used for nearest-neighbor based
+#             classification.
+#             
+# Arguments: 
+#  $mdl_info_HR:  ref to the model info hash (for one model)
+#  $aln_file:     the alignment file to set CLASS_ALN_FILE to
+#  $FH_HR:        ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       never
+#
+################################################################# 
+sub vdr_ModelInfoSetClassificationAlignmentFile {
+  my $sub_name = "vdr_ModelInfoSetClassificationAlignmentFile";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mdl_info_HR, $aln_file, $FH_HR) = @_;
+
+  if(defined $mdl_info_HR->{"CLASS_ALN_FILE"}) {
+    # if this is already set, undefine it 
+    $mdl_info_HR->{"CLASS_ALN_FILE"} = undef;
+  }    
+
+  $mdl_info_HR->{"CLASS_ALN_FILE"} = $aln_file;
+
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_ModelInfoGetClassificationAlignmentFile()
+# Incept:     EPN, Tue Dec  9 16:04:43 2025
+#
+# Purpose:    Return the "CLASS_ALN_FILE" key for a model.
+#             
+# Arguments: 
+#  $mdl_info_HR:  ref to the model info hash (for one model)
+#  $FH_HR:        ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    $mdl_info_HR->{"CLASS_ALN_FILE"}
+#
+# Dies:       never
+#
+################################################################# 
+sub vdr_ModelInfoGetClassificationAlignmentFile {
+  my $sub_name = "vdr_ModelInfoGetClassificationAlignmentFile";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mdl_info_HR, $FH_HR) = @_;
+
+  my $retval = (defined $mdl_info_HR->{"CLASS_ALN_FILE"}) ? $mdl_info_HR->{"CLASS_ALN_FILE"} : undef;
+
+  return $retval;
+}
+
+#################################################################
+# Subroutine: vdr_ModelInfoSetClassificationRefStartStopPositions()
+# Incept:     EPN, Wed Dec 10 10:29:47 2025
+#
+# Purpose:    Set the "CLASS_RF_START_POS" and "CLASS_RF_STOP_POS"
+#             values for a given model.
+#             
+# Arguments: 
+#  $mdl_info_HR:  ref to the model info hash (for one model)
+#  $FH_HR:        ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       never
+#
+################################################################# 
+sub vdr_ModelInfoSetClassificationRefStartAndStopPositions {
+  my $sub_name = "vdr_ModelInfoSetClassificationRefStartAndStopPositions";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mdl_info_HR, $rf_start_pos, $rf_stop_pos, $FH_HR) = @_;
+
+  my $mdl_name = $mdl_info_HR->{"name"};
+  my $mdl_len = $mdl_info_HR->{"length"};
+
+  my $class_aln_file = vdr_ModelInfoGetClassificationAlignmentFile($mdl_info_HR, $FH_HR);
+  # a bunch of sanity checks
+  if(! defined $mdl_len) { 
+    ofile_FAIL("ERROR, in $sub_name, model length not defined", 1, $FH_HR);
+  }
+  if((! defined $rf_start_pos) && (defined $rf_stop_pos)) { 
+    ofile_FAIL("ERROR, in $sub_name, for model $mdl_name alignment file $class_aln_file has #=GF VADR-classification-rf-stop-pos annotation but not #=GF VADR-classification-rf-start-pos annotation", 1, $FH_HR);
+  }
+  if((defined $rf_start_pos) && (defined $rf_stop_pos)) {
+    if(($rf_start_pos < 1) || ($rf_start_pos > $mdl_len)) {
+      ofile_FAIL("ERROR, in $sub_name, for model $mdl_name alignment file $class_aln_file has #=GF VADR-classification-rf-start-pos $rf_start_pos, but $rf_start_pos is an invalid position (must be 1..$mdl_len)", 1, $FH_HR);
+    }
+    if(($rf_stop_pos < 1) || ($rf_stop_pos > $mdl_len)) {
+      ofile_FAIL("ERROR, in $sub_name, for model $mdl_name alignment file $class_aln_file has #=GF VADR-classification-rf-stop-pos $rf_stop_pos, but $rf_stop_pos is an invalid position (must be 1..$mdl_len)", 1, $FH_HR);
+    }
+    if($rf_start_pos > $rf_stop_pos) { 
+      ofile_FAIL("ERROR, in $sub_name, for model $mdl_name alignment file $class_aln_file has #=GF VADR-classification-rf-start/stop-pos, but start ($rf_start_pos) > stop ($rf_stop_pos)", 1, $FH_HR);
+    }
+  }
+  $mdl_info_HR->{"CLASS_RF_START_POS"} = $rf_start_pos;
+  $mdl_info_HR->{"CLASS_RF_STOP_POS"}  = $rf_stop_pos;
+
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_ModelInfoGetClassificationRefStartStopPositions()
+# Incept:     EPN, Wed Dec 10 10:29:47 2025
+#
+# Purpose:    Return the "CLASS_RF_START_POS" and "CLASS_RF_STOP_POS"
+#             values for a given model.
+#             
+# Arguments: 
+#  $mdl_info_HR:  ref to the model info hash (for one model)
+#  $FH_HR:        ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    Two values:
+#             $mdl_info_HR->{"CLASS_RF_START_POS"}
+#             $mdl_info_HR->{"CLASS_RF_STOP_POS"}
+#
+# Dies:       never
+#
+################################################################# 
+sub vdr_ModelInfoGetClassificationRefStartAndStopPositions {
+  my $sub_name = "vdr_ModelInfoGetClassificationRefStartAndStopPositions";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mdl_info_HR, $FH_HR) = @_;
+
+  my $retval1 = (defined $mdl_info_HR->{"CLASS_RF_START_POS"}) ? $mdl_info_HR->{"CLASS_RF_START_POS"} : undef;
+  my $retval2 = (defined $mdl_info_HR->{"CLASS_RF_STOP_POS"})  ? $mdl_info_HR->{"CLASS_RF_STOP_POS"} : undef;
+  
+  return($retval1, $retval2);
+}
+
+#################################################################
+# Subroutine: vdr_ModelInfoCheckForFileKey()
+# Incept:     EPN, Wed Dec 10 14:03:50 2025
+#
+# Purpose:    Check if a model info hash value has a :FILE: prefix
+#             and if so, return the remainder of the value after :FILE:
+#             is removed.
+#             
+# Arguments: 
+#  $value:    ref to the value
+#
+# Returns:    undef if $value does not start with ":FILE:"
+#             remainder of $value if it does start with ":FILE:"
+#
+# Dies:       never
+#
+################################################################# 
+sub vdr_ModelInfoCheckForFileKey {
+  my $sub_name = "vdr_ModelInfoCheckForFileKey";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($value) = (@_);
+
+  my $retval = undef;
+  if($value =~ /^\:FILE\:(.+)$/) {
+    $retval = $1;
+  }
+  printf("HEYA in $sub_name, value: $value, retval: $retval\n");
+  return $retval;
 }
 
 #################################################################
