@@ -245,7 +245,8 @@ opt_Add("--ignore_canonss",   "boolean",  0,       $g,     undef, undef,    "ign
 opt_Add("--force_canonss",    "boolean",  0,       $g,     undef,"--ignore_canonss", "force 'canon_splice_sites' is 1 for all CDS with qualifying introns",               "force 'canon_splice_sites' is 1 for all CDS with qualifying introns", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_exc",       "boolean",  0,       $g,     undef, undef,    "ignore all exception keys '*_exc' in .minfo file",                                           "ignore all exception keys '*_exc' in .minfo file", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_oft",       "boolean",  0,       $g,     undef, undef,    "ignore all 'omit_from_tbl' keys in .minfo file",                                             "ignore all 'omit_from_tbl' keys in .minfo file", \%opt_HH, \@opt_order_A);
-opt_Add("--ignore_nnclass",   "boolean",  0,       $g,     undef, undef,    "ignore group/subgroup FILE keys in .minfo file specifying groups are in an aln file",        "ignore group/subgroup FILE keys in .minfo file specifying groups are in an aln file", \%opt_HH, \@opt_order_A);
+opt_Add("--ignore_nnclass",   "boolean",  0,       $g,     undef, undef,    "ignore group/subgroup FILE keys in .minfo file enabling nearest-neighbor based classification", "ignore group/subgroup FILE keys in .minfo file enabling nearest-neighbor based classification", \%opt_HH, \@opt_order_A);
+opt_Add("--ignore_nnregion",  "boolean",  0,       $g,     undef,"--ignore_nnclass","ignore classification region start/stop keys for nn-based classification",           "ignore classification region start/stop keys for nn-based classification", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to model files";
 #        option               type default  group  requires incompat   preamble-output                                                                   help-output    
@@ -444,7 +445,7 @@ opt_Add("--nodcr",        "boolean", 0,             $g,    undef,   undef,    "d
 opt_Add("--forcedcrins",  "boolean", 0,             $g,"--cmindi",  undef,    "force insert type alignment doctoring, requires --cmindi",               "force insert type alignment doctoring, requires --cmindi", \%opt_HH, \@opt_order_A);
 opt_Add("--xnoid",        "boolean", 0,             $g,    undef,"--pv_hmmer,--pv_skip", "ignore blastx hits that are full length and 100% identical",  "ignore blastx hits that are full length and 100% identical", \%opt_HH, \@opt_order_A);
 opt_Add("--intlen",       "integer", 40,            $g,    undef,"--ignore_canonss", "set min length of intron to check for splice sites to <n>",       "set min length of intron to check for splice sites to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--nnclasslen",   "integer", 40,            $g,    undef,"--ignore_nnclass", "set min subsequence length for NN-based classification to <n>",   "set min subsequence length for NN-based classification to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--nnregionlen",  "integer", 40,            $g,    undef,"--ignore_nnclass,--ignore_nnregion", "set min subsequence length for NN-based classification to <n>",   "set min subsequence length for NN-based classification to <n>", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -475,6 +476,7 @@ my $options_okay =
                 "ignore_exc"       => \$GetOptions_H{"--ignore_exc"},
                 "ignore_oft"       => \$GetOptions_H{"--ignore_oft"},
                 "ignore_nnclass"   => \$GetOptions_H{"--ignore_nnclass"},
+                "ignore_nnregion"  => \$GetOptions_H{"--ignore_nnregion"},
 # options related to model files
                 'm=s'           => \$GetOptions_H{"-m"}, 
                 'a=s'           => \$GetOptions_H{"-a"}, 
@@ -644,7 +646,7 @@ my $options_okay =
                 'forcedcrins'   => \$GetOptions_H{"--forcedcrins"},
                 'xnoid'         => \$GetOptions_H{"--xnoid"},
                 'intlen=s'      => \$GetOptions_H{"--intlen"},
-                'nnclasslen=s'  => \$GetOptions_H{"--nnclasslen"});
+                'nnregionlen=s' => \$GetOptions_H{"--nnregionlen"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
@@ -1235,36 +1237,37 @@ if(opt_Get("--val_only", \%opt_HH)) {
 # if so, make sure the alignment file we need used to build the CM exists and has the correct
 # RF length (we should actually check that it can be merged with a cmalign output alignment
 # using the model, but that would be too expensive, if that won't work we'll fail during
-# the alignment stage
+# the alignment stage)
 my @mdl_alninfo_AHH = ();
-for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
-  %{$mdl_alninfo_AHH[$mdl_idx]} = ();
-  if(defined $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"}) {
-    # if this was set in the minfo file (it shouldn't have been), undefine it
-    $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"} = undef;
-  }    
-  if((defined $mdl_info_AH[$mdl_idx]{"group"}) &&
-     ($mdl_info_AH[$mdl_idx]{"group"} =~ /^\:FILE\:(.+)$/)) {
-    $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"} = $model_dir . "/" . $1;
-  }
-  if((defined $mdl_info_AH[$mdl_idx]{"subgroup"}) &&
-     ($mdl_info_AH[$mdl_idx]{"subgroup"} =~ /^\:FILE\:(.+)$/)) {
-    if(! defined $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"}) {
-      ofile_FAIL("ERROR, for model " . $mdl_info_AH[$mdl_idx]{"name"} . " subgroup meant to be read from an alignment file but not group, this is not supported", 1, $FH_HR);
+my $do_scn_file = 0; # set to true if we have CLASS_ALN_FILE set for >= 1 models in minfo, we will output a scn file
+if((! $do_clsonly) && (! opt_Get("--ignore_nnclass", \%opt_HH))) { 
+  for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
+    my $aln_file_grp    = vdr_ModelInfoCheckForFileKey($mdl_info_AH[$mdl_idx]{"group"});
+    my $aln_file_subgrp = vdr_ModelInfoCheckForFileKey($mdl_info_AH[$mdl_idx]{"subgroup"});
+    # make sure that subgroup value, if there is one and it's a file, is identical to group value
+    if((defined $aln_file_grp) && (! defined $aln_file_subgrp) && (defined $mdl_info_AH[$mdl_idx]{"subgroup"})) { 
+      ofile_FAIL("ERROR, based on the model info file, for model " . $mdl_info_AH[$mdl_idx]{"name"} . " group info will be read from an alignment file, but subgroup is defined but will not be read from a file, this is not supported", 1, $FH_HR);
     }
-    if($mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"} ne ($model_dir . "/" . $1)) {
-      ofile_FAIL("ERROR, for model " . $mdl_info_AH[$mdl_idx]{"name"} . " group and subgroup are meant to be read from an alignment file but not the same alignment file, this is not supported", 1, $FH_HR);
+    elsif((! defined $aln_file_grp) && (defined $aln_file_subgrp)) { 
+      ofile_FAIL("ERROR, based on the model info file, for model " . $mdl_info_AH[$mdl_idx]{"name"} . " subgroup info will be read from an alignment file, but not group info, this is not supported", 1, $FH_HR);
     }
-  }
-  if(defined $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"}) {
-    validate_and_copy_classification_alignment_file(\%{$mdl_info_AH[$mdl_idx]}, \%{$mdl_alninfo_AHH[$mdl_idx]}, $out_root, \%opt_HH, \%ofile_info_HH);
+    elsif((defined $aln_file_grp) && (defined $aln_file_subgrp) && ($aln_file_subgrp ne $aln_file_grp)) { 
+      ofile_FAIL("ERROR, based on the model info file, for model " . $mdl_info_AH[$mdl_idx]{"name"} . " group and subgroup will be read from different alignment files, this is not supported", 1, $FH_HR);
+    }
+
+    if(defined $aln_file_grp) { 
+      my $class_aln_file = $model_dir . "/" . $aln_file_grp;
+      vdr_ModelInfoSetClassificationAlignmentFile(\%{$mdl_info_AH[$mdl_idx]}, $class_aln_file, $FH_HR);
+      %{$mdl_alninfo_AHH[$mdl_idx]} = ();
+      validate_and_copy_classification_alignment_file(\%{$mdl_info_AH[$mdl_idx]}, \%{$mdl_alninfo_AHH[$mdl_idx]}, $out_root, \%opt_HH, \%ofile_info_HH);
+      $do_scn_file = 1;
+    }
   }
 }
 
-
 ###########################################
 # Copy and validate the input sequence file
-###########################################
+##########################################
 my $in_fa_file        = undef;
 my $blastn_in_fa_file = undef;
 if(opt_Get("--origfa", \%opt_HH)) { 
@@ -1490,6 +1493,10 @@ if($do_split) {
     if($do_replace_ns) { 
       helper_tabular_fill_header_and_justification_arrays("rpn", \@head_AA, \@cljust_A, $FH_HR);
       vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".rpn", "rpn", "replaced stretches of Ns summary file (-r)", $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+    }
+    if($do_scn_file) { 
+      helper_tabular_fill_header_and_justification_arrays("scn", \@head_AA, \@cljust_A, $FH_HR);
+      vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".scn", "scn", "per-sequence tabular nn-based classification summary file", $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
     }
   }
 
@@ -1986,7 +1993,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 if(! $do_clsonly) { 
   $start_secs = ofile_OutputProgressPrior("Determining annotation", $progress_w, $log_FH, *STDOUT);
 }
-
+my %mdl_nn_cls_ct_HH = ();
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   $mdl_len  = $mdl_info_AH[$mdl_idx]{"length"};
@@ -2033,25 +2040,35 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       }
       push(@to_remove_A, ($stk_file_HA{$mdl_name}[$a]));
     }
-    if(defined $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"}) {
+    my $class_aln_file = vdr_ModelInfoGetClassificationAlignmentFile(\%{$mdl_info_AH[$mdl_idx]}, $FH_HR);
+    if(defined $class_aln_file) { 
       my $mdl_msa = Bio::Easel::MSA->new({
-	fileLocation => $mdl_info_AH[$mdl_idx]{"CLASS_ALN_FILE"},
+	fileLocation => $class_aln_file,
 	isDna => 1});
       $mdl_msa->remove_rf_gap_columns(".-~");
-      ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+      %{$mdl_nn_cls_ct_HH{$mdl_name}} = ();
+      
+      # Determine pairwise differences between all model sequences, can be slow if more than 20 or so seqs (not yet needed)
       #$start_secs = ofile_OutputProgressPrior("TEMP calculating model pairwise distances", $progress_w, $log_FH, *STDOUT);
       #my @mdl_fwd_AAA = ();
       #my @mdl_bck_AAA = ();
       #count_model_sequence_pairwise_differences($mdl_msa, \@mdl_fwd_AAA, \@mdl_bck_AAA, $FH_HR);
-      #ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-      $start_secs = ofile_OutputProgressPrior("TEMP classifying based on alignment", $progress_w, $log_FH, *STDOUT);
+
+      my $rf_start_pos = 1; 
+      my $rf_stop_pos  = $mdl_len;
+      if(! opt_Get("--ignore_nnregion", \%opt_HH)) { 
+	my ($tmp_rf_start_pos, $tmp_rf_stop_pos) = vdr_ModelInfoGetClassificationRefStartAndStopPositions(\%{$mdl_info_AH[$mdl_idx]}, $FH_HR);
+	if(defined $tmp_rf_start_pos) { 
+	  $rf_start_pos = $tmp_rf_start_pos;
+	}
+	if(defined $tmp_rf_stop_pos) { 
+	  $rf_stop_pos = $tmp_rf_stop_pos;
+	}
+      }	    
       for(my $a = 0; $a < scalar(@{$stk_file_HA{$mdl_name}}); $a++) { 
 	if(-s $stk_file_HA{$mdl_name}[$a]) { # skip empty alignments, which may exist if all seqs were not alignable
-	  my $rf_start_pos = (defined $mdl_info_AH[$mdl_idx]{"CLASS_RF_START_POS"}) ? $mdl_info_AH[$mdl_idx]{"CLASS_RF_START_POS"} : 1;
-	  my $rf_stop_pos  = (defined $mdl_info_AH[$mdl_idx]{"CLASS_RF_STOP_POS"})  ? $mdl_info_AH[$mdl_idx]{"CLASS_RF_STOP_POS"}  : $mdl_len;
-          classify_based_on_alignment($mdl_msa, $stk_file_HA{$mdl_name}[$a], $rf_start_pos, $rf_stop_pos, \%{$mdl_alninfo_AHH[$mdl_idx]}, \%cls_output_HH, \@to_remove_A, \%opt_HH, $FH_HR);
+          classify_based_on_alignment($mdl_name, $mdl_msa, $stk_file_HA{$mdl_name}[$a], $rf_start_pos, $rf_stop_pos, \%{$mdl_alninfo_AHH[$mdl_idx]}, \%cls_output_HH, \%mdl_nn_cls_ct_HH, \@to_remove_A, \%opt_HH, $FH_HR);
         }
-	ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
       }
     }
     
@@ -2264,7 +2281,7 @@ if(! $do_clsonly) {
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alerts_list",    $out_root . ".alt.list",       1, 1, "list of alerts in the feature tables");
 
   $start_secs = ofile_OutputProgressPrior("Generating feature table output", $progress_w, $log_FH, *STDOUT);
-  my $npass = output_feature_table(\%mdl_cls_ct_H, \@seq_name_A, \%ftr_info_HAH, \%sgm_info_HAH, \%alt_info_HH, 
+  my $npass = output_feature_table(\@seq_name_A, \%ftr_info_HAH, \%sgm_info_HAH, \%alt_info_HH, 
                                    \%stg_results_HHH, \%ftr_results_HHAH, \%sgm_results_HHAH, \%alt_seq_instances_HH,
                                    \%alt_ftr_instances_HHH, 
                                    ((opt_IsUsed("--msub", \%opt_HH)) ? \%mdl_sub_H : undef),
@@ -2291,10 +2308,13 @@ if(! $do_clsonly) {
   if($do_replace_ns) { 
     ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "rpn",    $out_root . ".rpn", 1, 1, "replaced stretches of Ns summary file (-r)");
   }
+  if($do_scn_file) { 
+    ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "scn",    $out_root . ".scn", 1, 1, "per-sequence tabular nn-based classification summary file");
+  }
 }
 
 $start_secs = ofile_OutputProgressPrior("Generating tabular output", $progress_w, $log_FH, *STDOUT);
-my ($zero_cls, $zero_alt) = output_tabular(\@mdl_info_AH, \%mdl_cls_ct_H, \%mdl_ant_ct_H, \@seq_name_A, \%seq_len_H, 
+my ($zero_cls, $zero_alt) = output_tabular(\@mdl_info_AH, \%mdl_cls_ct_H, \%mdl_nn_cls_ct_HH, \%mdl_ant_ct_H, \@seq_name_A, \%seq_len_H, 
                                            \%ftr_info_HAH, \%sgm_info_HAH, \%alt_info_HH, \%cls_output_HH, \%ftr_results_HHAH, \%sgm_results_HHAH, 
                                            \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, \%dcr_output_HAH,
                                            ($do_blastn_ali) ? \%sda_output_HH : undef,
@@ -10259,6 +10279,7 @@ sub alert_feature_instances_count_fatal {
 # Arguments:
 #  $mdl_info_AHR:            REF to array of hashes with model info
 #  $mdl_cls_ct_HR:           REF to hash with counts of seqs classified per model
+#  $mdl_nn_cls_ct_HR:        REF to hash with counts of seqs classified per model/group/subgroup for nn-based classification
 #  $mdl_ant_ct_HR:           REF to hash with counts of seqs annotated per model
 #  $seq_name_AR:             REF to array of sequence names
 #  $seq_len_HR:              REF to hash of sequence lengths
@@ -10286,11 +10307,11 @@ sub alert_feature_instances_count_fatal {
 #################################################################
 sub output_tabular { 
   my $sub_name = "output_tabular";
-  my $nargs_exp = 19;
+  my $nargs_exp = 20;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($mdl_info_AHR, $mdl_cls_ct_HR, $mdl_ant_ct_HR, 
-      $seq_name_AR, $seq_len_HR, 
+  my ($mdl_info_AHR, $mdl_cls_ct_HR, $mdl_nn_cls_ct_HHR,
+      $mdl_ant_ct_HR, $seq_name_AR, $seq_len_HR, 
       $ftr_info_HAHR, $sgm_info_HAHR, $alt_info_HHR, 
       $cls_output_HHR, $ftr_results_HHAHR, $sgm_results_HHAHR, $alt_seq_instances_HHR, 
       $alt_ftr_instances_HHHR, $dcr_output_HAHR, $sda_output_HHR, $rpn_output_HHR,
@@ -10347,6 +10368,12 @@ sub output_tabular {
   my @clj_cls_A   = ();
   helper_tabular_fill_header_and_justification_arrays("cls", \@head_cls_AA, \@clj_cls_A, $FH_HR);
 
+  # optional .scn file
+  my @head_scn_AA = ();
+  my @data_scn_AA = ();
+  my @clj_scn_A   = ();
+  helper_tabular_fill_header_and_justification_arrays("scn", \@head_scn_AA, \@clj_scn_A, $FH_HR);
+  
   my @head_ftr_AA = ();
   my @data_ftr_AA = ();
   my @clj_ftr_A   = ();
@@ -10391,6 +10418,16 @@ sub output_tabular {
   my @clj_rpn_A   = ();
   helper_tabular_fill_header_and_justification_arrays("rpn", \@head_rpn_AA, \@clj_rpn_A, $FH_HR);
 
+  # optional .scn file
+  my $do_scn = 0;
+  # if any model is using an alignment file for classification we will output the .scn file
+  for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    my $class_aln_file = vdr_ModelInfoGetClassificationAlignmentFile(\%{$mdl_info_AH[$mdl_idx]}, $FH_HR);
+    if(defined $class_aln_file) { 
+      $do_scn = 1;
+    }
+  }
+
   my $zero_classifications = 1; # set to '0' below if we have >= 1 seqs that are classified ($seq_mdl1 ne "-")
 
   # main loop: for each sequence
@@ -10424,6 +10461,14 @@ sub output_tabular {
     my $seq_subgrp2 = ((defined $cls_output_HR) && (defined $cls_output_HR->{"subgroup2"})) ? $cls_output_HR->{"subgroup2"} : "-";
 
     my $seq_mdl_rpn = ((defined $cls_output_HR) && (defined $cls_output_HR->{"rpn.model1"})) ? $cls_output_HR->{"rpn.model1"} : "-";
+
+    # scn file data
+    my $seq_nn_pid1    = ((defined $cls_output_HR) && (defined $cls_output_HR->{"model1_pid"}))   ? sprintf("%.4f", $cls_output_HR->{"model1_pid"}) : "-";
+    my $seq_nn_seq1    = ((defined $cls_output_HR) && (defined $cls_output_HR->{"model1_seq"}))   ? $cls_output_HR->{"model1_seq"} : "-";
+    my $seq_nn_pid2    = ((defined $cls_output_HR) && (defined $cls_output_HR->{"model2_pid"}))   ? sprintf("%.4f", $cls_output_HR->{"model2_pid"}) : "-";
+    my $seq_nn_seq2    = ((defined $cls_output_HR) && (defined $cls_output_HR->{"model2_seq"}))   ? $cls_output_HR->{"model2_seq"} : "-";
+    my $seq_nnreg_seq  = ((defined $cls_output_HR) && (defined $cls_output_HR->{"nnregion_seq"})) ? $cls_output_HR->{"nnregion_seq"} : "-";
+    my $seq_nnreg_mdl  = ((defined $cls_output_HR) && (defined $cls_output_HR->{"nnregion_mdl"})) ? $cls_output_HR->{"nnregion_mdl"} : "-";
 
     my $sda_output_HR = (($do_sda) && (defined $sda_output_HHR->{$seq_name})) ? \%{$sda_output_HHR->{$seq_name}} : undef;
     my $sda_seq       = (($do_sda) && (defined $sda_output_HR->{"sda_seq"}))  ? $sda_output_HR->{"sda_seq"} : "-";
@@ -10465,15 +10510,24 @@ sub output_tabular {
     if(($seq_mdl1 ne "-") && (defined $mdl_sub_HR) && (defined $mdl_sub_HR->{$seq_mdl1})) { 
       $tmp_mdl = $mdl_sub_HR->{$seq_mdl1};
     }
-
+    my $tmp_mdl_grp_subgrp = $seq_mdl1 . ":GROUP:" . $seq_grp1 . ":SUBGROUP:" . $seq_subgrp1; # should this be $tmp_mdl instead of $seq_mdl1?
+    
     my $seq_pass_fail = (check_if_sequence_passes($seq_name, (($tmp_mdl ne "-") ? \@{$ftr_info_HAHR->{$tmp_mdl}} : undef), $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $FH_HR)) ? "PASS" : "FAIL";
     my $seq_annot     = (check_if_sequence_was_annotated($seq_name, $cls_output_HHR)) ? "yes" : "no";
 
     if($seq_mdl1 ne "-") { 
       if(! defined $mdl_pass_ct_H{$tmp_mdl}) { $mdl_pass_ct_H{$tmp_mdl} = 0; }
       if(! defined $mdl_fail_ct_H{$tmp_mdl}) { $mdl_fail_ct_H{$tmp_mdl} = 0; }
-      if($seq_pass_fail eq "PASS") { $mdl_pass_ct_H{$tmp_mdl}++; }
-      if($seq_pass_fail eq "FAIL") { $mdl_fail_ct_H{$tmp_mdl}++; }
+      if(! defined $mdl_pass_ct_H{$tmp_mdl_grp_subgrp}) { $mdl_pass_ct_H{$tmp_mdl_grp_subgrp} = 0; }
+      if(! defined $mdl_fail_ct_H{$tmp_mdl_grp_subgrp}) { $mdl_fail_ct_H{$tmp_mdl_grp_subgrp} = 0; }
+      if($seq_pass_fail eq "PASS") {
+	$mdl_pass_ct_H{$tmp_mdl}++;
+	$mdl_pass_ct_H{$tmp_mdl_grp_subgrp}++;
+      }
+      if($seq_pass_fail eq "FAIL") {
+	$mdl_fail_ct_H{$tmp_mdl}++;
+	$mdl_fail_ct_H{$tmp_mdl_grp_subgrp}++;
+      }
       $zero_classifications = 0;
     }
 
@@ -10697,6 +10751,21 @@ sub output_tabular {
                             helper_tabular_replace_spaces($seq_subgrp2), 
                             $seq_scdiff, $seq_diffpnt, $seq_alt_str]);
 
+    if($do_scn) { 
+      my $seq_nn_diff2print = (($seq_nn_pid1 ne "-") && ($seq_nn_pid2 ne "-")) ? sprintf("%.4f", ($seq_nn_pid1 - $seq_nn_pid2)) : "-";
+      my $seq_nnreg_seq_fract2print = ($seq_nnreg_seq eq "-") && ($seq_nnreg_mdl eq "-") ? "-" :
+	  sprintf("%.4f", (vdr_CoordsLength($seq_nnreg_seq, $FH_HR) / vdr_CoordsLength($seq_nnreg_mdl, $FH_HR)));
+      push(@data_scn_AA, [$seq_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_annot, $seq_mdl1, 
+			  helper_tabular_replace_spaces($seq_grp1), 
+			  helper_tabular_replace_spaces($seq_subgrp1), 
+			  $seq_nn_pid1, $seq_nn_seq1,
+			  helper_tabular_replace_spaces($seq_grp2), 
+			  helper_tabular_replace_spaces($seq_subgrp2), 
+			  $seq_nn_pid2, $seq_nn_seq2,
+			  $seq_nn_diff2print, 
+			  $seq_nnreg_seq, $seq_nnreg_mdl, $seq_nnreg_seq_fract2print]);
+    }
+
     if(defined $dcr_output_HAHR->{$seq_name}) { 
       my $ndcr = scalar(@{$dcr_output_HAHR->{$seq_name}});
       for(my $dcr_idx = 0; $dcr_idx < $ndcr; $dcr_idx++) { 
@@ -10801,7 +10870,7 @@ sub output_tabular {
   my @mdl_tbl_order_A = (sort { $mdl_cls_ct_HR->{$b} <=> $mdl_cls_ct_HR->{$a} or 
                                     $a cmp $b 
                          } keys (%{$mdl_cls_ct_HR}));
-  my $mdl_tbl_idx = 0;
+  my $mdl_tbl_idx        = 0;
   my $sum_mdl_cls_ct     = 0;
   my $sum_mdl_pass_ct    = 0;
   my $sum_mdl_fail_ct    = 0;
@@ -10813,15 +10882,35 @@ sub output_tabular {
       my $mdl_ant_ct = (defined $mdl_ant_ct_HR->{$mdl_name}) ? $mdl_ant_ct_HR->{$mdl_name} : 0;
       my $mdl_group    = (defined $mdl_info_AHR->[$mdl_idx]{"group"})    ? $mdl_info_AHR->[$mdl_idx]{"group"}    : "-";
       my $mdl_subgroup = (defined $mdl_info_AHR->[$mdl_idx]{"subgroup"}) ? $mdl_info_AHR->[$mdl_idx]{"subgroup"} : "-";
-      if($mdl_group    =~ m/^\:FILE\:/) { $mdl_group    = "*multiple*"; }
-      if($mdl_subgroup =~ m/^\:FILE\:/) { $mdl_subgroup = "*multiple*"; }
 
-      push(@data_mdl_AA, [$mdl_tbl_idx, $mdl_name, 
-                          $mdl_group, 
-                          $mdl_subgroup,
-                          $mdl_cls_ct_HR->{$mdl_name},
-                          (defined $mdl_pass_ct_H{$mdl_name}) ? $mdl_pass_ct_H{$mdl_name} : 0, 
-                          (defined $mdl_fail_ct_H{$mdl_name}) ? $mdl_fail_ct_H{$mdl_name} : 0]); 
+      if(defined $mdl_nn_cls_ct_HHR->{$mdl_name}) {
+	# potentially > 1 group(s)/subgroup(s) for this model, determined by nearest-neighbor-based classification
+	my @grp_subgrp_tbl_order_A = (sort { $mdl_nn_cls_ct_HHR->{$mdl_name}{$b} <=> $mdl_nn_cls_ct_HHR->{$mdl_name}{$a} or 
+						 $a cmp $b 
+				      } keys (%{$mdl_nn_cls_ct_HHR->{$mdl_name}}));
+
+	foreach my $grp_subgrp (@grp_subgrp_tbl_order_A) { 
+	  if($grp_subgrp =~ /^:GROUP:(\S+):SUBGROUP:(\S+)$/) {
+	    ($mdl_group, $mdl_subgroup) = ($1, $2); 
+	    my $mdl_grp_subgrp = $mdl_name . $grp_subgrp;
+	    push(@data_mdl_AA, [$mdl_tbl_idx, $mdl_name, 
+				$mdl_group, 
+				$mdl_subgroup,
+				$mdl_nn_cls_ct_HHR->{$mdl_name}{$grp_subgrp},
+				(defined $mdl_pass_ct_H{$mdl_grp_subgrp}) ? $mdl_pass_ct_H{$mdl_grp_subgrp} : 0,
+				(defined $mdl_fail_ct_H{$mdl_grp_subgrp}) ? $mdl_fail_ct_H{$mdl_grp_subgrp} : 0]);
+	  }
+	}
+      }
+      else {
+	# only 1 group/subgroup for this model
+	push(@data_mdl_AA, [$mdl_tbl_idx, $mdl_name, 
+			    $mdl_group, 
+			    $mdl_subgroup,
+			    $mdl_cls_ct_HR->{$mdl_name},
+			    (defined $mdl_pass_ct_H{$mdl_name}) ? $mdl_pass_ct_H{$mdl_name} : 0, 
+			    (defined $mdl_fail_ct_H{$mdl_name}) ? $mdl_fail_ct_H{$mdl_name} : 0]); 
+      }
       $sum_mdl_cls_ct     += $mdl_cls_ct_HR->{$mdl_name};
       $sum_mdl_pass_ct    += (defined $mdl_pass_ct_H{$mdl_name}) ? $mdl_pass_ct_H{$mdl_name} : 0;
       $sum_mdl_fail_ct    += (defined $mdl_fail_ct_H{$mdl_name}) ? $mdl_fail_ct_H{$mdl_name} : 0;
@@ -10859,6 +10948,9 @@ sub output_tabular {
       if($do_rpn) {
         ofile_TableHumanOutput(\@data_rpn_AA, \@head_rpn_AA, \@clj_rpn_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"rpn"}, undef, $FH_HR);
       }
+      if(($do_scn) && (scalar(@data_scn_AA) > 0)) {
+	ofile_TableHumanOutput(\@data_scn_AA, \@head_scn_AA, \@clj_scn_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"scn"}, undef, $FH_HR);
+      }
     }
   }
   else { 
@@ -10877,6 +10969,9 @@ sub output_tabular {
       }
       if(($do_rpn) && (scalar(@data_rpn_AA) > 0)) {
         ofile_TableHumanOutput(\@data_rpn_AA, undef, \@clj_rpn_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"rpn"}, undef, $FH_HR);
+      }
+      if(($do_scn) && (scalar(@data_scn_AA) > 0)) {
+	ofile_TableHumanOutput(\@data_scn_AA, undef, \@clj_scn_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"scn"}, undef, $FH_HR);
       }
     }      
   }
@@ -11059,7 +11154,6 @@ sub helper_tabular_replace_spaces {
 # Purpose:    Output the feature table for all sequences.
 #
 # Arguments:
-#  $mdl_cls_ct_HR:           REF to hash with counts of seqs classified per model
 #  $seq_name_AR:             REF to hash of arrays with information on the sequences, PRE-FILLED
 #  $ftr_info_HAHR:           REF to hash of arrays with information on the features, PRE-FILLED
 #  $sgm_info_HAHR:           REF to hash of arrays with information on the segments, PRE-FILLED
@@ -11082,10 +11176,10 @@ sub helper_tabular_replace_spaces {
 #################################################################
 sub output_feature_table { 
   my $sub_name = "output_feature_table";
-  my $nargs_exp = 15;
+  my $nargs_exp = 14;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($mdl_cls_ct_HR, $seq_name_AR, $ftr_info_HAHR, $sgm_info_HAHR, $alt_info_HHR, 
+  my ($seq_name_AR, $ftr_info_HAHR, $sgm_info_HAHR, $alt_info_HHR, 
       $stg_results_HHHR, $ftr_results_HHAHR, $sgm_results_HHAHR, $alt_seq_instances_HHR, 
       $alt_ftr_instances_HHHR, $mdl_sub_HR, $in_sqfile_R, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
@@ -15016,6 +15110,11 @@ sub helper_tabular_fill_header_and_justification_arrays {
     @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "ant", "model1", "grp1", "grp1", "score", "sc/nt", "cov", "cov", "bias", "hits", "str", "model2", "grp2", "grp2", "diff",  "nt",    "alerts");
     @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0,       0,       0,     0,     0,      0,      0,     1,        1,      1,      0,       0,       1);
   }
+  elsif($ofile_key eq "scn") {
+    @{$head_AAR->[0]} = ("seq", "seq",  "seq", "",    "",    "",       "",     "sub",  "fract",    "",      "",   "sub","fract",     "",   "fid",  "nnregion",   "nnregion",   "nnregion");
+    @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "ant", "model",  "grp1", "grp1", "id1",  "seq1",  "grp2",  "grp2", "id2",   "seq2", "diff", " seq_coords", "mdl_coords", "covrg");
+    @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0,            1,      1,       1,      0,      1,  0,      0,             0,            0);
+  }
   elsif($ofile_key eq "ftr") {
     @{$head_AAR->[0]} = ("",    "seq",  "seq", "",    "",      "ftr",  "ftr",  "ftr", "ftr", "par", "",    "",       "",     "",        "",    "",     "",     "",       "",     "",        "",     "",    "",    "seq",    "model",  "ftr");
     @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "model", "type", "name", "len", "idx", "idx", "str", "n_from", "n_to", "n_instp", "trc", "5'N",  "3'N",  "p_from", "p_to", "p_instp", "p_sc", "nsa", "nsn", "coords", "coords", "alerts");
@@ -15595,7 +15694,7 @@ sub determine_intron_index {
 #
 #################################################################
 sub validate_and_copy_classification_alignment_file { 
-  my $sub_name = "validate_classification_alignment_file";
+  my $sub_name = "validate_and_copy_classification_alignment_file";
   my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -15604,9 +15703,9 @@ sub validate_and_copy_classification_alignment_file {
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
   my $mdl_name   = $mdl_info_HR->{"name"};
   my $mdl_len    = $mdl_info_HR->{"length"};
-  my $orig_aln_file = $mdl_info_HR->{"CLASS_ALN_FILE"};
+  my $orig_aln_file = vdr_ModelInfoGetClassificationAlignmentFile($mdl_info_HR, $FH_HR);
   if(! defined $orig_aln_file) {
-    ofile_FAIL("ERROR, in $sub_name for model $mdl_name, but no CLASS_ALN_FILE defined", 1, $FH_HR);
+    ofile_FAIL("ERROR, in $sub_name for model $mdl_name, but no classification alignment file is defined", 1, $FH_HR);
   }
   
   # make sure the alignment exists, and is the correct RF length
@@ -15640,7 +15739,7 @@ sub validate_and_copy_classification_alignment_file {
   }
   $msa->write_msa($output_aln_file, "pfam", 0);
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "class_model_stk_file($mdl_name)", $output_aln_file, 0, opt_Get("--keep", $opt_HHR), "model $mdl_name aln file for classification");
-  $mdl_info_HR->{"CLASS_ALN_FILE"} = $output_aln_file;
+  vdr_ModelInfoSetClassificationAlignmentFile($mdl_info_HR, $output_aln_file, $FH_HR);
   
   # store GP and SG info
   my $gp_idx = ($msa->hasGS_any_sqidx_given_tag("GP")) ? $msa->getGS_tagidx("GP") : undef;
@@ -15672,25 +15771,7 @@ sub validate_and_copy_classification_alignment_file {
       $rf_stop_pos = $gf_value_A[$a];
     }
   }
-  if((defined $rf_start_pos) && (! defined $rf_stop_pos)) { 
-    ofile_FAIL("ERROR, for model $mdl_name alignment file $orig_aln_file has #=GF VADR-classification-rf-start-pos annotation but not #=GF VADR-classification-rf-stop-pos annotation", 1, $FH_HR);
-  }
-  if((! defined $rf_start_pos) && (defined $rf_stop_pos)) { 
-    ofile_FAIL("ERROR, for model $mdl_name alignment file $orig_aln_file has #=GF VADR-classification-rf-stop-pos annotation but not #=GF VADR-classification-rf-start-pos annotation", 1, $FH_HR);
-  }
-  if((defined $rf_start_pos) && (defined $rf_stop_pos)) {
-    if(($rf_start_pos < 1) || ($rf_start_pos > $mdl_len)) {
-      ofile_FAIL("ERROR, for model $mdl_name alignment file $orig_aln_file has #=GF VADR-classification-rf-start-pos $rf_start_pos, but $rf_start_pos is an invalid position (must be 1..$mdl_len)", 1, $FH_HR);
-    }
-    if(($rf_stop_pos < 1) || ($rf_stop_pos > $mdl_len)) {
-      ofile_FAIL("ERROR, for model $mdl_name alignment file $orig_aln_file has #=GF VADR-classification-rf-stop-pos $rf_stop_pos, but $rf_stop_pos is an invalid position (must be 1..$mdl_len)", 1, $FH_HR);
-    }
-    if($rf_start_pos > $rf_stop_pos) { 
-      ofile_FAIL("ERROR, for model $mdl_name alignment file $orig_aln_file has #=GF VADR-classification-rf-start/stop-pos, but start ($rf_start_pos) > stop ($rf_stop_pos)", 1, $FH_HR);
-    }
-    $mdl_info_HR->{"CLASS_RF_START_POS"} = $rf_start_pos;
-    $mdl_info_HR->{"CLASS_RF_STOP_POS"} = $rf_stop_pos;
-  }
+  vdr_ModelInfoSetClassificationRefStartAndStopPositions($mdl_info_HR, $rf_start_pos, $rf_stop_pos, $FH_HR);
 
   undef $msa;
   return;
@@ -15852,25 +15933,27 @@ sub count_model_sequence_pairwise_differences {
 #             sequences based on the nearest neighbors.
 #
 # Arguments:
-#  $mdl_msa:         the model MSA
-#  $in_stk_file:     path to stockholm alignment file with alignment of 1 or more input sequences
-#  $rf_start_pos:    the first RF start position to use for the nearest-neighbor classification, 1 to start at beginning
-#  $rf_stop_pos:     the final RF start position to use for the nearest-neighbor classification, $mdl_len to end at end
-#  $mdl_alninfo_HH:  REF to 2D hash with group/subgroup information in 
-#  $cls_output_HHR:  REF to 2D hash of classification output info, possibly modified here
-#  $to_remove_AR:    REF to array of alignment files to remove
-#  $opt_HHR:         ref to hash of file handles
-#  $FH_HR:           ref to hash of file handles
+#  $mdl_name:          model name the $mdl_msa pertains to
+#  $mdl_msa:           the model MSA
+#  $in_stk_file:       path to stockholm alignment file with alignment of 1 or more input sequences
+#  $rf_start_pos:      the first RF start position to use for the nearest-neighbor classification, 1 to start at beginning
+#  $rf_stop_pos:       the final RF start position to use for the nearest-neighbor classification, $mdl_len to end at end
+#  $mdl_alninfo_HHR:   REF to 2D hash with group/subgroup information in 
+#  $cls_output_HHR:    REF to 2D hash of classification output info, possibly modified here
+#  $mdl_nn_cls_ct_HHR: REF to 2D hash of counts of seqs assigned to each model/group/subgroup trio
+#  $to_remove_AR:      REF to array of alignment files to remove
+#  $opt_HHR:           ref to hash of file handles
+#  $FH_HR:             ref to hash of file handles
 #
 # Returns:  void
 #           
 #################################################################
 sub classify_based_on_alignment {
   my $sub_name = "classify_based_on_alignment";
-  my $nargs_exp = 9;
+  my $nargs_exp = 11;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($mdl_msa, $in_stk_file, $rf_start_pos, $rf_stop_pos, $mdl_alninfo_HHR, $cls_output_HHR, $to_remove_AR, $opt_HHR, $FH_HR) = (@_);
+  my ($mdl_name, $mdl_msa, $in_stk_file, $rf_start_pos, $rf_stop_pos, $mdl_alninfo_HHR, $cls_output_HHR, $mdl_nn_cls_ct_HHR, $to_remove_AR, $opt_HHR, $FH_HR) = (@_);
 
   # read in the input alignment
   my $seq_msa = Bio::Easel::MSA->new({
@@ -15878,13 +15961,13 @@ sub classify_based_on_alignment {
     isDna => 1});
   # remove gap RF columns
   $seq_msa->remove_rf_gap_columns(".-~");
-
+  
   if($mdl_msa->alen != $seq_msa->alen) { 
     ofile_FAIL(sprintf("ERROR, in $sub_name, model and sequence MSAs have different lengths after removing gap RF positions (%d != %d)\n",
 		       $mdl_msa->alen, $seq_msa->alen), 1, $FH_HR);
   }
 
-  my $min_nnclass_length = opt_Get("--nnclasslen", $opt_HHR);
+  my $min_nnregion_length = opt_Get("--nnregionlen", $opt_HHR);
   my $alen = $seq_msa->alen;
   my $mdl_nseq = $mdl_msa->nseq;
   my $seq_nseq = $seq_msa->nseq;
@@ -15914,14 +15997,14 @@ sub classify_based_on_alignment {
       $seq_rf_stop = length($rev_seq_sqstring) - 1 - $pos_rev + 1;  # convert to left-side index
     }
     # determine the first and final positions we will compare to model sequences
-    printf("seq_rf_start: $seq_rf_start seq_rf_stop: $seq_rf_stop\n");
-    printf("rf_start:   $rf_start_pos rf_stop: $rf_stop_pos\n");
     my $apos_start = undef;  # nongap RF alignment start position for region we will compare to model for this sequence
     my $apos_stop  = undef;  # nongap RF alignment stop  position for region we will compare to model for this sequence
+    my $using_defined_nn_region = (($rf_start_pos == 1) && ($rf_stop_pos == $alen)) ? 0 : 1;
     if(($seq_rf_start > $rf_stop_pos) ||
        ($seq_rf_stop  < $rf_start_pos)) {
       # entire rf_start_pos..rf_stop_pos is outside seq_rf_start..seq_rf_stop, use seq_rf_start..seq_rf_stop
       ($apos_start, $apos_stop) = ($seq_rf_start, $seq_rf_stop);
+      $using_defined_nn_region = 0; # if we were trying to, no sequence was within the region
     }
     else {
       # at least one nucleotide in rf_start_pos..rf_stop_pos overlaps with seq_rf_start..seq_rf_stop
@@ -15932,8 +16015,8 @@ sub classify_based_on_alignment {
     my $possibly_subseq_sqstring_nongap = $possibly_subseq_sqstring;
     $possibly_subseq_sqstring_nongap =~ s/\.\-\~//g;
     my $nongap_len = length($possibly_subseq_sqstring_nongap);
-    if($nongap_len < $min_nnclass_length) {
-      # region defined by rf_start_pos..rf_stop_pos has less than $min_nnclass_length nongap chars
+    if($nongap_len < $min_nnregion_length) {
+      # region defined by rf_start_pos..rf_stop_pos has less than $min_nnregion_length nongap chars
       # revert to full sequence (seq_rf_start..seq_rf_stop includes all nongap chars, and excludes terminal gaps)
       $apos_start = $seq_rf_start;
       $apos_stop  = $seq_rf_stop;
@@ -15941,7 +16024,7 @@ sub classify_based_on_alignment {
     }
     my @seq_sqstring_A = split("", $possibly_subseq_sqstring);
     my $alen_p = ($apos_stop) - ($apos_start) + 1;
-    printf("apos_start: $apos_start apos_stop: $apos_stop seq_rf_start: $seq_rf_start, seq_rf_stop: $seq_rf_stop, alen_p: $alen_p, scalar(seq_sqstring_A): " . scalar(@seq_sqstring_A) . "\n");
+    #printf("apos_start: $apos_start apos_stop: $apos_stop seq_rf_start: $seq_rf_start, seq_rf_stop: $seq_rf_stop, alen_p: $alen_p, scalar(seq_sqstring_A): " . scalar(@seq_sqstring_A) . "\n");
     if(scalar(@seq_sqstring_A) != $alen_p) {
       ofile_FAIL("ERROR, in $sub_name, apos_start: $apos_start apos_stop: $apos_stop seq_rf_start: $seq_rf_start, seq_rf_stop: $seq_rf_stop, alen_p: $alen_p, scalar(seq_sqstring_A): " . scalar(@seq_sqstring_A) . "\n", 1, $FH_HR);
     }					    
@@ -16036,7 +16119,7 @@ sub classify_based_on_alignment {
           if($weighted_avg_diff > $max_weighted_avg_diff) {
             $max_weighted_avg_diff = $weighted_avg_diff;
             $argmax_weighted_avg_diff = $apos_p;
-            $out_weighted_avg_diff = sprintf("$seqname apos_p: $apos_p [(%s) fwd_argmax_gsg: %s fwd: %.5f bck: %.5f] [(%s) bck_argmax_gsg: %s fwd: %.5f bck: %.5f] [fwddiff: %.7f wgt: %.5f bckdiff: %.7f wgt: %.5f wavgdiff: %.7f]\n", $mdl_msa->get_sqname($fwd_argmax), $fwd_argmax_gsg, $fwd_max, $bck_nmatch_AA[$fwd_argmax][$apos_p], $mdl_msa->get_sqname($bck_argmax), $bck_argmax_gsg, $fwd_nmatch_AA[$bck_argmax][$apos_p], $bck_max, $fwd_diff, $fwd_wgt, $bck_diff, $bck_wgt, $max_weighted_avg_diff);
+            #$out_weighted_avg_diff = sprintf("$seqname apos_p: $apos_p [(%s) fwd_argmax_gsg: %s fwd: %.5f bck: %.5f] [(%s) bck_argmax_gsg: %s fwd: %.5f bck: %.5f] [fwddiff: %.7f wgt: %.5f bckdiff: %.7f wgt: %.5f wavgdiff: %.7f]\n", $mdl_msa->get_sqname($fwd_argmax), $fwd_argmax_gsg, $fwd_max, $bck_nmatch_AA[$fwd_argmax][$apos_p], $mdl_msa->get_sqname($bck_argmax), $bck_argmax_gsg, $fwd_nmatch_AA[$bck_argmax][$apos_p], $bck_max, $fwd_diff, $fwd_wgt, $bck_diff, $bck_wgt, $max_weighted_avg_diff);
           }
 #	  printf("apos_p: $apos_p [(%s) fwd_argmax_gsg: %s fwd: %.5f bck: %.5f] [(%s) bck_argmax_gsg: %s fwd: %.5f bck: %.5f] [fwddiff: %.7f wgt: %.5f bckdiff: %.7f wgt: %.5f wavgdiff: %.7f]\n", $mdl_msa->get_sqname($fwd_argmax), $fwd_argmax_gsg, $fwd_max, $bck_nmatch_AA[$fwd_argmax][$apos_p], $mdl_msa->get_sqname($bck_argmax), $bck_argmax_gsg, $fwd_nmatch_AA[$bck_argmax][$apos_p], $bck_max, $fwd_diff, $fwd_wgt, $bck_diff, $bck_wgt, (($fwd_diff * $fwd_wgt) + ($bck_diff * $bck_wgt)));
         }
@@ -16044,27 +16127,78 @@ sub classify_based_on_alignment {
     }
     
     # find closest matching model sequence for this sequence
-    my $argmax = 0;
-    my $max = $fwd_nmatch_AA[0][($alen_p-1)];
-    for(my $midx = 1; $midx < $mdl_nseq; $midx++) { 
-      if($fwd_nmatch_AA[$midx][($alen_p-1)] > $max) {
-	$max = $fwd_nmatch_AA[$midx][($alen_p-1)];
-	$argmax = $midx;
-      }
-      printf("\t\tfwd_nmatch_AA[$midx][%d]: %.3f\n", ($alen_p-1), $fwd_nmatch_AA[$midx][($alen_p-1)]);    
-    }
-    my $win_mdl_sqname = $mdl_msa->get_sqname($argmax);
-    printf("\twinner for $seqname is $win_mdl_sqname ($max)\n");
+    my $max1 = $fwd_nmatch_AA[0][($alen_p-1)]; # max fractional id across all seqs
+    my $argmax1 = 0;  # mdl idx of current max1
+    my $max1_sqname = $mdl_msa->get_sqname($argmax1);
+    my $max1_grp    = (defined $mdl_alninfo_HHR->{$max1_sqname}{"group"})    ? $mdl_alninfo_HHR->{$max1_sqname}{"group"} : "-";
+    my $max1_subgrp = (defined $mdl_alninfo_HHR->{$max1_sqname}{"subgroup"}) ? $mdl_alninfo_HHR->{$max1_sqname}{"subgroup"} : "-";
 
-    if(defined $mdl_alninfo_HHR->{$win_mdl_sqname}{"group"}) {
-      $cls_output_HHR->{$seqname}{"group1"} = $mdl_alninfo_HHR->{$win_mdl_sqname}{"group"};
-      printf("\tgroup: " . $mdl_alninfo_HHR->{$win_mdl_sqname}{"group"} . "\n");
+    my $max2 = undef; # second best fractional id across all seqs in different subgroup from $max1 (if subgroup undef it is different from all subgroups)
+    my $argmax2 = 0;  # mdl idx of current max2
+    my $max2_sqname = undef;
+    my $max2_grp    = undef;
+    my $max2_subgrp = undef;
+    for(my $midx = 1; $midx < $mdl_nseq; $midx++) { 
+      my $cur_pid    = $fwd_nmatch_AA[$midx][($alen_p-1)];
+      my $cur_sqname = $mdl_msa->get_sqname($midx);
+      my $cur_grp    = (defined $mdl_alninfo_HHR->{$cur_sqname}{"group"})    ? $mdl_alninfo_HHR->{$cur_sqname}{"group"} : "-";
+      my $cur_subgrp = (defined $mdl_alninfo_HHR->{$cur_sqname}{"subgroup"}) ? $mdl_alninfo_HHR->{$cur_sqname}{"subgroup"} : "-";
+      if($cur_pid > $max1) { 
+	# new max1, first update max2 if necessary
+	my $cur_matches_max1_subgrp = (($max1_grp ne "-") && ($max1_subgrp ne "-") && ($max1_grp eq $cur_grp) && ($max1_subgrp eq $cur_subgrp)) ? 1 : 0; 
+	if((! defined $max2) ||
+	   (($cur_pid > $max2) && (! $cur_matches_max1_subgrp))) {
+	  # update max2 to be equal to old max1
+	  ($max2, $argmax2, $max2_sqname, $max2_grp, $max2_subgrp) = ($max1, $argmax1, $max1_sqname, $max1_grp, $max1_subgrp);
+	}	  
+	# update max1
+	($max1, $argmax1, $max1_sqname, $max1_grp, $max1_subgrp) = ($cur_pid, $midx, $cur_sqname, $cur_grp, $cur_subgrp);
+      }
+      else { # not a new max, but maybe a new max2
+	my $cur_matches_max2_subgrp = ((defined $max2) && ($max2_grp ne "-") && ($max2_subgrp ne "-") && ($max2_grp eq $cur_grp) && ($max2_subgrp eq $cur_subgrp)) ? 1 : 0; 
+	if((! defined $max2) ||
+	   (($cur_pid > $max2) && (! $cur_matches_max2_subgrp))) { 
+	  # update max2 to be equal to old max1
+	  ($max2, $argmax2, $max2_sqname, $max2_grp, $max2_subgrp) = ($cur_pid, $midx, $cur_sqname, $cur_grp, $cur_subgrp);
+	}	  
+      }
+      #printf("\t\tfwd_nmatch_AA[$midx][%d]: %.3f (%s)\n", ($alen_p-1), $fwd_nmatch_AA[$midx][($alen_p-1)], $mdl_msa->get_sqname($midx));    
     }
-    if(defined $mdl_alninfo_HHR->{$win_mdl_sqname}{"subgroup"}) {
-      $cls_output_HHR->{$seqname}{"subgroup1"} = $mdl_alninfo_HHR->{$win_mdl_sqname}{"subgroup"};
-      printf("\tsubgroup: " . $mdl_alninfo_HHR->{$win_mdl_sqname}{"subgroup"} . "\n");
+    $cls_output_HHR->{$seqname}{"model1_pid"} = $max1;
+    my $max1_sqname2print = $max1_sqname;
+    $max1_sqname2print =~ s/^.+\///; # remove dir added by validate_and_copy_classification_alignment_file()
+    $cls_output_HHR->{$seqname}{"model1_seq"} = $max1_sqname2print;
+    $cls_output_HHR->{$seqname}{"group1"}     = (defined $max1_grp) ? $max1_grp : "-";
+    $cls_output_HHR->{$seqname}{"subgroup1"}  = (defined $max1_subgrp) ? $max1_subgrp : "-";
+    #printf("\twinner for $seqname is $max1_sqname ($max)\n");
+
+    if(defined $max2) { 
+      $cls_output_HHR->{$seqname}{"model2_pid"} = $max2;
+      my $max2_sqname2print = $max2_sqname;
+      $max2_sqname2print =~ s/^.+\///; # remove dir added by validate_and_copy_classification_alignment_file()
+      $cls_output_HHR->{$seqname}{"model2_seq"} = $max2_sqname2print;
+      $cls_output_HHR->{$seqname}{"group2"}     = (defined $max2_grp) ? $max2_grp : "-";
+      $cls_output_HHR->{$seqname}{"subgroup2"}  = (defined $max2_subgrp) ? $max2_subgrp : "-";
+      #printf("\twinner for $seqname is $max1_sqname ($max)\n");
     }
-    print $out_weighted_avg_diff;
+    else { # $max2 is undef
+      $cls_output_HHR->{$seqname}{"model2_pid"} = "-";
+      $cls_output_HHR->{$seqname}{"model2_seq"} = "-";
+      $cls_output_HHR->{$seqname}{"group2"}     = "-";
+      $cls_output_HHR->{$seqname}{"subgroup2"}  = "-";
+    }
+    
+    my $mdl_nn_cls_key = ":GROUP:" . $max1_grp . ":SUBGROUP:" . $max1_subgrp;
+    if(! defined $mdl_nn_cls_ct_HHR->{$mdl_name}{$mdl_nn_cls_key}) {
+      $mdl_nn_cls_ct_HHR->{$mdl_name}{$mdl_nn_cls_key} = 0;
+    }
+    $mdl_nn_cls_ct_HHR->{$mdl_name}{$mdl_nn_cls_key}++;
+
+    $cls_output_HHR->{$seqname}{"nnregion_mdl"} = ($using_defined_nn_region) ?
+	vdr_CoordsSegmentCreate($rf_start_pos, $rf_stop_pos, "+", $FH_HR) : 
+	vdr_CoordsSegmentCreate(1, $alen, "+", $FH_HR);
+    $cls_output_HHR->{$seqname}{"nnregion_seq"} = vdr_CoordsSegmentCreate($apos_start, $apos_stop, "+", $FH_HR);
+    #print $out_weighted_avg_diff;
   } # end of loop over sequences
 
   undef $seq_msa;
