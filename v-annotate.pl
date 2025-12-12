@@ -15112,7 +15112,7 @@ sub helper_tabular_fill_header_and_justification_arrays {
   }
   elsif($ofile_key eq "scn") {
     @{$head_AAR->[0]} = ("seq", "seq",  "seq", "",    "",    "",       "",     "sub",  "fract",    "",      "",   "sub","fract",     "",   "fid",  "nnregion",   "nnregion",   "nnregion");
-    @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "ant", "model1", "grp1", "grp1", "id1",  "seq1",  "grp2",  "grp2", "id2",   "seq2", "diff", " seq_coords", "mdl_coords", "covrg");
+    @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "ant", "model",  "grp1", "grp1", "id1",  "seq1",  "grp2",  "grp2", "id2",   "seq2", "diff", " seq_coords", "mdl_coords", "covrg");
     @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0,            1,      1,       1,      0,      1,  0,      0,             0,            0);
   }
   elsif($ofile_key eq "ftr") {
