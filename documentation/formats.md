@@ -736,7 +736,7 @@ If the model Stockholm format alignment file (e.g. `evB.stk`) includes special a
 |  15 | `fid diff`            | `fract id1 - fract id2` |
 |  16 | `nnregion seqcoords`  | the model reference position span that includes nucleotides for this sequence within the `nnregion mdlcoords` region of model reference (RF) positions |
 |  17 | `nnregion mdlcoords`  | the model reference position span used for the determination of the nearest-neighbor model sequences, this will be the full model (`1..<mdl_len>:+`) unless a different span was defined in the model Stockholm alignment file in with `#=GF VADR-classification-rf-start-pos <startpos>` and `#=GF VADR-classification-rf-stop-pos  <stoppos>` annotation|
-|  18 | `nnregion coovrg`     | `nnregion seqcoords` divided by `nnregion mdlcoords` | 
+|  18 | `nnregion covrg`      | `nnregion seqcoords` divided by `nnregion mdlcoords` | 
 
 
 ---
