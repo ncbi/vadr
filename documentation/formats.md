@@ -18,6 +18,7 @@
   * [`.sda` files](#sda)
   * [`.rpn` files](#rpn)
   * [`.dcr` files](#dcr)
+  * [`.scn` files](#scn)
   * [`.alt.list` files](#altlist)
   * [additional output files saved with the `--keep` option](#annotate-keep)
 * [`v-scan.pl` output files](#scan)
@@ -701,6 +702,42 @@ header section.
 |  15 | `new codon`           | start or stop codon after potential doctoring (swap) | 
 |  16 | `dcr iter`            | doctoring iteration, `1` if first time the gap and nucleotide may be swapped, `2` if second (swapping back because first swap invalidated previously valid start/stop codon), cannot exceed `2` |
 |  17 | `did swap`            | `yes` if doctoring (swap) took place because it created a valid start or stop codon, `no` if doctoring (swap) did not occur because it would not have created a valid start or stop codon |
+
+---
+### Explanation of `.scn`-suffixed output files<a name="scn"></a>
+
+`.scn` data lines have 18 fields, the names of which appear in the first two
+comment lines in each file. There is one data line for each **sequence** in the
+input sequence file that `v-annotate.pl` processed. `.scn` files will only be created if at least one model in the model info file used by `v-annotate.pl` includes `group` and `subgroup` values (e.g. `:FILE:evB.stk`) that indicate that an alignment file should be used to determine group and subgroup info. If so, classification will be performed by comparing each aligned input sequence against all model sequences in the classification alignment file (e.g. `evB.stk`), and the group/subgroup of the model sequence with the highest percent identity to the input sequence will be assigned to the input sequence. That model sequence is referred to as the *nearest neighbor* in the field descriptions below and is listed in the `seq1` field. 
+
+The model sequence with the highest percent identity to the input sequence that has a different subgroup from the nearest-neighbor will be listed in the `seq2` field. The group and subgroup values for each model sequence in the model Stockholm format alignment file (e.g. `evB.stk`) must be annotated as `#=GS <seqname> GP` and `#=GS <seqname> SG` values (e.g. `#=GS AY302539.1 GP EVB` and `#=GS AY302539.1 SG E13`). 
+
+If the model Stockholm format alignment file (e.g. `evB.stk`) includes special annotation to define classification start and stop positions (e.g. `#=GF VADR-classification-rf-start-pos 2467` and `#=GF VADR-classification-rf-stop-pos  3393`) then the nearest-neighbor classification will be based on only on those model positions (e.g. `2467..3393`) and percent identities will indicate similarity only within that region. The region used for the classification is included in the `nnregion seqcoords` (model position range that the sequence actually spans) and `nnregion mdlcoords` (model position range used for the classification) fields.
+
+
+[Example file](annotate-files/evB.10.vadr.scn).
+
+| idx | field                 | description |
+|-----|-----------------------|-------------|
+|   1 | `seq idx`             | index of sequence in the input file |
+|   2 | `seq name`            | sequence name | 
+|   3 | `seq len`             | length of the sequence with name `seq name` | 
+|   4 | `p/f`                 | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alerts) |
+|   5 | `ant`                 | `yes` if this sequence was annotated, `no` if not, due to a per-sequence alert that prevents annotation |
+|   6 | `model`               | name of the best-matching model for this sequence, this is the model with the top-scoring hit for this sequence in the classification stage |
+|   7 | `grp1`                | group of nearest-neighbor model sequence (`seq1`), read from model alignment file, or `-` if none (or if no subgroups read from `model1`'s alignment file) |
+|   8 | `sub grp1`            | subgroup of nearest-neighbor model sequence (`seq1`) read from model alignment file, or `-` if none (or if no groups read from `model1`'s alignment file) |
+|   9 | `fract id1`           | fractional identity of nearest-neighbor model sequence (`seq1`) calculated as number of identical nucleotides in nongap reference positions within `nnregion mdl_coords` between `seq name` and `seq1` |
+|  10 | `seq1`                | nearest-neighbor sequence name, defined as model sequence with highest percent identity to `seq name` in reference (`RF`) positions in range `nnregion mdl_coords` |
+|  11 | `grp2`                | group of second nearest-neighbor model sequence (`seq2`), read from model alignment file or `-` if none (or if no groups read from `model1`'s alignment file) |
+|  12 | `sub grp2`            | subgroup of second nearest-neighbor model sequence (`seq2`), read from model alignment file or `-` if none (or if no subgroups read from `model1`'s alignment file) |
+|  13 | `fract id2`           | fractional identity of second nearest-neighbor model sequence (`seq2`) calculated as number of identical nucleotides in nongap reference positions within `nnregion mdl_coords` between `seq name` and `seq2` |
+|  14 | `seq2`                | second nearest-neighbor sequence name, defined as model sequence with highest percent identity to `seq name` in reference (`RF`) positions in range `nnregion mdl_coords` that does not have the same `subgroup` as `seq1` (subgroup of `-` is considered different from all subgroup values) |
+|  15 | `fid diff`            | `fract id1 - fract id2` |
+|  16 | `nnregion seqcoords`  | the model reference position span that includes nucleotides for this sequence within the `nnregion mdlcoords` region of model reference (RF) positions |
+|  17 | `nnregion mdlcoords`  | the model reference position span used for the determination of the nearest-neighbor model sequences, this will be the full model (`1..<mdl_len>:+`) unless a different span was defined in the model Stockholm alignment file in with `#=GF VADR-classification-rf-start-pos <startpos>` and `#=GF VADR-classification-rf-stop-pos  <stoppos>` annotation|
+|  18 | `nnregion coovrg`     | `nnregion seqcoords` divided by `nnregion mdlcoords` | 
+
 
 ---
 

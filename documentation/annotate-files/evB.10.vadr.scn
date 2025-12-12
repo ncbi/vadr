@@ -1,0 +1,13 @@
+#seq  seq                                   seq                           sub     fract                    sub       fract                 fid      nnregion      nnregion  nnregion
+#idx  name                                  len  p/f   ant  model1  grp1  grp1      id1  seq1        grp2  grp2        id2  seq2          diff    seq_coords    mdl_coords     covrg
+#---  -----------------------------------  ----  ----  ---  ------  ----  -----  ------  ----------  ----  -------  ------  ----------  ------  ------------  ------------  --------
+1     AY342748.1|E18|complete=0|len=358     358  PASS  yes  evB     EVB   E18    0.8994  HM777023.1  EVB   CV-B5    0.8212  KF311743.1  0.0782  2628..2994:+  2467..3393:+    0.3959
+2     AB268177.1|E7|complete=0|len=432      432  PASS  yes  evB     EVB   E7     0.8194  OL955511.1  EVB   E7       0.8009  MH043135.1  0.0185  2926..3393:+  2467..3393:+    0.5049
+3     AB601956.1|CV-B2|complete=0|len=296   296  PASS  yes  evB     EVB   CV-B2  0.8311  KX499536.1  EVB   CV-B6    0.6725  OQ968553.1  0.1586  2599..2903:+  2467..3393:+    0.3290
+4     LC779349.1|E21|complete=0|len=876     876  PASS  yes  evB     EVB   E21    0.8893  PP621645.1  EVB   E21      0.8048  MN481500.1  0.0845  2467..3393:+  2467..3393:+    1.0000
+5     AF081345.1|E32|complete=0|len=875     875  PASS  yes  evB     EVB   E32    0.7954  PQ612495.1  EVB   EV-B111  0.6891  KF312882.1  0.1063  2467..3392:+  2467..3393:+    0.9989
+6     KY828852.1|E18|complete=1|len=7399   7399  PASS  yes  evB     EVB   E18    0.9315  HM777023.1  EVB   CV-B5    0.7991  KF311743.1  0.1324  2467..3393:+  2467..3393:+    1.0000
+7     MK000204.1|E20|complete=0|len=6732   6732  PASS  yes  evB     EVB   E20    0.8161  KF812551.1  EVB   E33      0.6999  KT965725.1  0.1162  2467..3393:+  2467..3393:+    1.0000
+8     MH021948.1|CV-A9|complete=0|len=424   424  PASS  yes  evB     EVB   CV-A9  0.9552  MH752987.1  EVB   CV-B5    0.7925  OQ791551.1  0.1627   745..1168:+     1..7562:+    0.0561
+9     AJ417544.1|CV-B5|complete=0|len=296   296  PASS  yes  evB     EVB   CV-B5  0.9341  OQ791551.1  EVB   E31      0.9267  OQ791570.1  0.0074    304..576:+     1..7562:+    0.0361
+10    AF160063.1|CV-B4|complete=0|len=955   955  PASS  yes  evB     EVB   CV-B4  0.8304  KP289433.1  EVB   CV-B2    0.6750  KX499536.1  0.1554  2467..3393:+  2467..3393:+    1.0000
