@@ -1212,24 +1212,19 @@ sub profile_CdsFetchStockholmToFasta {
           $cds_sqstring .= $sgm_sqstring;
         }
 
-        # Trim the CDS to remove partial codons at 5' and 3' ends due to RF gaps
+        # Don't trim the CDS sequence - pass it intact to esl-translate
+        # esl-translate will find the correct ORF based on the coordinates we specify
         my $cds_len = length($cds_sqstring);
         if($total_rf_offset_5p + $total_rf_offset_3p >= $cds_len) {
           ofile_FAIL("ERROR in $sub_name, CDS for $sqname is entirely gapped in RF positions (5p_offset=$total_rf_offset_5p, 3p_offset=$total_rf_offset_3p, len=$cds_len)", 1, $FH_HR);
         }
 
-        my $trimmed_cds = substr($cds_sqstring, $total_rf_offset_5p, $cds_len - $total_rf_offset_5p - $total_rf_offset_3p);
-        my $trimmed_len = length($trimmed_cds);
+        # The final CDS is the full extracted sequence
+        my $final_cds = $cds_sqstring;
+        my $final_len = length($final_cds);
 
-        # Further trim to ensure length is a multiple of 3
-        my $final_len = int($trimmed_len / 3) * 3;
-        my $final_cds = substr($trimmed_cds, 0, $final_len);
-
-        # Recompute sequence coordinates based on the trimmed CDS
+        # Compute sequence coordinates based on the full (untrimmed) CDS
         my @final_seq_sgm_coords_A = ();
-        my $trim_5p_remaining = $total_rf_offset_5p;
-        my $trim_3p_remaining = $trimmed_len - $final_len + $total_rf_offset_3p;
-        my $seq_pos = 0;
 
         foreach(my $sgm_idx = 0; $sgm_idx < scalar(@{$sgm_start_AA[$ftr_idx]}); $sgm_idx++) {
           my $rfstart = $sgm_start_AA[$ftr_idx][$sgm_idx];
@@ -1239,27 +1234,10 @@ sub profile_CdsFetchStockholmToFasta {
           if($astart > $astop) { utl_Swap(\$astart, \$astop); }
 
           my ($ua_first, $ua_last) = profile_FirstAndLastUngappedPositionsInAlignedRange($aligned_sqstring, $astart, $astop);
-          my $sgm_len = $ua_last - $ua_first + 1;
 
-          my $sgm_start_adj = $ua_first;
-          my $sgm_stop_adj  = $ua_last;
-
-          # Apply 5' trim to the first segment
-          if($sgm_idx == 0 && $trim_5p_remaining > 0) {
-            my $to_trim = ($trim_5p_remaining < $sgm_len) ? $trim_5p_remaining : $sgm_len;
-            $sgm_start_adj += $to_trim;
-            $trim_5p_remaining -= $to_trim;
-          }
-
-          # Apply 3' trim to the last segment
-          if($sgm_idx == scalar(@{$sgm_start_AA[$ftr_idx]}) - 1 && $trim_3p_remaining > 0) {
-            my $to_trim = ($trim_3p_remaining < ($sgm_stop_adj - $sgm_start_adj + 1)) ? $trim_3p_remaining : ($sgm_stop_adj - $sgm_start_adj + 1);
-            $sgm_stop_adj -= $to_trim;
-            $trim_3p_remaining -= $to_trim;
-          }
-
-          if($sgm_start_adj <= $sgm_stop_adj) {
-            push(@final_seq_sgm_coords_A, $sgm_start_adj . ".." . $sgm_stop_adj . ":" . $sgm_strand_AA[$ftr_idx][$sgm_idx]);
+          # Use the full segment coordinates without trimming
+          if($ua_first <= $ua_last) {
+            push(@final_seq_sgm_coords_A, $ua_first . ".." . $ua_last . ":" . $sgm_strand_AA[$ftr_idx][$sgm_idx]);
           }
         }
 
@@ -1267,11 +1245,13 @@ sub profile_CdsFetchStockholmToFasta {
         my $ref_coords_str = $ftr_info_AHR->[$ftr_idx]{"coords"};
         
         # Determine truncation status:
-        # 5': Check if reference CDS was already 5'-truncated
+        # 5': Check if (a) reference CDS was already 5'-truncated, OR
+        #              (b) this sequence is missing RF positions at the 5' end (has RF offset > 0)
         # 3': Check if this sequence has ungapped residues at the last 3 RF positions
         #     (which should encode the stop codon). If any of those positions are gapped,
         #     then this sequence doesn't have a stop codon and should be 3'-truncated.
         my $ref_is_trunc5p = ($ref_coords_str =~ /</) ? 1 : 0;
+        my $is_trunc5p_for_this_seq = ($total_rf_offset_5p > 0) ? 1 : 0;
         
         # For 3' truncation: check if the last segment's last RF position matches
         # the reference CDS's last RF position, and if so, whether the sequence
@@ -1297,23 +1277,22 @@ sub profile_CdsFetchStockholmToFasta {
           }
         }
         
-        # Compute codon_start based on 5' RF offset modulo 3
-        my $codon_start = 1;
-        if($total_rf_offset_5p > 0) {
-          $codon_start = ($total_rf_offset_5p % 3) + 1;
-          if($codon_start > 3) { $codon_start -= 3; }
-        }
+        # Compute codon_start: the position in the extracted sequence where
+        # the in-frame translation starts (1-based)
+        # With $total_rf_offset_5p out-of-frame nucleotides at the 5' end,
+        # the translation frame starts at position ($total_rf_offset_5p + 1)
+        my $codon_start = $total_rf_offset_5p + 1;
         
         # Format CDS header with truncation markers and codon_start
         # Rebuild coordinate string with < and > markers if truncated
-        if($ref_is_trunc5p || $is_trunc3p_for_this_seq) {
+        if($ref_is_trunc5p || $is_trunc5p_for_this_seq || $is_trunc3p_for_this_seq) {
           my @marked_coords_A = ();
           for(my $i = 0; $i < scalar(@final_seq_sgm_coords_A); $i++) {
             my $coord_str = $final_seq_sgm_coords_A[$i];
             if($coord_str =~ /^(\d+)\.\.(\d+):([+-])$/) {
               my ($seg_start, $seg_stop, $seg_strand) = ($1, $2, $3);
-              # Add < marker to the first segment's start coordinate if reference was 5' truncated
-              if($i == 0 && $ref_is_trunc5p) {
+              # Add < marker to the first segment's start coordinate if 5' truncated
+              if($i == 0 && ($ref_is_trunc5p || $is_trunc5p_for_this_seq)) {
                 $seg_start = "<" . $seg_start;
               }
               # Add > marker to the last segment's stop coordinate if this sequence is 3' truncated
@@ -1350,10 +1329,11 @@ sub profile_CdsFetchStockholmToFasta {
 # Subroutine: profile_ComputeRfOffsets()
 #
 # Purpose: For a given CDS segment, compute how many nucleotides at the
-#          5' and 3' ends correspond to gapped RF positions (i.e., positions
-#          before/after the first/last RF column that is ungapped in this sequence).
-#          This is needed to trim partial codons that arise when a sequence
-#          has gaps in leading/trailing RF positions.
+#          5' and 3' ends need to be trimmed to maintain the correct reading frame.
+#          When a sequence has gapped RF positions at the 5' end of a CDS,
+#          the extracted sequence starts out-of-frame relative to the reference.
+#          We need to trim nucleotides to reach the first position that's in
+#          the same frame as the reference CDS start.
 #
 # Arguments:
 #   $aligned_sqstring: aligned sequence string for this sequence
@@ -1365,7 +1345,7 @@ sub profile_CdsFetchStockholmToFasta {
 #   $strand:           strand of the segment ("+" or "-")
 #
 # Returns: ($offset_5p, $offset_3p)
-#          $offset_5p: number of nucleotides to trim from 5' end
+#          $offset_5p: number of nucleotides to trim from 5' end to get in-frame
 #          $offset_3p: number of nucleotides to trim from 3' end
 #################################################################
 sub profile_ComputeRfOffsets {
@@ -1394,16 +1374,29 @@ sub profile_ComputeRfOffsets {
     return (0, 0);
   }
 
-  # Count nucleotides before first_ungapped_rf (5' offset)
+  # For 5' offset: we need to trim nucleotides until we reach a position
+  # that's in the same reading frame as the reference CDS start (rfstart).
+  # The reference frame is (rfstart % 3).
+  # We want the first RF position where (rfpos % 3) == (rfstart % 3).
+  my $ref_frame = $rfstart % 3;
   my $offset_5p = 0;
-  for(my $rfpos = $rfstart; $rfpos < $first_ungapped_rf; $rfpos++) {
+  
+  for(my $rfpos = $first_ungapped_rf; $rfpos <= $rfstop; $rfpos++) {
     my $apos = $msa->rfpos_to_aligned_pos($rfpos);
     my $c = substr($aligned_sqstring, $apos-1, 1);
     my $is_gap = ($c =~ /[\-\_\.\~]/) ? 1 : 0;
-    if(! $is_gap) { $offset_5p++; }
+    
+    if(! $is_gap) {
+      my $this_frame = $rfpos % 3;
+      if($this_frame == $ref_frame) {
+        # Found the first in-frame position, stop counting
+        last;
+      }
+      $offset_5p++;
+    }
   }
 
-  # Count nucleotides after last_ungapped_rf (3' offset)
+  # For 3' offset: count ungapped nucleotides after the last ungapped RF position
   my $offset_3p = 0;
   for(my $rfpos = $last_ungapped_rf + 1; $rfpos <= $rfstop; $rfpos++) {
     my $apos = $msa->rfpos_to_aligned_pos($rfpos);
@@ -1448,12 +1441,15 @@ sub profile_RenameProteinHeaders {
   }
   close(CDS);
 
-  # Build reverse lookup: protein_name (without markers) -> CDS key (with REFCOORDS)
+  # Build reverse lookup: protein_name (without markers or CS#) -> CDS key (with REFCOORDS)
   my %protein_to_cds_H = ();
   foreach my $cds_key (keys %refcoords_H) {
     my $protein_key = $cds_key;
+    # Remove truncation markers < and >
     $protein_key =~ s/\<//g;
     $protein_key =~ s/\>//g;
+    # Remove /CS# annotation (codon_start)
+    $protein_key =~ s/\/CS\d$//;
     $protein_to_cds_H{$protein_key} = $cds_key;
   }
 
