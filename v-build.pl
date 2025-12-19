@@ -94,7 +94,9 @@ $opt_group_desc_H{++$g} = "basic options";
 opt_Add("-h",           "boolean", 0,           0,    undef, undef,       undef,                                                         "display this help",                                   \%opt_HH, \@opt_order_A);
 opt_Add("-f",           "boolean", 0,          $g,    undef, undef,       "forcing directory overwrite",                                 "force; if dir <output directory> exists, overwrite it", \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,          $g,    undef, undef,       "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("--stk",        "string",  undef,      $g,    undef, undef,       "read single sequence stockholm 'alignment' from <s>",         "read single sequence stockholm 'alignment' from <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--profile",    "boolean", 0,          $g,  "--stk,--minfoin", "--infa,--inft,--gb,--ingb,--addminfo,--onlyurl", "build a model from an input multi-sequence alignment (--stk) and model info (--minfoin)", "build a model from an input multi-sequence alignment (--stk) and model info (--minfoin)", \%opt_HH, \@opt_order_A);
+opt_Add("--stk",        "string",  undef,      $g,    undef, undef,       "read stockholm alignment from <s> (single-seq unless --profile)", "read stockholm alignment from <s> (single-seq unless --profile)", \%opt_HH, \@opt_order_A);
+opt_Add("--minfoin",    "string",  undef,      $g, "--profile", undef,   "read model info file from <s> (for --profile mode)",           "read model info file from <s> (for --profile mode)", \%opt_HH, \@opt_order_A);
 opt_Add("--infa",       "string",  undef,      $g,    undef, undef,       "read single sequence fasta file from <s>, don't fetch it",    "read single sequence fasta file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
 opt_Add("--inft",       "string",  undef,      $g, "--inft", "--gb",      "read feature table file from <s>, don't fetch it",            "read feature table file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
 opt_Add("--ftfetch1",   "boolean", 0,          $g,    undef, "--inft,--gb,--ftfetch2", "fetch feature table with efetch -format ft",      "fetch feature table with efetch -format ft", \%opt_HH, \@opt_order_A);
@@ -130,6 +132,10 @@ $opt_group_desc_H{++$g} = "options for controlling CDS translation step";
 #     option          type       default    group   requires    incompat   preamble-output                                             help-output    
 opt_Add("--ttbl",     "integer", 1,            $g,  undef,         undef,  "use NCBI translation table <n> to translate CDS",          "use NCBI translation table <n> to translate CDS", \%opt_HH, \@opt_order_A);
 
+$opt_group_desc_H{++$g} = "options for controlling optional HMMER profile HMM building";
+#     option          type       default    group   requires    incompat     preamble-output                                         help-output
+opt_Add("--addhmm",   "boolean", 0,            $g,  undef,     "--profile", "build HMMER profile HMM db for CDS (off by default)",  "build HMMER profile HMM db for CDS (off by default)", \%opt_HH, \@opt_order_A);
+
 $opt_group_desc_H{++$g} = "options for controlling cmbuild step";
 #     option          type       default    group   requires    incompat             preamble-output                                             help-output    
 opt_Add("--cmn",      "integer", undef,       $g,   undef, "--skipbuild,--cminfile", "set number of seqs for glocal fwd HMM calibration to <n>", "set number of seqs for glocal fwd HMM calibration to <n>", \%opt_HH, \@opt_order_A);
@@ -163,7 +169,9 @@ my $options_okay =
 # basic options
                 'f'            => \$GetOptions_H{"-f"},
                 'v'            => \$GetOptions_H{"-v"},
+        'profile'      => \$GetOptions_H{"--profile"},
                 'stk=s'        => \$GetOptions_H{"--stk"},
+        'minfoin=s'    => \$GetOptions_H{"--minfoin"},
                 'infa=s'       => \$GetOptions_H{"--infa"},
                 'inft=s'       => \$GetOptions_H{"--inft"},
                 'ftfetch1'     => \$GetOptions_H{"--ftfetch1"},
@@ -190,6 +198,8 @@ my $options_okay =
                 'subgroup=s'   => \$GetOptions_H{"--subgroup"},
 # options for controlling CDS translation step
                 'ttbl=s'       => \$GetOptions_H{"--ttbl"},
+# options for controlling optional HMMER profile HMM building
+                'addhmm'       => \$GetOptions_H{"--addhmm"},
 # options for controlling cmbuild step
                 'cmn=s'        => \$GetOptions_H{"--cmn"},
                 'cmp7ml'       => \$GetOptions_H{"--cmp7ml"},
@@ -213,7 +223,7 @@ my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we c
 my $execname_opt  = $GetOptions_H{"--execname"};
 my $executable    = (defined $execname_opt) ? $execname_opt : "v-build.pl";
 my $usage         = "Usage: $executable [-options] <accession> <path to output directory to create>\n";
-my $synopsis      = "$executable :: build homology model of a single sequence for feature annotation";
+my $synopsis      = "$executable :: build homology model for feature annotation";
 my $date          = scalar localtime();
 my $version       = "1.7";
 my $releasedate   = "Sep 2025";
@@ -361,46 +371,99 @@ if(defined $addminfo_file) {
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 
+########################################
+# Determine if we are in --profile mode
+########################################
+my $do_profile   = opt_Get("--profile", \%opt_HH);
+my $minfoin_file = opt_Get("--minfoin", \%opt_HH);
+
+##############################################
+# Variables that exist for all modes
+##############################################
+my $fa_file = $out_root . ".fa";
+my %seq_H = ();
+my $mdl_name_ver = undef;
+my $maxlen = 25000;
+my $mdllen = undef;
+my $ft_file = undef;
+my $gb_file = undef;
+my %ftr_info_HAH = (); # the feature info
+my %minfoin_mdl_info_H = (); # model info from --minfoin for $mdl_name (only in --profile mode)
+
 ###################################################
 # Fetch the fasta file (if necessary) and parse it
 ###################################################
-my $fa_file = $out_root . ".fa";
-my %seq_H = ();
-if(opt_IsUsed("--infa", \%opt_HH)) { 
-  utl_RunCommand("cp " . opt_Get("--infa", \%opt_HH) . " $fa_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
-}
-else { 
-  $start_secs = ofile_OutputProgressPrior("Fetching FASTA file", $progress_w, $log_FH, *STDOUT);
-  vdr_EutilsFetchToFile($fa_file, $mdl_name, "nuccore", "fasta", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "fasta", $fa_file, 1, 1, "fasta file for $mdl_name");
-  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-}
-$start_secs = ofile_OutputProgressPrior("Parsing FASTA file", $progress_w, $log_FH, *STDOUT);
-vdr_ParseSeqFileToSeqHash($fa_file, \%seq_H, $FH_HR);
-my @fetched_seq_A = (sort keys %seq_H);
-if(scalar(@fetched_seq_A) != 1) { 
-  ofile_FAIL("ERROR did not fetch exactly 1 sequence from fasta file $fa_file\n", 1, $FH_HR);
-}
-my $mdl_name_ver = $fetched_seq_A[0];
-# make sure it's the right sequence
-if($mdl_name_ver =~ /(\S+)\.\d+/) { 
-  if($1 ne $mdl_name) { 
+if(! $do_profile) {
+  if(opt_IsUsed("--infa", \%opt_HH)) { 
+    utl_RunCommand("cp " . opt_Get("--infa", \%opt_HH) . " $fa_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+  }
+  else { 
+    $start_secs = ofile_OutputProgressPrior("Fetching FASTA file", $progress_w, $log_FH, *STDOUT);
+    vdr_EutilsFetchToFile($fa_file, $mdl_name, "nuccore", "fasta", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "fasta", $fa_file, 1, 1, "fasta file for $mdl_name");
+    ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  }
+  $start_secs = ofile_OutputProgressPrior("Parsing FASTA file", $progress_w, $log_FH, *STDOUT);
+  vdr_ParseSeqFileToSeqHash($fa_file, \%seq_H, $FH_HR);
+  my @fetched_seq_A = (sort keys %seq_H);
+  if(scalar(@fetched_seq_A) != 1) { 
+    ofile_FAIL("ERROR did not fetch exactly 1 sequence from fasta file $fa_file\n", 1, $FH_HR);
+  }
+  $mdl_name_ver = $fetched_seq_A[0];
+  # make sure it's the right sequence
+  if($mdl_name_ver =~ /(\S+)\.\d+/) { 
+    if($1 ne $mdl_name) { 
+      ofile_FAIL("ERROR did not fetch correct sequence from fasta file $fa_file (expected accession.version starting with $mdl_name, got $mdl_name_ver)\n", 1, $FH_HR);
+    }
+  }
+  else {
     ofile_FAIL("ERROR did not fetch correct sequence from fasta file $fa_file (expected accession.version starting with $mdl_name, got $mdl_name_ver)\n", 1, $FH_HR);
   }
+  $mdllen = length($seq_H{$mdl_name_ver});
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 else {
-  ofile_FAIL("ERROR did not fetch correct sequence from fasta file $fa_file (expected accession.version starting with $mdl_name, got $mdl_name_ver)\n", 1, $FH_HR);
+  # --profile mode: build from an input Stockholm alignment and an input .minfo file.
+  $start_secs = ofile_OutputProgressPrior("Processing --profile inputs", $progress_w, $log_FH, *STDOUT);
+
+  if(! defined opt_Get("--stk", \%opt_HH)) {
+    ofile_FAIL("ERROR, --profile requires --stk <s>", 1, $FH_HR);
+  }
+  if(! defined $minfoin_file) {
+    ofile_FAIL("ERROR, --profile requires --minfoin <s>", 1, $FH_HR);
+  }
+  utl_FileValidateExistsAndNonEmpty($minfoin_file, "--minfoin file", undef, 1, $FH_HR);
+  utl_FileValidateExistsAndNonEmpty(opt_Get("--stk", \%opt_HH), "--stk file", undef, 1, $FH_HR);
+
+  my @minfo_mdl_info_AH  = ();
+  my %minfo_ftr_info_HAH = ();
+  my @reqd_mdl_keys_A = ("name");
+  my @reqd_ftr_keys_A = ("type", "coords");
+  vdr_ModelInfoFileParse($minfoin_file, \@reqd_mdl_keys_A, \@reqd_ftr_keys_A, \@minfo_mdl_info_AH, \%minfo_ftr_info_HAH, $FH_HR);
+
+  if(! defined $minfo_ftr_info_HAH{$mdl_name}) {
+    ofile_FAIL("ERROR, --minfoin file $minfoin_file must include model $mdl_name, but it does not", 1, $FH_HR);
+  }
+  @{$ftr_info_HAH{$mdl_name}} = @{$minfo_ftr_info_HAH{$mdl_name}};
+  # also capture any model-level info for this model, so we can preserve it
+  for(my $i = 0; $i < scalar(@minfo_mdl_info_AH); $i++) {
+    if((defined $minfo_mdl_info_AH[$i]{"name"}) && ($minfo_mdl_info_AH[$i]{"name"} eq $mdl_name)) {
+      %minfoin_mdl_info_H = %{$minfo_mdl_info_AH[$i]};
+      last;
+    }
+  }
+  if(! defined $minfoin_mdl_info_H{"name"}) {
+    ofile_FAIL("ERROR, --minfoin file $minfoin_file must include MODEL line for model $mdl_name, but it does not", 1, $FH_HR);
+  }
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
-ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #######################################################################
 # Verify our sequence is not longer than our hard-coded maximum of 25Kb 
 #######################################################################
 # allow any length if --forcelong
-my $maxlen = 25000;
-my $mdllen = length($seq_H{$mdl_name_ver});
-if(! opt_Get("--forcelong", \%opt_HH)) { 
-  if($mdllen > 25000) { 
+if((defined $mdllen) && (! opt_Get("--forcelong", \%opt_HH))) { 
+  if($mdllen > $maxlen) { 
     ofile_FAIL("ERROR, model length ($mdllen) exceeds maximum allowed length of $maxlen.\nYou can use --forcelong to bypass this at your own risk.\nUse of VADR on models > 25Kb is not recommended.\nModel building will be very slow and\ndownstream v-annotate.pl annotation will have large memory requirements.", 1, $FH_HR);
   }
 }
@@ -409,10 +472,12 @@ if(! opt_Get("--forcelong", \%opt_HH)) {
 # Fetch the feature table (ft) or GenBank (gb) file (if necessary)
 # and parse it.
 ###################################################################
-my $ft_file = undef;
-my $gb_file = undef;
-my %ftr_info_HAH = (); # the feature info 
-if(! opt_IsUsed("--gb", \%opt_HH)) { 
+$ft_file = undef;
+$gb_file = undef;
+if($do_profile) {
+  # in --profile mode, feature info already came from --minfoin
+}
+elsif(! opt_IsUsed("--gb", \%opt_HH)) { 
   if(opt_IsUsed("--inft", \%opt_HH)) { 
     $ft_file = opt_Get("--inft", \%opt_HH);
   }
@@ -625,11 +690,32 @@ if(defined $addminfo_file) {
 #####################################################################
 my $stk_file = $out_root . ".stk";
 my $stk_has_ss = undef;
+my $stk_has_rf = 0;
 my $in_stk_file = opt_Get("--stk", \%opt_HH);
 if(defined $in_stk_file) { 
   $start_secs = ofile_OutputProgressPrior("Validating input Stockholm file", $progress_w, $log_FH, *STDOUT);
 
-  $stk_has_ss = stockholm_validate_single_sequence_input($in_stk_file, $seq_H{$mdl_name_ver}, \%opt_HH, $FH_HR);
+  if($do_profile) {
+    my $msa = Bio::Easel::MSA->new({ fileLocation => $in_stk_file, isDna => 1});
+    if(! $msa->has_rf) {
+      ofile_FAIL("ERROR, --profile requires that the --stk Stockholm alignment includes RF annotation (#=GC RF)", 1, $FH_HR);
+    }
+    my $rf = $msa->get_rf;
+    my $clen = 0;
+    foreach my $rfchar (split(//, $rf)) {
+      if($rfchar !~ /[\-\_\.\~]/) { $clen++; }
+    }
+    if($clen == 0) {
+      ofile_FAIL("ERROR, --profile read RF annotation but computed 0 consensus columns; is RF all gaps?", 1, $FH_HR);
+    }
+    $mdllen = $clen;
+    $stk_has_ss = $msa->has_ss_cons;
+    $stk_has_rf = 1;
+    undef $msa;
+  }
+  else {
+    $stk_has_ss = stockholm_validate_single_sequence_input($in_stk_file, $seq_H{$mdl_name_ver}, \%opt_HH, $FH_HR);
+  }
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   utl_RunCommand("cp $in_stk_file $stk_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
@@ -650,6 +736,19 @@ else {
 $start_secs = ofile_OutputProgressPrior("Building BLAST nucleotide database ", $progress_w, $log_FH, *STDOUT);
 my $tmp_blastn_fa_file = $out_root . ".fa.tmp";
 my $blastn_fa_file     = $out_root . ".fa";
+
+if($do_profile) {
+  # Create a nucleotide FASTA file from the first sequence in the input alignment.
+  # (In --profile mode, we do not have a single fetched reference sequence.)
+  my $msa = Bio::Easel::MSA->new({ fileLocation => $stk_file, isDna => 1});
+  my $nt_sqstring = $msa->get_sqstring_unaligned(0);
+  seq_SqstringCapitalize(\$nt_sqstring);
+  seq_SqstringDnaize(\$nt_sqstring);
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fasta", $fa_file, 0, 1, "fasta file (first sequence from alignment) for $mdl_name");
+  printf { $ofile_info_HH{"FH"}{"fasta"} } ">" . $mdl_name . "\n" . seq_SqstringAddNewlines($nt_sqstring, 60);
+  close $ofile_info_HH{"FH"}{"fasta"};
+  undef $msa;
+}
 
 sqf_EslReformatRun($execs_H{"esl-reformat"}, "-d -u", $fa_file, $tmp_blastn_fa_file, "fasta", "fasta", \%opt_HH, $FH_HR);
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "blastn-fa",  $blastn_fa_file, 1, 1, "nucleotide blastn db fasta sequence file for $mdl_name");
@@ -730,13 +829,36 @@ if($ncds > 0) {
 
   $cds_fa_file  = $out_root . ".cds.fa";
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cdsfasta", $cds_fa_file, 1, 1, "fasta sequence file for CDS from $mdl_name");
-  vdr_CdsFetchStockholmToFasta($ofile_info_HH{"FH"}{"cdsfasta"}, $stk_file, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  if($do_profile) {
+    profile_CdsFetchStockholmToFasta($ofile_info_HH{"FH"}{"cdsfasta"}, $stk_file, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  }
+  else {
+    vdr_CdsFetchStockholmToFasta($ofile_info_HH{"FH"}{"cdsfasta"}, $stk_file, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  }
   close $ofile_info_HH{"FH"}{"cdsfasta"};
   
   $protein_fa_file = $out_root . ".protein.fa";
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "proteinfasta", $protein_fa_file, 1, 1, "fasta sequence file for translated CDS from $mdl_name");
-  sqf_EslTranslateCdsToFastaFile($ofile_info_HH{"FH"}{"proteinfasta"}, $execs_H{"esl-translate"}, $cds_fa_file, 
-                                 $out_root, \@{$ftr_info_HAH{$mdl_name}}, \%opt_HH, $FH_HR);
+  
+  if($do_profile) {
+    # For profile mode: translate to temp file, then rename headers
+    my $tmp_protein_fa_file = $out_root . ".protein.tmp.fa";
+    open(my $tmp_protein_FH, ">", $tmp_protein_fa_file) || ofile_FileOpenFailure($tmp_protein_fa_file, "v-build.pl::main()", $!, "writing", $FH_HR);
+    sqf_EslTranslateCdsToFastaFile($tmp_protein_FH, $execs_H{"esl-translate"}, $cds_fa_file, 
+                                   $out_root, \@{$ftr_info_HAH{$mdl_name}}, \%opt_HH, $FH_HR);
+    close($tmp_protein_FH);
+    
+    # Rename protein headers from seqname/seqcoords to seqname:seqcoords/refcoords
+    profile_RenameProteinHeaders($tmp_protein_fa_file, $ofile_info_HH{"FH"}{"proteinfasta"}, $cds_fa_file, $FH_HR);
+    
+    if(! opt_Get("--keep", \%opt_HH)) {
+      utl_FileRemoveUsingSystemRm($tmp_protein_fa_file, "v-build.pl::main()", \%opt_HH, $FH_HR);
+    }
+  }
+  else {
+    sqf_EslTranslateCdsToFastaFile($ofile_info_HH{"FH"}{"proteinfasta"}, $execs_H{"esl-translate"}, $cds_fa_file, 
+                                   $out_root, \@{$ftr_info_HAH{$mdl_name}}, \%opt_HH, $FH_HR);
+  }
   close $ofile_info_HH{"FH"}{"proteinfasta"};
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -754,8 +876,9 @@ if($ncds > 0) {
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
-  # build hmmer db, need to build one HMM per CDS and concatenate them
-  $start_secs = ofile_OutputProgressPrior("Building HMMER protein database ", $progress_w, $log_FH, *STDOUT);
+  # build hmmer db (optional), need to build one HMM per CDS and concatenate them
+  if(opt_Get("--addhmm", \%opt_HH)) {
+    $start_secs = ofile_OutputProgressPrior("Building HMMER protein database ", $progress_w, $log_FH, *STDOUT);
 
   # run esl-seqstat and parse it
   my $protein_sqfile = Bio::Easel::SqFile->new({ fileLocation => $protein_fa_file });
@@ -804,7 +927,8 @@ if($ncds > 0) {
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "h3p",      $hmm_file . ".h3p", 1, 1, "optimized p7 HMM filters (remainder)");
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "hmmpress", $hmmpress_file,     1, 1, "hmmpress output file");
 
-  ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
+    ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
+  }
 
   # check splice sites and add canon_splice_sites:"1" if all are valid
   if(! opt_Get("--nosplice", \%opt_HH)) { 
@@ -820,7 +944,7 @@ if($ncds > 0) {
 my $cm_file = undef;
 if(! opt_Get("--skipbuild", \%opt_HH)) { 
   my $cmbuild_str = undef;
-  my $clen_times_cmn = length($seq_H{$mdl_name_ver}) * 200;
+  my $clen_times_cmn = $mdllen * 200;
   if(opt_IsUsed("--cmn", \%opt_HH)) { 
     $clen_times_cmn *= (opt_Get("--cmn", \%opt_HH) / 200);
   }
@@ -849,6 +973,7 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
   }
   else { 
     if((! defined $stk_has_ss) || (! $stk_has_ss)) { $cmbuild_opts .= " --noss"; }
+    if(($do_profile) && ($stk_has_rf)) { $cmbuild_opts .= " --hand"; }
     if(opt_IsUsed("--cmn",       \%opt_HH))   { $cmbuild_opts .= " --EgfN "    . opt_Get("--cmn", \%opt_HH); }
     if(opt_IsUsed("--cmp7ml",    \%opt_HH))   { $cmbuild_opts .= " --p7ml"; }
     if(opt_IsUsed("--cmere",     \%opt_HH))   { $cmbuild_opts .= " --ere "     . opt_Get("--cmere", \%opt_HH); }
@@ -896,7 +1021,7 @@ $start_secs = ofile_OutputProgressPrior("Creating model info file", $progress_w,
 my @mdl_info_AH = (); 
 %{$mdl_info_AH[0]} = ();
 $mdl_info_AH[0]{"name"}   = $mdl_name;
-$mdl_info_AH[0]{"length"} = length($seq_H{$mdl_name_ver});
+$mdl_info_AH[0]{"length"} = $mdllen;
 if(defined $cm_file) { 
   $mdl_info_AH[0]{"cmfile"} = utl_RemoveDirPath($cm_file);
 }
@@ -910,6 +1035,19 @@ if(opt_IsUsed("--group", \%opt_HH)) {
   $mdl_info_AH[0]{"group"} = opt_Get("--group", \%opt_HH); 
   if(opt_IsUsed("--subgroup", \%opt_HH)) { 
     $mdl_info_AH[0]{"subgroup"} = opt_Get("--subgroup", \%opt_HH); 
+  }
+}
+elsif($do_profile) {
+  # preserve group/subgroup from --minfoin unless overridden on cmdline
+  if((defined $minfoin_mdl_info_H{"group"}) && (! opt_IsUsed("--group", \%opt_HH))) {
+    $mdl_info_AH[0]{"group"} = $minfoin_mdl_info_H{"group"};
+    if(defined $minfoin_mdl_info_H{"subgroup"}) {
+      $mdl_info_AH[0]{"subgroup"} = $minfoin_mdl_info_H{"subgroup"};
+    }
+  }
+  # preserve transl_table from --minfoin if present and not overridden
+  if((defined $minfoin_mdl_info_H{"transl_table"}) && (! opt_IsUsed("--ttbl", \%opt_HH))) {
+    $mdl_info_AH[0]{"transl_table"} = $minfoin_mdl_info_H{"transl_table"};
   }
 }
 my $modelinfo_file  = $out_root . ".minfo";
@@ -988,6 +1126,546 @@ sub stockholm_validate_single_sequence_input {
   }
 
   return $msa->has_ss_cons;
+}
+
+#################################################################
+# Subroutine: profile_CdsFetchStockholmToFasta()
+# Incept:     EPN?, Adapted for profile mode by GitHub Copilot
+#
+# Purpose:    Like vdr_CdsFetchStockholmToFasta(), but in --profile mode
+#             we must name each CDS (and therefore the translated protein)
+#             with BOTH:
+#               (1) the dealigned (sequence) coordinates for that CDS in
+#                   that specific sequence, derived from the alignment, and
+#               (2) the model (reference) coordinates from the input .minfo.
+#
+#             Output FASTA header format per CDS per sequence:
+#               <seqname>:<seqcoords>/<refcoords>
+#             Example:
+#               myseq:742..7323:+/745..7398:+
+#
+# Arguments:
+#   $out_FH:         output file handle
+#   $stk_file:       stockholm file with aligned full length sequences
+#   $ftr_info_AHR:   REF to the feature info, pre-filled (model coords)
+#   $FH_HR:          REF to hash of file handles, including "log" and "cmd"
+#
+# Returns: void
+#################################################################
+sub profile_CdsFetchStockholmToFasta {
+  my $sub_name = "profile_CdsFetchStockholmToFasta";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+
+  my ($out_FH, $stk_file, $ftr_info_AHR, $FH_HR) = (@_);
+
+  my $msa = Bio::Easel::MSA->new({ fileLocation => $stk_file, isDna => 1});
+  if(! $msa->has_rf) {
+    ofile_FAIL("ERROR in $sub_name, --profile requires RF annotation in $stk_file", 1, $FH_HR);
+  }
+
+  # precompute start, stop, strand, for all features, so we don't have to redo this for each seq
+  my @sgm_start_AA  = ();
+  my @sgm_stop_AA   = ();
+  my @sgm_strand_AA = ();
+  vdr_FeatureInfoStartStopStrandArrays($ftr_info_AHR, \@sgm_start_AA, \@sgm_stop_AA, \@sgm_strand_AA, $FH_HR);
+
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $nseq = $msa->nseq;
+
+  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) {
+    my $sqname = $msa->get_sqname($seq_idx);
+    my $aligned_sqstring = $msa->get_sqstring_aligned($seq_idx);
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
+      if($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") {
+        my $cds_sqstring = "";
+        my @seq_sgm_coords_A = ();
+        my $total_rf_offset_5p = 0; # cumulative 5' RF offset (nt to trim from 5' end)
+        my $total_rf_offset_3p = 0; # cumulative 3' RF offset (nt to trim from 3' end)
+
+        foreach(my $sgm_idx = 0; $sgm_idx < scalar(@{$sgm_start_AA[$ftr_idx]}); $sgm_idx++) {
+          my $rfstart = $sgm_start_AA[$ftr_idx][$sgm_idx];
+          my $rfstop  = $sgm_stop_AA[$ftr_idx][$sgm_idx];
+          my $astart  = $msa->rfpos_to_aligned_pos($rfstart);
+          my $astop   = $msa->rfpos_to_aligned_pos($rfstop);
+          if($astart > $astop) { utl_Swap(\$astart, \$astop); }
+
+          # derive dealigned (sequence) coords for this segment
+          my ($ua_first, $ua_last) = profile_FirstAndLastUngappedPositionsInAlignedRange($aligned_sqstring, $astart, $astop);
+          if(! defined $ua_first) {
+            ofile_FAIL("ERROR in $sub_name, unable to determine dealigned coords for $sqname segment $astart..$astop (all gaps?)", 1, $FH_HR);
+          }
+
+          # fetch the unaligned segment sequence (in alignment coords)
+          my $sgm_sqstring = $msa->get_sqstring_unaligned_and_truncated($seq_idx, $astart, $astop);
+          if($sgm_strand_AA[$ftr_idx][$sgm_idx] eq "-") {
+            seq_SqstringReverseComplement(\$sgm_sqstring);
+          }
+
+          # Compute RF-based offset: how many nucleotides at 5' end of this segment
+          # correspond to gapped RF positions (i.e., before the first RF position that
+          # is ungapped in this sequence).
+          my ($rf_offset_5p, $rf_offset_3p) = profile_ComputeRfOffsets($aligned_sqstring, $astart, $astop, $rfstart, $rfstop, $msa, $sgm_strand_AA[$ftr_idx][$sgm_idx]);
+          $total_rf_offset_5p += $rf_offset_5p;
+          $total_rf_offset_3p += $rf_offset_3p;
+
+          $cds_sqstring .= $sgm_sqstring;
+        }
+
+        # Trim the CDS to remove partial codons at 5' and 3' ends due to RF gaps
+        my $cds_len = length($cds_sqstring);
+        if($total_rf_offset_5p + $total_rf_offset_3p >= $cds_len) {
+          ofile_FAIL("ERROR in $sub_name, CDS for $sqname is entirely gapped in RF positions (5p_offset=$total_rf_offset_5p, 3p_offset=$total_rf_offset_3p, len=$cds_len)", 1, $FH_HR);
+        }
+
+        my $trimmed_cds = substr($cds_sqstring, $total_rf_offset_5p, $cds_len - $total_rf_offset_5p - $total_rf_offset_3p);
+        my $trimmed_len = length($trimmed_cds);
+
+        # Further trim to ensure length is a multiple of 3
+        my $final_len = int($trimmed_len / 3) * 3;
+        my $final_cds = substr($trimmed_cds, 0, $final_len);
+
+        # Recompute sequence coordinates based on the trimmed CDS
+        my @final_seq_sgm_coords_A = ();
+        my $trim_5p_remaining = $total_rf_offset_5p;
+        my $trim_3p_remaining = $trimmed_len - $final_len + $total_rf_offset_3p;
+        my $seq_pos = 0;
+
+        foreach(my $sgm_idx = 0; $sgm_idx < scalar(@{$sgm_start_AA[$ftr_idx]}); $sgm_idx++) {
+          my $rfstart = $sgm_start_AA[$ftr_idx][$sgm_idx];
+          my $rfstop  = $sgm_stop_AA[$ftr_idx][$sgm_idx];
+          my $astart  = $msa->rfpos_to_aligned_pos($rfstart);
+          my $astop   = $msa->rfpos_to_aligned_pos($rfstop);
+          if($astart > $astop) { utl_Swap(\$astart, \$astop); }
+
+          my ($ua_first, $ua_last) = profile_FirstAndLastUngappedPositionsInAlignedRange($aligned_sqstring, $astart, $astop);
+          my $sgm_len = $ua_last - $ua_first + 1;
+
+          my $sgm_start_adj = $ua_first;
+          my $sgm_stop_adj  = $ua_last;
+
+          # Apply 5' trim to the first segment
+          if($sgm_idx == 0 && $trim_5p_remaining > 0) {
+            my $to_trim = ($trim_5p_remaining < $sgm_len) ? $trim_5p_remaining : $sgm_len;
+            $sgm_start_adj += $to_trim;
+            $trim_5p_remaining -= $to_trim;
+          }
+
+          # Apply 3' trim to the last segment
+          if($sgm_idx == scalar(@{$sgm_start_AA[$ftr_idx]}) - 1 && $trim_3p_remaining > 0) {
+            my $to_trim = ($trim_3p_remaining < ($sgm_stop_adj - $sgm_start_adj + 1)) ? $trim_3p_remaining : ($sgm_stop_adj - $sgm_start_adj + 1);
+            $sgm_stop_adj -= $to_trim;
+            $trim_3p_remaining -= $to_trim;
+          }
+
+          if($sgm_start_adj <= $sgm_stop_adj) {
+            push(@final_seq_sgm_coords_A, $sgm_start_adj . ".." . $sgm_stop_adj . ":" . $sgm_strand_AA[$ftr_idx][$sgm_idx]);
+          }
+        }
+
+        my $seq_coords_str = join(",", @final_seq_sgm_coords_A);
+        my $ref_coords_str = $ftr_info_AHR->[$ftr_idx]{"coords"};
+        
+        # Determine truncation status:
+        # 5': Check if reference CDS was already 5'-truncated
+        # 3': Check if this sequence has ungapped residues at the last 3 RF positions
+        #     (which should encode the stop codon). If any of those positions are gapped,
+        #     then this sequence doesn't have a stop codon and should be 3'-truncated.
+        my $ref_is_trunc5p = ($ref_coords_str =~ /</) ? 1 : 0;
+        
+        # For 3' truncation: check if the last segment's last RF position matches
+        # the reference CDS's last RF position, and if so, whether the sequence
+        # has ungapped residues in the last 3 RF positions.
+        my $is_trunc3p_for_this_seq = 0;
+        my $last_sgm_idx = scalar(@{$sgm_start_AA[$ftr_idx]}) - 1;
+        if($last_sgm_idx >= 0) {
+          my $ref_last_rfpos = $sgm_stop_AA[$ftr_idx][$last_sgm_idx];
+          # Check if this sequence has ungapped residues at ref_last_rfpos, ref_last_rfpos-1, ref_last_rfpos-2
+          my $last_3_rf_ungapped_count = 0;
+          for(my $offset = 0; $offset <= 2; $offset++) {
+            my $check_rfpos = $ref_last_rfpos - $offset;
+            if($check_rfpos >= $sgm_start_AA[$ftr_idx][$last_sgm_idx]) {
+              my $apos = $msa->rfpos_to_aligned_pos($check_rfpos);
+              my $c = substr($aligned_sqstring, $apos-1, 1);
+              my $is_gap = ($c =~ /[\-\_\.\~]/) ? 1 : 0;
+              if(! $is_gap) { $last_3_rf_ungapped_count++; }
+            }
+          }
+          # If any of the last 3 RF positions are gapped, this sequence is 3'-truncated
+          if($last_3_rf_ungapped_count < 3) {
+            $is_trunc3p_for_this_seq = 1;
+          }
+        }
+        
+        # Compute codon_start based on 5' RF offset modulo 3
+        my $codon_start = 1;
+        if($total_rf_offset_5p > 0) {
+          $codon_start = ($total_rf_offset_5p % 3) + 1;
+          if($codon_start > 3) { $codon_start -= 3; }
+        }
+        
+        # Format CDS header with truncation markers and codon_start
+        # Rebuild coordinate string with < and > markers if truncated
+        if($ref_is_trunc5p || $is_trunc3p_for_this_seq) {
+          my @marked_coords_A = ();
+          for(my $i = 0; $i < scalar(@final_seq_sgm_coords_A); $i++) {
+            my $coord_str = $final_seq_sgm_coords_A[$i];
+            if($coord_str =~ /^(\d+)\.\.(\d+):([+-])$/) {
+              my ($seg_start, $seg_stop, $seg_strand) = ($1, $2, $3);
+              # Add < marker to the first segment's start coordinate if reference was 5' truncated
+              if($i == 0 && $ref_is_trunc5p) {
+                $seg_start = "<" . $seg_start;
+              }
+              # Add > marker to the last segment's stop coordinate if this sequence is 3' truncated
+              if($i == scalar(@final_seq_sgm_coords_A) - 1 && $is_trunc3p_for_this_seq) {
+                $seg_stop = ">" . $seg_stop;
+              }
+              push(@marked_coords_A, $seg_start . ".." . $seg_stop . ":" . $seg_strand);
+            }
+            else {
+              push(@marked_coords_A, $coord_str); # fallback if format doesn't match
+            }
+          }
+          $seq_coords_str = join(",", @marked_coords_A);
+        }
+        
+        my $cds_header = $sqname . "/" . $seq_coords_str;
+        if($codon_start != 1) {
+          $cds_header .= "/CS" . $codon_start;
+        }
+        # Add refcoords as a comment so we can reconstruct the final protein header later
+        $cds_header .= " REFCOORDS=" . $ref_coords_str;
+        
+        print $out_FH ">" . $cds_header . "\n";
+        print $out_FH seq_SqstringAddNewlines($final_cds, 60);
+      }
+    }
+  }
+
+  undef $msa;
+  return;
+}
+
+#################################################################
+# Subroutine: profile_ComputeRfOffsets()
+#
+# Purpose: For a given CDS segment, compute how many nucleotides at the
+#          5' and 3' ends correspond to gapped RF positions (i.e., positions
+#          before/after the first/last RF column that is ungapped in this sequence).
+#          This is needed to trim partial codons that arise when a sequence
+#          has gaps in leading/trailing RF positions.
+#
+# Arguments:
+#   $aligned_sqstring: aligned sequence string for this sequence
+#   $astart:           aligned start position of the segment (1-based)
+#   $astop:            aligned stop position of the segment (1-based)
+#   $rfstart:          RF start position of the segment (1-based)
+#   $rfstop:           RF stop position of the segment (1-based)
+#   $msa:              Bio::Easel::MSA object
+#   $strand:           strand of the segment ("+" or "-")
+#
+# Returns: ($offset_5p, $offset_3p)
+#          $offset_5p: number of nucleotides to trim from 5' end
+#          $offset_3p: number of nucleotides to trim from 3' end
+#################################################################
+sub profile_ComputeRfOffsets {
+  my $sub_name = "profile_ComputeRfOffsets";
+  my $nargs_expected = 7;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+
+  my ($aligned_sqstring, $astart, $astop, $rfstart, $rfstop, $msa, $strand) = (@_);
+
+  # Scan the RF span to find the first and last RF positions where this sequence is ungapped
+  my $first_ungapped_rf = undef;
+  my $last_ungapped_rf  = undef;
+
+  for(my $rfpos = $rfstart; $rfpos <= $rfstop; $rfpos++) {
+    my $apos = $msa->rfpos_to_aligned_pos($rfpos);
+    my $c = substr($aligned_sqstring, $apos-1, 1);
+    my $is_gap = ($c =~ /[\-\_\.\~]/) ? 1 : 0;
+    if(! $is_gap) {
+      if(! defined $first_ungapped_rf) { $first_ungapped_rf = $rfpos; }
+      $last_ungapped_rf = $rfpos;
+    }
+  }
+
+  if(! defined $first_ungapped_rf) {
+    # Entire segment is gapped in this sequence
+    return (0, 0);
+  }
+
+  # Count nucleotides before first_ungapped_rf (5' offset)
+  my $offset_5p = 0;
+  for(my $rfpos = $rfstart; $rfpos < $first_ungapped_rf; $rfpos++) {
+    my $apos = $msa->rfpos_to_aligned_pos($rfpos);
+    my $c = substr($aligned_sqstring, $apos-1, 1);
+    my $is_gap = ($c =~ /[\-\_\.\~]/) ? 1 : 0;
+    if(! $is_gap) { $offset_5p++; }
+  }
+
+  # Count nucleotides after last_ungapped_rf (3' offset)
+  my $offset_3p = 0;
+  for(my $rfpos = $last_ungapped_rf + 1; $rfpos <= $rfstop; $rfpos++) {
+    my $apos = $msa->rfpos_to_aligned_pos($rfpos);
+    my $c = substr($aligned_sqstring, $apos-1, 1);
+    my $is_gap = ($c =~ /[\-\_\.\~]/) ? 1 : 0;
+    if(! $is_gap) { $offset_3p++; }
+  }
+
+  return ($offset_5p, $offset_3p);
+}
+
+#################################################################
+# Subroutine: profile_RenameProteinHeaders()
+#
+# Purpose: Rename protein FASTA headers from temporary format (seqname/seqcoords)
+#          to final profile format (seqname:seqcoords/refcoords).
+#          Reads REFCOORDS from CDS FASTA comments and removes truncation markers.
+#
+# Arguments:
+#   $tmp_protein_file: temporary protein FASTA file (input)
+#   $out_FH:           output file handle for final protein FASTA
+#   $cds_fa_file:      CDS FASTA file (contains REFCOORDS comments)
+#   $FH_HR:            REF to hash of file handles
+#
+# Returns: void
+#################################################################
+sub profile_RenameProteinHeaders {
+  my $sub_name = "profile_RenameProteinHeaders";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+
+  my ($tmp_protein_file, $out_FH, $cds_fa_file, $FH_HR) = (@_);
+
+  # Build mapping from CDS header (seqname/seqcoords) to refcoords
+  my %refcoords_H = ();
+  open(CDS, $cds_fa_file) || ofile_FileOpenFailure($cds_fa_file, $sub_name, $!, "reading", $FH_HR);
+  while(my $line = <CDS>) {
+    if($line =~ /^>(\S+)\s+REFCOORDS=(\S+)/) {
+      my ($cds_name, $refcoords) = ($1, $2);
+      $refcoords_H{$cds_name} = $refcoords;
+    }
+  }
+  close(CDS);
+
+  # Build reverse lookup: protein_name (without markers) -> CDS key (with REFCOORDS)
+  my %protein_to_cds_H = ();
+  foreach my $cds_key (keys %refcoords_H) {
+    my $protein_key = $cds_key;
+    $protein_key =~ s/\<//g;
+    $protein_key =~ s/\>//g;
+    $protein_to_cds_H{$protein_key} = $cds_key;
+  }
+
+  # Read temp protein file and rename headers (preserving order)
+  open(PROT, $tmp_protein_file) || ofile_FileOpenFailure($tmp_protein_file, $sub_name, $!, "reading", $FH_HR);
+  while(my $line = <PROT>) {
+    if($line =~ /^>(\S+)/) {
+      my $protein_name = $1;
+      # protein_name is from sqf_EslTranslateCdsToFastaFile output: seqname/seqcoords (without <> markers)
+      
+      if(exists $protein_to_cds_H{$protein_name}) {
+        my $cds_key = $protein_to_cds_H{$protein_name};
+        my $refcoords = $refcoords_H{$cds_key};
+        # Convert seqname/seqcoords to seqname:seqcoords/refcoords
+        if($protein_name =~ /^([^\/]+)\/(.+)$/) {
+          my ($seqname, $seqcoords) = ($1, $2);
+          print $out_FH ">" . $seqname . ":" . $seqcoords . "/" . $refcoords . "\n";
+        }
+        else {
+          ofile_FAIL("ERROR in $sub_name, unable to parse protein header: $protein_name\n", 1, $FH_HR);
+        }
+      }
+      else {
+        ofile_FAIL("ERROR in $sub_name, unable to find REFCOORDS for protein: $protein_name\n", 1, $FH_HR);
+      }
+    }
+    else {
+      print $out_FH $line;
+    }
+  }
+  close(PROT);
+
+  return;
+}
+
+#################################################################
+# Subroutine: profile_EslTranslateCdsToFastaFile()
+#
+# Purpose: Translate CDS sequences to proteins for profile mode.
+#          Adapted from sqf_EslTranslateCdsToFastaFile in sequip/sqp_seqfile.pm
+#          to handle profile-mode header format: seqname:seqcoords/refcoords/CS#
+#          (vs. single-seq format: seqname/coords)
+#
+# Arguments:
+#   $out_FH:         output file handle for protein FASTA
+#   $esl_translate:  path to esl-translate executable
+#   $cds_fa_file:    input CDS FASTA file
+#   $out_root:       output root for temp files
+#   $ftr_info_AHR:   REF to feature info array
+#   $opt_HHR:        REF to 2D hash of options
+#   $FH_HR:          REF to hash of file handles
+#
+# Returns: void
+#################################################################
+sub profile_EslTranslateCdsToFastaFile {
+  my $sub_name = "profile_EslTranslateCdsToFastaFile";
+  my $nargs_expected = 7;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+
+  my ($out_FH, $esl_translate, $cds_fa_file, $out_root, $ftr_info_AHR, $opt_HHR, $FH_HR) = @_;
+
+  my $tmp1_translate_fa_file  = $out_root . ".cds.esl-translate.1.fa";
+  my $tmp2_translate_fa_file  = $out_root . ".cds.esl-translate.2.fa";
+  my $tmp1_translate_ssi_file = $out_root . ".cds.esl-translate.1.fa.ssi";
+  my $tmp2_translate_ssi_file = $out_root . ".cds.esl-translate.2.fa.ssi";
+  if(-e $tmp1_translate_ssi_file) { unlink $tmp1_translate_ssi_file; }
+  if(-e $tmp2_translate_ssi_file) { unlink $tmp2_translate_ssi_file; }
+
+  my $c_opt = "";
+  if((opt_IsUsed("--ttbl", $opt_HHR)) && (opt_Get("--ttbl", $opt_HHR) != 1)) {
+    $c_opt = "-c " . opt_Get("--ttbl", $opt_HHR);
+  }
+  my $translate_cmd = "$esl_translate $c_opt -l 3 --watson $cds_fa_file > $tmp1_translate_fa_file";
+  utl_RunCommand($translate_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+
+  # Rewrite names so we can fetch by source+coords
+  open(IN,       $tmp1_translate_fa_file) || ofile_FileOpenFailure($tmp1_translate_fa_file, $sub_name, $!, "reading", $FH_HR);
+  open(OUT, ">", $tmp2_translate_fa_file) || ofile_FileOpenFailure($tmp2_translate_fa_file, $sub_name, $!, "writing", $FH_HR);
+  while(my $line = <IN>) {
+    if($line =~ m/^\>/) {
+      chomp $line;
+      if($line =~ /^\>orf\d+\s+(source\=\S+)\s+(coords\=\S+)\s+length\=\d+\s+frame\=\S+/) {
+        print OUT (">" . $1 . "," . $2 . "\n");
+      }
+      else {
+        ofile_FAIL("ERROR in $sub_name, problem parsing esl-translate output file $tmp1_translate_fa_file, line:\n$line\n", 1, $FH_HR);
+      }
+    }
+    else {
+      print OUT $line;
+    }
+  }
+  close(IN);
+  close(OUT);
+
+  # Fetch expected translated sequences
+  my $cds_sqfile     = Bio::Easel::SqFile->new({ fileLocation => $cds_fa_file });
+  my $protein_sqfile = Bio::Easel::SqFile->new({ fileLocation => $tmp2_translate_fa_file });
+
+  for(my $seq_idx = 0; $seq_idx < $cds_sqfile->nseq_ssi; $seq_idx++) {
+    my ($seq_name, $seq_length) = $cds_sqfile->fetch_seq_name_and_length_given_ssi_number($seq_idx);
+    
+    # Parse profile-mode header: seqname:seqcoords/refcoords/CS#
+    # Split by : first to separate seqname from the rest
+    my @colon_parts = split(":", $seq_name, 2);
+    if(scalar(@colon_parts) < 2) {
+      ofile_FAIL("ERROR in $sub_name, unable to parse profile CDS header (expected seqname:seqcoords/refcoords): $seq_name\n", 1, $FH_HR);
+    }
+    my $sqname = $colon_parts[0];
+    my $coord_part = $colon_parts[1];
+    
+    # Split coord_part by / to get seqcoords, refcoords, and optional CS#
+    my @slash_parts = split("/", $coord_part);
+    if(scalar(@slash_parts) < 2) {
+      ofile_FAIL("ERROR in $sub_name, unable to parse profile CDS coords (expected seqcoords/refcoords): $coord_part\n", 1, $FH_HR);
+    }
+    my $seq_coords_str = $slash_parts[0];
+    my $ref_coords_str = $slash_parts[1];
+    my $codon_start = 1;
+    if(scalar(@slash_parts) >= 3 && $slash_parts[2] =~ /^CS(\d)$/) {
+      $codon_start = $1;
+    }
+    
+    # Determine truncation status from seq_coords_str
+    my $is_trunc5 = ($seq_coords_str =~ /</) ? 1 : 0;
+    my $is_trunc3 = ($seq_coords_str =~ />/) ? 1 : 0;
+    
+    # Compute expected translation coordinates
+    my $expected_start = 1;
+    my $expected_stop  = $seq_length;
+    if(! $is_trunc3) {
+      $expected_stop -= 3; # stop codon won't be translated
+    }
+    else {
+      if($codon_start == 1)    { $expected_stop -= ($seq_length % 3); }
+      elsif($codon_start == 2) { $expected_stop -= (($seq_length-1) % 3); }
+      elsif($codon_start == 3) { $expected_stop -= (($seq_length-2) % 3); }
+    }
+    if($codon_start == 2) { $expected_start = 2; }
+    if($codon_start == 3) { $expected_start = 3; }
+    
+    # Fetch the translation
+    my $fetch_name = "source=" . $seq_name . ",coords=" . $expected_start . ".." . $expected_stop;
+    if(! $protein_sqfile->check_seq_exists($fetch_name)) {
+      ofile_FAIL("ERROR in $sub_name, problem translating CDS feature, unable to find expected translated sequence in $tmp2_translate_fa_file:\n\tseq: $seq_name\n\texpected sequence:$fetch_name\n", 1, $FH_HR);
+    }
+    
+    # Build output protein header: seqname:seqcoords/refcoords
+    my $protein_sqname = $sqname . ":" . $seq_coords_str . "/" . $ref_coords_str;
+    # Remove truncation markers for protein header
+    $protein_sqname =~ s/\<//g;
+    $protein_sqname =~ s/\>//g;
+    
+    print $out_FH ">" . $protein_sqname . "\n";
+    my $protein_sqstring = $protein_sqfile->fetch_seq_to_sqstring($fetch_name);
+    if(! $is_trunc5) {
+      if($protein_sqstring !~ m/^M/) {
+        ofile_FAIL("ERROR in $sub_name, problem translating CDS feature, feature does not seem to be 5' truncated but translated protein does not start with an M:\n\tseq: $seq_name\n\texpected sequence:$fetch_name\n", 1, $FH_HR);
+      }
+    }
+    print $out_FH seq_SqstringAddNewlines($protein_sqstring, 60);
+  }
+
+  # Cleanup temp files unless --keep
+  if(! opt_Get("--keep", $opt_HHR)) {
+    utl_FileRemoveUsingSystemRm($tmp1_translate_fa_file, $sub_name, $opt_HHR, $FH_HR);
+    utl_FileRemoveUsingSystemRm($tmp2_translate_fa_file, $sub_name, $opt_HHR, $FH_HR);
+    utl_FileRemoveUsingSystemRm($tmp2_translate_fa_file . ".ssi", $sub_name, $opt_HHR, $FH_HR);
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: profile_FirstAndLastUngappedPositionsInAlignedRange()
+#
+# Purpose: Given an aligned sequence string and an aligned coordinate
+#          range (1..alen), return the first and last dealigned
+#          (ungapped) positions spanned by any non-gap residues within
+#          that aligned range.
+#
+# Returns: (undef, undef) if the range contains no residues.
+#################################################################
+sub profile_FirstAndLastUngappedPositionsInAlignedRange {
+  my $sub_name = "profile_FirstAndLastUngappedPositionsInAlignedRange";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+
+  my ($aligned_sqstring, $astart, $astop) = (@_);
+
+  my $alen = length($aligned_sqstring);
+  if($astart < 1 || $astop < 1 || $astart > $alen || $astop > $alen) {
+    return (undef, undef);
+  }
+  if($astart > $astop) { my $tmp = $astart; $astart = $astop; $astop = $tmp; }
+
+  my $ua_pos = 0;
+  my $ua_first = undef;
+  my $ua_last  = undef;
+
+  for(my $apos = 1; $apos <= $alen; $apos++) {
+    my $c = substr($aligned_sqstring, $apos-1, 1);
+    my $is_gap = ($c =~ /[\-\_\.\~]/) ? 1 : 0;
+    if(! $is_gap) { $ua_pos++; }
+
+    if(($apos >= $astart) && ($apos <= $astop) && (! $is_gap)) {
+      if(! defined $ua_first) { $ua_first = $ua_pos; }
+      $ua_last = $ua_pos;
+    }
+  }
+
+  return ($ua_first, $ua_last);
 }
 
 #################################################################
@@ -1192,7 +1870,18 @@ sub integerize_parent_index_strings {
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if((defined $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"}) && 
        ($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} ne "GBNULL")) { 
-      my @parent_type_coords_A = split("!GBSEP!", $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"});
+      my $parent_idx_str = $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"};
+      $parent_idx_str =~ s/\s+//g;
+
+      # If parent_idx_str already looks like a comma-separated list of integers,
+      # nothing to do (this is the format expected by v-annotate.pl and is what
+      # we read from .minfo files in --profile mode).
+      if($parent_idx_str =~ /^\d+(?:,\d+)*$/) {
+        $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} = $parent_idx_str;
+        next;
+      }
+
+      my @parent_type_coords_A = split("!GBSEP!", $parent_idx_str);
       my $new_parent_idx_str = "";
       foreach my $parent_type_coords_str (@parent_type_coords_A) { 
         my @el_A = split(":GBSEP:", $parent_type_coords_str);
