@@ -17,6 +17,15 @@ exp: @VADRSCRIPTSDIR@/testfiles/profile-build/test1_singlepos.protein.fa
 exp: @VADRSCRIPTSDIR@/testfiles/profile-build/test1_singlepos.minfo
 rmdir: test1_singlepos_out
 
+# Test 2: Multi-segment CDS, positive strand, with 10 nt gap
+command: perl $VADRSCRIPTSDIR/v-build.pl --profile --stk @VADRSCRIPTSDIR@/testfiles/profile-build/test2_multipos.stk --minfoin @VADRSCRIPTSDIR@/testfiles/profile-build/test2_multipos.minfo test2 test2_multipos_out > test2_multipos.out
+desc: profile-build-test2-multi-pos-strand
+out: test2_multipos_out/test2_multipos_out.vadr.cds.fa
+out: test2_multipos_out/test2_multipos_out.vadr.protein.fa
+exp: @VADRSCRIPTSDIR@/testfiles/profile-build/test2_multipos.cds.fa
+exp: @VADRSCRIPTSDIR@/testfiles/profile-build/test2_multipos.protein.fa
+rmdir: test2_multipos_out
+
 # Test 3: Single-segment CDS, negative strand, all truncation patterns
 command: perl $VADRSCRIPTSDIR/v-build.pl --profile --stk @VADRSCRIPTSDIR@/testfiles/profile-build/test3_singleneg.stk --minfoin @VADRSCRIPTSDIR@/testfiles/profile-build/test3_singleneg.minfo test3 test3_singleneg_out > test3_singleneg.out
 desc: profile-build-test3-single-neg-strand
@@ -26,11 +35,11 @@ exp: @VADRSCRIPTSDIR@/testfiles/profile-build/test3_singleneg.cds.fa
 exp: @VADRSCRIPTSDIR@/testfiles/profile-build/test3_singleneg.protein.fa
 rmdir: test3_singleneg_out
 
-# Test 5: Internal CDS truncation cases
-command: perl $VADRSCRIPTSDIR/v-build.pl --profile --stk @VADRSCRIPTSDIR@/testfiles/profile-build/test5_internal.stk --minfoin @VADRSCRIPTSDIR@/testfiles/profile-build/test5_internal.minfo test5 test5_internal_out > test5_internal.out
-desc: profile-build-test5-internal-gaps
-out: test5_internal_out/test5_internal_out.vadr.cds.fa
-out: test5_internal_out/test5_internal_out.vadr.protein.fa
-exp: @VADRSCRIPTSDIR@/testfiles/profile-build/test5_internal.cds.fa
-exp: @VADRSCRIPTSDIR@/testfiles/profile-build/test5_internal.protein.fa
-rmdir: test5_internal_out
+# Test 4: Multi-segment CDS, negative strand, with 10 nt gap
+command: perl $VADRSCRIPTSDIR/v-build.pl --profile --stk @VADRSCRIPTSDIR@/testfiles/profile-build/test4_multineg.stk --minfoin @VADRSCRIPTSDIR@/testfiles/profile-build/test4_multineg.minfo test4 test4_multineg_out > test4_multineg.out
+desc: profile-build-test4-multi-neg-strand
+out: test4_multineg_out/test4_multineg_out.vadr.cds.fa
+out: test4_multineg_out/test4_multineg_out.vadr.protein.fa
+exp: @VADRSCRIPTSDIR@/testfiles/profile-build/test4_multineg.cds.fa
+exp: @VADRSCRIPTSDIR@/testfiles/profile-build/test4_multineg.protein.fa
+rmdir: test4_multineg_out

@@ -1,0 +1,2 @@
+MODEL test3 blastdb:"test3.vadr.protein.fa" cmfile:"test3.vadr.cm" group:":FILE:test3.stk" length:"81" subgroup:":FILE:test3.stk"
+FEATURE test3 type:"CDS" coords:"81..1:-" parent_idx_str:"0" gene:"testgene" product:"test protein"
