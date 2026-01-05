@@ -1,0 +1,36 @@
+# format of this file:
+# '#' prefixed lines are comments
+# 'command:' prefix indicates command to run
+# 'desc:' prefix indicates description of test
+# 'out:' prefix indicates output file to check
+# 'exp:' prefix indicates expected file to check against
+# 'rmdir:' prefix indicates output directory to remove after test
+
+# Test 1: Single-segment CDS, positive strand, all truncation patterns
+command: perl $VADRSCRIPTSDIR/v-build.pl --profile --stk @VADRSCRIPTSDIR@/testfiles/profile-build/test1_singlepos.stk --minfoin @VADRSCRIPTSDIR@/testfiles/profile-build/test1_singlepos.minfo test1 test1_singlepos_out > test1_singlepos.out
+desc: profile-build-test1-single-pos-strand
+out: test1_singlepos_out/test1_singlepos_out.vadr.cds.fa
+out: test1_singlepos_out/test1_singlepos_out.vadr.protein.fa
+out: test1_singlepos_out/test1_singlepos_out.vadr.minfo
+exp: @VADRSCRIPTSDIR@/testfiles/profile-build/test1_singlepos.cds.fa
+exp: @VADRSCRIPTSDIR@/testfiles/profile-build/test1_singlepos.protein.fa
+exp: @VADRSCRIPTSDIR@/testfiles/profile-build/test1_singlepos.minfo
+rmdir: test1_singlepos_out
+
+# Test 3: Single-segment CDS, negative strand, all truncation patterns
+command: perl $VADRSCRIPTSDIR/v-build.pl --profile --stk @VADRSCRIPTSDIR@/testfiles/profile-build/test3_singleneg.stk --minfoin @VADRSCRIPTSDIR@/testfiles/profile-build/test3_singleneg.minfo test3 test3_singleneg_out > test3_singleneg.out
+desc: profile-build-test3-single-neg-strand
+out: test3_singleneg_out/test3_singleneg_out.vadr.cds.fa
+out: test3_singleneg_out/test3_singleneg_out.vadr.protein.fa
+exp: @VADRSCRIPTSDIR@/testfiles/profile-build/test3_singleneg.cds.fa
+exp: @VADRSCRIPTSDIR@/testfiles/profile-build/test3_singleneg.protein.fa
+rmdir: test3_singleneg_out
+
+# Test 5: Internal CDS truncation cases
+command: perl $VADRSCRIPTSDIR/v-build.pl --profile --stk @VADRSCRIPTSDIR@/testfiles/profile-build/test5_internal.stk --minfoin @VADRSCRIPTSDIR@/testfiles/profile-build/test5_internal.minfo test5 test5_internal_out > test5_internal.out
+desc: profile-build-test5-internal-gaps
+out: test5_internal_out/test5_internal_out.vadr.cds.fa
+out: test5_internal_out/test5_internal_out.vadr.protein.fa
+exp: @VADRSCRIPTSDIR@/testfiles/profile-build/test5_internal.cds.fa
+exp: @VADRSCRIPTSDIR@/testfiles/profile-build/test5_internal.protein.fa
+rmdir: test5_internal_out
