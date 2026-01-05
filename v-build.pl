@@ -1237,7 +1237,10 @@ sub profile_CdsFetchStockholmToFasta {
 
           # Use the full segment coordinates without trimming
           if($ua_first <= $ua_last) {
-            push(@final_seq_sgm_coords_A, $ua_first . ".." . $ua_last . ":" . $sgm_strand_AA[$ftr_idx][$sgm_idx]);
+            my $seg_strand = $sgm_strand_AA[$ftr_idx][$sgm_idx];
+            # Coordinates are always in sequence order (low..high), regardless of strand
+            # The strand indicator (:+ or :-) shows the direction
+            push(@final_seq_sgm_coords_A, $ua_first . ".." . $ua_last . ":" . $seg_strand);
           }
         }
 
@@ -1253,26 +1256,44 @@ sub profile_CdsFetchStockholmToFasta {
         my $ref_is_trunc5p = ($ref_coords_str =~ /</) ? 1 : 0;
         my $is_trunc5p_for_this_seq = ($total_rf_offset_5p > 0) ? 1 : 0;
         
-        # For 3' truncation: check if the last segment's last RF position matches
-        # the reference CDS's last RF position, and if so, whether the sequence
-        # has ungapped residues in the last 3 RF positions.
+        # For 3' truncation: check if this sequence has ungapped residues at the biological 3' end.
+        # For positive strand: biological 3' end is at high RF positions (stop codon at end)
+        # For negative strand: biological 3' end is at low RF positions (stop codon at beginning)
         my $is_trunc3p_for_this_seq = 0;
         my $last_sgm_idx = scalar(@{$sgm_start_AA[$ftr_idx]}) - 1;
         if($last_sgm_idx >= 0) {
-          my $ref_last_rfpos = $sgm_stop_AA[$ftr_idx][$last_sgm_idx];
-          # Check if this sequence has ungapped residues at ref_last_rfpos, ref_last_rfpos-1, ref_last_rfpos-2
-          my $last_3_rf_ungapped_count = 0;
-          for(my $offset = 0; $offset <= 2; $offset++) {
-            my $check_rfpos = $ref_last_rfpos - $offset;
-            if($check_rfpos >= $sgm_start_AA[$ftr_idx][$last_sgm_idx]) {
+          my $strand = $sgm_strand_AA[$ftr_idx][$last_sgm_idx];
+          my $ref_start_rfpos = $sgm_start_AA[$ftr_idx][$last_sgm_idx];
+          my $ref_stop_rfpos = $sgm_stop_AA[$ftr_idx][$last_sgm_idx];
+          
+          # For negative strand, start > stop (e.g., 81..1:-), so we need to swap for range checking
+          my ($min_rfpos, $max_rfpos) = ($ref_start_rfpos < $ref_stop_rfpos) ? 
+                                         ($ref_start_rfpos, $ref_stop_rfpos) : 
+                                         ($ref_stop_rfpos, $ref_start_rfpos);
+          
+          # Determine which 3 RF positions should contain the stop codon
+          my @stop_codon_rfpos_A = ();
+          if($strand eq "+") {
+            # Positive strand: biological 3' is at high RF positions (ref_stop_rfpos and two before it)
+            push(@stop_codon_rfpos_A, $ref_stop_rfpos, $ref_stop_rfpos-1, $ref_stop_rfpos-2);
+          } else {
+            # Negative strand: biological 3' is at low RF positions (ref_stop_rfpos and two after it)
+            # Note: for negative strand coords like 81..1:-, ref_stop_rfpos=1 (the biological 3' end)
+            push(@stop_codon_rfpos_A, $ref_stop_rfpos, $ref_stop_rfpos+1, $ref_stop_rfpos+2);
+          }
+          
+          # Check if this sequence has ungapped residues at all 3 stop codon RF positions
+          my $stop_codon_rf_ungapped_count = 0;
+          foreach my $check_rfpos (@stop_codon_rfpos_A) {
+            if($check_rfpos >= $min_rfpos && $check_rfpos <= $max_rfpos) {
               my $apos = $msa->rfpos_to_aligned_pos($check_rfpos);
               my $c = substr($aligned_sqstring, $apos-1, 1);
               my $is_gap = ($c =~ /[\-\_\.\~]/) ? 1 : 0;
-              if(! $is_gap) { $last_3_rf_ungapped_count++; }
+              if(! $is_gap) { $stop_codon_rf_ungapped_count++; }
             }
           }
-          # If any of the last 3 RF positions are gapped, this sequence is 3'-truncated
-          if($last_3_rf_ungapped_count < 3) {
+          # If any of the stop codon RF positions are gapped, this sequence is 3'-truncated
+          if($stop_codon_rf_ungapped_count < 3) {
             $is_trunc3p_for_this_seq = 1;
           }
         }
@@ -1291,13 +1312,27 @@ sub profile_CdsFetchStockholmToFasta {
             my $coord_str = $final_seq_sgm_coords_A[$i];
             if($coord_str =~ /^(\d+)\.\.(\d+):([+-])$/) {
               my ($seg_start, $seg_stop, $seg_strand) = ($1, $2, $3);
-              # Add < marker to the first segment's start coordinate if 5' truncated
-              if($i == 0 && ($ref_is_trunc5p || $is_trunc5p_for_this_seq)) {
-                $seg_start = "<" . $seg_start;
-              }
-              # Add > marker to the last segment's stop coordinate if this sequence is 3' truncated
-              if($i == scalar(@final_seq_sgm_coords_A) - 1 && $is_trunc3p_for_this_seq) {
-                $seg_stop = ">" . $seg_stop;
+              
+              # For positive strand: 5' is at start (low coord), 3' is at stop (high coord)
+              # For negative strand: 5' is at start (high coord), 3' is at stop (low coord)
+              # Note: coords are already ordered correctly (low..high for +, high..low for -)
+              
+              if($seg_strand eq "+") {
+                # Positive strand: 5' marker at start, 3' marker at stop
+                if($i == 0 && ($ref_is_trunc5p || $is_trunc5p_for_this_seq)) {
+                  $seg_start = "<" . $seg_start;
+                }
+                if($i == scalar(@final_seq_sgm_coords_A) - 1 && $is_trunc3p_for_this_seq) {
+                  $seg_stop = ">" . $seg_stop;
+                }
+              } else {
+                # Negative strand: 5' marker at start (which is the high coord), 3' marker at stop (which is the low coord)
+                if($i == 0 && ($ref_is_trunc5p || $is_trunc5p_for_this_seq)) {
+                  $seg_start = "<" . $seg_start;
+                }
+                if($i == scalar(@final_seq_sgm_coords_A) - 1 && $is_trunc3p_for_this_seq) {
+                  $seg_stop = ">" . $seg_stop;
+                }
               }
               push(@marked_coords_A, $seg_start . ".." . $seg_stop . ":" . $seg_strand);
             }
@@ -1355,11 +1390,14 @@ sub profile_ComputeRfOffsets {
 
   my ($aligned_sqstring, $astart, $astop, $rfstart, $rfstop, $msa, $strand) = (@_);
 
+  # For negative strand, rfstart > rfstop (e.g., 81..1:-), so we need to scan in reverse
+  my ($min_rf, $max_rf) = ($rfstart <= $rfstop) ? ($rfstart, $rfstop) : ($rfstop, $rfstart);
+
   # Scan the RF span to find the first and last RF positions where this sequence is ungapped
   my $first_ungapped_rf = undef;
   my $last_ungapped_rf  = undef;
 
-  for(my $rfpos = $rfstart; $rfpos <= $rfstop; $rfpos++) {
+  for(my $rfpos = $min_rf; $rfpos <= $max_rf; $rfpos++) {
     my $apos = $msa->rfpos_to_aligned_pos($rfpos);
     my $c = substr($aligned_sqstring, $apos-1, 1);
     my $is_gap = ($c =~ /[\-\_\.\~]/) ? 1 : 0;
@@ -1378,31 +1416,65 @@ sub profile_ComputeRfOffsets {
   # that's in the same reading frame as the reference CDS start (rfstart).
   # The reference frame is (rfstart % 3).
   # We want the first RF position where (rfpos % 3) == (rfstart % 3).
+  # For negative strand, the biological 5' end is at the HIGH RF position (rfstart),
+  # but in our scan we go low to high, so we need to find the first in-frame position
+  # scanning FROM the biological 5' end.
   my $ref_frame = $rfstart % 3;
   my $offset_5p = 0;
   
-  for(my $rfpos = $first_ungapped_rf; $rfpos <= $rfstop; $rfpos++) {
-    my $apos = $msa->rfpos_to_aligned_pos($rfpos);
-    my $c = substr($aligned_sqstring, $apos-1, 1);
-    my $is_gap = ($c =~ /[\-\_\.\~]/) ? 1 : 0;
-    
-    if(! $is_gap) {
-      my $this_frame = $rfpos % 3;
-      if($this_frame == $ref_frame) {
-        # Found the first in-frame position, stop counting
-        last;
+  # Determine scan direction based on strand
+  if($strand eq "+") {
+    # Positive strand: scan forward from first ungapped
+    for(my $rfpos = $first_ungapped_rf; $rfpos <= $max_rf; $rfpos++) {
+      my $apos = $msa->rfpos_to_aligned_pos($rfpos);
+      my $c = substr($aligned_sqstring, $apos-1, 1);
+      my $is_gap = ($c =~ /[\-\_\.\~]/) ? 1 : 0;
+      
+      if(! $is_gap) {
+        my $this_frame = $rfpos % 3;
+        if($this_frame == $ref_frame) {
+          # Found the first in-frame position, stop counting
+          last;
+        }
+        $offset_5p++;
       }
-      $offset_5p++;
+    }
+  } else {
+    # Negative strand: scan backward from last ungapped (biological 5' end)
+    for(my $rfpos = $last_ungapped_rf; $rfpos >= $min_rf; $rfpos--) {
+      my $apos = $msa->rfpos_to_aligned_pos($rfpos);
+      my $c = substr($aligned_sqstring, $apos-1, 1);
+      my $is_gap = ($c =~ /[\-\_\.\~]/) ? 1 : 0;
+      
+      if(! $is_gap) {
+        my $this_frame = $rfpos % 3;
+        if($this_frame == $ref_frame) {
+          # Found the first in-frame position (from biological 5' end), stop counting
+          last;
+        }
+        $offset_5p++;
+      }
     }
   }
 
-  # For 3' offset: count ungapped nucleotides after the last ungapped RF position
+  # For 3' offset: count ungapped nucleotides after the biological 3' end
+  # For positive strand: biological 3' is after the last ungapped RF position
+  # For negative strand: biological 3' is before the first ungapped RF position
   my $offset_3p = 0;
-  for(my $rfpos = $last_ungapped_rf + 1; $rfpos <= $rfstop; $rfpos++) {
-    my $apos = $msa->rfpos_to_aligned_pos($rfpos);
-    my $c = substr($aligned_sqstring, $apos-1, 1);
-    my $is_gap = ($c =~ /[\-\_\.\~]/) ? 1 : 0;
-    if(! $is_gap) { $offset_3p++; }
+  if($strand eq "+") {
+    for(my $rfpos = $last_ungapped_rf + 1; $rfpos <= $max_rf; $rfpos++) {
+      my $apos = $msa->rfpos_to_aligned_pos($rfpos);
+      my $c = substr($aligned_sqstring, $apos-1, 1);
+      my $is_gap = ($c =~ /[\-\_\.\~]/) ? 1 : 0;
+      if(! $is_gap) { $offset_3p++; }
+    }
+  } else {
+    for(my $rfpos = $first_ungapped_rf - 1; $rfpos >= $min_rf; $rfpos--) {
+      my $apos = $msa->rfpos_to_aligned_pos($rfpos);
+      my $c = substr($aligned_sqstring, $apos-1, 1);
+      my $is_gap = ($c =~ /[\-\_\.\~]/) ? 1 : 0;
+      if(! $is_gap) { $offset_3p++; }
+    }
   }
 
   return ($offset_5p, $offset_3p);
