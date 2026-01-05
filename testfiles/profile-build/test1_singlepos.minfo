@@ -1,2 +1,2 @@
-MODEL test1 blastdb:"test1.vadr.protein.fa" cmfile:"test1.vadr.cm" group:":FILE:test1.stk" length:"81" subgroup:":FILE:test1.stk"
+MODEL test1 blastdb:"test1_singlepos_out.vadr.protein.fa" cmfile:"test1_singlepos_out.vadr.cm" group:":FILE:test1.stk" length:"81" subgroup:":FILE:test1.stk"
 FEATURE test1 type:"CDS" coords:"1..81:+" parent_idx_str:"0" gene:"testgene" product:"test protein"
