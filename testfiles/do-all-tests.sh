@@ -53,7 +53,9 @@ for t in \
     do-lowsimexc-tests.sh \
     do-ss-tests.sh \
     do-extrant-tests.sh \
-    github-issues/do-issue-tests.sh \
+    do-minfo-tests.sh \
+    do-profbuild-tests.sh \
+github-issues/do-issue-tests.sh \
     ; do
     sh $VADRSCRIPTSDIR/testfiles/$t
     if [ "$?" -ne 0 ]; then
