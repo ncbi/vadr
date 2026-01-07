@@ -15111,9 +15111,9 @@ sub helper_tabular_fill_header_and_justification_arrays {
     @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0,       0,       0,     0,     0,      0,      0,     1,        1,      1,      0,       0,       1);
   }
   elsif($ofile_key eq "scn") {
-    @{$head_AAR->[0]} = ("seq", "seq",  "seq", "",    "",    "",       "",     "sub",  "fract",    "",      "",   "sub","fract",     "",   "fid",  "nnregion",   "nnregion",   "nnregion");
-    @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "ant", "model",  "grp1", "grp1", "id1",  "seq1",  "grp2",  "grp2", "id2",   "seq2", "diff", " seq_coords", "mdl_coords", "covrg");
-    @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0,            1,      1,       1,      0,      1,  0,      0,             0,            0);
+    @{$head_AAR->[0]} = ("seq", "seq",  "seq", "",    "",    "",       "",     "sub",  "fract",    "",      "",   "sub","fract",     "",   "fid",  "nnregion_seqspan", "nnregion",   "nnregion");
+    @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "ant", "model",  "grp1", "grp1", "id1",  "seq1",  "grp2",  "grp2", "id2",   "seq2", "diff", " mdl_coords",       "mdl_coords", "covrg");
+    @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0,            1,      1,       1,      0,      1,  0,      0,                   0,            0);
   }
   elsif($ofile_key eq "ftr") {
     @{$head_AAR->[0]} = ("",    "seq",  "seq", "",    "",      "ftr",  "ftr",  "ftr", "ftr", "par", "",    "",       "",     "",        "",    "",     "",     "",       "",     "",        "",     "",    "",    "seq",    "model",  "ftr");
@@ -16000,8 +16000,7 @@ sub classify_based_on_alignment {
     my $apos_start = undef;  # nongap RF alignment start position for region we will compare to model for this sequence
     my $apos_stop  = undef;  # nongap RF alignment stop  position for region we will compare to model for this sequence
     my $using_defined_nn_region = (($rf_start_pos == 1) && ($rf_stop_pos == $alen)) ? 0 : 1;
-    if(($seq_rf_start > $rf_stop_pos) ||
-       ($seq_rf_stop  < $rf_start_pos)) {
+    if(($seq_rf_start > $rf_stop_pos) || ($seq_rf_stop  < $rf_start_pos)) {
       # entire rf_start_pos..rf_stop_pos is outside seq_rf_start..seq_rf_stop, use seq_rf_start..seq_rf_stop
       ($apos_start, $apos_stop) = ($seq_rf_start, $seq_rf_stop);
       $using_defined_nn_region = 0; # if we were trying to, no sequence was within the region
@@ -16021,6 +16020,7 @@ sub classify_based_on_alignment {
       $apos_start = $seq_rf_start;
       $apos_stop  = $seq_rf_stop;
       $possibly_subseq_sqstring = substr($seq_sqstring, ($apos_start - 1), ($apos_stop - $apos_start + 1));
+      $using_defined_nn_region = 0; # if we were trying to, not enough sequence was within the region
     }
     my @seq_sqstring_A = split("", $possibly_subseq_sqstring);
     my $alen_p = ($apos_stop) - ($apos_start) + 1;
@@ -16227,11 +16227,9 @@ sub classify_based_on_alignment {
       $mdl_nn_cls_ct_HHR->{$mdl_name}{$mdl_nn_cls_key} = 0;
     }
     $mdl_nn_cls_ct_HHR->{$mdl_name}{$mdl_nn_cls_key}++;
-
-    $cls_output_HHR->{$seqname}{"nnregion_mdl"} =
-      ($using_defined_nn_region)
-      ? vdr_CoordsSegmentCreate( $rf_start_pos, $rf_stop_pos, "+", $FH_HR )
-      : vdr_CoordsSegmentCreate( 1,             $alen,        "+", $FH_HR );
+    $cls_output_HHR->{$seqname}{"nnregion_mdl"} = ($using_defined_nn_region) ?
+      vdr_CoordsSegmentCreate( $rf_start_pos, $rf_stop_pos, "+", $FH_HR ) :
+      vdr_CoordsSegmentCreate( 1,             $alen,        "+", $FH_HR );
     $cls_output_HHR->{$seqname}{"nnregion_seq"} = vdr_CoordsSegmentCreate( $apos_start, $apos_stop, "+", $FH_HR );
 
     #print $out_weighted_avg_diff;
