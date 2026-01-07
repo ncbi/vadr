@@ -16126,80 +16126,116 @@ sub classify_based_on_alignment {
       }
     }
     
-    # find closest matching model sequence for this sequence
-    my $max1 = $fwd_nmatch_AA[0][($alen_p-1)]; # max fractional id across all seqs
-    my $argmax1 = 0;  # mdl idx of current max1
+    # find closest matching model sequence for this sequence, make sure that we have at least $min_nnregion_length positions (fwd_denom_AA)
+    # first we need to find the maximum number of positions, if less than $min_nnregion_length use that
+    my $max_nnregion_len = 0;
+    for($midx = 0; $midx < $mdl_nseq; $midx++) { 
+      if($fwd_denom_AA[$midx][($alen_p-1)] > $max_nnregion_len) { 
+        $max_nnregion_len = $fwd_denom_AA[$midx][($alen_p-1)];
+      } 
+    }
+    # we divide max_nnregion_len by 2 so we don't automatically choose the one model with the max (if only one model has the max)
+    # this should be rare (min_nnregion_length may be 40, max_nnregion may be 20 before this (meaning most aligned positions any model 
+    # has with this seq is 20), and it will be 10 afterwards. This means we'll consider any model that has at least 10 matching positions
+    # with this seq as its possible nearest neighbor
+    $max_nnregion_len /= 2; 
+    $max_nnregion_len = int($max_nnregion_len);
+    my $eff_min_nnregion_length = ($min_nnregion_length < $max_nnregion_len) ? $min_nnregion_length : $max_nnregion_len;
+    $midx = 0;
+    while($fwd_denom_AA[$midx][($alen_p-1)] < $eff_min_nnregion_length) { 
+      $midx++;
+      if($midx >= $mdl_nseq) { 
+        ofile_FAIL("ERROR, in $sub_name, unexpectedly unable to find sequence with min number of matches on second pass", 1, $FH_HR);
+      }
+    }
+    my $max1        = $fwd_nmatch_AA[$midx][ ( $alen_p - 1 ) ];    # max fractional id across all seqs
+    my $argmax1     = $midx;                                       # mdl idx of current max1
     my $max1_sqname = $mdl_msa->get_sqname($argmax1);
-    my $max1_grp    = (defined $mdl_alninfo_HHR->{$max1_sqname}{"group"})    ? $mdl_alninfo_HHR->{$max1_sqname}{"group"} : "-";
-    my $max1_subgrp = (defined $mdl_alninfo_HHR->{$max1_sqname}{"subgroup"}) ? $mdl_alninfo_HHR->{$max1_sqname}{"subgroup"} : "-";
+    my $max1_grp =
+      ( defined $mdl_alninfo_HHR->{$max1_sqname}{"group"} ) ? $mdl_alninfo_HHR->{$max1_sqname}{"group"} : "-";
+    my $max1_subgrp =
+      ( defined $mdl_alninfo_HHR->{$max1_sqname}{"subgroup"} ) ? $mdl_alninfo_HHR->{$max1_sqname}{"subgroup"} : "-";
 
-    my $max2 = undef; # second best fractional id across all seqs in different subgroup from $max1 (if subgroup undef it is different from all subgroups)
-    my $argmax2 = 0;  # mdl idx of current max2
+    my $max2 = undef;          # second best fractional id across all seqs in different subgroup from $max1 (if subgroup undef it is different from all subgroups)
+    my $argmax2     = $midx;   # mdl idx of current max2
     my $max2_sqname = undef;
     my $max2_grp    = undef;
     my $max2_subgrp = undef;
-    for(my $midx = 1; $midx < $mdl_nseq; $midx++) { 
-      my $cur_pid    = $fwd_nmatch_AA[$midx][($alen_p-1)];
-      my $cur_sqname = $mdl_msa->get_sqname($midx);
-      my $cur_grp    = (defined $mdl_alninfo_HHR->{$cur_sqname}{"group"})    ? $mdl_alninfo_HHR->{$cur_sqname}{"group"} : "-";
-      my $cur_subgrp = (defined $mdl_alninfo_HHR->{$cur_sqname}{"subgroup"}) ? $mdl_alninfo_HHR->{$cur_sqname}{"subgroup"} : "-";
-      if($cur_pid > $max1) { 
-	# new max1, first update max2 if necessary
-	my $cur_matches_max1_subgrp = (($max1_grp ne "-") && ($max1_subgrp ne "-") && ($max1_grp eq $cur_grp) && ($max1_subgrp eq $cur_subgrp)) ? 1 : 0; 
-	if((! defined $max2) ||
-	   (($cur_pid > $max2) && (! $cur_matches_max1_subgrp))) {
-	  # update max2 to be equal to old max1
-	  ($max2, $argmax2, $max2_sqname, $max2_grp, $max2_subgrp) = ($max1, $argmax1, $max1_sqname, $max1_grp, $max1_subgrp);
-	}	  
-	# update max1
-	($max1, $argmax1, $max1_sqname, $max1_grp, $max1_subgrp) = ($cur_pid, $midx, $cur_sqname, $cur_grp, $cur_subgrp);
+    for ( ; $midx < $mdl_nseq ; $midx++ ) {
+      if ( $fwd_denom_AA[$midx][ ( $alen_p - 1 ) ] >= $eff_min_nnregion_length ) {
+        my $cur_pid = $fwd_nmatch_AA[$midx][ ( $alen_p - 1 ) ];
+        my $cur_sqname = $mdl_msa->get_sqname($midx);
+        my $cur_grp    = ( defined $mdl_alninfo_HHR->{$cur_sqname}{"group"} ) ? $mdl_alninfo_HHR->{$cur_sqname}{"group"} : "-";
+        my $cur_subgrp = ( defined $mdl_alninfo_HHR->{$cur_sqname}{"subgroup"} ) ? $mdl_alninfo_HHR->{$cur_sqname}{"subgroup"} : "-";
+        if ( $cur_pid > $max1 ) {
+
+          # new max1, first update max2 if necessary
+          my $cur_matches_max1_subgrp =
+            ( ( $max1_grp ne "-" ) && ( $max1_subgrp ne "-" ) && ( $max1_grp eq $cur_grp ) && ( $max1_subgrp eq $cur_subgrp ) ) ? 1 : 0;
+          if ( ( !defined $max2 )
+            || ( ( $cur_pid > $max2 ) && ( !$cur_matches_max1_subgrp ) ) )
+          {
+            # update max2 to be equal to old max1
+            ( $max2, $argmax2, $max2_sqname, $max2_grp, $max2_subgrp ) = ( $max1, $argmax1, $max1_sqname, $max1_grp, $max1_subgrp );
+          }
+
+          # update max1
+          ( $max1, $argmax1, $max1_sqname, $max1_grp, $max1_subgrp ) = ( $cur_pid, $midx, $cur_sqname, $cur_grp, $cur_subgrp );
+        }
+        else {    # not a new max, but maybe a new max2
+          my $cur_matches_max2_subgrp =
+            ( ( defined $max2 ) && ( $max2_grp ne "-" ) && ( $max2_subgrp ne "-" ) && ( $max2_grp eq $cur_grp ) && ( $max2_subgrp eq $cur_subgrp ) ) ? 1 : 0;
+          if ( ( !defined $max2 )
+            || ( ( $cur_pid > $max2 ) && ( !$cur_matches_max2_subgrp ) ) )
+          {
+            # update max2 to be equal to old max1
+            ( $max2, $argmax2, $max2_sqname, $max2_grp, $max2_subgrp ) = ( $cur_pid, $midx, $cur_sqname, $cur_grp, $cur_subgrp );
+          }
+        }
       }
-      else { # not a new max, but maybe a new max2
-	my $cur_matches_max2_subgrp = ((defined $max2) && ($max2_grp ne "-") && ($max2_subgrp ne "-") && ($max2_grp eq $cur_grp) && ($max2_subgrp eq $cur_subgrp)) ? 1 : 0; 
-	if((! defined $max2) ||
-	   (($cur_pid > $max2) && (! $cur_matches_max2_subgrp))) { 
-	  # update max2 to be equal to old max1
-	  ($max2, $argmax2, $max2_sqname, $max2_grp, $max2_subgrp) = ($cur_pid, $midx, $cur_sqname, $cur_grp, $cur_subgrp);
-	}	  
-      }
-      #printf("\t\tfwd_nmatch_AA[$midx][%d]: %.3f (%s)\n", ($alen_p-1), $fwd_nmatch_AA[$midx][($alen_p-1)], $mdl_msa->get_sqname($midx));    
+
+#printf("\t\tfwd_nmatch_AA[$midx][%d]: %.3f (%s)\n", ($alen_p-1), $fwd_nmatch_AA[$midx][($alen_p-1)], $mdl_msa->get_sqname($midx));
     }
     $cls_output_HHR->{$seqname}{"model1_pid"} = $max1;
     my $max1_sqname2print = $max1_sqname;
-    $max1_sqname2print =~ s/^.+\///; # remove dir added by validate_and_copy_classification_alignment_file()
+    $max1_sqname2print =~ s/^.+\///;    # remove dir added by validate_and_copy_classification_alignment_file()
     $cls_output_HHR->{$seqname}{"model1_seq"} = $max1_sqname2print;
-    $cls_output_HHR->{$seqname}{"group1"}     = (defined $max1_grp) ? $max1_grp : "-";
-    $cls_output_HHR->{$seqname}{"subgroup1"}  = (defined $max1_subgrp) ? $max1_subgrp : "-";
+    $cls_output_HHR->{$seqname}{"group1"}     = ( defined $max1_grp ) ? $max1_grp : "-";
+    $cls_output_HHR->{$seqname}{"subgroup1"}  = ( defined $max1_subgrp ) ? $max1_subgrp : "-";
+
     #printf("\twinner for $seqname is $max1_sqname ($max)\n");
 
-    if(defined $max2) { 
+    if ( defined $max2 ) {
       $cls_output_HHR->{$seqname}{"model2_pid"} = $max2;
       my $max2_sqname2print = $max2_sqname;
-      $max2_sqname2print =~ s/^.+\///; # remove dir added by validate_and_copy_classification_alignment_file()
+      $max2_sqname2print =~ s/^.+\///;    # remove dir added by validate_and_copy_classification_alignment_file()
       $cls_output_HHR->{$seqname}{"model2_seq"} = $max2_sqname2print;
-      $cls_output_HHR->{$seqname}{"group2"}     = (defined $max2_grp) ? $max2_grp : "-";
-      $cls_output_HHR->{$seqname}{"subgroup2"}  = (defined $max2_subgrp) ? $max2_subgrp : "-";
+      $cls_output_HHR->{$seqname}{"group2"}     = ( defined $max2_grp ) ? $max2_grp : "-";
+      $cls_output_HHR->{$seqname}{"subgroup2"}  = ( defined $max2_subgrp ) ? $max2_subgrp : "-";
+
       #printf("\twinner for $seqname is $max1_sqname ($max)\n");
     }
-    else { # $max2 is undef
+    else {                                # $max2 is undef
       $cls_output_HHR->{$seqname}{"model2_pid"} = "-";
       $cls_output_HHR->{$seqname}{"model2_seq"} = "-";
       $cls_output_HHR->{$seqname}{"group2"}     = "-";
       $cls_output_HHR->{$seqname}{"subgroup2"}  = "-";
     }
-    
+
     my $mdl_nn_cls_key = ":GROUP:" . $max1_grp . ":SUBGROUP:" . $max1_subgrp;
-    if(! defined $mdl_nn_cls_ct_HHR->{$mdl_name}{$mdl_nn_cls_key}) {
+    if ( !defined $mdl_nn_cls_ct_HHR->{$mdl_name}{$mdl_nn_cls_key} ) {
       $mdl_nn_cls_ct_HHR->{$mdl_name}{$mdl_nn_cls_key} = 0;
     }
     $mdl_nn_cls_ct_HHR->{$mdl_name}{$mdl_nn_cls_key}++;
 
-    $cls_output_HHR->{$seqname}{"nnregion_mdl"} = ($using_defined_nn_region) ?
-	vdr_CoordsSegmentCreate($rf_start_pos, $rf_stop_pos, "+", $FH_HR) : 
-	vdr_CoordsSegmentCreate(1, $alen, "+", $FH_HR);
-    $cls_output_HHR->{$seqname}{"nnregion_seq"} = vdr_CoordsSegmentCreate($apos_start, $apos_stop, "+", $FH_HR);
+    $cls_output_HHR->{$seqname}{"nnregion_mdl"} =
+      ($using_defined_nn_region)
+      ? vdr_CoordsSegmentCreate( $rf_start_pos, $rf_stop_pos, "+", $FH_HR )
+      : vdr_CoordsSegmentCreate( 1,             $alen,        "+", $FH_HR );
+    $cls_output_HHR->{$seqname}{"nnregion_seq"} = vdr_CoordsSegmentCreate( $apos_start, $apos_stop, "+", $FH_HR );
+
     #print $out_weighted_avg_diff;
-  } # end of loop over sequences
+  }    # end of loop over sequences
 
   undef $seq_msa;
   return;
