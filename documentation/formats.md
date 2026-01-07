@@ -712,7 +712,7 @@ input sequence file that `v-annotate.pl` processed. `.scn` files will only be cr
 
 The model sequence with the highest percent identity to the input sequence that has a different subgroup from the nearest-neighbor will be listed in the `seq2` field. The group and subgroup values for each model sequence in the model Stockholm format alignment file (e.g. `evB.stk`) must be annotated as `#=GS <seqname> GP` and `#=GS <seqname> SG` values (e.g. `#=GS AY302539.1 GP EVB` and `#=GS AY302539.1 SG E13`). 
 
-If the model Stockholm format alignment file (e.g. `evB.stk`) includes special annotation to define classification start and stop positions (e.g. `#=GF VADR-classification-rf-start-pos 2467` and `#=GF VADR-classification-rf-stop-pos  3393`) then the nearest-neighbor classification will be based on only on those model positions (e.g. `2467..3393`) and percent identities will indicate similarity only within that region. The region used for the classification is included in the `nnregion seqcoords` (model position range that the sequence actually spans) and `nnregion mdlcoords` (model position range used for the classification) fields.
+If the model Stockholm format alignment file (e.g. `evB.stk`) includes special annotation to define classification start and stop positions (e.g. `#=GF VADR-classification-rf-start-pos 2467` and `#=GF VADR-classification-rf-stop-pos  3393`) then the nearest-neighbor classification will be based on only on those model positions (e.g. `2467..3393`) and percent identities will indicate similarity only within that region. The region used for the classification is included in the `nnregion_seqspan mdl_coords` (model position range that the sequence actually spans) and `nnregion_full mdl_coords` (model position range used for the classification) fields.
 
 
 [Example file](annotate-files/evB.10.vadr.scn).
@@ -734,9 +734,9 @@ If the model Stockholm format alignment file (e.g. `evB.stk`) includes special a
 |  13 | `fract id2`           | fractional identity of second nearest-neighbor model sequence (`seq2`) calculated as number of identical nucleotides in nongap reference positions within `nnregion mdl_coords` between `seq name` and `seq2` |
 |  14 | `seq2`                | second nearest-neighbor sequence name, defined as model sequence with highest percent identity to `seq name` in reference (`RF`) positions in range `nnregion mdl_coords` that does not have the same `subgroup` as `seq1` (subgroup of `-` is considered different from all subgroup values) |
 |  15 | `fid diff`            | `fract id1 - fract id2` |
-|  16 | `nnregion seqcoords`  | the model reference position span that includes nucleotides for this sequence within the `nnregion mdlcoords` region of model reference (RF) positions |
-|  17 | `nnregion mdlcoords`  | the model reference position span used for the determination of the nearest-neighbor model sequences, this will be the full model (`1..<mdl_len>:+`) unless a different span was defined in the model Stockholm alignment file in with `#=GF VADR-classification-rf-start-pos <startpos>` and `#=GF VADR-classification-rf-stop-pos  <stoppos>` annotation|
-|  18 | `nnregion covrg`      | `nnregion seqcoords` divided by `nnregion mdlcoords` | 
+|  16 | `nnregion_seqspan mdl_coords`  | the model reference position span that includes nucleotides for this sequence within the `nnregion mdl_coords` region of model reference (RF) positions |
+|  17 | `nnregion mdl_coords`  | the model reference position span used for the determination of the nearest-neighbor model sequences, this will be the full model (`1..<mdl_len>:+`) unless a different span was defined in the model Stockholm alignment file in with `#=GF VADR-classification-rf-start-pos <startpos>` and `#=GF VADR-classification-rf-stop-pos  <stoppos>` annotation|
+|  18 | `nnregion covrg`      | `nnregion_seqspan mdl_coords` divided by `nnregion mdl_coords` | 
 
 
 ---
