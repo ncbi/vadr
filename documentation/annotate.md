@@ -663,7 +663,10 @@ In the table below, `<n>` represents a positive interger argument and
 | ...........option........... | relevant alert code(s) | relevant error(s) | default value that triggers alert | explanation |
 |---------------------|---------------------|----------------|-----------------------------------|-------------|
 | `--lowsc <x>`       | [*lowscore*](#lowscore1)                             | LOW_SCORE                              | < 0.3  | <a name="options-alerts-lowsc"></a> set bits per nt threshold for alert to `<x>` | 
-| `--indefclass <x>`  | [*indfclas*](#indfclas1)                             | INDEFINITE_CLASSIFICATION              | < 0.03 | <a name="options-alerts-indefclas"></a> set bits per nt difference threshold for alert between top two models (not in same subgroup) to `<x>` |
+| `--indefclass <x>`  | [*indfclas*](#indfclas1)                             | INDEFINITE_CLASSIFICATION              | < 0.03 | <a name="options-alerts-indefclass"></a> set bits per nt difference threshold for alert between top two models (not in same subgroup) to `<x>` |
+| `--nn_indefclass <x>`| [*nnindfcl*](#nnindfcl1)                            | INDEFINITE_CLASSIFICATION_NN           | < 0.05 | <a name="options-alerts-nn_indefclass"></a> set fractional difference threshold for alert between top two nearest neighbors (not in same subgroup) to `<x>`, only relevant in nearest-neighbor classification mode when model info file specifies an alignment file for group and subgroup definition |
+| `--nn_lowidclass <x>`| [*nnloidcl*](#nnloidcl1)                            | LOW_ID_CLASSIFICATION_NN               | < 0.75 | <a name="options-alerts-nn_lowidclass"></a> set fractional identity threshold for alert to `<x>`, only relevant in nearest-neighbor classification mode when model info file specifies an alignment file for group and subgroup definition |
+| `--nn_partregclass <x>`| [*nnptrgcl*](#nnptrgcl1)                          | PARTIAL_REGION_CLASSIFICATION_NN       | < 0.5   | <a name="options-alerts-nn_partregclass"></a> set threshold for fractional length within pre-specified NN region for alert to `<x>`, only relevant in nearest-neighbor classification mode when model info file specifies an alignment file for group and subgroup definition |
 | `--incspec <x>`     | [*incgroup*](#incgroup1), [*incsubgrp*](#incsubgrp1) | INCORRECT_SPECIFIED_GROUP, INCORRECT_SPECIFIED_SUBGROUP | < 0.2   | <a name="options-alerts-incspec"></a> set bits per nt difference threshold for alert between best-matching model `<m>` and highest-scoring model in specified group `<s1>` (from `--group <s1>`) or subgroup `<s2>` (from `--subgroup <s2>`), where `<m>` is not in group/subgroup `<s1>`/`<s2>` to `<x>` |
 | `--lowcov <x>`      | [*lowcovrg*](#lowcovrg1)                             | LOW_COVERAGE                           | < 0.9  | <a name="options-alerts-lowcov"></a> set fractional coverage threshold for alert to `<x>` |
 | `--dupregolp <n>`   | [*dupregin*](#dupregin1)                             | DUPLICATE_REGIONS                      | >= 20  | <a name="options-alerts-dupreg"></a>set min number of model position overlap for alert to  `<n>` positions | 
@@ -1071,6 +1074,10 @@ exception ranges are not allowed.
 | [*ambgnt3c*](#ambgnt3c2)  | feature  | no    | AMBIGUITY_AT_CDS_END            | <a name="ambgnt3c1"></a> final nucleotide of CDS is an ambiguous nucleotide |  - | - |
 | [*ambgcd5c*](#ambgcd5c2)  | feature  | no    | AMBIGUITY_IN_START_CODON        | <a name="ambgcd5c1"></a> 5' complete CDS starts with canonical nt but includes ambiguous nt in its start codon | - | - |
 | [*ambgcd3c*](#ambgcd3c2)  | feature  | no    | AMBIGUITY_IN_STOP_CODON         | <a name="ambgcd3c1"></a> 3' complete CDS ends with canonical nt but includes ambiguous nt in its stop codon | - | - |
+| [*nnindfcl*](#nnindfcl2)  | sequence | never | INDEFINITE_CLASSIFICATION_NN    | <a name="nnindfcl1"></a> low difference between fractional identity of sequence and its nearest neighbor and sequence and its 2nd nearest neighbor | - | - |
+| [*nnloidcl*](#nnloidcl2)  | sequence | never | LOW_ID_CLASSIFICATION_NN        | <a name="nnloidcl1"></a> low fractional identity of sequence and its nearest neighbor model sequence | - | - 
+| [*nnalrgcl*](#nnalrgcl2)  | sequence | never | ALT_REGION_CLASSIFICATION_NN    | <a name="nnalrgcl1"></a> alternative alignment region used to find nearest neighbor b/c sequence does not include specified region | - | - |
+| [*nnptrgcl*](#nnptrgcl2)  | sequence | never | PARTIAL_REGION_CLASSIFICATION_NN| <a name="nnptrgcl1"></a> only part of the specified alignment region used to find nearest neighbor b/c sequence doesn't span full region | - | - |
 
 ### Additional information on `v-annotate.pl` alerts <a name="alerts2"></a> 
 
@@ -1153,7 +1160,7 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*qstgroup*](#qstgroup1)  | QUESTIONABLE_SPECIFIED_GROUP    | none | - | - <a name="qstgroup2"></a> | 
 | [*ambgnt5s*](#ambgnt5s1)  | AMBIGUITY_AT_START              | none | - | - <a name="ambgnt5s2"></a> | 
 | [*ambgnt3s*](#ambgnt3s1)  | AMBIGUITY_AT_END                | none | - | - <a name="ambgnt3s2"></a> | 
-| [*indfclas*](#indfclas1)  | INDEFINITE_CLASSIFICATION       | [`--indefclas`](#options-alerts-indefclas) | - | - <a name="indfclas2"></a> | 
+| [*indfclas*](#indfclas1)  | INDEFINITE_CLASSIFICATION       | [`--indefclass`](#options-alerts-indefclass) | - | - <a name="indfclas2"></a> | 
 | [*lowscore*](#lowscore1)  | LOW_SCORE                       | [`--lowsc`](#options-alerts-lowscore) | - | - <a name="lowscore2"></a> | 
 | [*biasdseq*](#biasdseq1)  | BIASED_SEQUENCE                 | [`--biasfrac`](#options-alerts-biasfrac) | - | - <a name="biasdseq2"></a> | 
 | [*extrant5*](#extrant51)  | EXTRA_SEQUENCE_START            | [`--extrant5`](#options-alerts-extrant5) | - | - <a name="extrant52"></a> |
@@ -1176,6 +1183,14 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*ambgnt3c*](#ambgnt3c1)  | AMBIGUITY_AT_CDS_END            | none | CDS | - <a name="ambgnt3c2"></a> | 
 | [*ambgcd5c*](#ambgcd5c1)  | AMBIGUITY_IN_START_CODON        | none | CDS | - <a name="ambgcd5c2"></a> | 
 | [*ambgcd3c*](#ambgcd3c1)  | AMBIGUITY_IN_STOP_CODON         | none | CDS | - <a name="ambgcd3c2"></a> | 
+| [*ambgnt5c*](#ambgnt5c1)  | AMBIGUITY_AT_CDS_START          | none | CDS | - <a name="ambgnt5c2"></a> | 
+| [*ambgnt3c*](#ambgnt3c1)  | AMBIGUITY_AT_CDS_END            | none | CDS | - <a name="ambgnt3c2"></a> | 
+| [*ambgcd5c*](#ambgcd5c1)  | AMBIGUITY_IN_START_CODON        | none | CDS | - <a name="ambgcd5c2"></a> | 
+| [*ambgcd3c*](#ambgcd3c1)  | AMBIGUITY_IN_STOP_CODON         | none | CDS | - <a name="ambgcd3c2"></a> | 
+| [*nnindfcl*](#nnindfcl1)  | INDEFINITE_CLASSIFICATION_NN    | [`--nn_indefclass`](#options-alerts-nn_indefclass) | - | - <a name="nnindfcl2"></a> | 
+| [*nnloidcl*](#nnloidcl1)  | LOW_ID_CLASSIFICATION_NN        | [`--nn_lowidclass`](#options-alerts-nn_lowidclass) | - | - <a name="nnloidcl2"></a> | 
+| [*nnalrgcl*](#nnalrgcl1)  | ALT_REGION_CLASSIFICATION_NN    | none | - | - <a name="nnloidcl2"></a> | 
+| [*nnptrgcl*](#nnptrgcl1)  | PARTIAL_REGION_CLASSIFICATION_NN| [`--nn_partregclass`](#options-alerts-nn_partregclass) | - | - <a name="nnloidcl2"></a> | 
 
 ---
 
