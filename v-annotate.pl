@@ -16256,7 +16256,7 @@ sub classify_based_on_alignment {
     if(defined $cls_output_HHR->{$seqname}{"model2_pid"}) { 
       my $id_diff = abs($cls_output_HHR->{$seqname}{"model1_pid"} - $cls_output_HHR->{$seqname}{"model2_pid"});
       if($id_diff < $nn_indefclass_thr) { 
-        my $errmsg = sprintf("(%.3f-%.3f=%.3f)<%.3f", 
+        my $errmsg = sprintf("(%.3f-%.3f)=%.3f<%.3f", 
           $cls_output_HHR->{$seqname}{"model1_pid"}, 
           $cls_output_HHR->{$seqname}{"model2_pid"},
           $id_diff, $nn_indefclass_thr);
@@ -16264,7 +16264,7 @@ sub classify_based_on_alignment {
       }
     }
     if($cls_output_HHR->{$seqname}{"model1_pid"} < $nn_lowidclass_thr) { 
-      my $errmsg = sprintf("(%.3f<%.3f", 
+      my $errmsg = sprintf("%.3f<%.3f", 
           $cls_output_HHR->{$seqname}{"model1_pid"}, 
           $nn_lowidclass_thr);
       alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "nnloidcl", $seqname, $errmsg, $FH_HR);
