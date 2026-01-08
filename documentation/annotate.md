@@ -1189,8 +1189,8 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*ambgcd3c*](#ambgcd3c1)  | AMBIGUITY_IN_STOP_CODON         | none | CDS | - <a name="ambgcd3c2"></a> | 
 | [*nnindfcl*](#nnindfcl1)  | INDEFINITE_CLASSIFICATION_NN    | [`--nn_indefclass`](#options-alerts-nn_indefclass) | - | - <a name="nnindfcl2"></a> | 
 | [*nnloidcl*](#nnloidcl1)  | LOW_ID_CLASSIFICATION_NN        | [`--nn_lowidclass`](#options-alerts-nn_lowidclass) | - | - <a name="nnloidcl2"></a> | 
-| [*nnalrgcl*](#nnalrgcl1)  | ALT_REGION_CLASSIFICATION_NN    | none | - | - <a name="nnloidcl2"></a> | 
-| [*nnptrgcl*](#nnptrgcl1)  | PARTIAL_REGION_CLASSIFICATION_NN| [`--nn_partregclass`](#options-alerts-nn_partregclass) | - | - <a name="nnloidcl2"></a> | 
+| [*nnalrgcl*](#nnalrgcl1)  | ALT_REGION_CLASSIFICATION_NN    | none | - | - <a name="nnalrgcl2"></a> | 
+| [*nnptrgcl*](#nnptrgcl1)  | PARTIAL_REGION_CLASSIFICATION_NN| [`--nn_partregclass`](#options-alerts-nn_partregclass) | - | - <a name="nnptrgcl2"></a> | 
 
 ---
 
