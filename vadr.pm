@@ -3273,6 +3273,26 @@ sub vdr_AlertInfoInitialize {
                    "3' complete CDS ends with canonical nt but includes ambiguous nt in its stop codon", # long description
                    0, 0, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
                    $FH_HR); 
+  vdr_AlertInfoAdd($alt_info_HHR, "nnindfcl", "sequence",
+                   "INDEFINITE_CLASSIFICATION_NN", # short description
+                   "low difference between fractional identity of sequence and its nearest neighbor (NN) and sequence and its 2nd NN", # long description
+                   0, 0, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   $FH_HR);
+  vdr_AlertInfoAdd($alt_info_HHR, "nnloidcl", "sequence",
+                   "LOW_ID_CLASSIFICATION_NN", # short description
+                   "low fractional identity of sequence and its nearest neighbor model sequence", # long description
+                   0, 0, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   $FH_HR); 
+  vdr_AlertInfoAdd($alt_info_HHR, "nnalrgcl", "sequence",
+                   "ALT_REGION_CLASSIFICATION_NN", # short description
+                   "alternative alignment region used to find nearest neighbor b/c sequence does not include specified region", # long description
+                   0, 0, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   $FH_HR); 
+vdr_AlertInfoAdd($alt_info_HHR, "nnptrgcl", "sequence",
+                   "PARTIAL_REGION_CLASSIFICATION_NN", # short description
+                   "only part of the specified alignment region used to find nearest neighbor b/c sequence doesn't span full region", # long description
+                   0, 0, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   $FH_HR); 
 
   # define the ftbl_invalid_by values, these are one-sided, any alert code listed in the 
   # 3rd argument invalidates the 2nd argument alert code, but not vice versa

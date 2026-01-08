@@ -273,6 +273,9 @@ $opt_group_desc_H{++$g} = "options for controlling thresholds related to alerts"
 #       option          type         default  group   requires incompat           preamble-output                                                                    help-output    
 opt_Add("--lowsc",      "real",      0.3,       $g,   undef,   undef,            "lowscore/LOW_SCORE bits per nucleotide threshold is <x>",                         "lowscore/LOW_SCORE bits per nucleotide threshold is <x>",                         \%opt_HH, \@opt_order_A);
 opt_Add("--indefclass", "real",      0.03,      $g,   undef,   undef,            "indfclas/INDEFINITE_CLASSIFICATION bits per nucleotide diff threshold is <x>",    "indfcls/INDEFINITE_CLASSIFICATION bits per nucleotide diff threshold is <x>",     \%opt_HH, \@opt_order_A);
+opt_Add("--nn_indefclass","real",    0.05,      $g,   undef,   undef,            "nnindfcl/INDEFINITE_CLASSIFICATION_NN fractional identity threshold is <x>",      "nnindfcl/INDEFINITE_CLASSIFICATION_NN fractional identity threshold is <x>",      \%opt_HH, \@opt_order_A);
+opt_Add("--nn_lowidclass","real",    0.75,      $g,   undef,   undef,            "nnloidcl/LOW_ID_CLASSIFICATION_NN fractional identity threshold is <x>",          "loidcl/LOW_ID_CLASSIFICATION_NN fractional identity threshold is <x>",            \%opt_HH, \@opt_order_A);
+opt_Add("--nn_partclass","real",     0.5,       $g,   undef,   undef,            "nnptrgcl/PARTIAL_REGION_CLASSIFICATION_NN fractional identity threshold is <x>",  "nnptrgcl/PARTIAL_REGION_CLASSIFICATION_NN fractional identity threshold is <x>",  \%opt_HH, \@opt_order_A);
 opt_Add("--incspec",    "real",      0.2,       $g,   undef,   undef,            "inc{group,subgrp}/INCORRECT_{GROUP,SUBGROUP}' bits/nt threshold is <x>",          "inc{group,subgrp}/INCORRECT_{GROUP,SUBGROUP} bits/nt threshold is <x>",           \%opt_HH, \@opt_order_A);
 opt_Add("--lowcov",     "real",      0.9,       $g,   undef,   undef,            "lowcovrg/LOW_COVERAGE fractional coverage threshold is <x>",                      "lowcovrg/LOW_COVERAGE fractional coverage threshold is <x>",                      \%opt_HH, \@opt_order_A);
 opt_Add("--dupregolp",  "integer",   20,        $g,   undef,   undef,            "dupregin/DUPLICATE_REGIONS minimum model overlap is <n>",                         "dupregin/DUPLICATE_REGIONS minimum model overlap is <n>",                         \%opt_HH, \@opt_order_A);
@@ -495,39 +498,42 @@ my $options_okay =
                 "forcegene"     => \$GetOptions_H{"--forcegene"},
                 "forcequal=s"   => \$GetOptions_H{"--forcequal"},
 # options for controlling alert thresholds
-                "lowsc=s"       => \$GetOptions_H{"--lowsc"},
-                'indefclass=s'  => \$GetOptions_H{"--indefclass"},
-                'incspec=s'     => \$GetOptions_H{"--incspec"},  
-                "lowcov=s"      => \$GetOptions_H{"--lowcov"},
-                'dupregolp=s'   => \$GetOptions_H{"--dupregolp"},  
-                'dupregsc=s'    => \$GetOptions_H{"--dupregsc"},  
-                'indefstr=s'    => \$GetOptions_H{"--indefstr"},  
-                'lowsim5seq=s'  => \$GetOptions_H{"--lowsim5seq"},
-                'lowsim3seq=s'  => \$GetOptions_H{"--lowsim3seq"},
-                'lowsimiseq=s'  => \$GetOptions_H{"--lowsimiseq"},
-                'lowsim5ftr=s'  => \$GetOptions_H{"--lowsim5ftr"},
-                'lowsim3ftr=s'  => \$GetOptions_H{"--lowsim3ftr"},
-                'lowsimiftr=s'  => \$GetOptions_H{"--lowsimiftr"},
-                'lowsim5lftr=s' => \$GetOptions_H{"--lowsim5lftr"},
-                'lowsim3lftr=s' => \$GetOptions_H{"--lowsim3lftr"},
-                'lowsimilftr=s' => \$GetOptions_H{"--lowsimilftr"},
-                'extrant5=s'    => \$GetOptions_H{"--extrant5"},
-                'extrant3=s'    => \$GetOptions_H{"--extrant3"},
-                'biasfract=s'   => \$GetOptions_H{"--biasfract"},  
-                'nmiscftrthr=s' => \$GetOptions_H{"--nmiscftrthr"},  
-                'indefann=s'    => \$GetOptions_H{"--indefann"},  
-                'indefann_mp=s' => \$GetOptions_H{"--indefann_mp"},  
-                'fstminntt=s'   => \$GetOptions_H{"--fstminntt"},
-                'fstminnti=s'   => \$GetOptions_H{"--fstminnti"},
-                'fsthighthr=s'  => \$GetOptions_H{"--fsthighthr"},
-                'fstlowthr=s'   => \$GetOptions_H{"--fstlowthr"},
-                'xalntol=s'     => \$GetOptions_H{"--xalntol"},
-                'xmaxins=s'     => \$GetOptions_H{"--xmaxins"},
-                'xmaxdel=s'     => \$GetOptions_H{"--xmaxdel"},
-                'nmaxins=s'     => \$GetOptions_H{"--nmaxins"},
-                'nmaxdel=s'     => \$GetOptions_H{"--nmaxdel"},
-                'xlonescore=s'  => \$GetOptions_H{"--xlonescore"},
-                'hlonescore=s'  => \$GetOptions_H{"--hlonescore"},
+                "lowsc=s"        => \$GetOptions_H{"--lowsc"},
+                'indefclass=s'   => \$GetOptions_H{"--indefclass"},
+                'nn_indefclass=s'=> \$GetOptions_H{"--nn_indefclass"},
+                'nn_lowidclass=s'=> \$GetOptions_H{"--nn_lowidclass"},
+                'nn_partclass=s' => \$GetOptions_H{"--nn_partclass"},
+                'incspec=s'      => \$GetOptions_H{"--incspec"},  
+                "lowcov=s"       => \$GetOptions_H{"--lowcov"},
+                'dupregolp=s'    => \$GetOptions_H{"--dupregolp"},  
+                'dupregsc=s'     => \$GetOptions_H{"--dupregsc"},  
+                'indefstr=s'     => \$GetOptions_H{"--indefstr"},  
+                'lowsim5seq=s'   => \$GetOptions_H{"--lowsim5seq"},
+                'lowsim3seq=s'   => \$GetOptions_H{"--lowsim3seq"},
+                'lowsimiseq=s'   => \$GetOptions_H{"--lowsimiseq"},
+                'lowsim5ftr=s'   => \$GetOptions_H{"--lowsim5ftr"},
+                'lowsim3ftr=s'   => \$GetOptions_H{"--lowsim3ftr"},
+                'lowsimiftr=s'   => \$GetOptions_H{"--lowsimiftr"},
+                'lowsim5lftr=s'  => \$GetOptions_H{"--lowsim5lftr"},
+                'lowsim3lftr=s'  => \$GetOptions_H{"--lowsim3lftr"},
+                'lowsimilftr=s'  => \$GetOptions_H{"--lowsimilftr"},
+                'extrant5=s'     => \$GetOptions_H{"--extrant5"},
+                'extrant3=s'     => \$GetOptions_H{"--extrant3"},
+                'biasfract=s'    => \$GetOptions_H{"--biasfract"},  
+                'nmiscftrthr=s'  => \$GetOptions_H{"--nmiscftrthr"},  
+                'indefann=s'     => \$GetOptions_H{"--indefann"},  
+                'indefann_mp=s'  => \$GetOptions_H{"--indefann_mp"},  
+                'fstminntt=s'    => \$GetOptions_H{"--fstminntt"},
+                'fstminnti=s'    => \$GetOptions_H{"--fstminnti"},
+                'fsthighthr=s'   => \$GetOptions_H{"--fsthighthr"},
+                'fstlowthr=s'    => \$GetOptions_H{"--fstlowthr"},
+                'xalntol=s'      => \$GetOptions_H{"--xalntol"},
+                'xmaxins=s'      => \$GetOptions_H{"--xmaxins"},
+                'xmaxdel=s'      => \$GetOptions_H{"--xmaxdel"},
+                'nmaxins=s'      => \$GetOptions_H{"--nmaxins"},
+                'nmaxdel=s'      => \$GetOptions_H{"--nmaxdel"},
+                'xlonescore=s'   => \$GetOptions_H{"--xlonescore"},
+                'hlonescore=s'   => \$GetOptions_H{"--hlonescore"},
 # options for controlling cmalign alignment stage 
                 'mxsize=s'       => \$GetOptions_H{"--mxsize"},
                 'tau=s'          => \$GetOptions_H{"--tau"},
@@ -2067,7 +2073,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       }	    
       for(my $a = 0; $a < scalar(@{$stk_file_HA{$mdl_name}}); $a++) { 
 	if(-s $stk_file_HA{$mdl_name}[$a]) { # skip empty alignments, which may exist if all seqs were not alignable
-          classify_based_on_alignment($mdl_name, $mdl_msa, $stk_file_HA{$mdl_name}[$a], $rf_start_pos, $rf_stop_pos, \%{$mdl_alninfo_AHH[$mdl_idx]}, \%cls_output_HH, \%mdl_nn_cls_ct_HH, \@to_remove_A, \%opt_HH, $FH_HR);
+          classify_based_on_alignment($mdl_name, $mdl_msa, $stk_file_HA{$mdl_name}[$a], $rf_start_pos, $rf_stop_pos, \%{$mdl_alninfo_AHH[$mdl_idx]}, 
+                                      \%cls_output_HH, \%mdl_nn_cls_ct_HH, \%alt_seq_instances_HH, \%alt_info_HH, \@to_remove_A, \%opt_HH, $FH_HR);
         }
       }
     }
@@ -15933,27 +15940,35 @@ sub count_model_sequence_pairwise_differences {
 #             sequences based on the nearest neighbors.
 #
 # Arguments:
-#  $mdl_name:          model name the $mdl_msa pertains to
-#  $mdl_msa:           the model MSA
-#  $in_stk_file:       path to stockholm alignment file with alignment of 1 or more input sequences
-#  $rf_start_pos:      the first RF start position to use for the nearest-neighbor classification, 1 to start at beginning
-#  $rf_stop_pos:       the final RF start position to use for the nearest-neighbor classification, $mdl_len to end at end
-#  $mdl_alninfo_HHR:   REF to 2D hash with group/subgroup information in 
-#  $cls_output_HHR:    REF to 2D hash of classification output info, possibly modified here
-#  $mdl_nn_cls_ct_HHR: REF to 2D hash of counts of seqs assigned to each model/group/subgroup trio
-#  $to_remove_AR:      REF to array of alignment files to remove
-#  $opt_HHR:           ref to hash of file handles
-#  $FH_HR:             ref to hash of file handles
+#  $mdl_name:               model name the $mdl_msa pertains to
+#  $mdl_msa:                the model MSA
+#  $in_stk_file:            path to stockholm alignment file with alignment of 1 or more input sequences
+#  $rf_start_pos:           the first RF start position to use for the nearest-neighbor classification, 1 to start at beginning
+#  $rf_stop_pos:            the final RF start position to use for the nearest-neighbor classification, $mdl_len to end at end
+#  $mdl_alninfo_HHR:        REF to 2D hash with group/subgroup information in 
+#  $cls_output_HHR:         REF to 2D hash of classification output info, possibly modified here
+#  $mdl_nn_cls_ct_HHR:      REF to 2D hash of counts of seqs assigned to each model/group/subgroup trio
+#  $alt_seq_instances_HHR:  REF to 2D hash with per-sequence alerts, added to here
+#  $alt_info_HHR:           REF to the alert info hash of arrays, PRE-FILLED
+#  $to_remove_AR:           REF to array of alignment files to remove
+#  $opt_HHR:                ref to hash of file handles
+#  $FH_HR:                  ref to hash of file handles
 #
 # Returns:  void
 #           
 #################################################################
 sub classify_based_on_alignment {
   my $sub_name = "classify_based_on_alignment";
-  my $nargs_exp = 11;
+  my $nargs_exp = 13;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($mdl_name, $mdl_msa, $in_stk_file, $rf_start_pos, $rf_stop_pos, $mdl_alninfo_HHR, $cls_output_HHR, $mdl_nn_cls_ct_HHR, $to_remove_AR, $opt_HHR, $FH_HR) = (@_);
+  my ($mdl_name, $mdl_msa, $in_stk_file, $rf_start_pos, $rf_stop_pos, $mdl_alninfo_HHR, $cls_output_HHR, $mdl_nn_cls_ct_HHR, 
+      $alt_seq_instances_HHR, $alt_info_HHR, $to_remove_AR, $opt_HHR, $FH_HR) = (@_);
+
+  my $small_value    = 0.00000001; # for handling precision issues
+  my $nn_indefclass_thr = opt_Get("--nn_indefclass", $opt_HHR) - $small_value;
+  my $nn_lowidclass_thr = opt_Get("--nn_lowidclass", $opt_HHR) - $small_value;
+  my $nn_partclass_thr  = opt_Get("--nn_partclass",  $opt_HHR) - $small_value;
 
   # read in the input alignment
   my $seq_msa = Bio::Easel::MSA->new({
@@ -15981,6 +15996,9 @@ sub classify_based_on_alignment {
     $mdl_group_subgroup_A[$midx] .= (defined $mdl_alninfo_HHR->{$mdl_msa->get_sqname($midx)}{"subgroup"}) ? "." . $mdl_alninfo_HHR->{$mdl_msa->get_sqname($midx)}{"subgroup"} : "";
   }    
   
+  my $specified_defined_nn_region = (($rf_start_pos == 1) && ($rf_stop_pos == $alen)) ? 0 : 1; # is there a specified nn region?
+  my $specified_defined_nn_region_coords = vdr_CoordsSegmentCreate( $rf_start_pos, $rf_stop_pos, "+", $FH_HR );
+
   for(my $sidx = 0; $sidx < $seq_nseq; $sidx++) {
     my $seqname = $seq_msa->get_sqname($sidx);
     my $seq_sqstring = $seq_msa->get_sqstring_aligned($sidx);
@@ -16197,6 +16215,7 @@ sub classify_based_on_alignment {
 #printf("\t\tfwd_nmatch_AA[$midx][%d]: %.3f (%s)\n", ($alen_p-1), $fwd_nmatch_AA[$midx][($alen_p-1)], $mdl_msa->get_sqname($midx));
     }
     $cls_output_HHR->{$seqname}{"model1_pid"} = $max1;
+  
     my $max1_sqname2print = $max1_sqname;
     $max1_sqname2print =~ s/^.+\///;    # remove dir added by validate_and_copy_classification_alignment_file()
     $cls_output_HHR->{$seqname}{"model1_seq"} = $max1_sqname2print;
@@ -16215,7 +16234,8 @@ sub classify_based_on_alignment {
 
       #printf("\twinner for $seqname is $max1_sqname ($max)\n");
     }
-    else {                                # $max2 is undef
+    else {  
+      # $max2 is undef
       $cls_output_HHR->{$seqname}{"model2_pid"} = "-";
       $cls_output_HHR->{$seqname}{"model2_seq"} = "-";
       $cls_output_HHR->{$seqname}{"group2"}     = "-";
@@ -16231,6 +16251,41 @@ sub classify_based_on_alignment {
       vdr_CoordsSegmentCreate( $rf_start_pos, $rf_stop_pos, "+", $FH_HR ) :
       vdr_CoordsSegmentCreate( 1,             $alen,        "+", $FH_HR );
     $cls_output_HHR->{$seqname}{"nnregion_seq"} = vdr_CoordsSegmentCreate( $apos_start, $apos_stop, "+", $FH_HR );
+
+    # report any alerts
+    if(defined $cls_output_HHR->{$seqname}{"model2_pid"}) { 
+      my $id_diff = abs($cls_output_HHR->{$seqname}{"model1_pid"} - $cls_output_HHR->{$seqname}{"model2_pid"});
+      if($id_diff < $nn_indefclass_thr) { 
+        my $errmsg = sprintf("(%.3f-%.3f)=%.3f<%.3f", 
+          $cls_output_HHR->{$seqname}{"model1_pid"}, 
+          $cls_output_HHR->{$seqname}{"model2_pid"},
+          $id_diff, $nn_indefclass_thr);
+        alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "nnindfcl", $seqname, $errmsg, $FH_HR);
+      }
+    }
+    if($cls_output_HHR->{$seqname}{"model1_pid"} < $nn_lowidclass_thr) { 
+      my $errmsg = sprintf("%.3f<%.3f", 
+          $cls_output_HHR->{$seqname}{"model1_pid"}, 
+          $nn_lowidclass_thr);
+      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "nnloidcl", $seqname, $errmsg, $FH_HR);
+    }
+    if ($specified_defined_nn_region) {
+      if (! $using_defined_nn_region) {
+        my $errmsg = sprintf("region used %s != %s", $cls_output_HHR->{$seqname}{"nnregion_seq"}, $specified_defined_nn_region_coords);
+        alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "nnalrgcl", $seqname, $errmsg, $FH_HR);
+      }
+      else {
+        my $fract_used = (vdr_CoordsLength($cls_output_HHR->{$seqname}{"nnregion_seq"}, $FH_HR) / 
+                          vdr_CoordsLength($cls_output_HHR->{$seqname}{"nnregion_mdl"}, $FH_HR));
+        if($fract_used < $nn_partclass_thr) {
+          my $errmsg = sprintf("%s overlaps %s only %.3f<%.3f",
+            $cls_output_HHR->{$seqname}{"nnregion_seq"}, 
+            $cls_output_HHR->{$seqname}{"nnregion_mdl"}, 
+            $fract_used, $nn_partclass_thr);
+          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "nnptrgcl", $seqname, $errmsg, $FH_HR);
+        }
+      }
+    }
 
     #print $out_weighted_avg_diff;
   }    # end of loop over sequences
