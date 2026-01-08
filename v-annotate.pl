@@ -1248,8 +1248,8 @@ my @mdl_alninfo_AHH = ();
 my $do_scn_file = 0; # set to true if we have CLASS_ALN_FILE set for >= 1 models in minfo, we will output a scn file
 if((! $do_clsonly) && (! opt_Get("--ignore_nnclass", \%opt_HH))) { 
   for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
-    my $aln_file_grp    = vdr_ModelInfoCheckForFileKey($mdl_info_AH[$mdl_idx]{"group"});
-    my $aln_file_subgrp = vdr_ModelInfoCheckForFileKey($mdl_info_AH[$mdl_idx]{"subgroup"});
+    my $aln_file_grp    = (defined $mdl_info_AH[$mdl_idx]{"group"})    ? vdr_ModelInfoCheckForFileKey($mdl_info_AH[$mdl_idx]{"group"}) : undef;
+    my $aln_file_subgrp = (defined $mdl_info_AH[$mdl_idx]{"subgroup"}) ? vdr_ModelInfoCheckForFileKey($mdl_info_AH[$mdl_idx]{"subgroup"}) : undef;
     # make sure that subgroup value, if there is one and it's a file, is identical to group value
     if((defined $aln_file_grp) && (! defined $aln_file_subgrp) && (defined $mdl_info_AH[$mdl_idx]{"subgroup"})) { 
       ofile_FAIL("ERROR, based on the model info file, for model " . $mdl_info_AH[$mdl_idx]{"name"} . " group info will be read from an alignment file, but subgroup is defined but will not be read from a file, this is not supported", 1, $FH_HR);
