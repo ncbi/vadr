@@ -10770,7 +10770,7 @@ sub output_tabular {
 			  helper_tabular_replace_spaces($seq_subgrp2), 
 			  $seq_nn_pid2, $seq_nn_seq2,
 			  $seq_nn_diff2print, 
-			  $seq_nnreg_seq, $seq_nnreg_mdl, $seq_nnreg_seq_fract2print]);
+			  $seq_nnreg_seq, $seq_nnreg_mdl, $seq_nnreg_seq_fract2print, $seq_alt_str],);
     }
 
     if(defined $dcr_output_HAHR->{$seq_name}) { 
@@ -15118,9 +15118,9 @@ sub helper_tabular_fill_header_and_justification_arrays {
     @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0,       0,       0,     0,     0,      0,      0,     1,        1,      1,      0,       0,       1);
   }
   elsif($ofile_key eq "scn") {
-    @{$head_AAR->[0]} = ("seq", "seq",  "seq", "",    "",    "",       "",     "sub",  "fract",    "",      "",   "sub","fract",     "",   "fid",  "nnregion_seqspan", "nnregion",   "nnregion");
-    @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "ant", "model",  "grp1", "grp1", "id1",  "seq1",  "grp2",  "grp2", "id2",   "seq2", "diff", " mdl_coords",       "mdl_coords", "covrg");
-    @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0,            1,      1,       1,      0,      1,  0,      0,                   0,            0);
+    @{$head_AAR->[0]} = ("seq", "seq",  "seq", "",    "",    "",       "",     "sub",  "fract",    "",      "",   "sub","fract",     "",   "fid",  "nnregion_seqspan", "nnregion",   "nnregion", "seq");
+    @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "ant", "model",  "grp1", "grp1", "id1",  "seq1",  "grp2",  "grp2", "id2",   "seq2", "diff", " mdl_coords",       "mdl_coords", "covrg",    "alerts");
+    @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0,            1,      1,       1,      0,      1,  0,      0,                   0,            0,          1);
   }
   elsif($ofile_key eq "ftr") {
     @{$head_AAR->[0]} = ("",    "seq",  "seq", "",    "",      "ftr",  "ftr",  "ftr", "ftr", "par", "",    "",       "",     "",        "",    "",     "",     "",       "",     "",        "",     "",    "",    "seq",    "model",  "ftr");
