@@ -448,7 +448,7 @@ opt_Add("--nodcr",        "boolean", 0,             $g,    undef,   undef,    "d
 opt_Add("--forcedcrins",  "boolean", 0,             $g,"--cmindi",  undef,    "force insert type alignment doctoring, requires --cmindi",               "force insert type alignment doctoring, requires --cmindi", \%opt_HH, \@opt_order_A);
 opt_Add("--xnoid",        "boolean", 0,             $g,    undef,"--pv_hmmer,--pv_skip", "ignore blastx hits that are full length and 100% identical",  "ignore blastx hits that are full length and 100% identical", \%opt_HH, \@opt_order_A);
 opt_Add("--intlen",       "integer", 40,            $g,    undef,"--ignore_canonss", "set min length of intron to check for splice sites to <n>",       "set min length of intron to check for splice sites to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--nnregionlen",  "integer", 40,            $g,    undef,"--ignore_nnclass,--ignore_nnregion", "set min subsequence length for NN-based classification to <n>",   "set min subsequence length for NN-based classification to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--nn_regionlen", "integer", 40,            $g,    undef,"--ignore_nnclass,--ignore_nnregion", "set min subsequence length for NN-based classification to <n>",   "set min subsequence length for NN-based classification to <n>", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -652,7 +652,7 @@ my $options_okay =
                 'forcedcrins'   => \$GetOptions_H{"--forcedcrins"},
                 'xnoid'         => \$GetOptions_H{"--xnoid"},
                 'intlen=s'      => \$GetOptions_H{"--intlen"},
-                'nnregionlen=s' => \$GetOptions_H{"--nnregionlen"});
+                'nn_regionlen=s'=> \$GetOptions_H{"--nn_regionlen"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
@@ -10770,7 +10770,7 @@ sub output_tabular {
 			  helper_tabular_replace_spaces($seq_subgrp2), 
 			  $seq_nn_pid2, $seq_nn_seq2,
 			  $seq_nn_diff2print, 
-			  $seq_nnreg_seq, $seq_nnreg_mdl, $seq_nnreg_seq_fract2print]);
+			  $seq_nnreg_seq, $seq_nnreg_mdl, $seq_nnreg_seq_fract2print, $seq_alt_str],);
     }
 
     if(defined $dcr_output_HAHR->{$seq_name}) { 
@@ -15118,9 +15118,9 @@ sub helper_tabular_fill_header_and_justification_arrays {
     @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0,       0,       0,     0,     0,      0,      0,     1,        1,      1,      0,       0,       1);
   }
   elsif($ofile_key eq "scn") {
-    @{$head_AAR->[0]} = ("seq", "seq",  "seq", "",    "",    "",       "",     "sub",  "fract",    "",      "",   "sub","fract",     "",   "fid",  "nnregion_seqspan", "nnregion",   "nnregion");
-    @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "ant", "model",  "grp1", "grp1", "id1",  "seq1",  "grp2",  "grp2", "id2",   "seq2", "diff", " mdl_coords",       "mdl_coords", "covrg");
-    @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0,            1,      1,       1,      0,      1,  0,      0,                   0,            0);
+    @{$head_AAR->[0]} = ("seq", "seq",  "seq", "",    "",    "",       "",     "sub",  "fract",    "",      "",   "sub","fract",     "",   "fid",  "nnregion_seqspan", "nnregion",   "nnregion", "seq");
+    @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "ant", "model",  "grp1", "grp1", "id1",  "seq1",  "grp2",  "grp2", "id2",   "seq2", "diff", " mdl_coords",       "mdl_coords", "covrg",    "alerts");
+    @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0,            1,      1,       1,      0,      1,  0,      0,                   0,            0,          1);
   }
   elsif($ofile_key eq "ftr") {
     @{$head_AAR->[0]} = ("",    "seq",  "seq", "",    "",      "ftr",  "ftr",  "ftr", "ftr", "par", "",    "",       "",     "",        "",    "",     "",     "",       "",     "",        "",     "",    "",    "seq",    "model",  "ftr");
@@ -15982,7 +15982,6 @@ sub classify_based_on_alignment {
 		       $mdl_msa->alen, $seq_msa->alen), 1, $FH_HR);
   }
 
-  my $min_nnregion_length = opt_Get("--nnregionlen", $opt_HHR);
   my $alen = $seq_msa->alen;
   my $mdl_nseq = $mdl_msa->nseq;
   my $seq_nseq = $seq_msa->nseq;
@@ -15996,8 +15995,14 @@ sub classify_based_on_alignment {
     $mdl_group_subgroup_A[$midx] .= (defined $mdl_alninfo_HHR->{$mdl_msa->get_sqname($midx)}{"subgroup"}) ? "." . $mdl_alninfo_HHR->{$mdl_msa->get_sqname($midx)}{"subgroup"} : "";
   }    
   
+  # determine minimum allowed length for nn region, use --nnregion_len but if region is specified 
+  # and specified region length is below that minimum, use that
   my $specified_defined_nn_region = (($rf_start_pos == 1) && ($rf_stop_pos == $alen)) ? 0 : 1; # is there a specified nn region?
   my $specified_defined_nn_region_coords = vdr_CoordsSegmentCreate( $rf_start_pos, $rf_stop_pos, "+", $FH_HR );
+  my $min_nnregion_length = opt_Get("--nn_regionlen", $opt_HHR);
+  if(vdr_CoordsLength($specified_defined_nn_region_coords, $FH_HR) < $min_nnregion_length) { 
+    $min_nnregion_length = vdr_CoordsLength($specified_defined_nn_region_coords, $FH_HR);
+  }
 
   for(my $sidx = 0; $sidx < $seq_nseq; $sidx++) {
     my $seqname = $seq_msa->get_sqname($sidx);
@@ -16174,11 +16179,12 @@ sub classify_based_on_alignment {
     my $max1_subgrp =
       ( defined $mdl_alninfo_HHR->{$max1_sqname}{"subgroup"} ) ? $mdl_alninfo_HHR->{$max1_sqname}{"subgroup"} : "-";
 
-    my $max2 = undef;          # second best fractional id across all seqs in different subgroup from $max1 (if subgroup undef it is different from all subgroups)
-    my $argmax2     = $midx;   # mdl idx of current max2
+    my $max2        = undef;   # second best fractional id across all seqs in different subgroup from $max1 (if subgroup undef it is different from all subgroups)
+    my $argmax2     = undef;   # mdl idx of current max2
     my $max2_sqname = undef;
     my $max2_grp    = undef;
     my $max2_subgrp = undef;
+    $midx++; # move on to next model
     for ( ; $midx < $mdl_nseq ; $midx++ ) {
       if ( $fwd_denom_AA[$midx][ ( $alen_p - 1 ) ] >= $eff_min_nnregion_length ) {
         my $cur_pid = $fwd_nmatch_AA[$midx][ ( $alen_p - 1 ) ];
@@ -16186,7 +16192,6 @@ sub classify_based_on_alignment {
         my $cur_grp    = ( defined $mdl_alninfo_HHR->{$cur_sqname}{"group"} ) ? $mdl_alninfo_HHR->{$cur_sqname}{"group"} : "-";
         my $cur_subgrp = ( defined $mdl_alninfo_HHR->{$cur_sqname}{"subgroup"} ) ? $mdl_alninfo_HHR->{$cur_sqname}{"subgroup"} : "-";
         if ( $cur_pid > $max1 ) {
-
           # new max1, first update max2 if necessary
           my $cur_matches_max1_subgrp =
             ( ( $max1_grp ne "-" ) && ( $max1_subgrp ne "-" ) && ( $max1_grp eq $cur_grp ) && ( $max1_subgrp eq $cur_subgrp ) ) ? 1 : 0;
@@ -16206,7 +16211,7 @@ sub classify_based_on_alignment {
           if ( ( !defined $max2 )
             || ( ( $cur_pid > $max2 ) && ( !$cur_matches_max2_subgrp ) ) )
           {
-            # update max2 to be equal to old max1
+            # update max2 to be equal to current model sequence
             ( $max2, $argmax2, $max2_sqname, $max2_grp, $max2_subgrp ) = ( $cur_pid, $midx, $cur_sqname, $cur_grp, $cur_subgrp );
           }
         }

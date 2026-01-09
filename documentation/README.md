@@ -22,6 +22,7 @@
   * [`v-annotate.pl` command-line options](annotate.md#options)
   * [Basic Information on `v-annotate.pl` alerts](annotate.md#alerts)
   * [Additional information on `v-annotate.pl` alerts](annotate.md#alerts2)
+* [`v-annotate.pl` alternative classification mode based on nearest-neighbors](nn-classification.md#top)
 * [***Advanced tutorial: building an RSV model library***](advbuild.md#top)
 * [Explanations and examples of `v-annotate.pl` detailed alert and error messages](alerts.md#top)
   * [Output fields with detailed alert and error messages](alerts.md#files)

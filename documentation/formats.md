@@ -706,7 +706,7 @@ header section.
 ---
 ### Explanation of `.scn`-suffixed output files<a name="scn"></a>
 
-`.scn` data lines have 18 fields, the names of which appear in the first two
+`.scn` data lines have 19 fields, the names of which appear in the first two
 comment lines in each file. There is one data line for each **sequence** in the
 input sequence file that `v-annotate.pl` processed. `.scn` files will only be created if at least one model in the model info file used by `v-annotate.pl` includes `group` and `subgroup` values (e.g. `:FILE:evB.stk`) that indicate that an alignment file should be used to determine group and subgroup info. If so, classification will be performed by comparing each aligned input sequence against all model sequences in the classification alignment file (e.g. `evB.stk`), and the group/subgroup of the model sequence with the highest percent identity to the input sequence will be assigned to the input sequence. That model sequence is referred to as the *nearest neighbor* in the field descriptions below and is listed in the `seq1` field. 
 
@@ -736,7 +736,8 @@ If the model Stockholm format alignment file (e.g. `evB.stk`) includes special a
 |  15 | `fid diff`            | `fract id1 - fract id2` |
 |  16 | `nnregion_seqspan mdl_coords`  | the model reference position span that includes nucleotides for this sequence within the `nnregion mdl_coords` region of model reference (RF) positions |
 |  17 | `nnregion mdl_coords`  | the model reference position span used for the determination of the nearest-neighbor model sequences, this will be the full model (`1..<mdl_len>:+`) unless a different span was defined in the model Stockholm alignment file in with `#=GF VADR-classification-rf-start-pos <startpos>` and `#=GF VADR-classification-rf-stop-pos  <stoppos>` annotation|
-|  18 | `nnregion covrg`      | `nnregion_seqspan mdl_coords` divided by `nnregion mdl_coords` | 
+|  18 | `nnregion covrg`      | `nnregion_seqspan mdl_coords` divided by `nnregion mdl_coords` |
+|  19 | `seq alerts`          | per-sequence alerts that pertain to this sequence, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one, `-` if none |
 
 
 ---
