@@ -16174,11 +16174,12 @@ sub classify_based_on_alignment {
     my $max1_subgrp =
       ( defined $mdl_alninfo_HHR->{$max1_sqname}{"subgroup"} ) ? $mdl_alninfo_HHR->{$max1_sqname}{"subgroup"} : "-";
 
-    my $max2 = undef;          # second best fractional id across all seqs in different subgroup from $max1 (if subgroup undef it is different from all subgroups)
-    my $argmax2     = $midx;   # mdl idx of current max2
+    my $max2        = undef;   # second best fractional id across all seqs in different subgroup from $max1 (if subgroup undef it is different from all subgroups)
+    my $argmax2     = undef;   # mdl idx of current max2
     my $max2_sqname = undef;
     my $max2_grp    = undef;
     my $max2_subgrp = undef;
+    $midx++; # move on to next model
     for ( ; $midx < $mdl_nseq ; $midx++ ) {
       if ( $fwd_denom_AA[$midx][ ( $alen_p - 1 ) ] >= $eff_min_nnregion_length ) {
         my $cur_pid = $fwd_nmatch_AA[$midx][ ( $alen_p - 1 ) ];
@@ -16186,7 +16187,6 @@ sub classify_based_on_alignment {
         my $cur_grp    = ( defined $mdl_alninfo_HHR->{$cur_sqname}{"group"} ) ? $mdl_alninfo_HHR->{$cur_sqname}{"group"} : "-";
         my $cur_subgrp = ( defined $mdl_alninfo_HHR->{$cur_sqname}{"subgroup"} ) ? $mdl_alninfo_HHR->{$cur_sqname}{"subgroup"} : "-";
         if ( $cur_pid > $max1 ) {
-
           # new max1, first update max2 if necessary
           my $cur_matches_max1_subgrp =
             ( ( $max1_grp ne "-" ) && ( $max1_subgrp ne "-" ) && ( $max1_grp eq $cur_grp ) && ( $max1_subgrp eq $cur_subgrp ) ) ? 1 : 0;
@@ -16206,7 +16206,7 @@ sub classify_based_on_alignment {
           if ( ( !defined $max2 )
             || ( ( $cur_pid > $max2 ) && ( !$cur_matches_max2_subgrp ) ) )
           {
-            # update max2 to be equal to old max1
+            # update max2 to be equal to current model sequence
             ( $max2, $argmax2, $max2_sqname, $max2_grp, $max2_subgrp ) = ( $cur_pid, $midx, $cur_sqname, $cur_grp, $cur_subgrp );
           }
         }
