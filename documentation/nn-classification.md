@@ -1,4 +1,4 @@
-# Nearest-Neighbor Based Classification in VADR
+# `v-annotate.pl` nearest-neighbor based classification mode
 
 * [Overview](#overview)
 * [Requirements](#requirements)
@@ -14,7 +14,7 @@
 
 ## Overview<a name="overview"></a>
 
-VADR's nearest-neighbor based classification mode allows sequences to be classified based on their similarity to reference sequences in a training alignment, rather than solely on the best-scoring model match. This is particularly useful for viruses with well-defined subtypes or serotypes where classification should be based on genetic similarity within specific genomic regions.
+VADR's nearest-neighbor based classification mode allows sequences to be classified based on their similarity to reference sequences in a training alignment, rather than solely on the best-scoring model match, which is the default mode. This is particularly useful for viruses with well-defined subtypes or serotypes where classification should be based on genetic similarity within specific genomic regions.
 
 In this mode, after a sequence is aligned to its best-matching model, VADR compares it against all sequences in a reference alignment and assigns the group and subgroup of the sequence with the highest percent identity (the "nearest neighbor"). This classification can optionally be restricted to a specific model region, such as VP1 for enteroviruses.
 
@@ -34,7 +34,7 @@ The classification process follows these steps:
 1. **Initial classification**: The sequence is classified to its best-matching model using standard VADR procedures
 2. **Alignment**: The sequence is aligned to the model
 3. **Nearest-neighbor search**: The aligned sequence is compared to all sequences in the reference alignment
-4. **Percent identity calculation**: For each reference sequence, the fractional identity is calculated as the number of identical nucleotides divided by the number of **nongap reference (RF) positions**. **Crucially, gap RF positions (inserts) are completely ignored** - only nongap RF (model) positions are used in the calculation.
+4. **Percent identity calculation**: For each reference sequence, the fractional identity is calculated as the number of identical nucleotides divided by the number of **nongap reference (RF) positions**. **Crucially, gap RF positions (inserts) are completely ignored** - only RF (model) positions are used in the calculation.
 5. **Assignment**: The group and subgroup of the reference sequence with the highest percent identity becomes the classification for the input sequence
 6. **Second nearest-neighbor**: The reference sequence with the highest identity from a different subgroup is identified to assess classification confidence
 
@@ -77,8 +77,6 @@ cmbuild --noss --hand toy-nn.cm toy-nn.stk
 
 The `--hand` option ensures that the RF annotation (which columns are reference vs. insert) from your input alignment is preserved exactly. Without `--hand`, `cmbuild` may modify the RF definition based on conservation patterns.
 
-**Key point**: Use your original input alignment file (e.g., `toy-nn.stk`) as the reference for VADR's nearest-neighbor classification. This file contains all necessary annotations (`#=GS` for group/subgroup, `#=GF` for classification regions) and has the same RF structure as the model.
-
 ### Required per-sequence annotations:
 
 Group and subgroup must be specified for each sequence using `#=GS` markup:
@@ -102,10 +100,10 @@ Group and subgroup must be specified for each sequence using `#=GS` markup:
 #=GS MK012537.1 SG CV-B3
 
 AB426608.1    TTAAAACAGCCTGTGGGTTGT...
-HM777023.1    TTAAAACAGCCTGTGGGTTGT...
-KF311743.1    TTAAAACAGCCTGTGGGTTGT...
+HM777023.1    TTAAAACAGCCTGTGGGTTCT...
+KF311743.1    TTAAAACAGCCTGTGGGTTCT...
 MK012537.1    TTAAAACAGCCTGTGGGTTGT...
-#=GC RF       TTAAAACAGCCTGTGGGTTGt...
+#=GC RF       TTAAAACAGCCTGTGGGTTgT...
 //
 ```
 
@@ -156,11 +154,11 @@ When nearest-neighbor classification is enabled, VADR creates a `.scn` (sequence
 
 **Example `.scn` output:**
 ```
-#seq  seq           seq                          sub     fract                    sub       fract                 fid      nnregion      nnregion  nnregion
-#idx  name          len  p/f   ant  model  grp1  grp1      id1  seq1        grp2  grp2        id2  seq2          diff    seq_coords    mdl_coords     covrg
-#---  -----------  ----  ----  ---  -----  ----  -----  ------  ----------  ----  -------  ------  ----------  ------  ------------  ------------  --------
-1     KX171337.1   7421  PASS  yes  evB    EVB   EV-B106 1.0000  KX171337.1  EVB   EV-B77   0.7168  AJ493062.2  0.2832  2467..3393:+  2467..3393:+    1.0000
-2     JF416934.1    976  PASS  yes  evB    EVB   EV-B110 1.0000  JF416934.1  EVB   EV-B112  0.7440  KJ418244.1  0.2560  2467..3393:+  2467..3393:+    1.0000
+#seq  seq         seq                           sub     fract                     sub      fract                  fid  nnregion_seqspan    nnregion  nnregion  seq   
+#idx  name        len   p/f   ant  model  grp1  grp1      id1  seq1         grp2  grp2     id2     seq2          diff        mdl_coords  mdl_coords     covrg  alerts
+#---  ----------  ----  ----  ---  -----  ----  -----  ------  -----------  ----  -------  ------  ----------  ------  ----------------  ----------  --------  ------
+1     KX171337.1  7421  PASS  yes  evB    EVB   EV-B106 1.0000  KX171337.1  EVB   EV-B77   0.7168  AJ493062.2  0.2832  2467..3393:+  2467..3393:+      1.0000  -
+2     JF416934.1   976  PASS  yes  evB    EVB   EV-B110 1.0000  JF416934.1  EVB   EV-B112  0.7440  KJ418244.1  0.2560  2467..3393:+  2467..3393:+      1.0000  -
 ```
 
 **Field descriptions:**
@@ -185,6 +183,7 @@ When nearest-neighbor classification is enabled, VADR creates a `.scn` (sequence
 | `nnregion_seqspan mdl_coords` | Model positions sequence actually spans |
 | `nnregion mdl_coords` | Model region used for classification |
 | `nnregion covrg` | Coverage: sequence span / classification region |
+| `seq alerts` | Per-sequence alerts for this sequence |
 
 For complete `.scn` format documentation, see [formats.md](formats.md#scn).
 
@@ -260,7 +259,7 @@ refseq_CVB5   AAAAACGGGGAAAAATTTTTAAAAaaGGGGGGGG
 
 ### Step 2: Build the covariance model
 
-Build the covariance model (CM) from the seed alignment using `cmbuild`:
+Build the covariance model (CM) from the seed alignment using `cmbuild` (this CM file is in documentation/annotate-files/toy-nn.cm):
 
 ```bash
 cmbuild --noss --hand toy-nn.cm toy-nn.stk
@@ -276,7 +275,7 @@ cmbuild --noss --hand toy-nn.cm toy-nn.stk
 
 ### Step 3: Create the model info file
 
-Create `toy-nn.minfo`:
+Create `toy-nn.minfo` (this file is in documentation/annotate-files/toy-nn.minfo):
 
 ```
 MODEL toy-nn group:":FILE:toy-nn.stk" subgroup:":FILE:toy-nn.stk" cmfile:"toy-nn.cm" length:"32"
@@ -290,7 +289,7 @@ FEATURE toy-nn type:"gene" coords:"1..32:+" gene:"TEST"
 
 ### Step 4: Create test sequences
 
-Create `test-nn.fa` with sequences to classify:
+Create `test-nn.fa` with sequences to classify (this file is in documentation/annotate-files/test-nn.fa):
 
 ```fasta
 >seq1_should_be_E30
@@ -306,16 +305,16 @@ AAAAAACGGGGNNNNNNNNNNAAAAGGGGGGGG
 ```
 
 **Explanation:**
-- `seq1`: Identical to refseq_E30 in all nongap RF positions → should classify as E30
-- `seq2`: Identical to refseq_E18 in all nongap RF positions → should classify as E18
+- `seq1`: Identical to refseq_E30 in all RF positions → should classify as E30
+- `seq2`: Identical to refseq_E18 in all RF positions → should classify as E18
 - `seq3`: One mismatch from refseq_CVB5 in classification region (G vs A at RF position 12) → should classify as CV-B5
-- `seq4`: Identical to refseq_E30 in nongap RF positions but has different inserts (TT at insert positions 25-26) - inserts are ignored so should classify as E30 with 100% identity
+- `seq4`: Identical to refseq_E30 in RF positions but has different inserts (TT at insert positions 25-26) - inserts are ignored so should classify as E30 with 100% identity
 - `seq5`: Has Ns in classification region → may trigger `nnptrgcl` or `nnalrgcl` alert
 
 ### Step 5: Run `v-annotate.pl`
 
 ```bash
-v-annotate.pl -i toy-nn.minfo test-nn.fa va-nn
+v-annotate.pl -f --out_stk --mdir $VADRSCRIPTSDIR/documentation/annotate-files --mkey toy-nn --nnregionlen 12 test-nn.fa va-nn
 ```
 
 ### Step 6: Examine the alignment and .scn output
@@ -356,8 +355,8 @@ And look at `va-nn/va-nn.vadr.scn`:
 ```
 
 **Interpretation:**
-- `seq1`: 100% identity (12/12 nongap RF positions) to refseq_E30 in classification region → classified as E30
-- `seq2`: 100% identity (12/12 nongap RF positions) to refseq_E18 → classified as E18  
+- `seq1`: 100% identity (12/12 RF positions) to refseq_E30 in classification region → classified as E30
+- `seq2`: 100% identity (12/12 RF positions) to refseq_E18 → classified as E18  
 - `seq3`: 91.67% (11/12) identity to refseq_CVB5 (one mismatch at RF position 12) → classified as CV-B5
 - `seq4`: **100% identity to refseq_E30 despite different inserts** (gg at insert positions after RF position 9) - demonstrates that insert columns are completely ignored in identity calculation
 - `seq5`: Used partial sequence for classification due to Ns, classified as E30 with low difference to E18 (triggers `nnindfcl` and `nnloidcl` alerts)
