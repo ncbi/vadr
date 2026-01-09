@@ -9,7 +9,7 @@ RF       no
 CONS     yes
 MAP      yes
 DATE     Fri Jan  9 12:27:34 2026
-COM      [1] cmbuild -F --hand --noss -O toy-nn.cmbuild.stk toy-nn.cm toy-nn.stk
+COM      [1] cmbuild -F --hand --noss toy-nn.cm toy-nn.stk
 PBEGIN   0.05
 PEND     0.05
 WBETA    1e-07
@@ -170,7 +170,7 @@ CONS  yes
 CS    yes
 MAP   no
 DATE  Fri Jan  9 12:27:34 2026
-COM   [1] cmbuild -F --hand --noss -O toy-nn.cmbuild.stk toy-nn.cm toy-nn.stk
+COM   [1] cmbuild -F --hand --noss toy-nn.cm toy-nn.stk
 NSEQ  3
 EFFN  3.000000
 CKSUM 3711069549

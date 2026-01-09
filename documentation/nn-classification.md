@@ -69,13 +69,15 @@ FEATURE evB type:"mat_peptide" coords:"3037..3945:+" gene:"POLY" product:"VP1"
 
 The seed alignment must be in Stockholm format with specific annotations. This should be the same alignment file used to build the covariance model.
 
-**Important:** When building your CM with `cmbuild`, use the `-O <file>` option to save the seed alignment:
+**Important:** When building your CM with `cmbuild`, use the `--hand` option to preserve the RF annotation:
 
 ```bash
-cmbuild -O evB.stk evB.cm input_alignment.stk
+cmbuild --noss --hand toy-nn.cm toy-nn.stk
 ```
 
-This ensures the output alignment (`evB.stk`) has reference (RF) annotation that exactly matches the model structure.
+The `--hand` option ensures that the RF annotation (which columns are reference vs. insert) from your input alignment is preserved exactly. Without `--hand`, `cmbuild` may modify the RF definition based on conservation patterns.
+
+**Key point**: Use your original input alignment file (e.g., `toy-nn.stk`) as the reference for VADR's nearest-neighbor classification. This file contains all necessary annotations (`#=GS` for group/subgroup, `#=GF` for classification regions) and has the same RF structure as the model.
 
 ### Required per-sequence annotations:
 
@@ -256,22 +258,39 @@ refseq_CVB5   AAAAACGGGGAAAAATTTTTAAAAaaGGGGGGGG
 - All three sequences share identical nongap RF nucleotides in flanking regions
 - They differ in the classification region (nongap RF positions 7-18)
 
-### Step 2: Create the model info file
+### Step 2: Build the covariance model
 
-Create `toy-ev.minfo`:
+Build the covariance model (CM) from the seed alignment using `cmbuild`:
 
-```
-MODEL toy-ev group:":FILE:toy-ev.stk" subgroup:":FILE:toy-ev.stk" cmfile:"toy-ev.cm" length:"32"
+```bash
+cmbuild --noss --hand toy-nn.cm toy-nn.stk
 ```
 
 **Explanation:**
-- The `:FILE:toy-ev.stk` syntax tells VADR to use nearest-neighbor classification
-- Both `group` and `subgroup` reference the same seed alignment file
-- You would need to build `toy-ev.cm` from `toy-ev.stk` using `cmbuild -O toy-ev.stk toy-ev.cm toy-ev.stk` to ensure the seed alignment matches the model
+- `--noss`: Do not use secondary structure information (our toy example has none)
+- `--hand`: **Critical option** - Preserve the RF annotation from the input alignment. Without this option, `cmbuild` may modify which columns are reference vs. insert columns. This option ensures the RF annotation you defined is maintained exactly in the model.
+- `toy-nn.cm`: Output CM file
+- `toy-nn.stk`: Input seed alignment (this same file will be referenced in the model info file)
 
-### Step 3: Create test sequences
+**Important**: The input alignment file `toy-nn.stk` already contains all required annotations (`#=GS` for group/subgroup, `#=GF` for classification region, and `#=GC RF` for reference positions). This same file will be used by VADR for nearest-neighbor classification.
 
-Create `test-seqs.fa` with sequences to classify:
+### Step 3: Create the model info file
+
+Create `toy-nn.minfo`:
+
+```
+MODEL toy-nn group:":FILE:toy-nn.stk" subgroup:":FILE:toy-nn.stk" cmfile:"toy-nn.cm" length:"32"
+FEATURE toy-nn type:"gene" coords:"1..32:+" gene:"TEST"
+```
+
+**Explanation:**
+- The `:FILE:toy-nn.stk` syntax tells VADR to use nearest-neighbor classification
+- Both `group` and `subgroup` reference the same seed alignment file (the one with `#=GS` and `#=GF` annotations)
+- The alignment file must have the same RF structure as the CM built from it
+
+### Step 4: Create test sequences
+
+Create `test-nn.fa` with sequences to classify:
 
 ```fasta
 >seq1_should_be_E30
@@ -293,13 +312,13 @@ AAAAAACGGGGNNNNNNNNNNAAAAGGGGGGGG
 - `seq4`: Identical to refseq_E30 in nongap RF positions but has different inserts (TT at insert positions 25-26) - inserts are ignored so should classify as E30 with 100% identity
 - `seq5`: Has Ns in classification region → may trigger `nnptrgcl` or `nnalrgcl` alert
 
-### Step 4: Run VADR annotation
+### Step 5: Run `v-annotate.pl`
 
 ```bash
-v-annotate.pl -i toy-ev.minfo test-seqs.fa va-nn
+v-annotate.pl -i toy-nn.minfo test-nn.fa va-nn
 ```
 
-### Step 5: Examine the alignment and .scn output
+### Step 6: Examine the alignment and .scn output
 
 Look at `va-nn/va-nn.vadr.scn`:
 ```
@@ -343,7 +362,7 @@ And look at `va-nn/va-nn.vadr.scn`:
 - `seq4`: **100% identity to refseq_E30 despite different inserts** (gg at insert positions after RF position 9) - demonstrates that insert columns are completely ignored in identity calculation
 - `seq5`: Used partial sequence for classification due to Ns, classified as E30 with low difference to E18 (triggers `nnindfcl` and `nnloidcl` alerts)
 
-### Step 6: Understanding the results
+### Step 7: Understanding the results
 
 **Key observations:**
 
