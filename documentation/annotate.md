@@ -960,6 +960,7 @@ explained more [here](#memory).
 | `--forcedcrins`  | force insert type alignment doctoring, requires `--cmindi`, mainly useful for debugging/testing |
 | `--xnoid`        | ignore blastx hits that are full length and 100% identical, mainly useful for testing |
 | `--intlen <n>`   | define intron as any gap >= `<n>` nucleotides between segments in a CDS, only relevant for identifying canonical splice sites, the default value for `<n>` is `40` |
+| `--nn_regionlen <n>`| define minimum length for region-specific NN-based classification to `<n>` nucleotides. If a sequence has fewer than `<n>` nucleotides spanning the region, NN-based classification will use the entire sequence instead. The default value for `<n>` is `40`, if the user-defined region length is `<m>` with `<m> < <n>`, then `<m>` will be used |
 
 ## Information on `v-annotate.pl` alerts <a name="alerts"></a>
 

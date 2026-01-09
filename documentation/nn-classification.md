@@ -143,7 +143,7 @@ To restrict classification to a specific model region (recommended for viruses w
 - Positions are 1-based model reference (RF) positions
 - If specified, only these positions are used for calculating percent identity
 - Sequences with fewer than 40nt (default) in this region will use the full sequence instead
-- You can change the minimum length with `--nnregionlen <n>`
+- You can change the minimum length with `--nn_regionlen <n>`
 - You can ignore region specifications with `--ignore_nnregion`
 
 ## Output Files<a name="output"></a>
@@ -314,7 +314,7 @@ AAAAAACGGGGNNNNNNNNNNAAAAGGGGGGGG
 ### Step 5: Run `v-annotate.pl`
 
 ```bash
-v-annotate.pl -f --out_stk --mdir $VADRSCRIPTSDIR/documentation/annotate-files --mkey toy-nn --nnregionlen 12 test-nn.fa va-nn
+v-annotate.pl -f --out_stk --mdir $VADRSCRIPTSDIR/documentation/annotate-files --mkey toy-nn test-nn.fa va-nn
 ```
 
 **Explanation of options:**
@@ -322,9 +322,10 @@ v-annotate.pl -f --out_stk --mdir $VADRSCRIPTSDIR/documentation/annotate-files -
 - `--out_stk`: Output the alignment of input sequences to the model in Stockholm format (creates `va-nn/va-nn.vadr.toy-nn.align.stk`)
 - `--mdir $VADRSCRIPTSDIR/documentation/annotate-files`: Directory containing model files (`toy-nn.cm`, `toy-nn.stk`, `toy-nn.minfo`)
 - `--mkey toy-nn`: Use model files with prefix `toy-nn` instead of default `vadr`
-- `--nnregionlen 12`: Set minimum subsequence length for nearest-neighbor classification region to 12 nucleotides. This is necessary because our classification region (RF positions 7-18) is only 12 nucleotides long, which is less than the default minimum of 40 nucleotides. Without this option, sequences that don't span at least 40nt of the region would fall back to full-sequence classification.
 - `test-nn.fa`: Input sequences to classify
 - `va-nn`: Output directory to create
+
+**Note on classification region length**: Our classification region (RF positions 7-18) is 12 nucleotides long, which is less than the default minimum of 40 nucleotides. However, `v-annotate.pl` automatically adjusts the minimum length threshold to match the specified region length when it is less than 40nt, so no additional options are needed.
 
 ### Step 6: Examine the alignment and .scn output
 
@@ -442,9 +443,9 @@ This uses the full sequence for classification even if region boundaries are spe
 ### Changing minimum region length:
 
 ```bash
-v-annotate.pl --nnregionlen 60 test-seqs.fa output-dir
+v-annotate.pl --nn_regionlen 60 test-seqs.fa output-dir
 ```
-Sets minimum subsequence length for region-based classification to 60nt (default: 40).
+Sets minimum subsequence length for region-based classification to 60nt. By default, if a classification region is specified in the alignment file, the minimum length is automatically set to the region length (if less than 40nt) or 40nt (if the region is 40nt or longer). Use this option to override the automatic behavior and set a different threshold.
 
 ---
 
