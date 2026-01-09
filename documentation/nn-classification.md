@@ -222,7 +222,7 @@ This tutorial demonstrates nearest-neighbor classification using a minimal toy e
 
 ### Step 1: Create the reference alignment
 
-Create a file `toy-ev.stk` with three reference sequences from different serotypes:
+Create a file `toy-nn.stk` with three reference sequences from different serotypes (this file is in `documentation/annotate-files/toy-nn.stk`):
 
 ```stockholm
 # STOCKHOLM 1.0
@@ -296,36 +296,58 @@ AAAAAACGGGGNNNNNNNNNNAAAAGGGGGGGG
 ### Step 4: Run VADR annotation
 
 ```bash
-v-annotate.pl -i toy-ev.minfo test-seqs.fa output-nn
+v-annotate.pl -i toy-ev.minfo test-seqs.fa va-nn
 ```
 
-### Step 5: Examine the .scn output
+### Step 5: Examine the alignment and .scn output
 
-Look at `output-nn/output-nn.vadr.scn`:
+Look at `va-nn/va-nn.vadr.scn`:
+```
+# STOCKHOLM 1.0
+#=GF AU Infernal 1.1.5
+
+seq1_should_be_E30             AAAAACGGG..GCCCCCTTTTTAAAA..GGGGGGGG
+#=GR seq1_should_be_E30     PP *********..***************..********
+seq2_should_be_E18             AAAAACGGG..GTTTTTTTTTTAAAA..GGGGGGGG
+#=GR seq2_should_be_E18     PP *********..***************..********
+seq3_closest_to_CVB5           AAAAACGGG..GAAAAGTTTTTAAAA..GGGGGGGG
+#=GR seq3_closest_to_CVB5   PP *********..***************..********
+seq4_different_inserts         AAAAACGGGggGCCCCCTTTTTAAAAttGGGGGGGG
+#=GR seq4_different_inserts PP ******87511678899*******************
+seq5_partial_region            AAAAACGGG..GNNNNNNNNNNAAAA..GGGGGGGG
+#=GR seq5_partial_region    PP *********..***************..********
+#=GC SS_cons                   :::::::::..:::::::::::::::..::::::::
+#=GC RF                        AAAAACGGG..GtttttTTTTTAAAA..GGGGGGGG
+#=GC RFCOLX.                   000000000..111111111122222..22222333
+#=GC RFCOL.X                   123456789..012345678901234..56789012
+//
+```
+
+And look at `va-nn/va-nn.vadr.scn`:
 
 ```
-#seq  seq                       seq                          sub     fract                    sub       fract                 fid      nnregion      nnregion  nnregion
-#idx  name                      len  p/f   ant  model  grp1  grp1      id1  seq1        grp2  grp2        id2  seq2          diff    seq_coords    mdl_coords     covrg
-#---  -----------------------  ----  ----  ---  -----  ----  -----  ------  ----------  ----  -------  ------  ----------  ------  ------------  ------------  --------
-1     seq1_should_be_E30         32  PASS  yes  toy-ev EVB   E30    1.0000  refseq_E30  EVB   E18      0.5833  refseq_E18  0.4167   7..18:+       7..18:+        1.0000
-2     seq2_should_be_E18         32  PASS  yes  toy-ev EVB   E18    1.0000  refseq_E18  EVB   CV-B5    0.5833  refseq_CVB5 0.4167   7..18:+       7..18:+        1.0000
-3     seq3_closest_to_CVB5       32  PASS  yes  toy-ev EVB   CV-B5  0.9167  refseq_CVB5 EVB   E30      0.5833  refseq_E30  0.3334   7..18:+       7..18:+        1.0000
-4     seq4_different_inserts     34  PASS  yes  toy-ev EVB   E30    1.0000  refseq_E30  EVB   E18      0.5833  refseq_E18  0.4167   7..18:+       7..18:+        1.0000
-5     seq5_partial_region        32  PASS  yes  toy-ev EVB   E30    1.0000  refseq_E30  EVB   E18      0.9500  refseq_E18  0.0500   1..24:+       1..32:+         0.7500
+#seq  seq                     seq                           sub     fract                     sub    fract                 fid  nnregion_seqspan    nnregion  nnregion  seq   
+#idx  name                    len  p/f   ant  model   grp1  grp1      id1  seq1         grp2  grp2     id2  seq2          diff        mdl_coords  mdl_coords     covrg  alerts
+#---  ----------------------  ---  ----  ---  ------  ----  -----  ------  -----------  ----  ----  ------  ----------  ------  ----------------  ----------  --------  ------
+1     seq1_should_be_E30       32  PASS  yes  toy-nn  EVB   E30    1.0000  refseq_E30   EVB   E18   0.5833  refseq_E18  0.4167           7..18:+     7..18:+    1.0000  -     
+2     seq2_should_be_E18       32  PASS  yes  toy-nn  EVB   E18    1.0000  refseq_E18   EVB   E30   0.5833  refseq_E30  0.4167           7..18:+     7..18:+    1.0000  -     
+3     seq3_closest_to_CVB5     32  PASS  yes  toy-nn  EVB   CV-B5  0.9167  refseq_CVB5  EVB   E30   0.5833  refseq_E30  0.3334           7..18:+     7..18:+    1.0000  -     
+4     seq4_different_inserts   36  PASS  yes  toy-nn  EVB   E30    1.0000  refseq_E30   EVB   E18   0.5833  refseq_E18  0.4167           7..18:+     7..18:+    1.0000  -     
+5     seq5_partial_region      32  PASS  yes  toy-nn  EVB   E30    0.3333  refseq_E30   EVB   E18   0.3333  refseq_E18  0.0000           7..18:+     7..18:+    1.0000  INDEFINITE_CLASSIFICATION_NN(nnindfcl),LOW_ID_CLASSIFICATION_NN(nnloidcl)
 ```
 
 **Interpretation:**
 - `seq1`: 100% identity (12/12 nongap RF positions) to refseq_E30 in classification region → classified as E30
 - `seq2`: 100% identity (12/12 nongap RF positions) to refseq_E18 → classified as E18  
 - `seq3`: 91.67% (11/12) identity to refseq_CVB5 (one mismatch at RF position 12) → classified as CV-B5
-- `seq4`: **100% identity to refseq_E30 despite different inserts** (TT at insert positions) - demonstrates that insert columns are completely ignored in identity calculation
-- `seq5`: Used partial sequence for classification due to Ns, classified as E30 with low difference to E18 (may trigger `nnindfcl` alert)
+- `seq4`: **100% identity to refseq_E30 despite different inserts** (gg at insert positions after RF position 9) - demonstrates that insert columns are completely ignored in identity calculation
+- `seq5`: Used partial sequence for classification due to Ns, classified as E30 with low difference to E18 (triggers `nnindfcl` and `nnloidcl` alerts)
 
 ### Step 6: Understanding the results
 
 **Key observations:**
 
-1. **Fractional identity (`fract id1`)**: Calculated only over non-gap reference positions in the classification region (or full sequence if region not used)
+1. **Fractional identity (`fract id1`)**: Calculated only over non-gap reference positions in the classification region (would have been full sequence if region not used)
 
 2. **Region coverage (`nnregion covrg`)**: Shows what fraction of the classification region the sequence actually spans
    - Value of 1.0 = sequence fully spans the classification region

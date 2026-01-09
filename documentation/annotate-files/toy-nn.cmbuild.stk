@@ -1,0 +1,20 @@
+# STOCKHOLM 1.0
+#=GF ID toy-nn
+#=GF AU Infernal 1.1.5
+
+#=GF VADR-classification-rf-start-pos 7
+#=GF VADR-classification-rf-stop-pos  18
+
+#=GS refseq_E30 GP EVB
+#=GS refseq_E30 SG E30
+#=GS refseq_E18 GP EVB
+#=GS refseq_E18 SG E18
+#=GS refseq_CVB5 GP EVB
+#=GS refseq_CVB5 SG CV-B5
+
+refseq_E30   AAAAACGGGGCCCCCUUUUUAAAA..GGGGGGGG
+refseq_E18   AAAAACGGGGUUUUUUUUUUAAAA..GGGGGGGG
+refseq_CVB5  AAAAACGGGGAAAAAUUUUUAAAAaaGGGGGGGG
+#=GC SS_cons ::::::::::::::::::::::::..::::::::
+#=GC RF      AAAAACGGGGuuuuuUUUUUAAAA..GGGGGGGG
+//

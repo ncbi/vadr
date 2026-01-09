@@ -1,0 +1,2 @@
+MODEL toy-nn group:":FILE:toy-nn.cmbuild.stk" subgroup:":FILE:toy-nn.cmbuild.stk" cmfile:"toy-nn.cm" length:"32"
+FEATURE toy-nn type:"gene" coords:"1..32:+" gene:"TEST"

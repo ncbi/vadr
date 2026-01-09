@@ -1,0 +1,16 @@
+# STOCKHOLM 1.0
+
+#=GF VADR-classification-rf-start-pos 7
+#=GF VADR-classification-rf-stop-pos  18
+
+#=GS refseq_E30 GP EVB
+#=GS refseq_E30 SG E30
+#=GS refseq_E18 GP EVB
+#=GS refseq_E18 SG E18
+#=GS refseq_CVB5 GP EVB
+#=GS refseq_CVB5 SG CV-B5
+
+refseq_E30    AAAAACGGGGCCCCCTTTTTAAAA..GGGGGGGG
+refseq_E18    AAAAACGGGGTTTTTTTTTTAAAA..GGGGGGGG
+refseq_CVB5   AAAAACGGGGAAAAATTTTTAAAAaaGGGGGGGG
+//
