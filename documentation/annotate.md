@@ -27,6 +27,7 @@
 * [Additional information on `v-annotate.pl` alerts](#alerts2)
 * [Non-essential features: allowing sequences to pass despite fatal alerts for specific features](#mnf)
 * [Alert *exceptions*: ignoring alerts in specific model position ranges](#exceptions)
+* [Alternative classification mode based on nearest-neighbors](#nn)
 * [Other ways to modify default behavior for features by manually changing the `.minfo` file](#minfo)
 * [Limiting memory usage and multi-threading](#memory)
 * [Alternative parallelization using a cluster](#altparallel)
@@ -1421,6 +1422,15 @@ Prior to VADR version 1.6, some alert exceptions in model info files
 were permitted in different formats. As of version 1.6, the formats
 above are enforced, but the formats present in publicly available
 model files created prior to v1.6 are also compatible with v1.6+.
+
+---
+
+## <a name="nn"></a>Alternative classification mode based on nearest-neighbors
+
+If your model is built from an alignment instead of a single sequence, you can define groups and subgroups for each sequence
+in the alignment file used to build the model and then classify sequences to those groups and subgroups based on similarity
+to the sequences in that alignment. For more information on this nearest-neighbor based classification mode see 
+[this file](nn-classification.md#top).
 
 ---
 
