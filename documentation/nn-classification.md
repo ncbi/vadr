@@ -317,6 +317,15 @@ AAAAAACGGGGNNNNNNNNNNAAAAGGGGGGGG
 v-annotate.pl -f --out_stk --mdir $VADRSCRIPTSDIR/documentation/annotate-files --mkey toy-nn --nnregionlen 12 test-nn.fa va-nn
 ```
 
+**Explanation of options:**
+- `-f`: Force overwrite of output directory if it exists
+- `--out_stk`: Output the alignment of input sequences to the model in Stockholm format (creates `va-nn/va-nn.vadr.toy-nn.align.stk`)
+- `--mdir $VADRSCRIPTSDIR/documentation/annotate-files`: Directory containing model files (`toy-nn.cm`, `toy-nn.stk`, `toy-nn.minfo`)
+- `--mkey toy-nn`: Use model files with prefix `toy-nn` instead of default `vadr`
+- `--nnregionlen 12`: Set minimum subsequence length for nearest-neighbor classification region to 12 nucleotides. This is necessary because our classification region (RF positions 7-18) is only 12 nucleotides long, which is less than the default minimum of 40 nucleotides. Without this option, sequences that don't span at least 40nt of the region would fall back to full-sequence classification.
+- `test-nn.fa`: Input sequences to classify
+- `va-nn`: Output directory to create
+
 ### Step 6: Examine the alignment and .scn output
 
 Look at `va-nn/va-nn.vadr.scn`:
