@@ -305,8 +305,10 @@ opt_Add("--xmaxins",    "integer",   27,        $g,   undef,"--pv_skip,--pv_hmme
 opt_Add("--xmaxdel",    "integer",   27,        $g,   undef,"--pv_skip,--pv_hmmer", "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",       "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",     \%opt_HH, \@opt_order_A);
 opt_Add("--nmaxins",    "integer",   27,        $g,   undef,   undef,            "insertnn/INSERTION_OF_NT max allowed nucleotide (nt) insertion length in CDS nt alignment is <n>", "insertnn/INSERTION_OF_NT max allowed nucleotide (nt) insertion length in CDS nt alignment is <n>",   \%opt_HH, \@opt_order_A);
 opt_Add("--nmaxdel",    "integer",   27,        $g,   undef,   undef,            "deletinn/DELETION_OF_NT max allowed nucleotide (nt) deletion length in CDS nt alignment is <n>",   "deletinn/DELETION_OF_NT max allowed nucleotide (nt) deletion length in CDS nt alignment is <n>",     \%opt_HH, \@opt_order_A);
-opt_Add("--xlonescore",  "integer",  80,        $g,   undef,"--pv_skip,--pv_hmmer", "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>",    "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--hlonescore",  "integer",  10,        $g,"--pv_hmmer","--pv_skip",        "indfantp/INDEFINITE_ANNOTATION min score for a hmmer hit not supported by CM analysis is <n>",     "indfantp/INDEFINITE_ANNOTATION min score for a hmmer hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xlonescore", "integer",  80,        $g,   undef,"--pv_skip,--pv_hmmer", "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>",    "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--hlonescore", "integer",  10,        $g,"--pv_hmmer","--pv_skip",        "indfantp/INDEFINITE_ANNOTATION min score for a hmmer hit not supported by CM analysis is <n>",     "indfantp/INDEFINITE_ANNOTATION min score for a hmmer hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--rc_thresh",  "real",     0.2,       $g,    undef,   undef,            "recombin/POSSIBLE_RECOMBINATION min fractional difference on each side of breakpoint is <x>",        "recombin/POSSIBLE_RECOMBINATION min fractional difference on each side of breakpoint is <x>", \%opt_HH, \@opt_order_A);   
+opt_Add("--rc_minlen",  "integer",  10,        $g,    undef,   undef,            "recombin/POSSIBLE_RECOMBINATION min length segment allowed on either side of breakpoint is <n>",     "recombin/POSSIBLE_RECOMBINATION min length segment allowed on either side of breakpoint is <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling cmalign alignment stage";
 #        option               type   default group  requires incompat   preamble-output                                                                help-output    
@@ -534,6 +536,8 @@ my $options_okay =
                 'nmaxdel=s'      => \$GetOptions_H{"--nmaxdel"},
                 'xlonescore=s'   => \$GetOptions_H{"--xlonescore"},
                 'hlonescore=s'   => \$GetOptions_H{"--hlonescore"},
+                'rc_thresh=s'    => \$GetOptions_H{"--rc_thresh"},
+                'rc_minlen=s'    => \$GetOptions_H{"--rc_minlen"},
 # options for controlling cmalign alignment stage 
                 'mxsize=s'       => \$GetOptions_H{"--mxsize"},
                 'tau=s'          => \$GetOptions_H{"--tau"},
@@ -15965,11 +15969,15 @@ sub classify_based_on_alignment {
   my ($mdl_name, $mdl_msa, $in_stk_file, $rf_start_pos, $rf_stop_pos, $mdl_alninfo_HHR, $cls_output_HHR, $mdl_nn_cls_ct_HHR, 
       $alt_seq_instances_HHR, $alt_info_HHR, $to_remove_AR, $opt_HHR, $FH_HR) = (@_);
 
+  # related to nearest-neighbor classification
   my $small_value    = 0.00000001; # for handling precision issues
   my $nn_indefclass_thr = opt_Get("--nn_indefclass", $opt_HHR) - $small_value;
   my $nn_lowidclass_thr = opt_Get("--nn_lowidclass", $opt_HHR) - $small_value;
   my $nn_partclass_thr  = opt_Get("--nn_partclass",  $opt_HHR) - $small_value;
-
+  # related to recombination detection
+  my $rc_thresh = opt_Get("--rc_thresh", $opt_HHR) - $small_value; # minimum fractional score difference to report recombination
+  my $rc_minlen = opt_Get("--rc_minlen", $opt_HHR);  # minimum number of non-gap positions in each segment
+  
   # read in the input alignment
   my $seq_msa = Bio::Easel::MSA->new({
     fileLocation => $in_stk_file,
@@ -16095,58 +16103,97 @@ sub classify_based_on_alignment {
         }
       }
     }
-    my $fwd_max = undef;
-    my $bck_max = undef;
-    my $fwd_argmax = undef;
-    my $bck_argmax = undef;
-    my $fwd_argmax_gsg = undef;
-    my $bck_argmax_gsg = undef;
-    my $max_weighted_avg_diff = 0;
-    my $argmax_weighted_avg_diff = -1;
-    # convert to fractional ids, and determine highest scoring model at each position
-    for($apos_p = 0; $apos_p < $alen_p; $apos_p++) {
-      # find max in fwd and bck matrix
-      if($fwd_denom_AA[0][$apos_p] > 0) { $fwd_nmatch_AA[0][$apos_p] = $fwd_nmatch_AA[0][$apos_p] / $fwd_denom_AA[0][$apos_p]; }
-      if($bck_denom_AA[0][$apos_p] > 0) { $bck_nmatch_AA[0][$apos_p] = $bck_nmatch_AA[0][$apos_p] / $bck_denom_AA[0][$apos_p]; }
-      $fwd_max = $fwd_nmatch_AA[0][$apos_p];
-      $bck_max = $bck_nmatch_AA[0][$apos_p];
-      $fwd_argmax = 0;
-      $bck_argmax = 0;
-      $fwd_argmax_gsg = $mdl_group_subgroup_A[$fwd_argmax];
-      $bck_argmax_gsg = $mdl_group_subgroup_A[$bck_argmax];
-      for(my $midx = 1; $midx < $mdl_nseq; $midx++) { 
-        if($fwd_denom_AA[$midx][$apos_p] > 0) { $fwd_nmatch_AA[$midx][$apos_p] = $fwd_nmatch_AA[$midx][$apos_p] / $fwd_denom_AA[$midx][$apos_p]; }
-        if($bck_denom_AA[$midx][$apos_p] > 0) { $bck_nmatch_AA[$midx][$apos_p] = $bck_nmatch_AA[$midx][$apos_p] / $bck_denom_AA[$midx][$apos_p]; }
-	if($fwd_nmatch_AA[$midx][$apos_p] > $fwd_max) {
-	  $fwd_max = $fwd_nmatch_AA[$midx][$apos_p];
-	  $fwd_argmax = $midx;
-	  $fwd_argmax_gsg = $mdl_group_subgroup_A[$fwd_argmax];
-	}
-	if($bck_nmatch_AA[$midx][$apos_p] > $bck_max) {
-	  $bck_max = $bck_nmatch_AA[$midx][$apos_p];
-	  $bck_argmax = $midx;
-	  $bck_argmax_gsg = $mdl_group_subgroup_A[$bck_argmax];
-	}
-      }
-      if($fwd_argmax_gsg ne $bck_argmax_gsg) {
-        if((abs($fwd_nmatch_AA[$fwd_argmax][$apos_p] - $fwd_nmatch_AA[$bck_argmax][$apos_p]) > 0.00001) &&
-           (abs($bck_nmatch_AA[$fwd_argmax][$apos_p] - $bck_nmatch_AA[$bck_argmax][$apos_p]) > 0.00001)) { 
-#          printf("apos_p: $apos_p [(%s) sum: %d fwd_argmax_gsg: $fwd_argmax_gsg fwd: $fwd_max bck: $bck_nmatch_AA[$fwd_argmax][$apos_p]] [(%s) sum: %d bck_argmax_gsg : $bck_argmax_gsg fwd: $fwd_nmatch_AA[$bck_argmax][$apos_p] bck: $bck_max]\n", $mdl_msa->get_sqname($fwd_argmax), (($fwd_nmatch_AA[$fwd_argmax][$apos_p] * $fwd_denom_AA[$fwd_argmax][$apos_p]) + ($bck_nmatch_AA[$fwd_argmax][$apos_p] * $bck_denom_AA[$fwd_argmax][$apos_p])), $mdl_msa->get_sqname($bck_argmax), (($fwd_nmatch_AA[$bck_argmax][$apos_p] * $fwd_denom_AA[$bck_argmax][$apos_p]) + ($bck_nmatch_AA[$bck_argmax][$apos_p] * $bck_denom_AA[$bck_argmax][$apos_p])));
-          my $fwd_contri = ($fwd_denom_AA[$fwd_argmax][$apos_p] + $fwd_denom_AA[$bck_argmax][$apos_p]) / 2.;
-          my $bck_contri = ($bck_denom_AA[$bck_argmax][$apos_p] + $bck_denom_AA[$fwd_argmax][$apos_p]) / 2.;
-          my $fwd_wgt    = $fwd_contri / ($fwd_contri + $bck_contri);
-          my $bck_wgt    = $bck_contri / ($fwd_contri + $bck_contri);
-          my $fwd_diff   = $fwd_nmatch_AA[$fwd_argmax][$apos_p] - $fwd_nmatch_AA[$bck_argmax][$apos_p];
-          my $bck_diff   = $bck_nmatch_AA[$bck_argmax][$apos_p] - $bck_nmatch_AA[$fwd_argmax][$apos_p];
-          my $weighted_avg_diff = (($fwd_diff * $fwd_wgt) + ($bck_diff * $bck_wgt));
-          if($weighted_avg_diff > $max_weighted_avg_diff) {
-            $max_weighted_avg_diff = $weighted_avg_diff;
-            $argmax_weighted_avg_diff = $apos_p;
-            #$out_weighted_avg_diff = sprintf("$seqname apos_p: $apos_p [(%s) fwd_argmax_gsg: %s fwd: %.5f bck: %.5f] [(%s) bck_argmax_gsg: %s fwd: %.5f bck: %.5f] [fwddiff: %.7f wgt: %.5f bckdiff: %.7f wgt: %.5f wavgdiff: %.7f]\n", $mdl_msa->get_sqname($fwd_argmax), $fwd_argmax_gsg, $fwd_max, $bck_nmatch_AA[$fwd_argmax][$apos_p], $mdl_msa->get_sqname($bck_argmax), $bck_argmax_gsg, $fwd_nmatch_AA[$bck_argmax][$apos_p], $bck_max, $fwd_diff, $fwd_wgt, $bck_diff, $bck_wgt, $max_weighted_avg_diff);
-          }
-#	  printf("apos_p: $apos_p [(%s) fwd_argmax_gsg: %s fwd: %.5f bck: %.5f] [(%s) bck_argmax_gsg: %s fwd: %.5f bck: %.5f] [fwddiff: %.7f wgt: %.5f bckdiff: %.7f wgt: %.5f wavgdiff: %.7f]\n", $mdl_msa->get_sqname($fwd_argmax), $fwd_argmax_gsg, $fwd_max, $bck_nmatch_AA[$fwd_argmax][$apos_p], $mdl_msa->get_sqname($bck_argmax), $bck_argmax_gsg, $fwd_nmatch_AA[$bck_argmax][$apos_p], $bck_max, $fwd_diff, $fwd_wgt, $bck_diff, $bck_wgt, (($fwd_diff * $fwd_wgt) + ($bck_diff * $bck_wgt)));
+    
+    # Recombination detection using simple difference score
+    # For each position, we calculate the best-matching model in forward direction (left segment)
+    # and backward direction (right segment). If they differ, calculate a recombination score.
+    my $max_recomb_score = 0;
+    my $best_breakpoint = -1;
+    my $best_parent1_idx = -1; # forward parent, 1..best_breakpoint
+    my $best_parent2_idx = -1; # backward parent, best_breakpoint..end
+    my $best_parent1_gsg = "";
+    my $best_parent2_gsg = "";
+    my $best_fwd_diff = "";
+    my $best_bck_diff = "";
+    
+    # Convert cumulative counts to fractional identities
+    for(my $midx = 0; $midx < $mdl_nseq; $midx++) { 
+      for($apos_p = 0; $apos_p < $alen_p; $apos_p++) {
+        if($fwd_denom_AA[$midx][$apos_p] > 0) { 
+          $fwd_nmatch_AA[$midx][$apos_p] = $fwd_nmatch_AA[$midx][$apos_p] / $fwd_denom_AA[$midx][$apos_p]; 
+        }
+        if($bck_denom_AA[$midx][$apos_p] > 0) { 
+          $bck_nmatch_AA[$midx][$apos_p] = $bck_nmatch_AA[$midx][$apos_p] / $bck_denom_AA[$midx][$apos_p]; 
         }
       }
+    }
+    
+    # Test each potential breakpoint
+    for($apos_p = $rc_minlen; $apos_p < ($alen_p - $rc_minlen); $apos_p++) {
+      # Find best model for left segment (forward up to this position)
+      my $fwd_max = -1;
+      my $fwd_argmax = -1;
+      for(my $midx = 0; $midx < $mdl_nseq; $midx++) {
+        if($fwd_denom_AA[$midx][$apos_p] >= $rc_minlen && $fwd_nmatch_AA[$midx][$apos_p] > $fwd_max) {
+          $fwd_max = $fwd_nmatch_AA[$midx][$apos_p];
+          $fwd_argmax = $midx;
+        }
+      }
+      
+      # Find best model for right segment (backward from this position)
+      my $bck_max = -1;
+      my $bck_argmax = -1;
+      for(my $midx = 0; $midx < $mdl_nseq; $midx++) {
+        if($bck_denom_AA[$midx][$apos_p] >= $rc_minlen && $bck_nmatch_AA[$midx][$apos_p] > $bck_max) {
+          $bck_max = $bck_nmatch_AA[$midx][$apos_p];
+          $bck_argmax = $midx;
+        }
+      }
+      
+      # Skip if we couldn't find valid models for both segments
+      if($fwd_argmax < 0 || $bck_argmax < 0) { next; }
+      
+      my $fwd_argmax_gsg = $mdl_group_subgroup_A[$fwd_argmax];
+      my $bck_argmax_gsg = $mdl_group_subgroup_A[$bck_argmax];
+      
+      # Only consider if different groups
+      if($fwd_argmax_gsg ne $bck_argmax_gsg) {
+        # Calculate recombination score: 
+        # How much better does fwd_argmax match the left + how much better does bck_argmax match the right
+        my $fwd_diff = $fwd_nmatch_AA[$fwd_argmax][$apos_p] - $fwd_nmatch_AA[$bck_argmax][$apos_p];
+        my $bck_diff = $bck_nmatch_AA[$bck_argmax][$apos_p] - $bck_nmatch_AA[$fwd_argmax][$apos_p];
+        
+        # Both differences should be positive for a clear recombination signal
+        if($fwd_diff > 0 && $bck_diff > 0) {
+          my $recomb_score = $fwd_diff + $bck_diff;
+          
+          if($recomb_score > $max_recomb_score) {
+            $max_recomb_score = $recomb_score;
+            $best_breakpoint = $apos_p;
+            $best_parent1_idx = $fwd_argmax;
+            $best_parent2_idx = $bck_argmax;
+            $best_parent1_gsg = $fwd_argmax_gsg;
+            $best_parent2_gsg = $bck_argmax_gsg;
+            $best_fwd_diff = $fwd_diff;
+            $best_bck_diff = $bck_diff;
+          }
+          
+          #printf("RECOMB $seqname pos: %d score: %.5f [parent1: %s (%s) fwd_id: %.4f bck_id: %.4f] [parent2: %s (%s) fwd_id: %.4f bck_id: %.4f]\n", 
+          #       $apos_p, $recomb_score, 
+          #       $mdl_msa->get_sqname($fwd_argmax), $fwd_argmax_gsg, $fwd_nmatch_AA[$fwd_argmax][$apos_p], $bck_nmatch_AA[$fwd_argmax][$apos_p],
+          #       $mdl_msa->get_sqname($bck_argmax), $bck_argmax_gsg, $fwd_nmatch_AA[$bck_argmax][$apos_p], $bck_nmatch_AA[$bck_argmax][$apos_p]);
+        }
+      }
+    }
+    
+    # Report alert for best recombination if above threshold
+    if($max_recomb_score >= $rc_thresh) {
+      my $errmsg = sprintf("breakpoint: %d parent1: %s (%s) %.3f parent2: %s (%s) %.3f, diff: %.3f>%.3f", 
+                $best_breakpoint, 
+                $mdl_msa->get_sqname($best_parent1_idx), $best_parent1_gsg, $best_fwd_diff, 
+                $mdl_msa->get_sqname($best_parent2_idx), $best_parent2_gsg, $best_bck_diff, 
+                $max_recomb_score, $rc_thresh);
+      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "recombin", $seqname, $errmsg, $FH_HR);
     }
     
     # find closest matching model sequence for this sequence, make sure that we have at least $min_nnregion_length positions (fwd_denom_AA)

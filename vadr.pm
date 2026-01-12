@@ -3288,10 +3288,15 @@ sub vdr_AlertInfoInitialize {
                    "alternative alignment region used to find nearest neighbor b/c sequence does not include specified region", # long description
                    0, 0, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
                    $FH_HR); 
-vdr_AlertInfoAdd($alt_info_HHR, "nnptrgcl", "sequence",
+  vdr_AlertInfoAdd($alt_info_HHR, "nnptrgcl", "sequence",
                    "PARTIAL_REGION_CLASSIFICATION_NN", # short description
                    "only part of the specified alignment region used to find nearest neighbor b/c sequence doesn't span full region", # long description
                    0, 0, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   $FH_HR); 
+  vdr_AlertInfoAdd($alt_info_HHR, "recombin", "sequence",
+                   "POSSIBLE_RECOMBINATION", # short description
+                   "possible recombination detected in sequence", # long description
+                   0, 1, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
                    $FH_HR); 
 
   # define the ftbl_invalid_by values, these are one-sided, any alert code listed in the 
