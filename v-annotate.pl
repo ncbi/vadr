@@ -310,6 +310,7 @@ opt_Add("--hlonescore", "integer",  10,        $g,"--pv_hmmer","--pv_skip",     
 opt_Add("--rc_thresh",  "real",     10.,       $g,    undef,   undef,            "recombin/POSSIBLE_RECOMBINATION min fractional difference on each side of breakpoint is <x>",        "recombin/POSSIBLE_RECOMBINATION min fractional difference on each side of breakpoint is <x>", \%opt_HH, \@opt_order_A);   
 opt_Add("--rc_match",   "real",     0.95,      $g,    undef,   undef,            "recombin/POSSIBLE_RECOMBINATION expected match probability for homology model is <x>",              "recombin/POSSIBLE_RECOMBINATION expected match probability for homology model is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--rc_minlen",  "integer",  10,        $g,    undef,   undef,            "recombin/POSSIBLE_RECOMBINATION min length segment allowed on either side of breakpoint is <n>",    "recombin/POSSIBLE_RECOMBINATION min length segment allowed on either side of breakpoint is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--rc_igself",  "boolean",  0,         $g,    undef,   undef,            "recombin/POSSIBLE_RECOMBINATION ignore model sequences with same name as input sequence",            "recombin/POSSIBLE_RECOMBINATION ignore model sequences with same name as input sequence", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling cmalign alignment stage";
 #        option               type   default group  requires incompat   preamble-output                                                                help-output    
@@ -540,6 +541,7 @@ my $options_okay =
                 'rc_thresh=s'    => \$GetOptions_H{"--rc_thresh"},
                 'rc_match=s'     => \$GetOptions_H{"--rc_match"},
                 'rc_minlen=s'    => \$GetOptions_H{"--rc_minlen"},
+                'rc_igself'      => \$GetOptions_H{"--rc_igself"},
                 # options for controlling cmalign alignment stage 
                 'mxsize=s'       => \$GetOptions_H{"--mxsize"},
                 'tau=s'          => \$GetOptions_H{"--tau"},
@@ -2065,21 +2067,10 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       #my @mdl_fwd_AAA = ();
       #my @mdl_bck_AAA = ();
       #count_model_sequence_pairwise_differences($mdl_msa, \@mdl_fwd_AAA, \@mdl_bck_AAA, $FH_HR);
-
-      my $rf_start_pos = 1; 
-      my $rf_stop_pos  = $mdl_len;
-      if(! opt_Get("--ignore_nnregion", \%opt_HH)) { 
-	      my ($tmp_rf_start_pos, $tmp_rf_stop_pos) = vdr_ModelInfoGetClassificationRefStartAndStopPositions(\%{$mdl_info_AH[$mdl_idx]}, $FH_HR);
-	      if(defined $tmp_rf_start_pos) { 
-	        $rf_start_pos = $tmp_rf_start_pos;
-	      }
-	      if(defined $tmp_rf_stop_pos) { 
-	        $rf_stop_pos = $tmp_rf_stop_pos;
-	      }   
-      }	    
+    
       for(my $a = 0; $a < scalar(@{$stk_file_HA{$mdl_name}}); $a++) { 
 	      if(-s $stk_file_HA{$mdl_name}[$a]) { # skip empty alignments, which may exist if all seqs were not alignable
-          classify_based_on_alignment(\%{$mdl_info_AH[$mdl_idx]}, $mdl_name, $mdl_msa, $stk_file_HA{$mdl_name}[$a], $rf_start_pos, $rf_stop_pos, \%{$mdl_alninfo_AHH[$mdl_idx]}, 
+          classify_based_on_alignment(\%{$mdl_info_AH[$mdl_idx]}, $mdl_msa, $stk_file_HA{$mdl_name}[$a], \%{$mdl_alninfo_AHH[$mdl_idx]}, 
                                       \%cls_output_HH, \%mdl_nn_cls_ct_HH, \%alt_seq_instances_HH, \%alt_info_HH, \@to_remove_A, \%opt_HH, $FH_HR);
         }
       }
@@ -15800,77 +15791,6 @@ sub validate_and_copy_classification_alignment_file {
 }
 
 #################################################################
-# Subroutine: OLD_classify_based_on_alignment
-# Incept:     EPN, Thu Aug 28 15:10:05 2025
-#
-# Purpose:    Given an alignment of input sequences, merge it with
-#             the alignment used to build the model, and classify
-#             sequences based on the nearest neighbors.
-#
-# Arguments:
-#  $esl_alimerge:    path to esl-alimerge executable
-#  $mdl_stk_file:    path to stockholm alignment file with alignment of model sequences
-#  $in_stk_file:     path to stockholm alignment file with alignment of 1 or more input sequences
-#  $nseq_in_stk:     number of sequences in $in_stk_file
-#  $mdl_alninfo_HH:  REF to 2D hash with group/subgroup information in 
-#  $cls_output_HHR:  REF to 2D hash of classification output info, possibly modified here
-#  $to_remove_AR:    REF to array of alignment files to remove
-#  $dir_tail:        prefix added to model sequence names
-#  $FH_HR:           ref to hash of file handles
-#
-# Returns:  void
-#           
-#################################################################
-sub OLD_classify_based_on_alignment {
-  my $sub_name = "classify_based_on_alignment";
-  my $nargs_exp = 9;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($esl_alimerge, $mdl_stk_file, $in_stk_file, $nseq_in_stk, $mdl_alninfo_HHR, $cls_output_HHR, $to_remove_AR, $dir_tail, $FH_HR) = (@_);
-
-  # merge the two alignments
-  my $merged_stk_file = $in_stk_file;
-  $merged_stk_file =~ s/\.stk$//;
-  $merged_stk_file .= ".merged.stk";
-
-  my $merge_cmd = "$esl_alimerge $in_stk_file $mdl_stk_file > $merged_stk_file";
-  utl_RunCommand($merge_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
-
-  my $msa = Bio::Easel::MSA->new({
-    fileLocation => $merged_stk_file,
-    isDna => 1});
-
-  my $nseq_merged = $msa->nseq;
-  my @is_mdl_A = ();
-  my $i;
-  for($i = 0; $i < $nseq_in_stk; $i++) {
-    $is_mdl_A[$i] = 0;
-  }
-  for($i = $nseq_in_stk; $i < $nseq_merged; $i++) {
-    $is_mdl_A[$i] = 1;
-  }
-  for(my $i = 0; $i < $nseq_in_stk; $i++) {
-    my $seqname = $msa->get_sqname($i);
-    my ($avg_pid, $min_pid, $min_idx, $max_pid, $max_idx) = $msa->avg_min_max_pid_to_seq($i, \@is_mdl_A);
-    my $max_seqname = $msa->get_sqname($max_idx);
-#    $max_seqname =~ s/^$dir_tail//;
-    printf("max_seqname: $max_seqname\n");
-    if(defined $mdl_alninfo_HHR->{$max_seqname}{"group"}) {
-      $cls_output_HHR->{$seqname}{"group1"} = $mdl_alninfo_HHR->{$max_seqname}{"group"};
-      print($msa->get_sqname($i) . " group is " . $mdl_alninfo_HHR->{$max_seqname}{"group"} . " pid: $max_pid to $max_seqname\n");
-    }
-    if(defined $mdl_alninfo_HHR->{$max_seqname}{"subgroup"}) {
-      $cls_output_HHR->{$seqname}{"subgroup1"} = $mdl_alninfo_HHR->{$max_seqname}{"subgroup"};
-      print($msa->get_sqname($i) . " subgroup is " . $mdl_alninfo_HHR->{$max_seqname}{"subgroup"} . " pid: $max_pid to $max_seqname\n");
-    }
-  }
-  push(@{$to_remove_AR}, $merged_stk_file);
-  
-  undef $msa;
-  return;
-}
-
-#################################################################
 # Subroutine: count_model_sequence_pairwise_differences
 # Incept:     EPN, Sat Sep  6 12:49:16 2025
 #
@@ -16022,8 +15942,6 @@ sub helper_nucleotide_ambiguity_distribution {
 #  $mdl_info_HR:            REF to the model info hash (for one model)
 #  $mdl_msa:                Bio::Easel::MSA object with model sequences 
 #  $in_stk_file:            input stockholm file name with test sequences aligned to model
-#  $rf_start_pos:           the first RF start position to use for the nearest-neighbor classification, 1 to start at beginning
-#  $rf_stop_pos:            the final RF start position to use for the nearest-neighbor classification, $mdl_len to end at end
 #  $mdl_alninfo_HHR:        REF to 2D hash with group/subgroup information in 
 #  $cls_output_HHR:         REF to 2D hash of classification output info, possibly modified here
 #  $mdl_nn_cls_ct_HHR:      REF to 2D hash of counts of seqs assigned to each model/group/subgroup trio
@@ -16038,10 +15956,10 @@ sub helper_nucleotide_ambiguity_distribution {
 #################################################################
 sub classify_based_on_alignment {
   my $sub_name = "classify_based_on_alignment";
-  my $nargs_exp = 13;
+  my $nargs_exp = 11;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($mdl_info_HR, $mdl_msa, $in_stk_file, $rf_start_pos, $rf_stop_pos, $mdl_alninfo_HHR, $cls_output_HHR, $mdl_nn_cls_ct_HHR, 
+  my ($mdl_info_HR, $mdl_msa, $in_stk_file, $mdl_alninfo_HHR, $cls_output_HHR, $mdl_nn_cls_ct_HHR, 
       $alt_seq_instances_HHR, $alt_info_HHR, $to_remove_AR, $opt_HHR, $FH_HR) = (@_);
 
   # related to nearest-neighbor classification
@@ -16054,11 +15972,24 @@ sub classify_based_on_alignment {
   my $rc_minlen = opt_Get("--rc_minlen", $opt_HHR);  # minimum number of non-gap positions in each segment
   my $rc_match  = opt_Get("--rc_match",  $opt_HHR);  # expected match probability for homology model
   
+  # set rf_start_pos and rf_stop_pos from mdl_info if it's defined, else set as 1 and mdl_len
+  my $rf_start_pos = 1; 
+  my $rf_stop_pos  = $mdl_info_HR->{"length"};
+  if(! opt_Get("--ignore_nnregion", \%opt_HH)) { 
+	  my ($tmp_rf_start_pos, $tmp_rf_stop_pos) = vdr_ModelInfoGetClassificationRefStartAndStopPositions(\%{$mdl_info_AH[$mdl_idx]}, $FH_HR);
+	  if(defined $tmp_rf_start_pos) { $rf_start_pos = $tmp_rf_start_pos; }
+	  if(defined $tmp_rf_stop_pos)  { $rf_stop_pos = $tmp_rf_stop_pos; }
+	}   
+
   # If --rc_match was not explicitly set by user AND model has VADR-default-rc_match, use that instead
   if((! opt_IsUsed("--rc_match", $opt_HHR)) && (defined $mdl_info_HR->{"VADR_DEFAULT_RC_MATCH"})) {
     $rc_match = $mdl_info_HR->{"VADR_DEFAULT_RC_MATCH"};
+    printf STDERR ("[DEBUG-RC] Using model-default rc_match=%.3f\n", $rc_match);
   }
-  
+  else {
+    printf STDERR ("[DEBUG-RC] Using command-line/default rc_match=%.3f\n", $rc_match);
+  }
+  printf STDERR ("[DEBUG-RC] Recombination parameters: rc_thresh=%.2f, rc_minlen=%d, rc_match=%.3f\n", $rc_thresh, $rc_minlen, $rc_match);
   my $rc_mismatch = (1.0 - $rc_match) / 3.0;          # expected probability of specific mismatch (divide by 3 for 3 alternative nucleotides)
 
   # read in the input alignment
@@ -16127,10 +16058,19 @@ sub classify_based_on_alignment {
   my $midx; # index over sequences in $mdl_msa
   # store group and subgroup names for each model sequence
   my @mdl_group_subgroup_A = ();
+  my @mdl_has_subgroup_A = ();  # does this model have a valid subgroup? need to know this when comparing because two models with same group but no subgroup can be max1/max2
   for($midx = 0; $midx < $mdl_nseq; $midx++) {
     $mdl_group_subgroup_A[$midx] =  (defined $mdl_alninfo_HHR->{$mdl_msa->get_sqname($midx)}{"group"}) ? $mdl_alninfo_HHR->{$mdl_msa->get_sqname($midx)}{"group"} : "";
     $mdl_group_subgroup_A[$midx] .= (defined $mdl_alninfo_HHR->{$mdl_msa->get_sqname($midx)}{"subgroup"}) ? "." . $mdl_alninfo_HHR->{$mdl_msa->get_sqname($midx)}{"subgroup"} : "";
-  }    
+    $mdl_has_subgroup_A[$midx]    = (defined $mdl_alninfo_HHR->{$mdl_msa->get_sqname($midx)}{"subgroup"}) ? 1 : 0;
+  }
+  
+  # DEBUG: Print first few model group/subgroup assignments
+  printf STDERR ("[DEBUG-RC] Model sequences (first 5): ");
+  for(my $i = 0; $i < ($mdl_nseq < 5 ? $mdl_nseq : 5); $i++) {
+    printf STDERR ("%s=%s ", $mdl_msa->get_sqname($i), $mdl_group_subgroup_A[$i]);
+  }
+  printf STDERR ("\n");
   
   # Calculate position-specific nucleotide frequencies from model alignment for recombination detection
   my @nt_freq_HA = (); # array of hashes: $nt_freq_HA[$apos]{'A'} = frequency of A at position $apos
@@ -16244,9 +16184,7 @@ sub classify_based_on_alignment {
       $mdl_sqstring =~ tr/a-z/A-Z/;
       my $full_mdl_sqstring = substr($mdl_sqstring, ($seq_rf_start - 1), $full_alen);
       my @full_mdl_sqstring_A = split("", $full_mdl_sqstring);
-      
-      my @full_mdl_sqstring_A = split("", $full_mdl_sqstring);
-      
+                  
       @{$full_fwd_logscore_AA[$midx]} = ();
       @{$full_fwd_npos_AA[$midx]} = ();
       
@@ -16369,6 +16307,7 @@ sub classify_based_on_alignment {
     }
     
     # STEP 3: Recombination detection using FULL sequence data
+    printf STDERR ("[DEBUG-RC] Seq:%s Starting recombination scan, full_alen=%d, seq_rf_start=%d\n", $seqname, $full_alen, $seq_rf_start);
     my $max_recomb_score = 0;
     my $best_breakpoint = -1;
     my $best_parent1_idx = -1;
@@ -16392,28 +16331,52 @@ sub classify_based_on_alignment {
         }
       }
     }
+    printf STDERR ("[DEBUG-RC] Seq:%s Found %d models, found_valid_single_model=%d, best_single_score=%.2f\n", 
+                   $seqname, $mdl_nseq, $found_valid_single_model, $best_single_score);
     
     # Only proceed with recombination detection if we have a valid single model baseline
     if($found_valid_single_model) {
       # Test each potential breakpoint (using FULL sequence)
       my $min_segment_len = ($rc_minlen > int($full_alen * 0.1)) ? $rc_minlen : int($full_alen * 0.1);
+      printf STDERR ("[DEBUG-RC] Seq:%s Scanning breakpoints from %d to %d (min_segment_len=%d)\n", 
+                     $seqname, $min_segment_len, ($full_alen - $min_segment_len), $min_segment_len);
+      
+      my $tested_breakpoints = 0;
+      my $valid_candidates = 0;
       
       for($apos_p = $min_segment_len; $apos_p < ($full_alen - $min_segment_len); $apos_p++) {
         # Find best model for left segment
         my $fwd_max_score = -999999;
         my $fwd_argmax = -1;
         for(my $midx = 0; $midx < $mdl_nseq; $midx++) {
+          # Skip self if --rc_igself enabled (model name is substring of sequence name)
+          my $mdl_sqname = $mdl_msa->get_sqname($midx);
+          $mdl_sqname =~ s/^.*\///;  # Remove directory path if present
+          if(opt_Get("--rc_igself", $opt_HHR) && index($seqname, $mdl_sqname) != -1) {
+            next;
+          }
           if($full_fwd_npos_AA[$midx][$apos_p] >= $rc_minlen && $full_fwd_logscore_AA[$midx][$apos_p] > $fwd_max_score) {
             $fwd_max_score = $full_fwd_logscore_AA[$midx][$apos_p];
             $fwd_argmax = $midx;
           }
         }
-        
-        # Find best model for right segment
+        my $fwd_argmax_gsg = $mdl_group_subgroup_A[$fwd_argmax];
+
+        # Find best model for right segment, this can be $fwd_argmax, but can't be a different model with same subgroup as fwd_argmax
         my $bck_max_score = -999999;
         my $bck_argmax = -1;
         if($apos_p + 1 < $full_alen) {
           for(my $midx = 0; $midx < $mdl_nseq; $midx++) {
+            # Skip self if --rc_igself enabled (model name is substring of sequence name)
+            my $mdl_sqname = $mdl_msa->get_sqname($midx);
+            $mdl_sqname =~ s/^.*\///;  # Remove directory path if present
+            if(opt_Get("--rc_igself", $opt_HHR) && index($seqname, $mdl_sqname) != -1) {
+              next;
+            }
+            if(($midx != $fwd_argmax) && $mdl_has_subgroup_A[$midx] && ($mdl_group_subgroup_A[$midx] eq $fwd_argmax_gsg)) { 
+              # don't consider different models in same group/subgroup as fwd argmax
+              next;
+            }
             if($full_bck_npos_AA[$midx][$apos_p+1] >= $rc_minlen && $full_bck_logscore_AA[$midx][$apos_p+1] > $bck_max_score) {
               $bck_max_score = $full_bck_logscore_AA[$midx][$apos_p+1];
               $bck_argmax = $midx;
@@ -16424,11 +16387,22 @@ sub classify_based_on_alignment {
         # Skip if we couldn't find valid models for both segments
         if($fwd_argmax < 0 || $bck_argmax < 0) { next; }
         
+        $tested_breakpoints++;
+        
         my $fwd_argmax_gsg = $mdl_group_subgroup_A[$fwd_argmax];
         my $bck_argmax_gsg = $mdl_group_subgroup_A[$bck_argmax];
         
+        # DEBUG: Show first comparison
+        if($tested_breakpoints == 1) {
+          printf STDERR ("[DEBUG-RC] Seq:%s First breakpoint test: pos=%d, left_best=%s(%s), right_best=%s(%s), same=%d\n",
+                         $seqname, $apos_p, $mdl_msa->get_sqname($fwd_argmax), $fwd_argmax_gsg,
+                         $mdl_msa->get_sqname($bck_argmax), $bck_argmax_gsg, 
+                         ($fwd_argmax_gsg eq $bck_argmax_gsg ? 1 : 0));
+        }
+        
         # Only consider if different groups
         if($fwd_argmax_gsg ne $bck_argmax_gsg) {
+          $valid_candidates++;
           # Calculate recombination score using proper null models:
           # For left segment: parent L vs parent R as null
           # For right segment: parent R vs parent L as null
@@ -16446,7 +16420,12 @@ sub classify_based_on_alignment {
           my $left_diff = $parent_L_left - $parent_R_left;
           my $right_diff = $parent_R_right - $parent_L_right;
           
-          if($left_diff >= $rc_thresh && $right_diff >= $rc_thresh) {
+          # Require:
+          # 1. Both differential scores (left_diff, right_diff) exceed threshold
+          # 2. Both absolute parent scores (parent_L_left, parent_R_right) exceed threshold
+          #    This ensures we're confident in each parent assignment
+          if($left_diff >= $rc_thresh && $right_diff >= $rc_thresh &&
+             $parent_L_left >= $rc_thresh && $parent_R_right >= $rc_thresh) {
             if($recomb_score > $max_recomb_score) {
               $max_recomb_score = $recomb_score;
               $best_breakpoint = $apos_p;
@@ -16462,11 +16441,29 @@ sub classify_based_on_alignment {
           }
         }
       }
+      
+      printf STDERR ("[DEBUG-RC] Seq:%s Tested %d breakpoints, %d valid candidates (different groups)\n", 
+                     $seqname, $tested_breakpoints, $valid_candidates);
+      printf STDERR ("[DEBUG-RC] Seq:%s Best recombination: score=%.2f, breakpoint=%d, left_diff=%.2f, right_diff=%.2f\n",
+                     $seqname, $max_recomb_score, $best_breakpoint, $best_left_diff, $best_right_diff);
+      if($best_breakpoint >= 0) {
+        printf STDERR ("[DEBUG-RC] Seq:%s Best parents: L=%s(%s), R=%s(%s)\n",
+                       $seqname, $mdl_msa->get_sqname($best_parent1_idx), $best_parent1_gsg,
+                       $mdl_msa->get_sqname($best_parent2_idx), $best_parent2_gsg);
+      }
+    }
+    else {
+      printf STDERR ("[DEBUG-RC] Seq:%s Skipping recombination scan - no valid single model baseline\n", $seqname);
     }
     
     # Report alert for best recombination if above threshold
-    # Verify both individual differentials are above threshold (should be redundant, but ensures correctness)
-    if($max_recomb_score >= $rc_thresh && $best_left_diff >= $rc_thresh && $best_right_diff >= $rc_thresh) {
+    # Verify all conditions:
+    # - Recombination score >= threshold
+    # - Both differentials >= threshold
+    # - Both absolute parent scores >= threshold (confidence in parent assignments)
+    if($max_recomb_score >= $rc_thresh && $best_left_diff >= $rc_thresh && $best_right_diff >= $rc_thresh &&
+       $best_fwd_score >= $rc_thresh && $best_bck_score >= $rc_thresh) {
+      printf STDERR ("[DEBUG-RC] Seq:%s ALERT: Recombination detected! Generating alert...\n", $seqname);
       # Calculate fractional identity to parent L on left segment and parent R on right segment
       my $parent_L_mdl_sqstring = $mdl_msa->get_sqstring_aligned($best_parent1_idx);
       $parent_L_mdl_sqstring =~ tr/a-z/A-Z/;
@@ -16563,6 +16560,10 @@ sub classify_based_on_alignment {
       
       alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "recombin", $seqname, $alt_scoords . $alt_mcoords . $errmsg, $FH_HR);
     }
+    else {
+      printf STDERR ("[DEBUG-RC] Seq:%s No alert: max_score=%.2f (thresh=%.2f), left_diff=%.2f, right_diff=%.2f\n",
+                     $seqname, $max_recomb_score, $rc_thresh, $best_left_diff, $best_right_diff);
+    }
     
     # STEP 4: Nearest neighbor classification uses the NN region data (fwd_logscore_AA, etc.)
     # Calculate percent identity for each model sequence to find nearest neighbor
@@ -16601,7 +16602,7 @@ sub classify_based_on_alignment {
       } 
     }
     # we divide max_nnregion_len by 2 so we don't automatically choose the one model with the max (if only one model has the max)
-    # this should be rare (min_nnregion_length may be 40, max_nnregion may be 20 before this (meaning most aligned positions any model 
+    # this should be rare, min_nnregion_length may be 40, max_nnregion may be 20 before this (meaning most aligned positions any model 
     # has with this seq is 20), and it will be 10 afterwards. This means we'll consider any model that has at least 10 matching positions
     # with this seq as its possible nearest neighbor
     $max_nnregion_len /= 2; 
@@ -16634,33 +16635,26 @@ sub classify_based_on_alignment {
         my $cur_sqname = $mdl_msa->get_sqname($midx);
         my $cur_grp    = ( defined $mdl_alninfo_HHR->{$cur_sqname}{"group"} ) ? $mdl_alninfo_HHR->{$cur_sqname}{"group"} : "-";
         my $cur_subgrp = ( defined $mdl_alninfo_HHR->{$cur_sqname}{"subgroup"} ) ? $mdl_alninfo_HHR->{$cur_sqname}{"subgroup"} : "-";
+        my $cur_matches_max1_subgrp =
+            ( ( $max1_grp ne "-" ) && ( $max1_subgrp ne "-" ) && ( $max1_grp eq $cur_grp ) && ( $max1_subgrp eq $cur_subgrp ) ) ? 1 : 0;
         if ( $cur_pid > $max1 ) {
           # new max1, first update max2 if necessary
-          my $cur_matches_max1_subgrp =
-            ( ( $max1_grp ne "-" ) && ( $max1_subgrp ne "-" ) && ( $max1_grp eq $cur_grp ) && ( $max1_subgrp eq $cur_subgrp ) ) ? 1 : 0;
-          if ( ( !defined $max2 )
-            || ( ( $cur_pid > $max2 ) && ( !$cur_matches_max1_subgrp ) ) )
-          {
-            # update max2 to be equal to old max1
+          if ( ( ( !defined $max2 ) || ( $cur_pid > $max2 ) ) && ( !$cur_matches_max1_subgrp ) ) {
+             # update max2 to be equal to old max1
             ( $max2, $argmax2, $max2_sqname, $max2_grp, $max2_subgrp ) = ( $max1, $argmax1, $max1_sqname, $max1_grp, $max1_subgrp );
           }
 
           # update max1
           ( $max1, $argmax1, $max1_sqname, $max1_grp, $max1_subgrp ) = ( $cur_pid, $midx, $cur_sqname, $cur_grp, $cur_subgrp );
         }
-        else {    # not a new max, but maybe a new max2
-          my $cur_matches_max2_subgrp =
-            ( ( defined $max2 ) && ( $max2_grp ne "-" ) && ( $max2_subgrp ne "-" ) && ( $max2_grp eq $cur_grp ) && ( $max2_subgrp eq $cur_subgrp ) ) ? 1 : 0;
-          if ( ( !defined $max2 )
-            || ( ( $cur_pid > $max2 ) && ( !$cur_matches_max2_subgrp ) ) )
-          {
-            # update max2 to be equal to current model sequence
-            ( $max2, $argmax2, $max2_sqname, $max2_grp, $max2_subgrp ) = ( $cur_pid, $midx, $cur_sqname, $cur_grp, $cur_subgrp );
+        else { # not a new max, but maybe a new max2
+          if ( (! defined $max2 ) || ( $cur_pid > $max2 ) && ( !$cur_matches_max1_subgrp ) ) { 
+             # update max2 to be equal to current model sequence
+             ( $max2, $argmax2, $max2_sqname, $max2_grp, $max2_subgrp ) = ( $cur_pid, $midx, $cur_sqname, $cur_grp, $cur_subgrp );
           }
         }
       }
-
-#printf("\t\tfwd_nmatch_AA[$midx][%d]: %.3f (%s)\n", ($alen_p-1), $fwd_nmatch_AA[$midx][($alen_p-1)], $mdl_msa->get_sqname($midx));
+      #printf("\t\tfwd_nmatch_AA[$midx][%d]: %.3f (%s)\n", ($alen_p-1), $fwd_nmatch_AA[$midx][($alen_p-1)], $mdl_msa->get_sqname($midx));
     }
     $cls_output_HHR->{$seqname}{"model1_pid"} = $max1;
   
