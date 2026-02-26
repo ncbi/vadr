@@ -3295,7 +3295,7 @@ sub vdr_AlertInfoInitialize {
   vdr_AlertInfoAdd($alt_info_HHR, "recombin", "sequence",
                    "POSSIBLE_RECOMBINATION", # short description
                    "possible recombination detected in sequence", # long description
-                   0, 1, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   0, 0, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
                    $FH_HR); 
 
   # define the ftbl_invalid_by values, these are one-sided, any alert code listed in the 
