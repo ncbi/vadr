@@ -307,45 +307,6 @@ opt_Add("--nmaxins",    "integer",   27,        $g,   undef,   undef,           
 opt_Add("--nmaxdel",    "integer",   27,        $g,   undef,   undef,            "deletinn/DELETION_OF_NT max allowed nucleotide (nt) deletion length in CDS nt alignment is <n>",   "deletinn/DELETION_OF_NT max allowed nucleotide (nt) deletion length in CDS nt alignment is <n>",     \%opt_HH, \@opt_order_A);
 opt_Add("--xlonescore", "integer",  80,        $g,   undef,"--pv_skip,--pv_hmmer", "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>",    "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--hlonescore", "integer",  10,        $g,"--pv_hmmer","--pv_skip",        "indfantp/INDEFINITE_ANNOTATION min score for a hmmer hit not supported by CM analysis is <n>",     "indfantp/INDEFINITE_ANNOTATION min score for a hmmer hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
-# RECOMBINATION DETECTION OPTIONS (experimental, shelved as of Feb 26 2026)
-# ---------------------------------------------------------------------------
-# These options drive the experimental recombination detection feature, which
-# detects sequences whose 5' and 3' halves are most similar to different
-# subgroup parent sequences (possible inter-subgroup recombinants).
-#
-# Algorithm summary (see STEP 3 of classify_based_on_alignment() below):
-#  - Per-position log-likelihood ratio (LLR) forward/backward scores are
-#    computed for each model sequence using a position-specific nucleotide
-#    frequency null model. The null terms cancel in pairwise comparisons,
-#    giving a direct left-half vs. right-half model comparison.
-#  - The scan finds the breakpoint where the best left-half model differs
-#    from the best right-half model AND both LLR differentials exceed
-#    --rc_thresh. Reports a non-fatal 'recombin' alert if found.
-#  - Note: STEP 1 (LLR scoring) also feeds STEP 4 (nearest-neighbor
-#    classification) and always runs; only STEP 3 (the scan) is gated by
-#    --do_rc.
-#
-# Status as of Feb 26 2026:
-#  WORKS:   10/10 toy 50/50 recombinants detected.
-#           All 4 Goya et al. HRV-A105/A21 recombinants flagged correctly,
-#           with breakpoint correctly placed near nt 5250.
-#  PROBLEM: Zhao et al. A10/A64 and A30/A45 recombinants: wrong parent
-#           serotypes called for A10/A64 (Tests 2/3); no signal at all for
-#           A10/A30 (Test 4). Suspected cause: the HRV reference alignment
-#           lacks sufficient serotype diversity for reliable LLR resolution.
-#  NEXT STEP TO IMPROVE: expand the VADR-HRV model reference alignment to
-#           cover more serotypes; consider per-model tuning of --rc_thresh
-#           and --rc_match. Feature may be more valuable for viruses with
-#           high recombination rates (e.g. HIV) once good model coverage
-#           exists.
-#
-# To enable: v-annotate.pl --do_rc [--rc_thresh x] [--rc_match x] ...
-opt_Add("--rc_thresh",  "real",     0.05,       $g,    undef,   undef,           "recombin/POSSIBLE_RECOMBINATION min per base bit score on each side of breakpoint is <x>",          "recombin/POSSIBLE_RECOMBINATION min per base bit score on each side of breakpoint is <x>", \%opt_HH, \@opt_order_A);   
-opt_Add("--rc_match",   "real",     0.95,      $g,    undef,   undef,            "recombin/POSSIBLE_RECOMBINATION expected match probability for homology model is <x>",              "recombin/POSSIBLE_RECOMBINATION expected match probability for homology model is <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--rc_minlen",  "integer",  10,        $g,    undef,   undef,            "recombin/POSSIBLE_RECOMBINATION min length segment allowed on either side of breakpoint is <n>",    "recombin/POSSIBLE_RECOMBINATION min length segment allowed on either side of breakpoint is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--rc_igself",  "boolean",  0,         $g,    undef,   undef,            "recombin/POSSIBLE_RECOMBINATION ignore model sequences with same name as input sequence",           "recombin/POSSIBLE_RECOMBINATION ignore model sequences with same name as input sequence", \%opt_HH, \@opt_order_A);
-opt_Add("--rc_iglist",  "string",   undef,     $g,    undef,   undef,            "recombin/POSSIBLE_RECOMBINATION ignore any model seq w/group.subgroup with any string in csv <s>",  "recombin/POSSIBLE_RECOMBINATION ignore any model seq w/group.subgroup with any string in csv <s>", \%opt_HH, \@opt_order_A); 
-opt_Add("--do_rc",      "boolean",  0,         $g,    undef,   undef,            "recombin/POSSIBLE_RECOMBINATION enable recombination detection (experimental, off by default)",      "recombin/POSSIBLE_RECOMBINATION enable recombination detection (experimental, off by default)", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling cmalign alignment stage";
 #        option               type   default group  requires incompat   preamble-output                                                                help-output    
@@ -446,6 +407,15 @@ $opt_group_desc_H{++$g} = "options related to splitting input file into chunks a
 opt_Add("--split",      "boolean", 0,          $g,    undef,  "-p",       "split input file into chunks, run each chunk separately",              "split input file into chunks, run each chunk separately", \%opt_HH, \@opt_order_A);
 opt_Add("--cpu",        "integer", 1,          $g,    undef, undef,       "parallelize across <n> CPU workers (requires --split or --glsearch)",  "parallelize across <n> CPU workers (requires --split or --glsearch)", \%opt_HH, \@opt_order_A);
 opt_Add("--sidx",       "integer", 1,          $g,    undef,"--split",    "start sequence indexing at <n> in tabular output files",               "start sequence indexing at <n> in tabular output files", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{++$g} = "options for experimental recombination detection";
+#     option            type       default  group   requires incompat   preamble-output                                                                                                    help-output
+opt_Add("--do_rc",      "boolean",  0,         $g,    undef,   undef,   "recombin/POSSIBLE_RECOMBINATION enable recombination detection (experimental, off by default)",      "recombin/POSSIBLE_RECOMBINATION enable recombination detection (experimental, off by default)", \%opt_HH, \@opt_order_A);
+opt_Add("--rc_thresh",  "real",     0.05,      $g,    undef,   undef,   "recombin/POSSIBLE_RECOMBINATION min per base bit score on each side of breakpoint is <x>",          "recombin/POSSIBLE_RECOMBINATION min per base bit score on each side of breakpoint is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--rc_match",   "real",     0.95,      $g,    undef,   undef,   "recombin/POSSIBLE_RECOMBINATION expected match probability for homology model is <x>",              "recombin/POSSIBLE_RECOMBINATION expected match probability for homology model is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--rc_minlen",  "integer",  10,        $g,    undef,   undef,   "recombin/POSSIBLE_RECOMBINATION min length segment allowed on either side of breakpoint is <n>",    "recombin/POSSIBLE_RECOMBINATION min length segment allowed on either side of breakpoint is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--rc_igself",  "boolean",  0,         $g,    undef,   undef,   "recombin/POSSIBLE_RECOMBINATION ignore model sequences with same name as input sequence",           "recombin/POSSIBLE_RECOMBINATION ignore model sequences with same name as input sequence", \%opt_HH, \@opt_order_A);
+opt_Add("--rc_iglist",  "string",   undef,     $g,    undef,   undef,   "recombin/POSSIBLE_RECOMBINATION ignore any model seq w/group.subgroup with any string in csv <s>",  "recombin/POSSIBLE_RECOMBINATION ignore any model seq w/group.subgroup with any string in csv <s>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #     option            type       default  group   requires incompat    preamble-output                                                help-output    
@@ -573,12 +543,6 @@ my $options_okay =
                 'nmaxdel=s'      => \$GetOptions_H{"--nmaxdel"},
                 'xlonescore=s'   => \$GetOptions_H{"--xlonescore"},
                 'hlonescore=s'   => \$GetOptions_H{"--hlonescore"},
-                'rc_thresh=s'    => \$GetOptions_H{"--rc_thresh"},
-                'rc_match=s'     => \$GetOptions_H{"--rc_match"},
-                'rc_minlen=s'    => \$GetOptions_H{"--rc_minlen"},
-                'rc_igself'      => \$GetOptions_H{"--rc_igself"},
-                'rc_iglist=s'    => \$GetOptions_H{"--rc_iglist"},
-                'do_rc'          => \$GetOptions_H{"--do_rc"},
                 # options for controlling cmalign alignment stage 
                 'mxsize=s'       => \$GetOptions_H{"--mxsize"},
                 'tau=s'          => \$GetOptions_H{"--tau"},
@@ -663,6 +627,13 @@ my $options_okay =
                 'split'         => \$GetOptions_H{"--split"},
                 'cpu=s'         => \$GetOptions_H{"--cpu"}, 
                 'sidx=s'        => \$GetOptions_H{"--sidx"}, 
+# options for experimental recombination detection
+                'do_rc'          => \$GetOptions_H{"--do_rc"},
+                'rc_thresh=s'    => \$GetOptions_H{"--rc_thresh"},
+                'rc_match=s'     => \$GetOptions_H{"--rc_match"},
+                'rc_minlen=s'    => \$GetOptions_H{"--rc_minlen"},
+                'rc_igself'      => \$GetOptions_H{"--rc_igself"},
+                'rc_iglist=s'    => \$GetOptions_H{"--rc_iglist"},
 # options related to parallelization
                 'p'             => \$GetOptions_H{"-p"},
                 'q=s'           => \$GetOptions_H{"-q"},
@@ -16338,11 +16309,41 @@ sub classify_based_on_alignment {
     }
     
     # STEP 3: Recombination detection using FULL sequence data (only if --do_rc is enabled)
-    # Shelved Feb 26 2026. Works on Goya et al. HRV-A105/A21 recombinants but
-    # not reliably on Zhao et al. A10/A64 or A30/A45 (wrong parent serotypes,
-    # one pair undetected). Suspected cause: insufficient reference alignment
-    # coverage in the HRV model. See --rc_* option comments above for details.
     if(opt_Get("--do_rc", $opt_HHR)) {
+    # RECOMBINATION DETECTION (experimental, shelved as of Feb 26 2026)
+    # -------------------------------------------------------------------------
+    # Detects sequences whose 5' and 3' halves are most similar to different
+    # subgroup parent sequences (possible inter-subgroup recombinants).
+    #
+    # Algorithm summary:
+    #  - Per-position log-likelihood ratio (LLR) forward/backward scores are
+    #    computed for each model sequence using a position-specific nucleotide
+    #    frequency null model. The null terms cancel in pairwise comparisons,
+    #    giving a direct left-half vs. right-half model comparison.
+    #  - The scan finds the breakpoint where the best left-half model differs
+    #    from the best right-half model AND both LLR differentials exceed
+    #    --rc_thresh. Reports a non-fatal 'recombin' alert if found.
+    #  - Note: STEP 1 (LLR scoring) also feeds STEP 4 (nearest-neighbor
+    #    classification) and always runs; only STEP 3 (the scan) is gated by
+    #    --do_rc.
+    #
+    # Status as of Feb 26 2026:
+    #  WORKS:   10/10 toy 50/50 recombinants detected.
+    #           All 4 Goya et al. (2024, J Infect Dis 231:e154-e164)
+    #           HRV-A105/A21 recombinants flagged correctly, with breakpoint
+    #           correctly placed near nt 5250.
+    #  PROBLEM: Zhao et al. (2023, Microbiol Spectr 11:e00840-23) A10/A64 and
+    #           A30/A45 recombinants: wrong parent serotypes called for A10/A64
+    #           (Tests 2/3); no signal at all for A10/A30 (Test 4). Suspected
+    #           cause: the HRV reference alignment
+    #           lacks sufficient serotype diversity for reliable LLR resolution.
+    #  NEXT STEP TO IMPROVE: expand the VADR-HRV model reference alignment to
+    #           cover more serotypes; consider per-model tuning of --rc_thresh
+    #           and --rc_match. Feature may be more valuable for viruses with
+    #           high recombination rates (e.g. HIV) once good model coverage
+    #           exists.
+    #
+    # To enable: v-annotate.pl --do_rc [--rc_thresh x] [--rc_match x] ...
     my $max_recomb_score = 0;
     my $best_breakpoint = -1;
     my $best_parent1_idx = -1;
