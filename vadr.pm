@@ -3292,6 +3292,9 @@ sub vdr_AlertInfoInitialize {
                    "only part of the specified alignment region used to find nearest neighbor b/c sequence doesn't span full region", # long description
                    0, 0, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
                    $FH_HR); 
+  # 'recombin' alert: non-fatal (causes_failure=0) because the feature is
+  # experimental and shelved as of Feb 26 2026. Only reported when --do_rc is
+  # used. See the --rc_* option block in v-annotate.pl for status/next-steps.
   vdr_AlertInfoAdd($alt_info_HHR, "recombin", "sequence",
                    "POSSIBLE_RECOMBINATION", # short description
                    "possible recombination detected in sequence", # long description
