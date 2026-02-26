@@ -700,6 +700,21 @@ In the table below, `<n>` represents a positive interger argument and
 | `--xlonescore <n>`  | [*indfantp*](#indfantp1)                             | INDEFINITE_ANNOTATION                 | >= 80   | <a name="options-alerts-xlonescore"></a> set minimum blastx *raw* score for a lone blastx hit not supported by CM analysis for alert to `<n>` | 
 | `--hlonescore <n>`  | [*indfantp*](#indfantp1)                             | INDEFINITE_ANNOTATION                 | >= 10   | <a name="options-alerts-hlonescore"></a>  set minimum hmmer bit score for a lone hmmsearch hit not supported by CM analysis for alert to `<n>` | 
 
+### `v-annotate.pl` options for experimental recombination detection <a name="options-recomb"></a>
+
+Recombination detection is an **experimental** feature that is disabled by default. It
+requires nearest-neighbor classification mode (i.e., a model info file with alignment files
+specifying group/subgroup information). Enable with `--do_rc`.
+
+| .........option......... | explanation |
+|---------------------|--------------------|  
+| `--do_rc`           | enable recombination detection: flag sequences where the nearest-neighbor switches between different subgroups at some breakpoint position (experimental, off by default) |
+| `--rc_thresh <x>`   | for `--do_rc`, set the minimum per-nucleotide bit score differential required on each side of the breakpoint to report a [*recombin*](#recombin1) alert to `<x>`, the default value for `<x>` is `0.05` |
+| `--rc_match <x>`    | for `--do_rc`, set the expected match probability for the homology model used in log-likelihood scoring to `<x>`, the default value for `<x>` is `0.95`; if the model info file specifies a `VADR-default-rc_match` value, that takes precedence when `--rc_match` is not explicitly set by the user |
+| `--rc_minlen <n>`   | for `--do_rc`, set the minimum number of non-gap aligned positions required on each side of the breakpoint to `<n>`, the default value for `<n>` is `10` |
+| `--rc_igself`       | for `--do_rc`, when testing a sequence that is also present in the model alignment, skip that model sequence as a candidate parent (prevents self-matching, useful when testing sequences within the reference set) |
+| `--rc_iglist <s>`   | for `--do_rc`, ignore model sequences whose group.subgroup string contains any token in the comma-separated list `<s>` as a candidate parent |
+
 ### `v-annotate.pl` options for controlling cmalign alignment stage <a name="options-align"></a>
 
 Several options exist for controlling the command-line options that will be passed
@@ -830,7 +845,7 @@ between hits for content of Ns. Ns in regions that satisfy the following three c
 are then replaced with the expected nucleotide at each corresponding position:
 
 * missing sequence region must be at least 5 nt
-  (controllable with `--r_minlen` option)
+  
 
 * length of missing sequence region must equal length of
    missing model region
@@ -1080,6 +1095,7 @@ exception ranges are not allowed.
 | [*nnloidcl*](#nnloidcl2)  | sequence | never | LOW_ID_CLASSIFICATION_NN        | <a name="nnloidcl1"></a> low fractional identity of sequence and its nearest neighbor model sequence | - | - 
 | [*nnalrgcl*](#nnalrgcl2)  | sequence | never | ALT_REGION_CLASSIFICATION_NN    | <a name="nnalrgcl1"></a> alternative alignment region used to find nearest neighbor b/c sequence does not include specified region | - | - |
 | [*nnptrgcl*](#nnptrgcl2)  | sequence | never | PARTIAL_REGION_CLASSIFICATION_NN| <a name="nnptrgcl1"></a> only part of the specified alignment region used to find nearest neighbor b/c sequence doesn't span full region | - | - |
+| [*recombin*](#recombin2)  | sequence | never | POSSIBLE_RECOMBINATION          | <a name="recombin1"></a> possible recombination detected: nearest-neighbor switches subgroup at some breakpoint position (only reported with `--do_rc`) | - | - |
 
 ### Additional information on `v-annotate.pl` alerts <a name="alerts2"></a> 
 
@@ -1192,11 +1208,12 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*nnindfcl*](#nnindfcl1)  | INDEFINITE_CLASSIFICATION_NN    | [`--nn_indefclass`](#options-alerts-nn_indefclass) | - | - <a name="nnindfcl2"></a> | 
 | [*nnloidcl*](#nnloidcl1)  | LOW_ID_CLASSIFICATION_NN        | [`--nn_lowidclass`](#options-alerts-nn_lowidclass) | - | - <a name="nnloidcl2"></a> | 
 | [*nnalrgcl*](#nnalrgcl1)  | ALT_REGION_CLASSIFICATION_NN    | none | - | - <a name="nnalrgcl2"></a> | 
-| [*nnptrgcl*](#nnptrgcl1)  | PARTIAL_REGION_CLASSIFICATION_NN| [`--nn_partregclass`](#options-alerts-nn_partregclass) | - | - <a name="nnptrgcl2"></a> | 
+| [*nnptrgcl*](#nnptrgcl1)  | PARTIAL_REGION_CLASSIFICATION_NN| [`--nn_partregclass`](#options-alerts-nn_partregclass) | - | - <a name="nnptrgcl2"></a> |
+| [*recombin*](#recombin1)  | POSSIBLE_RECOMBINATION          | [`--rc_thresh`, `--rc_match`, `--rc_minlen`, `--rc_igself`, `--rc_iglist`](#options-recomb) | - | - <a name="recombin2"></a> |
 
 ---
 
-## <a name="mnf"></a>Non-essential features: allowing sequences to pass despite fatal alerts for specific features
+## <a name="mnf"></a>Non-essential features:allowing sequences to pass despite fatal alerts for specific features
 
 It is possible to specify that certain features are *non-essential* and so
 have relaxed requirements. Some alerts that are normally fatal are not
