@@ -16168,148 +16168,140 @@ sub classify_based_on_alignment {
       ofile_FAIL("ERROR, in $sub_name, apos_start: $apos_start apos_stop: $apos_stop seq_rf_start: $seq_rf_start, seq_rf_stop: $seq_rf_stop, alen_p: $alen_p, scalar(seq_sqstring_A): " . scalar(@seq_sqstring_A) . "\n", 1, $FH_HR);
     }					    
     
-    # STEP 1: Calculate forward/backward log-likelihood scores for FULL sequence (for recombination detection)
-    # We always compute these for the full sequence alignment from seq_rf_start to seq_rf_stop
-    my @full_fwd_logscore_AA = (); # cumulative log-likelihood score from start to position (FULL sequence)
-    my @full_bck_logscore_AA = (); # cumulative log-likelihood score from position to end (FULL sequence)
-    my @full_fwd_npos_AA = ();     # number of non-gap positions scored in forward direction (FULL sequence)
-    my @full_bck_npos_AA = ();     # number of non-gap positions scored in backward direction (FULL sequence)
-    
-    my $full_alen = $seq_rf_stop - $seq_rf_start + 1;
-    my $full_seq_sqstring = substr($seq_sqstring, ($seq_rf_start - 1), $full_alen);
-    my @full_seq_sqstring_A = split("", $full_seq_sqstring);
-    
     my ($apos_p, $seq_char, $mdl_char, $seq_is_res, $mdl_is_res);
-    
-    for(my $midx = 0; $midx < $mdl_nseq; $midx++) { 
-      my $mdl_sqstring = $mdl_msa->get_sqstring_aligned($midx);
-      $mdl_sqstring =~ tr/a-z/A-Z/;
-      my $full_mdl_sqstring = substr($mdl_sqstring, ($seq_rf_start - 1), $full_alen);
-      my @full_mdl_sqstring_A = split("", $full_mdl_sqstring);
-                  
-      @{$full_fwd_logscore_AA[$midx]} = ();
-      @{$full_fwd_npos_AA[$midx]} = ();
-      
-      # Forward pass over FULL sequence - accumulate log-likelihood scores
-      for($apos_p = 0; $apos_p < $full_alen; $apos_p++) {
-        $seq_char = $full_seq_sqstring_A[$apos_p];
-        $mdl_char = $full_mdl_sqstring_A[$apos_p];
-        $seq_is_res = ($seq_char =~ m/[A-Z]/) ? 1 : 0;
-        $mdl_is_res = ($mdl_char =~ m/[A-Z]/) ? 1 : 0;
-        
-        $full_fwd_logscore_AA[$midx][$apos_p] = ($apos_p > 0) ? $full_fwd_logscore_AA[$midx][($apos_p-1)] : 0;
-        $full_fwd_npos_AA[$midx][$apos_p]     = ($apos_p > 0) ? $full_fwd_npos_AA[$midx][($apos_p-1)]     : 0;
-        
-        if(($seq_is_res) && ($mdl_is_res)) {
-          my $actual_apos = $seq_rf_start + $apos_p - 1;
-          
-          my $position_score;
-          if($seq_char eq $mdl_char) {
-            my $freq_nt = (defined $nt_freq_HA[$actual_apos]{$seq_char}) ? $nt_freq_HA[$actual_apos]{$seq_char} : 0.25;
-            $freq_nt = 0.001 if $freq_nt < 0.001;
-            $freq_nt = 0.999 if $freq_nt > 0.999;
-            $position_score = (log($rc_match) / log(2)) - 2.0 * (log($freq_nt) / log(2));
-          } else {
-            my $freq_seq = (defined $nt_freq_HA[$actual_apos]{$seq_char}) ? $nt_freq_HA[$actual_apos]{$seq_char} : 0.25;
-            my $freq_mdl = (defined $nt_freq_HA[$actual_apos]{$mdl_char}) ? $nt_freq_HA[$actual_apos]{$mdl_char} : 0.25;
-            $freq_seq = 0.001 if $freq_seq < 0.001;
-            $freq_mdl = 0.001 if $freq_mdl < 0.001;
-            $position_score = (log($rc_mismatch) / log(2)) - (log($freq_seq) / log(2)) - (log($freq_mdl) / log(2));
-          }
-          
-          $full_fwd_logscore_AA[$midx][$apos_p] += $position_score;
-          $full_fwd_npos_AA[$midx][$apos_p]++;
-        }
-      }
-      
-      @{$full_bck_logscore_AA[$midx]} = ();
-      @{$full_bck_npos_AA[$midx]} = ();
-      
-      # Backward pass over FULL sequence - accumulate log-likelihood scores
-      for($apos_p = ($full_alen-1); $apos_p >= 0; $apos_p--) {
-        $seq_char = $full_seq_sqstring_A[$apos_p];
-        $mdl_char = $full_mdl_sqstring_A[$apos_p];
-        $seq_is_res = ($seq_char =~ m/[A-Z]/) ? 1 : 0;
-        $mdl_is_res = ($mdl_char =~ m/[A-Z]/) ? 1 : 0;
-        
-        $full_bck_logscore_AA[$midx][$apos_p] = ($apos_p < ($full_alen-1)) ? $full_bck_logscore_AA[$midx][($apos_p+1)] : 0;
-        $full_bck_npos_AA[$midx][$apos_p]     = ($apos_p < ($full_alen-1)) ? $full_bck_npos_AA[$midx][($apos_p+1)]     : 0;
-        
-        if(($seq_is_res) && ($mdl_is_res)) {
-          my $actual_apos = $seq_rf_start + $apos_p - 1;
-          
-          my $position_score;
-          if($seq_char eq $mdl_char) {
-            my $freq_nt = (defined $nt_freq_HA[$actual_apos]{$seq_char}) ? $nt_freq_HA[$actual_apos]{$seq_char} : 0.25;
-            $freq_nt = 0.001 if $freq_nt < 0.001;
-            $freq_nt = 0.999 if $freq_nt > 0.999;
-            $position_score = (log($rc_match) / log(2)) - 2.0 * (log($freq_nt) / log(2));
-          } else {
-            my $freq_seq = (defined $nt_freq_HA[$actual_apos]{$seq_char}) ? $nt_freq_HA[$actual_apos]{$seq_char} : 0.25;
-            my $freq_mdl = (defined $nt_freq_HA[$actual_apos]{$mdl_char}) ? $nt_freq_HA[$actual_apos]{$mdl_char} : 0.25;
-            $freq_seq = 0.001 if $freq_seq < 0.001;
-            $freq_mdl = 0.001 if $freq_mdl < 0.001;
-            $position_score = (log($rc_mismatch) / log(2)) - (log($freq_seq) / log(2)) - (log($freq_mdl) / log(2));
-          }
-          
-          $full_bck_logscore_AA[$midx][$apos_p] += $position_score;
-          $full_bck_npos_AA[$midx][$apos_p]++;
-        }
-      }
-    }
-    
-    # STEP 2: Now subset or reference the data for nearest neighbor region
-    # If we're using the full sequence for NN (apos_start == seq_rf_start && apos_stop == seq_rf_stop),
-    # just reference the full arrays. Otherwise, we need to extract the subset.
-    my @fwd_logscore_AA = (); # for nearest neighbor classification
-    my @bck_logscore_AA = (); 
-    my @fwd_npos_AA = ();     
-    my @bck_npos_AA = ();
-    
-    if($apos_start == $seq_rf_start && $apos_stop == $seq_rf_stop) {
-      # Using full sequence for NN - just reference the arrays
-      @fwd_logscore_AA = @full_fwd_logscore_AA;
-      @bck_logscore_AA = @full_bck_logscore_AA;
-      @fwd_npos_AA = @full_fwd_npos_AA;
-      @bck_npos_AA = @full_bck_npos_AA;
-    } else {
-      # Need to extract subset for NN region
-      my $offset = $apos_start - $seq_rf_start; # offset into full arrays
+
+    # fwd/bck LLR score arrays for the NN region, populated below and used by STEP 4
+    my @fwd_logscore_AA = (); # cumulative LLR score from start of NN region to position
+    my @bck_logscore_AA = (); # cumulative LLR score from position to end of NN region
+    my @fwd_npos_AA = ();     # number of non-gap positions scored in forward direction
+    my @bck_npos_AA = ();     # number of non-gap positions scored in backward direction
+
+    if(opt_Get("--do_rc", $opt_HHR)) {
+      # STEP 1 (--do_rc path): compute fwd/bck LLR scores over FULL sequence
+      # (seq_rf_start..seq_rf_stop). These full-sequence arrays are needed by
+      # both STEP 3 (recombination scan) and STEP 2 (to derive NN-region arrays).
+      my @full_fwd_logscore_AA = (); # cumulative LLR score from start to position (FULL sequence)
+      my @full_bck_logscore_AA = (); # cumulative LLR score from position to end (FULL sequence)
+      my @full_fwd_npos_AA = ();     # non-gap positions scored forward (FULL sequence)
+      my @full_bck_npos_AA = ();     # non-gap positions scored backward (FULL sequence)
+
+      my $full_alen = $seq_rf_stop - $seq_rf_start + 1;
+      my $full_seq_sqstring = substr($seq_sqstring, ($seq_rf_start - 1), $full_alen);
+      my @full_seq_sqstring_A = split("", $full_seq_sqstring);
+
       for(my $midx = 0; $midx < $mdl_nseq; $midx++) {
-        @{$fwd_logscore_AA[$midx]} = ();
-        @{$fwd_npos_AA[$midx]} = ();
-        @{$bck_logscore_AA[$midx]} = ();
-        @{$bck_npos_AA[$midx]} = ();
-        
-        for($apos_p = 0; $apos_p < $alen_p; $apos_p++) {
-          my $full_idx = $offset + $apos_p;
-          
-          # For forward: score from start of NN region to this position
-          # = score at this position in full - score before NN region started
-          my $score_before_region = ($offset > 0) ? $full_fwd_logscore_AA[$midx][$offset - 1] : 0;
-          my $npos_before_region = ($offset > 0) ? $full_fwd_npos_AA[$midx][$offset - 1] : 0;
-          $fwd_logscore_AA[$midx][$apos_p] = $full_fwd_logscore_AA[$midx][$full_idx] - $score_before_region;
-          $fwd_npos_AA[$midx][$apos_p] = $full_fwd_npos_AA[$midx][$full_idx] - $npos_before_region;
-          
-          # For backward: score from this position to end of NN region
-          $bck_logscore_AA[$midx][$apos_p] = $full_bck_logscore_AA[$midx][$full_idx];
-          $bck_npos_AA[$midx][$apos_p] = $full_bck_npos_AA[$midx][$full_idx];
-          
-          # If not at end of NN region, subtract what comes after
-          if($apos_p < $alen_p - 1) {
-            my $next_full_idx = $offset + $apos_p + 1;
-            my $after_end_idx = $offset + $alen_p;
-            if($after_end_idx < $full_alen) {
-              $bck_logscore_AA[$midx][$apos_p] -= $full_bck_logscore_AA[$midx][$after_end_idx];
-              $bck_npos_AA[$midx][$apos_p] -= $full_bck_npos_AA[$midx][$after_end_idx];
+        my $mdl_sqstring = $mdl_msa->get_sqstring_aligned($midx);
+        $mdl_sqstring =~ tr/a-z/A-Z/;
+        my $full_mdl_sqstring = substr($mdl_sqstring, ($seq_rf_start - 1), $full_alen);
+        my @full_mdl_sqstring_A = split("", $full_mdl_sqstring);
+
+        @{$full_fwd_logscore_AA[$midx]} = ();
+        @{$full_fwd_npos_AA[$midx]} = ();
+
+        # Forward pass over FULL sequence - accumulate log-likelihood scores
+        for($apos_p = 0; $apos_p < $full_alen; $apos_p++) {
+          $seq_char = $full_seq_sqstring_A[$apos_p];
+          $mdl_char = $full_mdl_sqstring_A[$apos_p];
+          $seq_is_res = ($seq_char =~ m/[A-Z]/) ? 1 : 0;
+          $mdl_is_res = ($mdl_char =~ m/[A-Z]/) ? 1 : 0;
+
+          $full_fwd_logscore_AA[$midx][$apos_p] = ($apos_p > 0) ? $full_fwd_logscore_AA[$midx][($apos_p-1)] : 0;
+          $full_fwd_npos_AA[$midx][$apos_p]     = ($apos_p > 0) ? $full_fwd_npos_AA[$midx][($apos_p-1)]     : 0;
+
+          if(($seq_is_res) && ($mdl_is_res)) {
+            my $actual_apos = $seq_rf_start + $apos_p - 1;
+            my $position_score;
+            if($seq_char eq $mdl_char) {
+              my $freq_nt = (defined $nt_freq_HA[$actual_apos]{$seq_char}) ? $nt_freq_HA[$actual_apos]{$seq_char} : 0.25;
+              $freq_nt = 0.001 if $freq_nt < 0.001;
+              $freq_nt = 0.999 if $freq_nt > 0.999;
+              $position_score = (log($rc_match) / log(2)) - 2.0 * (log($freq_nt) / log(2));
+            } else {
+              my $freq_seq = (defined $nt_freq_HA[$actual_apos]{$seq_char}) ? $nt_freq_HA[$actual_apos]{$seq_char} : 0.25;
+              my $freq_mdl = (defined $nt_freq_HA[$actual_apos]{$mdl_char}) ? $nt_freq_HA[$actual_apos]{$mdl_char} : 0.25;
+              $freq_seq = 0.001 if $freq_seq < 0.001;
+              $freq_mdl = 0.001 if $freq_mdl < 0.001;
+              $position_score = (log($rc_mismatch) / log(2)) - (log($freq_seq) / log(2)) - (log($freq_mdl) / log(2));
+            }
+            $full_fwd_logscore_AA[$midx][$apos_p] += $position_score;
+            $full_fwd_npos_AA[$midx][$apos_p]++;
+          }
+        }
+
+        @{$full_bck_logscore_AA[$midx]} = ();
+        @{$full_bck_npos_AA[$midx]} = ();
+
+        # Backward pass over FULL sequence - accumulate log-likelihood scores
+        for($apos_p = ($full_alen-1); $apos_p >= 0; $apos_p--) {
+          $seq_char = $full_seq_sqstring_A[$apos_p];
+          $mdl_char = $full_mdl_sqstring_A[$apos_p];
+          $seq_is_res = ($seq_char =~ m/[A-Z]/) ? 1 : 0;
+          $mdl_is_res = ($mdl_char =~ m/[A-Z]/) ? 1 : 0;
+
+          $full_bck_logscore_AA[$midx][$apos_p] = ($apos_p < ($full_alen-1)) ? $full_bck_logscore_AA[$midx][($apos_p+1)] : 0;
+          $full_bck_npos_AA[$midx][$apos_p]     = ($apos_p < ($full_alen-1)) ? $full_bck_npos_AA[$midx][($apos_p+1)]     : 0;
+
+          if(($seq_is_res) && ($mdl_is_res)) {
+            my $actual_apos = $seq_rf_start + $apos_p - 1;
+            my $position_score;
+            if($seq_char eq $mdl_char) {
+              my $freq_nt = (defined $nt_freq_HA[$actual_apos]{$seq_char}) ? $nt_freq_HA[$actual_apos]{$seq_char} : 0.25;
+              $freq_nt = 0.001 if $freq_nt < 0.001;
+              $freq_nt = 0.999 if $freq_nt > 0.999;
+              $position_score = (log($rc_match) / log(2)) - 2.0 * (log($freq_nt) / log(2));
+            } else {
+              my $freq_seq = (defined $nt_freq_HA[$actual_apos]{$seq_char}) ? $nt_freq_HA[$actual_apos]{$seq_char} : 0.25;
+              my $freq_mdl = (defined $nt_freq_HA[$actual_apos]{$mdl_char}) ? $nt_freq_HA[$actual_apos]{$mdl_char} : 0.25;
+              $freq_seq = 0.001 if $freq_seq < 0.001;
+              $freq_mdl = 0.001 if $freq_mdl < 0.001;
+              $position_score = (log($rc_mismatch) / log(2)) - (log($freq_seq) / log(2)) - (log($freq_mdl) / log(2));
+            }
+            $full_bck_logscore_AA[$midx][$apos_p] += $position_score;
+            $full_bck_npos_AA[$midx][$apos_p]++;
+          }
+        }
+      }
+
+      # STEP 2 (--do_rc path): derive NN-region fwd/bck arrays from the full arrays
+      if($apos_start == $seq_rf_start && $apos_stop == $seq_rf_stop) {
+        # NN region is the full sequence - just copy the references
+        @fwd_logscore_AA = @full_fwd_logscore_AA;
+        @bck_logscore_AA = @full_bck_logscore_AA;
+        @fwd_npos_AA = @full_fwd_npos_AA;
+        @bck_npos_AA = @full_bck_npos_AA;
+      } else {
+        # NN region is a subset - extract by subtracting the out-of-region prefix/suffix
+        my $offset = $apos_start - $seq_rf_start; # offset into full arrays
+        for(my $midx = 0; $midx < $mdl_nseq; $midx++) {
+          @{$fwd_logscore_AA[$midx]} = ();
+          @{$fwd_npos_AA[$midx]} = ();
+          @{$bck_logscore_AA[$midx]} = ();
+          @{$bck_npos_AA[$midx]} = ();
+
+          for($apos_p = 0; $apos_p < $alen_p; $apos_p++) {
+            my $full_idx = $offset + $apos_p;
+
+            # Forward: score from start of NN region = full score minus score before region
+            my $score_before_region = ($offset > 0) ? $full_fwd_logscore_AA[$midx][$offset - 1] : 0;
+            my $npos_before_region  = ($offset > 0) ? $full_fwd_npos_AA[$midx][$offset - 1]     : 0;
+            $fwd_logscore_AA[$midx][$apos_p] = $full_fwd_logscore_AA[$midx][$full_idx] - $score_before_region;
+            $fwd_npos_AA[$midx][$apos_p]     = $full_fwd_npos_AA[$midx][$full_idx]     - $npos_before_region;
+
+            # Backward: score to end of NN region = full backward score minus score after region
+            $bck_logscore_AA[$midx][$apos_p] = $full_bck_logscore_AA[$midx][$full_idx];
+            $bck_npos_AA[$midx][$apos_p]     = $full_bck_npos_AA[$midx][$full_idx];
+            if($apos_p < $alen_p - 1) {
+              my $after_end_idx = $offset + $alen_p;
+              if($after_end_idx < $full_alen) {
+                $bck_logscore_AA[$midx][$apos_p] -= $full_bck_logscore_AA[$midx][$after_end_idx];
+                $bck_npos_AA[$midx][$apos_p]     -= $full_bck_npos_AA[$midx][$after_end_idx];
+              }
             }
           }
         }
       }
-    }
-    
-    # STEP 3: Recombination detection using FULL sequence data (only if --do_rc is enabled)
-    if(opt_Get("--do_rc", $opt_HHR)) {
+
+      # STEP 3: Recombination detection using FULL sequence data
     # RECOMBINATION DETECTION (experimental, shelved as of Feb 26 2026)
     # -------------------------------------------------------------------------
     # Detects sequences whose 5' and 3' halves are most similar to different
@@ -16323,9 +16315,9 @@ sub classify_based_on_alignment {
     #  - The scan finds the breakpoint where the best left-half model differs
     #    from the best right-half model AND both LLR differentials exceed
     #    --rc_thresh. Reports a non-fatal 'recombin' alert if found.
-    #  - Note: STEP 1 (LLR scoring) also feeds STEP 4 (nearest-neighbor
-    #    classification) and always runs; only STEP 3 (the scan) is gated by
-    #    --do_rc.
+    #  - Note: when --do_rc is enabled, STEP 1 computes scores over the full
+    #    sequence (needed for STEP 3's breakpoint scan). When --do_rc is off,
+    #    scores are computed directly over the NN region only (faster).
     #
     # Status as of Feb 26 2026:
     #  WORKS:   10/10 toy 50/50 recombinants detected.
@@ -16594,7 +16586,88 @@ sub classify_based_on_alignment {
       alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "recombin", $seqname, $alt_scoords . $alt_mcoords . $errmsg, $FH_HR);
     }
     } # end if(opt_Get("--do_rc"))
-    
+    else {
+      # STEP 1 (default path, --do_rc off): compute fwd/bck LLR scores directly
+      # over the NN region (apos_start..apos_stop), skipping the full sequence.
+      # This is more efficient when a classification region covers only a subset
+      # of the genome (e.g. VP1 for HRV is ~1/7 of the full genome length).
+      my $nn_seq_sqstring = substr($seq_sqstring, ($apos_start - 1), $alen_p);
+      my @nn_seq_sqstring_A = split("", $nn_seq_sqstring);
+
+      for(my $midx = 0; $midx < $mdl_nseq; $midx++) {
+        my $mdl_sqstring = $mdl_msa->get_sqstring_aligned($midx);
+        $mdl_sqstring =~ tr/a-z/A-Z/;
+        my $nn_mdl_sqstring = substr($mdl_sqstring, ($apos_start - 1), $alen_p);
+        my @nn_mdl_sqstring_A = split("", $nn_mdl_sqstring);
+
+        @{$fwd_logscore_AA[$midx]} = ();
+        @{$fwd_npos_AA[$midx]} = ();
+
+        # Forward pass over NN region
+        for($apos_p = 0; $apos_p < $alen_p; $apos_p++) {
+          $seq_char = $nn_seq_sqstring_A[$apos_p];
+          $mdl_char = $nn_mdl_sqstring_A[$apos_p];
+          $seq_is_res = ($seq_char =~ m/[A-Z]/) ? 1 : 0;
+          $mdl_is_res = ($mdl_char =~ m/[A-Z]/) ? 1 : 0;
+
+          $fwd_logscore_AA[$midx][$apos_p] = ($apos_p > 0) ? $fwd_logscore_AA[$midx][($apos_p-1)] : 0;
+          $fwd_npos_AA[$midx][$apos_p]     = ($apos_p > 0) ? $fwd_npos_AA[$midx][($apos_p-1)]     : 0;
+
+          if(($seq_is_res) && ($mdl_is_res)) {
+            my $actual_apos = $apos_start + $apos_p - 1;
+            my $position_score;
+            if($seq_char eq $mdl_char) {
+              my $freq_nt = (defined $nt_freq_HA[$actual_apos]{$seq_char}) ? $nt_freq_HA[$actual_apos]{$seq_char} : 0.25;
+              $freq_nt = 0.001 if $freq_nt < 0.001;
+              $freq_nt = 0.999 if $freq_nt > 0.999;
+              $position_score = (log($rc_match) / log(2)) - 2.0 * (log($freq_nt) / log(2));
+            } else {
+              my $freq_seq = (defined $nt_freq_HA[$actual_apos]{$seq_char}) ? $nt_freq_HA[$actual_apos]{$seq_char} : 0.25;
+              my $freq_mdl = (defined $nt_freq_HA[$actual_apos]{$mdl_char}) ? $nt_freq_HA[$actual_apos]{$mdl_char} : 0.25;
+              $freq_seq = 0.001 if $freq_seq < 0.001;
+              $freq_mdl = 0.001 if $freq_mdl < 0.001;
+              $position_score = (log($rc_mismatch) / log(2)) - (log($freq_seq) / log(2)) - (log($freq_mdl) / log(2));
+            }
+            $fwd_logscore_AA[$midx][$apos_p] += $position_score;
+            $fwd_npos_AA[$midx][$apos_p]++;
+          }
+        }
+
+        @{$bck_logscore_AA[$midx]} = ();
+        @{$bck_npos_AA[$midx]} = ();
+
+        # Backward pass over NN region
+        for($apos_p = ($alen_p-1); $apos_p >= 0; $apos_p--) {
+          $seq_char = $nn_seq_sqstring_A[$apos_p];
+          $mdl_char = $nn_mdl_sqstring_A[$apos_p];
+          $seq_is_res = ($seq_char =~ m/[A-Z]/) ? 1 : 0;
+          $mdl_is_res = ($mdl_char =~ m/[A-Z]/) ? 1 : 0;
+
+          $bck_logscore_AA[$midx][$apos_p] = ($apos_p < ($alen_p-1)) ? $bck_logscore_AA[$midx][($apos_p+1)] : 0;
+          $bck_npos_AA[$midx][$apos_p]     = ($apos_p < ($alen_p-1)) ? $bck_npos_AA[$midx][($apos_p+1)]     : 0;
+
+          if(($seq_is_res) && ($mdl_is_res)) {
+            my $actual_apos = $apos_start + $apos_p - 1;
+            my $position_score;
+            if($seq_char eq $mdl_char) {
+              my $freq_nt = (defined $nt_freq_HA[$actual_apos]{$seq_char}) ? $nt_freq_HA[$actual_apos]{$seq_char} : 0.25;
+              $freq_nt = 0.001 if $freq_nt < 0.001;
+              $freq_nt = 0.999 if $freq_nt > 0.999;
+              $position_score = (log($rc_match) / log(2)) - 2.0 * (log($freq_nt) / log(2));
+            } else {
+              my $freq_seq = (defined $nt_freq_HA[$actual_apos]{$seq_char}) ? $nt_freq_HA[$actual_apos]{$seq_char} : 0.25;
+              my $freq_mdl = (defined $nt_freq_HA[$actual_apos]{$mdl_char}) ? $nt_freq_HA[$actual_apos]{$mdl_char} : 0.25;
+              $freq_seq = 0.001 if $freq_seq < 0.001;
+              $freq_mdl = 0.001 if $freq_mdl < 0.001;
+              $position_score = (log($rc_mismatch) / log(2)) - (log($freq_seq) / log(2)) - (log($freq_mdl) / log(2));
+            }
+            $bck_logscore_AA[$midx][$apos_p] += $position_score;
+            $bck_npos_AA[$midx][$apos_p]++;
+          }
+        }
+      }
+    } # end else (! opt_Get("--do_rc"))
+
     # STEP 4: Nearest neighbor classification uses the NN region data (fwd_logscore_AA, etc.)
     # Calculate percent identity for each model sequence to find nearest neighbor
     my @pid_A = ();
