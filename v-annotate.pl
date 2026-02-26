@@ -16633,38 +16633,14 @@ sub classify_based_on_alignment {
           }
         }
 
-        @{$bck_logscore_AA[$midx]} = ();
-        @{$bck_npos_AA[$midx]} = ();
-
-        # Backward pass over NN region
-        for($apos_p = ($alen_p-1); $apos_p >= 0; $apos_p--) {
-          $seq_char = $nn_seq_sqstring_A[$apos_p];
-          $mdl_char = $nn_mdl_sqstring_A[$apos_p];
-          $seq_is_res = ($seq_char =~ m/[A-Z]/) ? 1 : 0;
-          $mdl_is_res = ($mdl_char =~ m/[A-Z]/) ? 1 : 0;
-
-          $bck_logscore_AA[$midx][$apos_p] = ($apos_p < ($alen_p-1)) ? $bck_logscore_AA[$midx][($apos_p+1)] : 0;
-          $bck_npos_AA[$midx][$apos_p]     = ($apos_p < ($alen_p-1)) ? $bck_npos_AA[$midx][($apos_p+1)]     : 0;
-
-          if(($seq_is_res) && ($mdl_is_res)) {
-            my $actual_apos = $apos_start + $apos_p - 1;
-            my $position_score;
-            if($seq_char eq $mdl_char) {
-              my $freq_nt = (defined $nt_freq_HA[$actual_apos]{$seq_char}) ? $nt_freq_HA[$actual_apos]{$seq_char} : 0.25;
-              $freq_nt = 0.001 if $freq_nt < 0.001;
-              $freq_nt = 0.999 if $freq_nt > 0.999;
-              $position_score = (log($rc_match) / log(2)) - 2.0 * (log($freq_nt) / log(2));
-            } else {
-              my $freq_seq = (defined $nt_freq_HA[$actual_apos]{$seq_char}) ? $nt_freq_HA[$actual_apos]{$seq_char} : 0.25;
-              my $freq_mdl = (defined $nt_freq_HA[$actual_apos]{$mdl_char}) ? $nt_freq_HA[$actual_apos]{$mdl_char} : 0.25;
-              $freq_seq = 0.001 if $freq_seq < 0.001;
-              $freq_mdl = 0.001 if $freq_mdl < 0.001;
-              $position_score = (log($rc_mismatch) / log(2)) - (log($freq_seq) / log(2)) - (log($freq_mdl) / log(2));
-            }
-            $bck_logscore_AA[$midx][$apos_p] += $position_score;
-            $bck_npos_AA[$midx][$apos_p]++;
-          }
-        }
+        # No backward pass needed here. The backward LLR scores (bck_logscore_AA,
+        # bck_npos_AA) are only used by STEP 3 (recombination breakpoint scan),
+        # which requires knowing, for each position, the best-scoring model to the
+        # RIGHT of that position. STEP 4 (NN classification) uses only the full
+        # forward score at the last position (fwd_logscore_AA[$midx][$alen_p-1])
+        # and per-position percent identity -- neither requires backward scores.
+        # The --do_rc path above computes backward scores because it needs them
+        # for STEP 3; this default path skips them entirely.
       }
     } # end else (! opt_Get("--do_rc"))
 
