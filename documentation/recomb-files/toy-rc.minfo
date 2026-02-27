@@ -1,0 +1,2 @@
+MODEL toy-rc group:":FILE:toy-rc.stk" subgroup:":FILE:toy-rc.stk" cmfile:"toy-rc.cm" length:"100"
+FEATURE toy-rc type:"gene" coords:"1..100:+" gene:"TEST"

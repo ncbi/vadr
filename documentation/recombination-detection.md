@@ -35,18 +35,55 @@ region.
 ### Log-likelihood ratio (LLR) scoring
 
 At each aligned position the algorithm computes a **per-position LLR score**
-comparing a homology null model vs. a random-sequence null model:
+comparing a homology model vs. a null (background) model:
 
 ```
   match:    score_i = log2(rc_match / (2 * freq_i^2))
   mismatch: score_i = log2(rc_mismatch / (2 * freq_seq_i * freq_mdl_i))
 ```
 
-where `rc_match` is the assumed match probability (default: 0.95),
-`rc_mismatch = (1 - rc_match) / 3` (≈ 0.017), and `freq_i` is the observed
-nucleotide frequency at that alignment column from the model's seed alignment.
+where `rc_match` is the assumed match probability (default: 0.95) and
+`rc_mismatch = (1 - rc_match) / 3` (≈ 0.017).
+
+#### The null model
+
+The denominator encodes a **position-specific background model**: the probability
+that the observed query–reference nucleotide pair occurred by chance, assuming
+no evolutionary relationship. In this model the two nucleotides at each aligned
+column are drawn **independently** from the empirical distribution of that
+column in the model's seed alignment:
+
+- `freq_i` = frequency of the query (= reference) nucleotide at alignment
+  column `i` in the seed alignment (used when query = reference, i.e. a match).
+- `freq_seq_i`, `freq_mdl_i` = frequencies of the query and reference
+  nucleotides, respectively (used when query ≠ reference, i.e. a mismatch).
+
+The null probability of a match at column `i` is therefore `freq_i²`, and for
+a mismatch between nucleotides X and Y it is `2 * freq_X * freq_Y` (the factor
+of 2 accounts for both orientations of the unordered pair).
+
+**This is not the equiprobable 25/25/25/25% null.** An alternative null model
+would use a constant frequency of 0.25 for every nucleotide at every position.
+The difference matters:
+
+| Column type | `freq_i` for the match nucleotide | Per-position match score (position-specific null) | Per-position match score (equiprobable 25% null) |
+|---|---|---|---|
+| Fully conserved (all same nt) | ≈ 1.00 | ≈ −1.1 bits (penalized) | +2.9 bits |
+| Moderately variable | ≈ 0.50 | ≈ +0.9 bits | +2.9 bits |
+| Highly variable (near-uniform) | ≈ 0.25 | ≈ +2.9 bits | +2.9 bits |
+
+With the position-specific null, a match at a **fully conserved column** is
+assigned a slightly *negative* score: the null model already predicts a match
+with near-certainty there, so seeing one gives no evidence of homology. At a
+**highly variable column** the null predicts a match with probability only
+~6% (= 0.25²), so a match is strong positive evidence. The equiprobable null
+would award the same high score at every matching column regardless of
+conservation — over-counting uninformative positions and potentially inflating
+scores for all sequences equally, reducing the sensitivity to detect genuine
+changes in parent ancestry.
+
 Positions where either the query or reference has a gap are skipped.
-Match scores are positive; large mismatches are negative.
+Match scores are positive at variable columns; large mismatches are negative.
 
 The **cumulative forward score** through position `k` is the sum of
 per-position scores for the query vs. a given reference sequence from the
@@ -141,8 +178,8 @@ classification is ambiguous.
 
 ## Toy Example<a name="toy-example"></a>
 
-This example uses the toy model files from `testing-20260109/` in the
-notebook directory. The model has three reference sequences:
+This example uses the toy model files in `documentation/recomb-files/` of the
+VADR distribution. The model has three reference sequences:
 
 | Seq | Subgroup | Approximate identity to others |
 |-----|----------|---------------------------------|
@@ -155,7 +192,11 @@ designed recombinants.
 
 **Command:**
 ```bash
-v-annotate.pl -f --do_rc --mdir . --mkey toy-rc test-rc.fa va-doc-toy-rc
+v-annotate.pl -f --do_rc \
+  --mdir $VADRSCRIPTSDIR/documentation/recomb-files \
+  --mkey toy-rc \
+  $VADRSCRIPTSDIR/documentation/recomb-files/test-rc.fa \
+  va-doc-toy-rc
 ```
 
 **Non-recombinant control (`test1_nonrecomb`, 95% match to Seq1):**
@@ -224,9 +265,22 @@ parents are:
 | Left (5' side) | MZ542285.3 | A105 | VP4 through most of 3C |
 | Right (3' side) | JN837693.1 | A21 | Remainder of 3C, 3D polymerase |
 
-**Command** (run from `testing-20260120/`):
+**Prerequisites:** The query sequence `MZ268661.fa` is provided in
+`documentation/recomb-files/`. The HRV-A VADR model is not bundled with the
+VADR distribution — obtain it from the
+[greninger-lab/vadr-models-hrv](https://github.com/greninger-lab/vadr-models-hrv)
+repository on GitHub. (*A specific tagged release will be noted here once the
+current model has been reviewed and merged.*)
+
+**Command:**
 ```bash
-v-annotate.pl -f --do_rc --rc_igself --mdir ../vadr-models-hrv/hrvA --mkey hrvA MZ268661.fa va-doc-MZ268661
+git clone https://github.com/greninger-lab/vadr-models-hrv
+
+v-annotate.pl -f --do_rc --rc_igself \
+  --mdir vadr-models-hrv/hrvA \
+  --mkey hrvA \
+  $VADRSCRIPTSDIR/documentation/recomb-files/MZ268661.fa \
+  va-doc-MZ268661
 ```
 
 (`--rc_igself` prevents MZ268661.1 from matching itself if it is present in

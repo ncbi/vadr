@@ -223,7 +223,7 @@ This tutorial demonstrates nearest-neighbor classification using a minimal toy e
 
 ### Step 1: Create the reference alignment
 
-Create a file `toy-nn.stk` with three reference sequences from different serotypes (this file is in `documentation/annotate-files/toy-nn.stk`):
+Create a file `toy-nn.stk` with three reference sequences from different serotypes (this file is in `documentation/nn-files/toy-nn.stk`):
 
 ```stockholm
 # STOCKHOLM 1.0
@@ -259,7 +259,7 @@ refseq_CVB5   AAAAACGGGGAAAAATTTTTAAAAaaGGGGGGGG
 
 ### Step 2: Build the covariance model
 
-Build the covariance model (CM) from the seed alignment using `cmbuild` (this CM file is in documentation/annotate-files/toy-nn.cm):
+Build the covariance model (CM) from the seed alignment using `cmbuild` (this CM file is in documentation/nn-files/toy-nn.cm):
 
 ```bash
 cmbuild --noss --hand toy-nn.cm toy-nn.stk
@@ -275,7 +275,7 @@ cmbuild --noss --hand toy-nn.cm toy-nn.stk
 
 ### Step 3: Create the model info file
 
-Create `toy-nn.minfo` (this file is in documentation/annotate-files/toy-nn.minfo):
+Create `toy-nn.minfo` (this file is in documentation/nn-files/toy-nn.minfo):
 
 ```
 MODEL toy-nn group:":FILE:toy-nn.stk" subgroup:":FILE:toy-nn.stk" cmfile:"toy-nn.cm" length:"32"
@@ -289,7 +289,7 @@ FEATURE toy-nn type:"gene" coords:"1..32:+" gene:"TEST"
 
 ### Step 4: Create test sequences
 
-Create `test-nn.fa` with sequences to classify (this file is in documentation/annotate-files/test-nn.fa):
+Create `test-nn.fa` with sequences to classify (this file is in documentation/nn-files/test-nn.fa):
 
 ```fasta
 >seq1_should_be_E30
@@ -314,15 +314,19 @@ AAAAAACGGGGNNNNNNNNNNAAAAGGGGGGGG
 ### Step 5: Run `v-annotate.pl`
 
 ```bash
-v-annotate.pl -f --out_stk --mdir $VADRSCRIPTSDIR/documentation/annotate-files --mkey toy-nn test-nn.fa va-nn
+v-annotate.pl -f --out_stk \
+  --mdir $VADRSCRIPTSDIR/documentation/nn-files \
+  --mkey toy-nn \
+  $VADRSCRIPTSDIR/documentation/nn-files/test-nn.fa \
+  va-nn
 ```
 
 **Explanation of options:**
 - `-f`: Force overwrite of output directory if it exists
 - `--out_stk`: Output the alignment of input sequences to the model in Stockholm format (creates `va-nn/va-nn.vadr.toy-nn.align.stk`)
-- `--mdir $VADRSCRIPTSDIR/documentation/annotate-files`: Directory containing model files (`toy-nn.cm`, `toy-nn.stk`, `toy-nn.minfo`)
+- `--mdir $VADRSCRIPTSDIR/documentation/nn-files`: Directory containing model files (`toy-nn.cm`, `toy-nn.stk`, `toy-nn.minfo`)
 - `--mkey toy-nn`: Use model files with prefix `toy-nn` instead of default `vadr`
-- `test-nn.fa`: Input sequences to classify
+- `$VADRSCRIPTSDIR/documentation/nn-files/test-nn.fa`: Input sequences to classify
 - `va-nn`: Output directory to create
 
 **Note on classification region length**: Our classification region (RF positions 7-18) is 12 nucleotides long, which is less than the default minimum of 40 nucleotides. However, `v-annotate.pl` automatically adjusts the minimum length threshold to match the specified region length when it is less than 40nt, so no additional options are needed.
