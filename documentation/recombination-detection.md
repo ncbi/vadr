@@ -234,19 +234,14 @@ the model alignment.)
 
 **In `va-doc-MZ268661.vadr.scn`:**
 ```
-1  MZ268661.1  7051  PASS  yes  hrvA  hrvA  -  0.9276  MZ542285.3  hrvA  A57  0.8650  FJ445141.1  0.0626  44..7134:+  1..7240:+  0.9794  POSSIBLE_RECOMBINATION(recombin)
+1  MZ268661.1  7051  PASS  yes  hrvA  hrvA  A105  0.9276  MZ542285.3  hrvA  A57  0.8650  FJ445141.1  0.0626  44..7134:+  1..7240:+  0.9794  POSSIBLE_RECOMBINATION(recombin)
 ```
-
-Note: MZ268661.1 is classified with subgroup `-` (no subgroup assigned)
-because its nearest neighbor MZ542285.3 has no subgroup annotation in the
-model STK — it was added as an A105 representative but the STK annotation
-uses only group `hrvA`.
 
 **In `va-doc-MZ268661.vadr.alt`:**
 ```
 1.1.1  MZ268661.1  hrvA  -  -  -  recombin  no  POSSIBLE_RECOMBINATION  5250..5250:+  1  5331..5331:+  1
   possible recombination detected in sequence
-  [hrvA,5250,5331,hrvA.A21;L:MZ542285.3;id:0.956(+0.134);llr:0.780(+0.763),R:JN837693.1;id:0.946(+0.104);llr:0.656(+0.559),S:1.322]
+  [hrvA.A105,5250,5331,hrvA.A21;L:MZ542285.3;id:0.956(+0.134);llr:0.780(+0.763),R:JN837693.1;id:0.946(+0.104);llr:0.656(+0.559),S:1.322]
 ```
 
 **Interpretation:**
@@ -269,11 +264,9 @@ uses only group `hrvA`.
   The feature needs broader validation across more viruses before it could be
   enabled in production workflows.
 - **Coverage-dependent.** Detection quality depends on having representative
-  sequences for both parental subgroups in the model alignment. Missing
-  serotypes may cause the wrong parents to be reported or breakpoints to be
-  missed entirely. Note the A105 example above: the left parent was labeled
-  `hrvA` (no subgroup) rather than `A105` because the MZ542285.3 entry in the
-  alignment has no SG annotation.
+  sequences for both parental subgroups in the model alignment. Missing or
+  unannotated serotypes may cause the wrong parents to be reported or
+  breakpoints to be missed entirely.
 - **Only inter-subgroup recombination is detected.** Parent candidates must
   belong to different annotated subgroups. Intra-subgroup recombination is
   not reported.
