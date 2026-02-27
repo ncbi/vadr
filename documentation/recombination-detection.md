@@ -213,7 +213,7 @@ Same parents detected (A.1 left, B.1 right), breakpoint found near position
 
 ## Real-World Example<a name="real-world"></a>
 
-Goya et al. (2024, *J Infect Dis* 231:e154–e164) identified a clade of HRV-A
+Goya et al. (2025, *J Infect Dis* 231:e154–e164) identified a clade of HRV-A
 sequences from Washington State as A105/A21 inter-serotype recombinants, with
 a breakpoint near nucleotide 5250 (95% CI: 5216–5271) in the 3C protease
 gene. MZ268661.1 (strain RvA105/USA/2021/AHU4DQ) is the primary example. The
@@ -277,6 +277,16 @@ the model alignment.)
   the code path is identical to running without the feature — only forward LLR
   scores over the classification region are computed, needed anyway for NN
   classification.
+
+---
+
+## References
+
+1. Goya S, Wendm ST, Xie H, Nguyen TV, Barnes S, Shankar RR, Sereewit J,
+   Cruz K, Pérez-Osorio AC, Mills MG, Greninger AL. Genomic Epidemiology and
+   Evolution of Rhinovirus in Western Washington State, 2021–2022.
+   *J Infect Dis.* 2025;231:e154–e164.
+   doi:[10.1093/infdis/jiae347](https://doi.org/10.1093/infdis/jiae347)
 
 ---
 
