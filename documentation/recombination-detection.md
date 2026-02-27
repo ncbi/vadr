@@ -47,24 +47,30 @@ where `rc_match` is the assumed match probability (default: 0.95) and
 
 #### The null model
 
-The denominator encodes a **position-specific background model**: the probability
-that the observed query–reference nucleotide pair occurred by chance, assuming
-no evolutionary relationship. In this model the two nucleotides at each aligned
-column are drawn **independently** from the empirical distribution of that
-column in the model's seed alignment:
+The denominator encodes a **position-specific background model** that normalises
+each position's score by the nucleotide diversity at that column in the model's
+seed alignment. Importantly, the goal here is *not* to distinguish homologous
+from non-homologous sequences: all sequences in the model alignment and the query
+are already assumed to be evolutionarily related. The question is instead *which*
+candidate parent sequence in the alignment is the closest relative of the query,
+and whether that closest parent switches from one subgroup to another at a
+recombination breakpoint. The null model provides a column-specific baseline for
+that comparison:
 
-- `freq_i` = frequency of the query (= reference) nucleotide at alignment
-  column `i` in the seed alignment (used when query = reference, i.e. a match).
-- `freq_seq_i`, `freq_mdl_i` = frequencies of the query and reference
-  nucleotides, respectively (used when query ≠ reference, i.e. a mismatch).
+- `freq_i` = empirical frequency of the matching nucleotide at column `i` in the
+  seed alignment (used when query = candidate parent, i.e. a match).
+- `freq_seq_i`, `freq_mdl_i` = empirical frequencies of the query and candidate
+  parent nucleotides at column `i` (used when they differ, i.e. a mismatch).
 
-The null probability of a match at column `i` is therefore `freq_i²`, and for
-a mismatch between nucleotides X and Y it is `2 * freq_X * freq_Y` (the factor
-of 2 accounts for both orientations of the unordered pair).
+The null probability for observing this query–parent pair by chance (assuming
+independent draws from the column's distribution) is `freq_i²` for a match and
+`2 * freq_X * freq_Y` for a mismatch between nucleotides X and Y (the factor of 2
+accounts for both orientations of the unordered pair). The LLR score then measures
+how much more strongly a specific parent matches the query than expected from the
+column's background distribution.
 
-**This is not the equiprobable 25/25/25/25% null.** An alternative null model
-would use a constant frequency of 0.25 for every nucleotide at every position.
-The difference matters:
+The key effect is that **conserved positions are down-weighted and variable
+positions are up-weighted**:
 
 | Column type | `freq_i` for the match nucleotide | Per-position match score (position-specific null) | Per-position match score (equiprobable 25% null) |
 |---|---|---|---|
@@ -72,18 +78,28 @@ The difference matters:
 | Moderately variable | ≈ 0.50 | ≈ +0.9 bits | +2.9 bits |
 | Highly variable (near-uniform) | ≈ 0.25 | ≈ +2.9 bits | +2.9 bits |
 
-With the position-specific null, a match at a **fully conserved column** is
-assigned a slightly *negative* score: the null model already predicts a match
-with near-certainty there, so seeing one gives no evidence of homology. At a
-**highly variable column** the null predicts a match with probability only
-~6% (= 0.25²), so a match is strong positive evidence. The equiprobable null
-would award the same high score at every matching column regardless of
-conservation — over-counting uninformative positions and potentially inflating
-scores for all sequences equally, reducing the sensitivity to detect genuine
-changes in parent ancestry.
+At a **fully conserved column**, every candidate parent carries the same
+nucleotide, so a match gives no information about which parent the query is most
+closely related to. The position-specific null assigns these columns a slightly
+negative score, effectively downweighting them. At a **highly variable column**, a
+match to a specific parent is diagnostic — the null predicts a random match with
+probability only ~6% (= 0.25²), so a match is strong positive evidence for that
+parent.
 
-Positions where either the query or reference has a gap are skipped.
-Match scores are positive at variable columns; large mismatches are negative.
+**This is not the equiprobable 25/25/25/25% null.** An alternative null would use
+a flat frequency of 0.25 for every nucleotide at every position, awarding the same
++2.9 bits at every matching column regardless of conservation. This fails to
+distinguish informative variable sites from uninformative conserved ones and
+reduces sensitivity to genuine parent switches at a recombination breakpoint.
+
+**Note on validation.** The null model formulation and LLR scoring used here have
+not been extensively characterised across a broad range of viruses or use cases.
+This is one reason the recombination detection feature is labelled **experimental**.
+The default threshold (`--rc_thresh`) and match probability (`--rc_match`) represent
+initial reasonable choices but may need tuning for specific viruses or model
+alignments.
+
+Positions where either the query or candidate parent has a gap are skipped.
 
 The **cumulative forward score** through position `k` is the sum of
 per-position scores for the query vs. a given reference sequence from the
@@ -106,7 +122,7 @@ A `recombin` alert is reported when the best recomb_score exceeds:
 ```
 
 where `rc_thresh` is the minimum required per-position improvement (default:
-0.05 bits/position) and `npos_left`, `npos_right` are the non-gap position
+0.2 bits/position) and `npos_left`, `npos_right` are the non-gap position
 counts on each side. Both sides must have at least `rc_minlen` (default: 10)
 non-gap positions.
 
@@ -120,7 +136,7 @@ in the `v-annotate.pl` usage output.
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--do_rc` | off | Enable recombination detection |
-| `--rc_thresh <x>` | 0.05 | Min per-position LLR improvement to report recombination; increase to be more conservative |
+| `--rc_thresh <x>` | 0.2 | Min per-position LLR improvement to report recombination; increase to be more conservative |
 | `--rc_match <x>` | 0.95 | Assumed per-position match probability for the homology model. Overridden by `VADR-DEFAULT-RC_MATCH` in the model info STK if `--rc_match` is not set explicitly |
 | `--rc_minlen <n>` | 10 | Min non-gap positions required on each side of the breakpoint |
 | `--rc_igself` | off | Ignore the query sequence itself as a parent candidate (useful when the query is also in the model alignment) |
@@ -203,7 +219,9 @@ v-annotate.pl -f --do_rc \
 
 In `va-doc-toy-rc.vadr.scn`:
 ```
-1  test1_nonrecomb  100  PASS  yes  toy-rc  A  A.1  0.9500  Seq1  A  A.2  0.8600  Seq2  0.0900  1..100:+  1..100:+  1.0000  -
+#seq  seq              seq                          sub    fract                  sub    fract               fid  nnregion_seqspan  nnregion   nnregion  seq
+#idx  name             len   p/f   ant  model  grp1  grp1     id1  seq1     grp2  grp2     id2  seq2     diff  mdl_coords       mdl_coords  covrg     alerts
+1     test1_nonrecomb  100   PASS  yes  toy-rc  A    A.1  0.9500  Seq1     A    A.2   0.8600  Seq2   0.0900  1..100:+         1..100:+    1.0000    -
 ```
 No alert. Classified as A.1, 95% identical to Seq1, 9 percentage points above
 the next-best subgroup (A.2). No breakpoint found.
@@ -212,12 +230,16 @@ the next-best subgroup (A.2). No breakpoint found.
 
 In `va-doc-toy-rc.vadr.scn`:
 ```
-5  recomb_seq1_seq3_50  100  PASS  yes  toy-rc  B  B.1  0.8700  Seq3  A  A.1  0.8600  Seq1  0.0100  1..100:+  1..100:+  1.0000  INDEFINITE_CLASSIFICATION_NN(nnindfcl),POSSIBLE_RECOMBINATION(recombin)
+#seq  seq                  seq                          sub    fract                  sub    fract               fid  nnregion_seqspan  nnregion   nnregion  seq
+#idx  name                 len   p/f   ant  model  grp1  grp1     id1  seq1     grp2  grp2     id2  seq2     diff  mdl_coords       mdl_coords  covrg     alerts
+5     recomb_seq1_seq3_50  100   PASS  yes  toy-rc  B    B.1  0.8700  Seq3     A    A.1   0.8600  Seq1   0.0100  1..100:+         1..100:+    1.0000    INDEFINITE_CLASSIFICATION_NN(nnindfcl),POSSIBLE_RECOMBINATION(recombin)
 ```
 
 In `va-doc-toy-rc.vadr.alt`:
 ```
-5.1.2  recomb_seq1_seq3_50  toy-rc  -  -  -  recombin  no  POSSIBLE_RECOMBINATION  58..58:+  1  58..58:+  1
+#         seq                  ftr   ftr   ftr  alert           alert               seq       seq  mdl       mdl  alert
+#idx      name        model    type  name  idx  code    fail    description         coords    len  coords    len  detail
+5.1.2     recomb_seq1_seq3_50  toy-rc  -  -  -  recombin  no    POSSIBLE_RECOMBINATION  58..58:+  1  58..58:+  1
   possible recombination detected in sequence
   [A.A.1,58,58,B.B.1;L:Seq1;id:0.931(+0.138);llr:0.445(+0.649),R:Seq3;id:0.976(+0.214);llr:0.807(+1.417),S:2.066]
 ```
@@ -242,7 +264,9 @@ In `va-doc-toy-rc.vadr.alt`:
 
 In `va-doc-toy-rc.vadr.alt`:
 ```
-10.1.1  recomb_seq1_seq3_25  toy-rc  -  -  -  recombin  no  POSSIBLE_RECOMBINATION  23..23:+  1  23..23:+  1
+#         seq                  ftr   ftr   ftr  alert           alert               seq       seq  mdl       mdl  alert
+#idx      name        model    type  name  idx  code    fail    description         coords    len  coords    len  detail
+10.1.1    recomb_seq1_seq3_25  toy-rc  -  -  -  recombin  no    POSSIBLE_RECOMBINATION  23..23:+  1  23..23:+  1
   possible recombination detected in sequence
   [A.A.1,23,23,B.B.1;L:Seq1;id:0.913(+0.217);llr:0.592(+1.051),R:Seq3;id:0.961(+0.143);llr:0.568(+0.976),S:2.027]
 ```
@@ -276,15 +300,12 @@ current model has been reviewed and merged.*)
 ```bash
 git clone https://github.com/greninger-lab/vadr-models-hrv
 
-v-annotate.pl -f --do_rc --rc_igself \
+v-annotate.pl -f --do_rc \
   --mdir vadr-models-hrv/hrvA \
   --mkey hrvA \
   $VADRSCRIPTSDIR/documentation/recomb-files/MZ268661.fa \
   va-doc-MZ268661
 ```
-
-(`--rc_igself` prevents MZ268661.1 from matching itself if it is present in
-the model alignment.)
 
 **In `va-doc-MZ268661.vadr.scn`:**
 ```
@@ -324,9 +345,13 @@ the model alignment.)
 - **Only inter-subgroup recombination is detected.** Parent candidates must
   belong to different annotated subgroups. Intra-subgroup recombination is
   not reported.
-- **Classification region only.** Detection operates within the NN
-  classification region (e.g., VP1 for enteroviruses). Recombination outside
-  that region is invisible to this algorithm.
+- **Full aligned sequence is scanned.** The breakpoint scan operates over the
+  entire aligned span of the query sequence between its first and last aligned
+  positions in the model. It is **not** restricted to the NN classification
+  region (e.g., VP1). Breakpoints anywhere in the aligned sequence are
+  detectable. However, detection quality depends on the model alignment having
+  representative parent sequences across the whole genome, not just the
+  classification region.
 - **No performance penalty when disabled.** With `--do_rc` off (the default),
   the code path is identical to running without the feature — only forward LLR
   scores over the classification region are computed, needed anyway for NN
