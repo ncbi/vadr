@@ -16221,6 +16221,8 @@ sub classify_based_on_alignment {
               my $freq_mdl = (defined $nt_freq_HA[$actual_apos]{$mdl_char}) ? $nt_freq_HA[$actual_apos]{$mdl_char} : 0.25;
               $freq_seq = 0.001 if $freq_seq < 0.001;
               $freq_mdl = 0.001 if $freq_mdl < 0.001;
+              $freq_seq = 0.999 if $freq_seq > 0.999;
+              $freq_mdl = 0.999 if $freq_mdl > 0.999;
               $position_score = (log($rc_mismatch) / log(2)) - (log($freq_seq) / log(2)) - (log($freq_mdl) / log(2));
             }
             $full_fwd_logscore_AA[$midx][$apos_p] += $position_score;
@@ -16254,6 +16256,8 @@ sub classify_based_on_alignment {
               my $freq_mdl = (defined $nt_freq_HA[$actual_apos]{$mdl_char}) ? $nt_freq_HA[$actual_apos]{$mdl_char} : 0.25;
               $freq_seq = 0.001 if $freq_seq < 0.001;
               $freq_mdl = 0.001 if $freq_mdl < 0.001;
+              $freq_seq = 0.999 if $freq_seq > 0.999;
+              $freq_mdl = 0.999 if $freq_mdl > 0.999;
               $position_score = (log($rc_mismatch) / log(2)) - (log($freq_seq) / log(2)) - (log($freq_mdl) / log(2));
             }
             $full_bck_logscore_AA[$midx][$apos_p] += $position_score;
@@ -16626,6 +16630,8 @@ sub classify_based_on_alignment {
               my $freq_mdl = (defined $nt_freq_HA[$actual_apos]{$mdl_char}) ? $nt_freq_HA[$actual_apos]{$mdl_char} : 0.25;
               $freq_seq = 0.001 if $freq_seq < 0.001;
               $freq_mdl = 0.001 if $freq_mdl < 0.001;
+              $freq_seq = 0.999 if $freq_seq > 0.999;
+              $freq_mdl = 0.999 if $freq_mdl > 0.999;
               $position_score = (log($rc_mismatch) / log(2)) - (log($freq_seq) / log(2)) - (log($freq_mdl) / log(2));
             }
             $fwd_logscore_AA[$midx][$apos_p] += $position_score;
