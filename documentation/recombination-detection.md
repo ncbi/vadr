@@ -42,8 +42,8 @@ comparing a homology model vs. a null (background) model:
   let y = candidate-parent nucleotide at column i
   let f_i(n) = empirical frequency of nucleotide n at column i in the seed alignment
 
-  match (x = y):    score_i = log2(rc_match    / (2 * f_i(x)^2))
-  mismatch (x != y): score_i = log2(rc_mismatch / (2 * f_i(x) * f_i(y)))
+  match (x = y):    score_i = log2(rc_match    / (f_i(x)^2))
+  mismatch (x != y): score_i = log2(rc_mismatch / (f_i(x) * f_i(y)))
 ```
 
 where `rc_match` is the assumed match probability (default: 0.95) and
@@ -71,10 +71,11 @@ Equivalent mapping to the notation above:
 - `freq_i` = `f_i(x)` in the match case (`x = y`).
 - `freq_seq_i` = `f_i(x)` and `freq_mdl_i` = `f_i(y)` in the mismatch case (`x != y`).
 
-The null probability for observing this query–parent pair by chance (assuming
-independent draws from the column's distribution) is `freq_i²` for a match and
-`2 * freq_X * freq_Y` for a mismatch between nucleotides X and Y (the factor of 2
-accounts for both orientations of the unordered pair). The LLR score then measures
+The null probability for observing this **ordered** query–parent pair by chance
+(assuming independent draws from the column's distribution) is `freq_i²` for a
+match and `freq_X * freq_Y` for a mismatch between nucleotides X and Y. (No
+factor of 2 is used because query and parent roles are fixed; we are not using an
+unordered-pair event.) The LLR score then measures
 how much more strongly a specific parent matches the query than expected from the
 column's background distribution.
 
@@ -83,9 +84,9 @@ positions are up-weighted**:
 
 | Column type | `freq_i` for the match nucleotide | Per-position match score (position-specific null) | Per-position match score (equiprobable 25% null) |
 |---|---|---|---|
-| Fully conserved (all same nt) | ≈ 1.00 | ≈ −1.1 bits (penalized) | +2.9 bits |
-| Moderately variable | ≈ 0.50 | ≈ +0.9 bits | +2.9 bits |
-| Highly variable (near-uniform) | ≈ 0.25 | ≈ +2.9 bits | +2.9 bits |
+| Fully conserved (all same nt) | ≈ 1.00 | ≈ −0.1 bits (slightly penalized) | +3.9 bits |
+| Moderately variable | ≈ 0.50 | ≈ +1.9 bits | +3.9 bits |
+| Highly variable (near-uniform) | ≈ 0.25 | ≈ +3.9 bits | +3.9 bits |
 
 At a **fully conserved column**, every candidate parent carries the same
 nucleotide, so a match gives no information about which parent the query is most
