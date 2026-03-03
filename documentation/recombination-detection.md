@@ -149,7 +149,7 @@ A candidate breakpoint is only considered if:
 
 After scanning all breakpoints, a `recombin` alert is reported for the best candidate
 only if those per-position conditions hold for that best candidate, and
-`recomb_score >= rc_thresh`.
+`recomb_score >= rc_thresh` (0.2 bits per nt by default).
 
 Both sides must have at least `rc_minlen` (default: 10) non-gap positions when
 scoring candidate parents.
@@ -184,8 +184,8 @@ single-position breakpoint location in sequence and model (RF) coordinates.
 **Example row** (wrapped for readability):
 
 ```
-#idx   seq name    model  type  name  idx  code      fail  description           seq coords    mdl coords  detail
-----   ----------  -----  ----  ----  ---  --------  ----  --------------------  ----------    ----------  ------
+#idx   seq name    model  type  name  idx  code      fail  description           seq coords     mdl coords   detail
+----   ----------  -----  ----  ----  ---  --------  ----  --------------------  -------------  ----------   ------
 1.1.1  MZ268661.1  hrvA   -     -     -    recombin  no    POSSIBLE_RECOMBINATION 5250..5250:+  5331..5331:+ possible recombination detected in sequence [...]
 ```
 
@@ -203,12 +203,13 @@ The bracketed detail string has this structure:
 | `<seq_bp>` | Breakpoint position in input sequence coordinates  |
 | `<mdl_bp>` | Breakpoint position in model (RF) coordinates |
 | `<R_gsg>` | group.subgroup of the right parent |
-| `L:<name>` | Accession of the left parent reference sequence |
-| `id:<f>(+<d>)` | Fractional identity of query to left parent on the 5' segment; `+<d>` is the margin over using the right parent on that same segment |
-| `llr:<s>(+<d>)` | Per-position (bits/nt) LLR score of query vs. left parent on the 5' segment; `+<d>` is the improvement over using the right parent on that segment |
-| `R:<name>` | Accession of the right parent reference sequence |
-| (id, llr for R) | Same fields for the right parent on the 3' segment |
-| `S:<s>` | Total recombination score (bits/nt) averaged over both segments |
+| `L:<L_name>` | Accession of the left parent reference sequence |
+| `id:<L_fid>(+<L_margin>)` | Fractional identity of query to left parent on the 5' segment; `+<L_margin>` is the margin over using the right parent on that same segment |
+| `llr:<L_ppb>(+<L_ppb_margin>)` | Per-position (bits/nt) LLR score of query vs. left parent on the 5' segment; `+<L_ppb_margin>` is the improvement over using the right parent on that segment |
+| `R:<R_name>` | Accession of the right parent reference sequence |
+| `id:<R_fid>(+<R_margin>)` | Same fields that start with `id:` above, for the right parent on the 3' segment |
+| `llr:<R_ppb>(+<R_ppb_margin>)` | Same fields that start with `llr:` above, for the right parent on the 3' segment |
+| `S:<score>` | Recombination score used for alerting: `left_diff + right_diff`, where each term is a per-position (bits/nt) parent-vs-cross-parent LLR difference on one segment |
 
 ### `.vadr.scn` alert column
 
