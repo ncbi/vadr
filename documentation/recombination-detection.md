@@ -41,20 +41,22 @@ comparing a homology model vs. a null (background) model:
 - $y$ = candidate-parent nucleotide at column $i$
 - $f_i(n)$ = empirical frequency of nucleotide $n$ at column $i$ in the seed alignment
 
+For a match ($x=y$):
+
 $$
-	ext{match }(x=y):\quad
 \mathrm{score}_i
 = \log_2\!\left(\frac{rc_{\mathrm{match}}}{f_i(x)^2}\right)
 $$
 
+For a mismatch ($x\neq y$):
+
 $$
-	ext{mismatch }(x\neq y):\quad
 \mathrm{score}_i
 = \log_2\!\left(\frac{rc_{\mathrm{mismatch}}}{f_i(x)\,f_i(y)}\right)
 $$
 
-where `rc_match` is the assumed match probability (default: 0.95) and
-`rc_mismatch = (1 - rc_match) / 3` (≈ 0.017).
+where $rc_{\mathrm{match}}$ is the assumed match probability (default: 0.95) and
+$rc_{\mathrm{mismatch}} = (1 - rc_{\mathrm{match}})/3$ ($\approx 0.017$).
 
 #### The null model
 
@@ -68,19 +70,19 @@ and whether that closest parent switches from one subgroup to another at a
 recombination breakpoint. The null model provides a column-specific baseline for
 that comparison:
 
-- `freq_i` = empirical frequency of the matching nucleotide at column `i` in the
+- $freq_i$ = empirical frequency of the matching nucleotide at column $i$ in the
   seed alignment (used when query = candidate parent, i.e. a match).
-- `freq_seq_i`, `freq_mdl_i` = empirical frequencies of the query and candidate
+- $freq_{seq,i}$, $freq_{mdl,i}$ = empirical frequencies of the query and candidate
   parent nucleotides at column `i` (used when they differ, i.e. a mismatch).
 
 Equivalent mapping to the notation above:
 
-- `freq_i` = `f_i(x)` in the match case (`x = y`).
-- `freq_seq_i` = `f_i(x)` and `freq_mdl_i` = `f_i(y)` in the mismatch case (`x != y`).
+- $freq_i = f_i(x)$ in the match case ($x = y$).
+- $freq_{seq,i} = f_i(x)$ and $freq_{mdl,i} = f_i(y)$ in the mismatch case ($x \neq y$).
 
 The null probability for observing this **ordered** query–parent pair by chance
-(assuming independent draws from the column's distribution) is `freq_i²` for a
-match and `freq_X * freq_Y` for a mismatch between nucleotides X and Y. (No
+(assuming independent draws from the column's distribution) is $freq_i^2$ for a
+match and $freq_X\,freq_Y$ for a mismatch between nucleotides $X$ and $Y$. (No
 factor of 2 is used because query and parent roles are fixed; we are not using an
 unordered-pair event.) The LLR score then measures
 how much more strongly a specific parent matches the query than expected from the
@@ -100,12 +102,12 @@ nucleotide, so a match gives no information about which parent the query is most
 closely related to. The position-specific null assigns these columns a slightly
 negative score, effectively downweighting them. At a **highly variable column**, a
 match to a specific parent is diagnostic — the null predicts a random match with
-probability only ~6% (= 0.25²), so a match is strong positive evidence for that
+probability only $\sim 6\%$ ($= 0.25^2$), so a match is strong positive evidence for that
 parent.
 
 **This is not the equiprobable 25/25/25/25% null.** An alternative null would use
 a flat frequency of 0.25 for every nucleotide at every position, awarding the same
-+2.9 bits at every matching column regardless of conservation. This fails to
+$+3.9$ bits at every matching column regardless of conservation. This fails to
 distinguish informative variable sites from uninformative conserved ones and
 reduces sensitivity to genuine parent switches at a recombination breakpoint.
 
@@ -118,29 +120,32 @@ alignments.
 
 Positions where either the query or candidate parent has a gap are skipped.
 
-The **cumulative forward score** through position `k` is the sum of
+The **cumulative forward score** through position $k$ is the sum of
 per-position scores for the query vs. a given reference sequence from the
-left end of the region up to `k`. The **cumulative backward score** from
-position `k` to the right end is computed analogously.
+left end of the region up to $k$. The **cumulative backward score** from
+position $k$ to the right end is computed analogously.
 
 ### Breakpoint scan
 
 For every pair of reference sequences belonging to **different subgroups**
-(parent-L and parent-R), the algorithm finds the breakpoint `k` that maximizes:
+(parent-L and parent-R), the algorithm finds the breakpoint $k$ that maximizes:
 
-```
-  recomb_score(k) = fwd_LLR(parent-L, left_of_k) + bck_LLR(parent-R, right_of_k)
-```
+$$
+\mathrm{recomb\_score}(k)
+= \mathrm{fwd\_LLR}(\mathrm{parent\mbox{-}L}, \mathrm{left\_of\_}k)
++ \mathrm{bck\_LLR}(\mathrm{parent\mbox{-}R}, \mathrm{right\_of\_}k)
+$$
 
-A `recombin` alert is reported when the best recomb_score exceeds:
+A `recombin` alert is reported when the best $\mathrm{recomb\_score}$ exceeds:
 
-```
-  rc_thresh * (npos_left + npos_right)
-```
+$$
+rc_{\mathrm{thresh}}\,(npos_{\mathrm{left}} + npos_{\mathrm{right}})
+$$
 
-where `rc_thresh` is the minimum required per-position improvement (default:
-0.2 bits/position) and `npos_left`, `npos_right` are the non-gap position
-counts on each side. Both sides must have at least `rc_minlen` (default: 10)
+where $rc_{\mathrm{thresh}}$ is the minimum required per-position improvement
+(default: 0.2 bits/position) and $npos_{\mathrm{left}}$,
+$npos_{\mathrm{right}}$ are the non-gap position counts on each side. Both
+sides must have at least `rc_minlen` (default: 10)
 non-gap positions.
 
 ---
