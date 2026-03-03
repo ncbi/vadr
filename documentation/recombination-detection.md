@@ -130,19 +130,29 @@ position $k$ to the right end is computed analogously.
 For every pair of reference sequences belonging to **different subgroups**
 (parent-L and parent-R), the algorithm finds the breakpoint $k$ that maximizes:
 
-`recomb_score(k) = fwd_LLR(parent-L, left_of_k) + bck_LLR(parent-R, right_of_k)`
+`recomb_score(k) = [LLR(parent-L, left segment) - LLR(parent-R, left segment)] + [LLR(parent-R, right segment) - LLR(parent-L, right segment)]`
 
-A `recombin` alert is reported when the best `recomb_score` exceeds:
+In the implementation, all terms above are **per-position (bits/nt)** values. Let:
 
-$$
-rc_{\mathrm{thresh}}\,(npos_{\mathrm{left}} + npos_{\mathrm{right}})
-$$
+- `fwd_score = LLR(parent-L, left segment) / left_len`
+- `bck_score = LLR(parent-R, right segment) / right_len`
+- `left_diff = [LLR(parent-L, left) - LLR(parent-R, left)] / left_len`
+- `right_diff = [LLR(parent-R, right) - LLR(parent-L, right)] / right_len`
+- `recomb_score = left_diff + right_diff`
 
-where $rc_{\mathrm{thresh}}$ is the minimum required per-position improvement
-(default: 0.2 bits/position) and $npos_{\mathrm{left}}$,
-$npos_{\mathrm{right}}$ are the non-gap position counts on each side. Both
-sides must have at least `rc_minlen` (default: 10)
-non-gap positions.
+A candidate breakpoint is only considered if:
+
+- `left_diff >= rc_thresh`
+- `right_diff >= rc_thresh`
+- `fwd_score >= rc_thresh`
+- `bck_score >= rc_thresh`
+
+After scanning all breakpoints, a `recombin` alert is reported for the best candidate
+only if those per-position conditions hold for that best candidate, and
+`recomb_score >= rc_thresh`.
+
+Both sides must have at least `rc_minlen` (default: 10) non-gap positions when
+scoring candidate parents.
 
 ---
 
