@@ -102,7 +102,7 @@ nucleotide, so a match gives no information about which parent the query is most
 closely related to. The position-specific null assigns these columns a slightly
 negative score, effectively downweighting them. At a **highly variable column**, a
 match to a specific parent is diagnostic — the null predicts a random match with
-probability only $\sim 6.25\%$ ($= 0.25^2$), so a match is strong positive evidence for that
+probability only ~6.25% ($0.25^2 = 0.0625$), so a match is strong positive evidence for that
 parent.
 
 **This is not the equiprobable 25/25/25/25% null.** An alternative null would use
@@ -131,9 +131,7 @@ For every pair of reference sequences belonging to **different subgroups**
 (parent-L and parent-R), the algorithm finds the breakpoint $k$ that maximizes:
 
 $$
-\mathrm{recomb\_score}(k)
-= \mathrm{fwd\_LLR}(\mathrm{parent\mbox{-}L}, \mathrm{left\_of\_}k)
-+ \mathrm{bck\_LLR}(\mathrm{parent\mbox{-}R}, \mathrm{right\_of\_}k)
+\mathrm{recomb\_score}(k) = \mathrm{fwd\_LLR}(\mathrm{parent\mbox{-}L}, \mathrm{left\_of\_}k) + \mathrm{bck\_LLR}(\mathrm{parent\mbox{-}R}, \mathrm{right\_of\_}k)
 $$
 
 A `recombin` alert is reported when the best $\mathrm{recomb\_score}$ exceeds:
