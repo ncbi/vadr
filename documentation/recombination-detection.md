@@ -131,10 +131,10 @@ For every pair of reference sequences belonging to **different subgroups**
 (parent-L and parent-R), the algorithm finds the breakpoint $k$ that maximizes:
 
 $$
-\mathrm{recomb\_score}(k) = \mathrm{fwd\_LLR}(\mathrm{parent\mbox{-}L}, \mathrm{left\_of\_}k) + \mathrm{bck\_LLR}(\mathrm{parent\mbox{-}R}, \mathrm{right\_of\_}k)
+\operatorname{recombScore}(k) = \operatorname{fwdLLR}(\text{parent-L}, \text{left of } k) + \operatorname{bckLLR}(\text{parent-R}, \text{right of } k)
 $$
 
-A `recombin` alert is reported when the best $\mathrm{recomb\_score}$ exceeds:
+A `recombin` alert is reported when the best $\operatorname{recombScore}$ exceeds:
 
 $$
 rc_{\mathrm{thresh}}\,(npos_{\mathrm{left}} + npos_{\mathrm{right}})
