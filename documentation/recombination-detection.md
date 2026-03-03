@@ -18,7 +18,7 @@ with `--do_rc`, it scans the alignment for a **breakpoint** position where the
 query sequence transitions from being most similar to one reference subgroup
 (the *left parent*) to being most similar to a different reference subgroup
 (the *right parent*). If the evidence for a switch is strong enough, a
-non-fatal `recombin` / `POSSIBLE_RECOMBINATION` alert is reported.
+non-fatal `recombin` alert is reported.
 
 This feature is **experimental and off by default**. See
 [Caveats and Current Status](#caveats).
@@ -27,8 +27,8 @@ This feature is **experimental and off by default**. See
 
 ## How It Works<a name="how-it-works"></a>
 
-Recombination detection runs after NN classification has been performed and
-the alignment of the query sequence to its best-matching model is available.
+Recombination detection runs after nearest-neighbor [(NN) based classification](nn-classification.md)
+has been performed and the alignment of the query sequence to its best-matching model is available.
 It proceeds in two passes over the alignment columns of the NN classification
 region.
 
@@ -38,8 +38,12 @@ At each aligned position the algorithm computes a **per-position LLR score**
 comparing a homology model vs. a null (background) model:
 
 ```
-  match:    score_i = log2(rc_match / (2 * freq_i^2))
-  mismatch: score_i = log2(rc_mismatch / (2 * freq_seq_i * freq_mdl_i))
+  let x = query nucleotide at column i
+  let y = candidate-parent nucleotide at column i
+  let f_i(n) = empirical frequency of nucleotide n at column i in the seed alignment
+
+  match (x = y):    score_i = log2(rc_match    / (2 * f_i(x)^2))
+  mismatch (x != y): score_i = log2(rc_mismatch / (2 * f_i(x) * f_i(y)))
 ```
 
 where `rc_match` is the assumed match probability (default: 0.95) and
@@ -61,6 +65,11 @@ that comparison:
   seed alignment (used when query = candidate parent, i.e. a match).
 - `freq_seq_i`, `freq_mdl_i` = empirical frequencies of the query and candidate
   parent nucleotides at column `i` (used when they differ, i.e. a mismatch).
+
+Equivalent mapping to the notation above:
+
+- `freq_i` = `f_i(x)` in the match case (`x = y`).
+- `freq_seq_i` = `f_i(x)` and `freq_mdl_i` = `f_i(y)` in the mismatch case (`x != y`).
 
 The null probability for observing this query–parent pair by chance (assuming
 independent draws from the column's distribution) is `freq_i²` for a match and
