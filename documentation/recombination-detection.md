@@ -37,14 +37,21 @@ region.
 At each aligned position the algorithm computes a **per-position LLR score**
 comparing a homology model vs. a null (background) model:
 
-```
-  let x = query nucleotide at column i
-  let y = candidate-parent nucleotide at column i
-  let f_i(n) = empirical frequency of nucleotide n at column i in the seed alignment
+- $x$ = query nucleotide at column $i$
+- $y$ = candidate-parent nucleotide at column $i$
+- $f_i(n)$ = empirical frequency of nucleotide $n$ at column $i$ in the seed alignment
 
-  match (x = y):    score_i = log2(rc_match    / (f_i(x)^2))
-  mismatch (x != y): score_i = log2(rc_mismatch / (f_i(x) * f_i(y)))
-```
+$$
+	ext{match }(x=y):\quad
+\mathrm{score}_i
+= \log_2\!\left(\frac{rc_{\mathrm{match}}}{f_i(x)^2}\right)
+$$
+
+$$
+	ext{mismatch }(x\neq y):\quad
+\mathrm{score}_i
+= \log_2\!\left(\frac{rc_{\mathrm{mismatch}}}{f_i(x)\,f_i(y)}\right)
+$$
 
 where `rc_match` is the assumed match probability (default: 0.95) and
 `rc_mismatch = (1 - rc_match) / 3` (≈ 0.017).
