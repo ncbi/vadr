@@ -248,9 +248,10 @@ v-annotate.pl -f --do_rc \
 
 In `va-doc-toy-rc.vadr.scn`:
 ```
-#seq  seq              seq                          sub    fract                  sub    fract               fid  nnregion_seqspan  nnregion   nnregion  seq
-#idx  name             len   p/f   ant  model  grp1  grp1     id1  seq1     grp2  grp2     id2  seq2     diff  mdl_coords       mdl_coords  covrg     alerts
-1     test1_nonrecomb  100   PASS  yes  toy-rc  A    A.1  0.9500  Seq1     A    A.2   0.8600  Seq2   0.0900  1..100:+         1..100:+    1.0000    -
+#seq  seq              seq                           sub    fract               sub    fract            fid  nnregion_seqspan  nnregion   nnregion  seq
+#idx  name             len   p/f   ant  model  grp1  grp1     id1  seq1  grp2  grp2      id2  seq2     diff  mdl_coords        mdl_coords    covrg  alerts
+#---  ---------------  ---   ----  ---  ------ ----  ----  ------  ----  ----  ----   ------  ----  -------  ----------------  ---------- --------  ------
+1     test1_nonrecomb  100   PASS  yes  toy-rc  A    A.1   0.9500  Seq1     A   A.2   0.8600  Seq2   0.0900          1..100:+    1..100:+   1.0000       -
 ```
 No alert. Classified as A.1, 95% identical to Seq1, 9 percentage points above
 the next-best subgroup (A.2). No breakpoint found.
@@ -259,18 +260,18 @@ the next-best subgroup (A.2). No breakpoint found.
 
 In `va-doc-toy-rc.vadr.scn`:
 ```
-#seq  seq                  seq                          sub    fract                  sub    fract               fid  nnregion_seqspan  nnregion   nnregion  seq
-#idx  name                 len   p/f   ant  model  grp1  grp1     id1  seq1     grp2  grp2     id2  seq2     diff  mdl_coords       mdl_coords  covrg     alerts
+#seq  seq                  seq                           sub    fract               sub    fract            fid  nnregion_seqspan  nnregion   nnregion  seq
+#idx  name                 len   p/f   ant  model  grp1  grp1     id1  seq1  grp2  grp2      id2  seq2     diff  mdl_coords        mdl_coords    covrg  alerts
+#---  -------------------  ---   ----  ---  ------ ----  ----  ------  ----  ----  ----   ------  ----  -------  ----------------  ---------- --------  ------
 5     recomb_seq1_seq3_50  100   PASS  yes  toy-rc  B    B.1  0.8700  Seq3     A    A.1   0.8600  Seq1   0.0100  1..100:+         1..100:+    1.0000    INDEFINITE_CLASSIFICATION_NN(nnindfcl),POSSIBLE_RECOMBINATION(recombin)
 ```
 
 In `va-doc-toy-rc.vadr.alt`:
 ```
-#         seq                  ftr   ftr   ftr  alert           alert               seq       seq  mdl       mdl  alert
-#idx      name        model    type  name  idx  code    fail    description         coords    len  coords    len  detail
-5.1.2     recomb_seq1_seq3_50  toy-rc  -  -  -  recombin  no    POSSIBLE_RECOMBINATION  58..58:+  1  58..58:+  1
-  possible recombination detected in sequence
-  [A.A.1,58,58,B.B.1;L:Seq1;id:0.931(+0.138);llr:0.445(+0.649),R:Seq3;id:0.976(+0.214);llr:0.807(+1.417),S:2.066]
+#      seq                          ftr   ftr  ftr  alert           alert                   seq       seq   mdl      mdl    alert
+#idx   name                 model   type  name idx  code      fail  description             coords    len   coords   len    detail
+#---   -------------------  -----   ----  ---  ---  --------  ----  ----------------------  --------  ----  -------- ------ ------ 
+5.1.2  recomb_seq1_seq3_50  toy-rc  -     -    -    recombin  no    POSSIBLE_RECOMBINATION  58..58:+  1     58..58:+ 1.     possible recombination detected in sequence [A.A.1,58,58,B.B.1;L:Seq1;id:0.931(+0.138);llr:0.445(+0.649),R:Seq3;id:0.976(+0.214);llr:0.807(+1.417),S:2.066]
 ```
 
 **Interpretation:**
@@ -293,11 +294,10 @@ In `va-doc-toy-rc.vadr.alt`:
 
 In `va-doc-toy-rc.vadr.alt`:
 ```
-#         seq                  ftr   ftr   ftr  alert           alert               seq       seq  mdl       mdl  alert
-#idx      name        model    type  name  idx  code    fail    description         coords    len  coords    len  detail
-10.1.1    recomb_seq1_seq3_25  toy-rc  -  -  -  recombin  no    POSSIBLE_RECOMBINATION  23..23:+  1  23..23:+  1
-  possible recombination detected in sequence
-  [A.A.1,23,23,B.B.1;L:Seq1;id:0.913(+0.217);llr:0.592(+1.051),R:Seq3;id:0.961(+0.143);llr:0.568(+0.976),S:2.027]
+#        seq                          ftr   ftr   ftr  alert         alert                        seq   seq       mdl    mdl alert
+#idx     name                 model  type  name  idx  code     fail  description               coords   len    coords    len detail
+#-----   -------------------  ------ ----  ----  ---  -------- ----  ----------------------  --------  ----  -------- ------ ------ 
+10.1.1   recomb_seq1_seq3_25  toy-rc    -     -    -  recombin no    POSSIBLE_RECOMBINATION  23..23:+     1  23..23:+      1 possible recombination detected in sequence [A.A.1,23,23,B.B.1;L:Seq1;id:0.913(+0.217);llr:0.592(+1.051),R:Seq3;id:0.961(+0.143);llr:0.568(+0.976),S:2.027]
 ```
 
 Same parents detected (A.1 left, B.1 right), breakpoint found near position
@@ -338,14 +338,18 @@ v-annotate.pl -f --do_rc \
 
 **In `va-doc-MZ268661.vadr.scn`:**
 ```
-1  MZ268661.1  7051  PASS  yes  hrvA  hrvA  A105  0.9276  MZ542285.3  hrvA  A57  0.8650  FJ445141.1  0.0626  44..7134:+  1..7240:+  0.9794  POSSIBLE_RECOMBINATION(recombin)
+#seq  seq          seq                           sub    fract                    sub    fract                 fid  nnregion_seqspan  nnregion   nnregion  seq
+#idx  name         len  p/f   ant  model  grp1  grp1     id1  seq1        grp2  grp2      id2  seq2          diff  mdl_coords        mdl_coords    covrg  alerts
+#---  ----------- ----  ----  ---  ------ ----  ----  ------  ----------  ----  ----   ------  ----------  ------  ----------------  ---------- --------  ------
+1     MZ268661.1  7051  PASS  yes  hrvA   hrvA  A105  0.9276  MZ542285.3  hrvA  A57    0.8650  FJ445141.1  0.0626  44..7134:+        1..7240:+    0.9794  POSSIBLE_RECOMBINATION(recombin)
 ```
 
 **In `va-doc-MZ268661.vadr.alt`:**
 ```
-1.1.1  MZ268661.1  hrvA  -  -  -  recombin  no  POSSIBLE_RECOMBINATION  5250..5250:+  1  5331..5331:+  1
-  possible recombination detected in sequence
-  [hrvA.A105,5250,5331,hrvA.A21;L:MZ542285.3;id:0.956(+0.134);llr:0.780(+0.763),R:JN837693.1;id:0.946(+0.104);llr:0.656(+0.559),S:1.322]
+#       seq                          ftr   ftr  ftr  alert          alert                            seq   seq           mdl    mdl alert
+#idx    name                  model type  name  idx  code     fail  description                   coords   len        coords    len detail
+#-----  -------------------  ------ ----  ----  ---  -------- ----  ----------------------  ------------  ----  ------------ ------ ------ 
+1.1.1   MZ268661.1             hrvA    -     -    -  recombin  no   POSSIBLE_RECOMBINATION  5250..5250:+     1  5331..5331:+      1 possible recombination detected in sequence [hrvA.A105,5250,5331,hrvA.A21;L:MZ542285.3;id:0.956(+0.134);llr:0.780(+0.763),R:JN837693.1;id:0.946(+0.104);llr:0.656(+0.559),S:1.322]
 ```
 
 **Interpretation:**
