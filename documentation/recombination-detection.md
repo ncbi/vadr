@@ -45,14 +45,14 @@ For a match ($x=y$):
 
 $$
 \mathrm{score}_i
-= \log_2\!\left(\frac{rc_{\mathrm{match}}}{f_i(x)^2}\right)
+= \log_2\left(\frac{rc_{\mathrm{match}}}{f_i(x)^2}\right)
 $$
 
 For a mismatch ($x\neq y$):
 
 $$
 \mathrm{score}_i
-= \log_2\!\left(\frac{rc_{\mathrm{mismatch}}}{f_i(x)\,f_i(y)}\right)
+= \log_2\left(\frac{rc_{\mathrm{mismatch}}}{f_i(x)\,f_i(y)}\right)
 $$
 
 where $rc_{\mathrm{match}}$ is the assumed match probability (default: 0.95) and
