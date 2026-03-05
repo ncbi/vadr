@@ -179,10 +179,9 @@ require "sqp_utils.pm";
 # vdr_ModelInfoFileParse()
 # vdr_ModelInfoValidateExceptionsKeys()
 # vdr_ModelInfoSetClassificationAlignmentFile()
-# vdr_ModelInfoGetClassificationAlignmentFile()
 # vdr_ModelInfoSetClassificationRefStartStopPositions()
-# vdr_ModelInfoGetClassificationRefStartStopPositions()
 # vdr_ModelInfoCheckForFileKey()
+# vdr_ModelInfoSetNumericalValue()
 # 
 # Subroutines related to cmalign output:
 # vdr_CmalignCheckStdOutput()
@@ -3273,6 +3272,34 @@ sub vdr_AlertInfoInitialize {
                    "3' complete CDS ends with canonical nt but includes ambiguous nt in its stop codon", # long description
                    0, 0, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
                    $FH_HR); 
+  vdr_AlertInfoAdd($alt_info_HHR, "nnindfcl", "sequence",
+                   "INDEFINITE_CLASSIFICATION_NN", # short description
+                   "low difference between fractional identity of sequence and its nearest neighbor (NN) and sequence and its 2nd NN", # long description
+                   0, 0, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   $FH_HR);
+  vdr_AlertInfoAdd($alt_info_HHR, "nnloidcl", "sequence",
+                   "LOW_ID_CLASSIFICATION_NN", # short description
+                   "low fractional identity of sequence and its nearest neighbor model sequence", # long description
+                   0, 0, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   $FH_HR); 
+  vdr_AlertInfoAdd($alt_info_HHR, "nnalrgcl", "sequence",
+                   "ALT_REGION_CLASSIFICATION_NN", # short description
+                   "alternative alignment region used to find nearest neighbor b/c sequence does not include specified region", # long description
+                   0, 0, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   $FH_HR); 
+  vdr_AlertInfoAdd($alt_info_HHR, "nnptrgcl", "sequence",
+                   "PARTIAL_REGION_CLASSIFICATION_NN", # short description
+                   "only part of the specified alignment region used to find nearest neighbor b/c sequence doesn't span full region", # long description
+                   0, 0, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   $FH_HR); 
+  # 'recombin' alert: non-fatal (causes_failure=0) because the feature is
+  # experimental and shelved as of Feb 26 2026. Only reported when --do_rc is
+  # used. See the --rc_* option block in v-annotate.pl for status/next-steps.
+  vdr_AlertInfoAdd($alt_info_HHR, "recombin", "sequence",
+                   "POSSIBLE_RECOMBINATION", # short description
+                   "possible recombination detected in sequence", # long description
+                   0, 0, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   $FH_HR); 
 
   # define the ftbl_invalid_by values, these are one-sided, any alert code listed in the 
   # 3rd argument invalidates the 2nd argument alert code, but not vice versa
@@ -6237,6 +6264,60 @@ sub vdr_ModelInfoCheckForFileKey {
     $retval = $1;
   }
   return $retval;
+}
+
+#################################################################
+# Subroutine: vdr_ModelInfoSetNumericalValue()
+# Incept:     EPN, Wed Jan 22 2026
+#
+# Purpose:    Set a numerical value in a model info hash after
+#             validating it is within specified bounds (if defined).
+#             Allows small tolerance for floating point precision.
+#             
+# Arguments: 
+#  $mdl_info_HR:  ref to model info hash
+#  $key:          key name to set
+#  $value:        numerical value to set
+#  $min:          minimum allowed value (undef if no minimum)
+#  $max:          maximum allowed value (undef if no maximum)
+#  $FH_HR:        REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies:       if $value is not defined, not numerical, or outside bounds
+#
+################################################################# 
+sub vdr_ModelInfoSetNumericalValue {
+  my $sub_name = "vdr_ModelInfoSetNumericalValue";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mdl_info_HR, $key, $value, $min, $max, $FH_HR) = (@_);
+
+  my $tolerance = 0.000001; # tolerance for floating point comparison
+
+  # check that value is defined and numerical
+  if(! defined $value) { 
+    ofile_FAIL("ERROR in $sub_name, value for key $key is not defined", 1, $FH_HR);
+  }
+  if($value !~ /^[\+\-]?\d+\.?\d*$/ && $value !~ /^[\+\-]?\d*\.?\d+$/) { 
+    ofile_FAIL("ERROR in $sub_name, value for key $key ($value) is not numerical", 1, $FH_HR);
+  }
+
+  # check minimum bound if defined
+  if(defined $min && ($value < ($min - $tolerance))) {
+    ofile_FAIL("ERROR in $sub_name, value for key $key ($value) is less than minimum allowed value ($min)", 1, $FH_HR);
+  }
+
+  # check maximum bound if defined
+  if(defined $max && ($value > ($max + $tolerance))) {
+    ofile_FAIL("ERROR in $sub_name, value for key $key ($value) is greater than maximum allowed value ($max)", 1, $FH_HR);
+  }
+
+  # value is valid, set it in the hash
+  $mdl_info_HR->{$key} = $value;
+
+  return;
 }
 
 #################################################################

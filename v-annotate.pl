@@ -273,6 +273,9 @@ $opt_group_desc_H{++$g} = "options for controlling thresholds related to alerts"
 #       option          type         default  group   requires incompat           preamble-output                                                                    help-output    
 opt_Add("--lowsc",      "real",      0.3,       $g,   undef,   undef,            "lowscore/LOW_SCORE bits per nucleotide threshold is <x>",                         "lowscore/LOW_SCORE bits per nucleotide threshold is <x>",                         \%opt_HH, \@opt_order_A);
 opt_Add("--indefclass", "real",      0.03,      $g,   undef,   undef,            "indfclas/INDEFINITE_CLASSIFICATION bits per nucleotide diff threshold is <x>",    "indfcls/INDEFINITE_CLASSIFICATION bits per nucleotide diff threshold is <x>",     \%opt_HH, \@opt_order_A);
+opt_Add("--nn_indefclass","real",    0.05,      $g,   undef,   undef,            "nnindfcl/INDEFINITE_CLASSIFICATION_NN fractional identity threshold is <x>",      "nnindfcl/INDEFINITE_CLASSIFICATION_NN fractional identity threshold is <x>",      \%opt_HH, \@opt_order_A);
+opt_Add("--nn_lowidclass","real",    0.75,      $g,   undef,   undef,            "nnloidcl/LOW_ID_CLASSIFICATION_NN fractional identity threshold is <x>",          "loidcl/LOW_ID_CLASSIFICATION_NN fractional identity threshold is <x>",            \%opt_HH, \@opt_order_A);
+opt_Add("--nn_partclass","real",     0.5,       $g,   undef,   undef,            "nnptrgcl/PARTIAL_REGION_CLASSIFICATION_NN fractional identity threshold is <x>",  "nnptrgcl/PARTIAL_REGION_CLASSIFICATION_NN fractional identity threshold is <x>",  \%opt_HH, \@opt_order_A);
 opt_Add("--incspec",    "real",      0.2,       $g,   undef,   undef,            "inc{group,subgrp}/INCORRECT_{GROUP,SUBGROUP}' bits/nt threshold is <x>",          "inc{group,subgrp}/INCORRECT_{GROUP,SUBGROUP} bits/nt threshold is <x>",           \%opt_HH, \@opt_order_A);
 opt_Add("--lowcov",     "real",      0.9,       $g,   undef,   undef,            "lowcovrg/LOW_COVERAGE fractional coverage threshold is <x>",                      "lowcovrg/LOW_COVERAGE fractional coverage threshold is <x>",                      \%opt_HH, \@opt_order_A);
 opt_Add("--dupregolp",  "integer",   20,        $g,   undef,   undef,            "dupregin/DUPLICATE_REGIONS minimum model overlap is <n>",                         "dupregin/DUPLICATE_REGIONS minimum model overlap is <n>",                         \%opt_HH, \@opt_order_A);
@@ -302,8 +305,8 @@ opt_Add("--xmaxins",    "integer",   27,        $g,   undef,"--pv_skip,--pv_hmme
 opt_Add("--xmaxdel",    "integer",   27,        $g,   undef,"--pv_skip,--pv_hmmer", "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",       "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",     \%opt_HH, \@opt_order_A);
 opt_Add("--nmaxins",    "integer",   27,        $g,   undef,   undef,            "insertnn/INSERTION_OF_NT max allowed nucleotide (nt) insertion length in CDS nt alignment is <n>", "insertnn/INSERTION_OF_NT max allowed nucleotide (nt) insertion length in CDS nt alignment is <n>",   \%opt_HH, \@opt_order_A);
 opt_Add("--nmaxdel",    "integer",   27,        $g,   undef,   undef,            "deletinn/DELETION_OF_NT max allowed nucleotide (nt) deletion length in CDS nt alignment is <n>",   "deletinn/DELETION_OF_NT max allowed nucleotide (nt) deletion length in CDS nt alignment is <n>",     \%opt_HH, \@opt_order_A);
-opt_Add("--xlonescore",  "integer",  80,        $g,   undef,"--pv_skip,--pv_hmmer", "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>",    "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--hlonescore",  "integer",  10,        $g,"--pv_hmmer","--pv_skip",        "indfantp/INDEFINITE_ANNOTATION min score for a hmmer hit not supported by CM analysis is <n>",     "indfantp/INDEFINITE_ANNOTATION min score for a hmmer hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xlonescore", "integer",  80,        $g,   undef,"--pv_skip,--pv_hmmer", "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>",    "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--hlonescore", "integer",  10,        $g,"--pv_hmmer","--pv_skip",        "indfantp/INDEFINITE_ANNOTATION min score for a hmmer hit not supported by CM analysis is <n>",     "indfantp/INDEFINITE_ANNOTATION min score for a hmmer hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling cmalign alignment stage";
 #        option               type   default group  requires incompat   preamble-output                                                                help-output    
@@ -405,6 +408,15 @@ opt_Add("--split",      "boolean", 0,          $g,    undef,  "-p",       "split
 opt_Add("--cpu",        "integer", 1,          $g,    undef, undef,       "parallelize across <n> CPU workers (requires --split or --glsearch)",  "parallelize across <n> CPU workers (requires --split or --glsearch)", \%opt_HH, \@opt_order_A);
 opt_Add("--sidx",       "integer", 1,          $g,    undef,"--split",    "start sequence indexing at <n> in tabular output files",               "start sequence indexing at <n> in tabular output files", \%opt_HH, \@opt_order_A);
 
+$opt_group_desc_H{++$g} = "options for experimental recombination detection";
+#     option            type       default  group   requires incompat   preamble-output                                                                                                    help-output
+opt_Add("--do_rc",      "boolean",  0,         $g,    undef,   undef,   "recombin/POSSIBLE_RECOMBINATION enable recombination detection (experimental, off by default)",      "recombin/POSSIBLE_RECOMBINATION enable recombination detection (experimental, off by default)", \%opt_HH, \@opt_order_A);
+opt_Add("--rc_thresh",  "real",     0.2,       $g,    undef,   undef,   "recombin/POSSIBLE_RECOMBINATION min per base bit score on each side of breakpoint is <x>",          "recombin/POSSIBLE_RECOMBINATION min per base bit score on each side of breakpoint is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--rc_match",   "real",     0.95,      $g,    undef,   undef,   "recombin/POSSIBLE_RECOMBINATION expected match probability for homology model is <x>",              "recombin/POSSIBLE_RECOMBINATION expected match probability for homology model is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--rc_minlen",  "integer",  10,        $g,    undef,   undef,   "recombin/POSSIBLE_RECOMBINATION min length segment allowed on either side of breakpoint is <n>",    "recombin/POSSIBLE_RECOMBINATION min length segment allowed on either side of breakpoint is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--rc_igself",  "boolean",  0,         $g,    undef,   undef,   "recombin/POSSIBLE_RECOMBINATION ignore model sequences with same name as input sequence",           "recombin/POSSIBLE_RECOMBINATION ignore model sequences with same name as input sequence", \%opt_HH, \@opt_order_A);
+opt_Add("--rc_iglist",  "string",   undef,     $g,    undef,   undef,   "recombin/POSSIBLE_RECOMBINATION ignore any model seq w/group.subgroup with any string in csv <s>",  "recombin/POSSIBLE_RECOMBINATION ignore any model seq w/group.subgroup with any string in csv <s>", \%opt_HH, \@opt_order_A);
+
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #     option            type       default  group   requires incompat    preamble-output                                                help-output    
 opt_Add("-p",           "boolean", 0,          $g,    undef,  undef,      "parallelize cmsearch/cmalign on a compute farm",              "parallelize cmsearch/cmalign on a compute farm", \%opt_HH, \@opt_order_A);
@@ -445,7 +457,7 @@ opt_Add("--nodcr",        "boolean", 0,             $g,    undef,   undef,    "d
 opt_Add("--forcedcrins",  "boolean", 0,             $g,"--cmindi",  undef,    "force insert type alignment doctoring, requires --cmindi",               "force insert type alignment doctoring, requires --cmindi", \%opt_HH, \@opt_order_A);
 opt_Add("--xnoid",        "boolean", 0,             $g,    undef,"--pv_hmmer,--pv_skip", "ignore blastx hits that are full length and 100% identical",  "ignore blastx hits that are full length and 100% identical", \%opt_HH, \@opt_order_A);
 opt_Add("--intlen",       "integer", 40,            $g,    undef,"--ignore_canonss", "set min length of intron to check for splice sites to <n>",       "set min length of intron to check for splice sites to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--nnregionlen",  "integer", 40,            $g,    undef,"--ignore_nnclass,--ignore_nnregion", "set min subsequence length for NN-based classification to <n>",   "set min subsequence length for NN-based classification to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--nn_regionlen", "integer", 40,            $g,    undef,"--ignore_nnclass,--ignore_nnregion", "set min subsequence length for NN-based classification to <n>",   "set min subsequence length for NN-based classification to <n>", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -495,40 +507,43 @@ my $options_okay =
                 "forcegene"     => \$GetOptions_H{"--forcegene"},
                 "forcequal=s"   => \$GetOptions_H{"--forcequal"},
 # options for controlling alert thresholds
-                "lowsc=s"       => \$GetOptions_H{"--lowsc"},
-                'indefclass=s'  => \$GetOptions_H{"--indefclass"},
-                'incspec=s'     => \$GetOptions_H{"--incspec"},  
-                "lowcov=s"      => \$GetOptions_H{"--lowcov"},
-                'dupregolp=s'   => \$GetOptions_H{"--dupregolp"},  
-                'dupregsc=s'    => \$GetOptions_H{"--dupregsc"},  
-                'indefstr=s'    => \$GetOptions_H{"--indefstr"},  
-                'lowsim5seq=s'  => \$GetOptions_H{"--lowsim5seq"},
-                'lowsim3seq=s'  => \$GetOptions_H{"--lowsim3seq"},
-                'lowsimiseq=s'  => \$GetOptions_H{"--lowsimiseq"},
-                'lowsim5ftr=s'  => \$GetOptions_H{"--lowsim5ftr"},
-                'lowsim3ftr=s'  => \$GetOptions_H{"--lowsim3ftr"},
-                'lowsimiftr=s'  => \$GetOptions_H{"--lowsimiftr"},
-                'lowsim5lftr=s' => \$GetOptions_H{"--lowsim5lftr"},
-                'lowsim3lftr=s' => \$GetOptions_H{"--lowsim3lftr"},
-                'lowsimilftr=s' => \$GetOptions_H{"--lowsimilftr"},
-                'extrant5=s'    => \$GetOptions_H{"--extrant5"},
-                'extrant3=s'    => \$GetOptions_H{"--extrant3"},
-                'biasfract=s'   => \$GetOptions_H{"--biasfract"},  
-                'nmiscftrthr=s' => \$GetOptions_H{"--nmiscftrthr"},  
-                'indefann=s'    => \$GetOptions_H{"--indefann"},  
-                'indefann_mp=s' => \$GetOptions_H{"--indefann_mp"},  
-                'fstminntt=s'   => \$GetOptions_H{"--fstminntt"},
-                'fstminnti=s'   => \$GetOptions_H{"--fstminnti"},
-                'fsthighthr=s'  => \$GetOptions_H{"--fsthighthr"},
-                'fstlowthr=s'   => \$GetOptions_H{"--fstlowthr"},
-                'xalntol=s'     => \$GetOptions_H{"--xalntol"},
-                'xmaxins=s'     => \$GetOptions_H{"--xmaxins"},
-                'xmaxdel=s'     => \$GetOptions_H{"--xmaxdel"},
-                'nmaxins=s'     => \$GetOptions_H{"--nmaxins"},
-                'nmaxdel=s'     => \$GetOptions_H{"--nmaxdel"},
-                'xlonescore=s'  => \$GetOptions_H{"--xlonescore"},
-                'hlonescore=s'  => \$GetOptions_H{"--hlonescore"},
-# options for controlling cmalign alignment stage 
+                "lowsc=s"        => \$GetOptions_H{"--lowsc"},
+                'indefclass=s'   => \$GetOptions_H{"--indefclass"},
+                'nn_indefclass=s'=> \$GetOptions_H{"--nn_indefclass"},
+                'nn_lowidclass=s'=> \$GetOptions_H{"--nn_lowidclass"},
+                'nn_partclass=s' => \$GetOptions_H{"--nn_partclass"},
+                'incspec=s'      => \$GetOptions_H{"--incspec"},  
+                "lowcov=s"       => \$GetOptions_H{"--lowcov"},
+                'dupregolp=s'    => \$GetOptions_H{"--dupregolp"},  
+                'dupregsc=s'     => \$GetOptions_H{"--dupregsc"},  
+                'indefstr=s'     => \$GetOptions_H{"--indefstr"},  
+                'lowsim5seq=s'   => \$GetOptions_H{"--lowsim5seq"},
+                'lowsim3seq=s'   => \$GetOptions_H{"--lowsim3seq"},
+                'lowsimiseq=s'   => \$GetOptions_H{"--lowsimiseq"},
+                'lowsim5ftr=s'   => \$GetOptions_H{"--lowsim5ftr"},
+                'lowsim3ftr=s'   => \$GetOptions_H{"--lowsim3ftr"},
+                'lowsimiftr=s'   => \$GetOptions_H{"--lowsimiftr"},
+                'lowsim5lftr=s'  => \$GetOptions_H{"--lowsim5lftr"},
+                'lowsim3lftr=s'  => \$GetOptions_H{"--lowsim3lftr"},
+                'lowsimilftr=s'  => \$GetOptions_H{"--lowsimilftr"},
+                'extrant5=s'     => \$GetOptions_H{"--extrant5"},
+                'extrant3=s'     => \$GetOptions_H{"--extrant3"},
+                'biasfract=s'    => \$GetOptions_H{"--biasfract"},  
+                'nmiscftrthr=s'  => \$GetOptions_H{"--nmiscftrthr"},  
+                'indefann=s'     => \$GetOptions_H{"--indefann"},  
+                'indefann_mp=s'  => \$GetOptions_H{"--indefann_mp"},  
+                'fstminntt=s'    => \$GetOptions_H{"--fstminntt"},
+                'fstminnti=s'    => \$GetOptions_H{"--fstminnti"},
+                'fsthighthr=s'   => \$GetOptions_H{"--fsthighthr"},
+                'fstlowthr=s'    => \$GetOptions_H{"--fstlowthr"},
+                'xalntol=s'      => \$GetOptions_H{"--xalntol"},
+                'xmaxins=s'      => \$GetOptions_H{"--xmaxins"},
+                'xmaxdel=s'      => \$GetOptions_H{"--xmaxdel"},
+                'nmaxins=s'      => \$GetOptions_H{"--nmaxins"},
+                'nmaxdel=s'      => \$GetOptions_H{"--nmaxdel"},
+                'xlonescore=s'   => \$GetOptions_H{"--xlonescore"},
+                'hlonescore=s'   => \$GetOptions_H{"--hlonescore"},
+                # options for controlling cmalign alignment stage 
                 'mxsize=s'       => \$GetOptions_H{"--mxsize"},
                 'tau=s'          => \$GetOptions_H{"--tau"},
                 'nofixedtau'     => \$GetOptions_H{"--nofixedtau"},
@@ -612,6 +627,13 @@ my $options_okay =
                 'split'         => \$GetOptions_H{"--split"},
                 'cpu=s'         => \$GetOptions_H{"--cpu"}, 
                 'sidx=s'        => \$GetOptions_H{"--sidx"}, 
+# options for experimental recombination detection
+                'do_rc'          => \$GetOptions_H{"--do_rc"},
+                'rc_thresh=s'    => \$GetOptions_H{"--rc_thresh"},
+                'rc_match=s'     => \$GetOptions_H{"--rc_match"},
+                'rc_minlen=s'    => \$GetOptions_H{"--rc_minlen"},
+                'rc_igself'      => \$GetOptions_H{"--rc_igself"},
+                'rc_iglist=s'    => \$GetOptions_H{"--rc_iglist"},
 # options related to parallelization
                 'p'             => \$GetOptions_H{"-p"},
                 'q=s'           => \$GetOptions_H{"-q"},
@@ -646,7 +668,7 @@ my $options_okay =
                 'forcedcrins'   => \$GetOptions_H{"--forcedcrins"},
                 'xnoid'         => \$GetOptions_H{"--xnoid"},
                 'intlen=s'      => \$GetOptions_H{"--intlen"},
-                'nnregionlen=s' => \$GetOptions_H{"--nnregionlen"});
+                'nn_regionlen=s'=> \$GetOptions_H{"--nn_regionlen"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
@@ -1242,8 +1264,8 @@ my @mdl_alninfo_AHH = ();
 my $do_scn_file = 0; # set to true if we have CLASS_ALN_FILE set for >= 1 models in minfo, we will output a scn file
 if((! $do_clsonly) && (! opt_Get("--ignore_nnclass", \%opt_HH))) { 
   for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
-    my $aln_file_grp    = vdr_ModelInfoCheckForFileKey($mdl_info_AH[$mdl_idx]{"group"});
-    my $aln_file_subgrp = vdr_ModelInfoCheckForFileKey($mdl_info_AH[$mdl_idx]{"subgroup"});
+    my $aln_file_grp    = (defined $mdl_info_AH[$mdl_idx]{"group"})    ? vdr_ModelInfoCheckForFileKey($mdl_info_AH[$mdl_idx]{"group"}) : undef;
+    my $aln_file_subgrp = (defined $mdl_info_AH[$mdl_idx]{"subgroup"}) ? vdr_ModelInfoCheckForFileKey($mdl_info_AH[$mdl_idx]{"subgroup"}) : undef;
     # make sure that subgroup value, if there is one and it's a file, is identical to group value
     if((defined $aln_file_grp) && (! defined $aln_file_subgrp) && (defined $mdl_info_AH[$mdl_idx]{"subgroup"})) { 
       ofile_FAIL("ERROR, based on the model info file, for model " . $mdl_info_AH[$mdl_idx]{"name"} . " group info will be read from an alignment file, but subgroup is defined but will not be read from a file, this is not supported", 1, $FH_HR);
@@ -2053,21 +2075,11 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       #my @mdl_fwd_AAA = ();
       #my @mdl_bck_AAA = ();
       #count_model_sequence_pairwise_differences($mdl_msa, \@mdl_fwd_AAA, \@mdl_bck_AAA, $FH_HR);
-
-      my $rf_start_pos = 1; 
-      my $rf_stop_pos  = $mdl_len;
-      if(! opt_Get("--ignore_nnregion", \%opt_HH)) { 
-	my ($tmp_rf_start_pos, $tmp_rf_stop_pos) = vdr_ModelInfoGetClassificationRefStartAndStopPositions(\%{$mdl_info_AH[$mdl_idx]}, $FH_HR);
-	if(defined $tmp_rf_start_pos) { 
-	  $rf_start_pos = $tmp_rf_start_pos;
-	}
-	if(defined $tmp_rf_stop_pos) { 
-	  $rf_stop_pos = $tmp_rf_stop_pos;
-	}
-      }	    
+    
       for(my $a = 0; $a < scalar(@{$stk_file_HA{$mdl_name}}); $a++) { 
-	if(-s $stk_file_HA{$mdl_name}[$a]) { # skip empty alignments, which may exist if all seqs were not alignable
-          classify_based_on_alignment($mdl_name, $mdl_msa, $stk_file_HA{$mdl_name}[$a], $rf_start_pos, $rf_stop_pos, \%{$mdl_alninfo_AHH[$mdl_idx]}, \%cls_output_HH, \%mdl_nn_cls_ct_HH, \@to_remove_A, \%opt_HH, $FH_HR);
+	      if(-s $stk_file_HA{$mdl_name}[$a]) { # skip empty alignments, which may exist if all seqs were not alignable
+          classify_based_on_alignment(\%{$mdl_info_AH[$mdl_idx]}, $mdl_msa, $stk_file_HA{$mdl_name}[$a], \%{$mdl_alninfo_AHH[$mdl_idx]}, 
+                                      \%cls_output_HH, \%mdl_nn_cls_ct_HH, \%alt_seq_instances_HH, \%alt_info_HH, \@to_remove_A, \%opt_HH, $FH_HR);
         }
       }
     }
@@ -10763,7 +10775,7 @@ sub output_tabular {
 			  helper_tabular_replace_spaces($seq_subgrp2), 
 			  $seq_nn_pid2, $seq_nn_seq2,
 			  $seq_nn_diff2print, 
-			  $seq_nnreg_seq, $seq_nnreg_mdl, $seq_nnreg_seq_fract2print]);
+			  $seq_nnreg_seq, $seq_nnreg_mdl, $seq_nnreg_seq_fract2print, $seq_alt_str],);
     }
 
     if(defined $dcr_output_HAHR->{$seq_name}) { 
@@ -15111,9 +15123,9 @@ sub helper_tabular_fill_header_and_justification_arrays {
     @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0,       0,       0,     0,     0,      0,      0,     1,        1,      1,      0,       0,       1);
   }
   elsif($ofile_key eq "scn") {
-    @{$head_AAR->[0]} = ("seq", "seq",  "seq", "",    "",    "",       "",     "sub",  "fract",    "",      "",   "sub","fract",     "",   "fid",  "nnregion_seqspan", "nnregion",   "nnregion");
-    @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "ant", "model",  "grp1", "grp1", "id1",  "seq1",  "grp2",  "grp2", "id2",   "seq2", "diff", " mdl_coords",       "mdl_coords", "covrg");
-    @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0,            1,      1,       1,      0,      1,  0,      0,                   0,            0);
+    @{$head_AAR->[0]} = ("seq", "seq",  "seq", "",    "",    "",       "",     "sub",  "fract",    "",      "",   "sub","fract",     "",   "fid",  "nnregion_seqspan", "nnregion",   "nnregion", "seq");
+    @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "ant", "model",  "grp1", "grp1", "id1",  "seq1",  "grp2",  "grp2", "id2",   "seq2", "diff", " mdl_coords",       "mdl_coords", "covrg",    "alerts");
+    @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0,            1,      1,       1,      0,      1,  0,      0,                   0,            0,          1);
   }
   elsif($ofile_key eq "ftr") {
     @{$head_AAR->[0]} = ("",    "seq",  "seq", "",    "",      "ftr",  "ftr",  "ftr", "ftr", "par", "",    "",       "",     "",        "",    "",     "",     "",       "",     "",        "",     "",    "",    "seq",    "model",  "ftr");
@@ -15756,13 +15768,14 @@ sub validate_and_copy_classification_alignment_file {
     }
   }
 
-  # store rf start and stop pos information, if any
+  # store VADR-specific GF annotations, if any
   my @gf_tag_A;
   my @gf_value_A = ();
   $msa->get_all_GF(\@gf_tag_A, \@gf_value_A);
   my $ngf = scalar(@gf_tag_A);
   my $rf_start_pos = undef;
   my $rf_stop_pos  = undef;
+  my $vadr_default_rc_match = undef;
   for(my $a = 0; $a < $ngf; $a++) {
     if($gf_tag_A[$a] eq "VADR-classification-rf-start-pos") {
       $rf_start_pos = $gf_value_A[$a];
@@ -15770,80 +15783,17 @@ sub validate_and_copy_classification_alignment_file {
     if($gf_tag_A[$a] eq "VADR-classification-rf-stop-pos") {
       $rf_stop_pos = $gf_value_A[$a];
     }
+    if($gf_tag_A[$a] eq "VADR-default-rc_match") {
+      $vadr_default_rc_match = $gf_value_A[$a];
+    }
   }
   vdr_ModelInfoSetClassificationRefStartAndStopPositions($mdl_info_HR, $rf_start_pos, $rf_stop_pos, $FH_HR);
-
-  undef $msa;
-  return;
-}
-
-#################################################################
-# Subroutine: OLD_classify_based_on_alignment
-# Incept:     EPN, Thu Aug 28 15:10:05 2025
-#
-# Purpose:    Given an alignment of input sequences, merge it with
-#             the alignment used to build the model, and classify
-#             sequences based on the nearest neighbors.
-#
-# Arguments:
-#  $esl_alimerge:    path to esl-alimerge executable
-#  $mdl_stk_file:    path to stockholm alignment file with alignment of model sequences
-#  $in_stk_file:     path to stockholm alignment file with alignment of 1 or more input sequences
-#  $nseq_in_stk:     number of sequences in $in_stk_file
-#  $mdl_alninfo_HH:  REF to 2D hash with group/subgroup information in 
-#  $cls_output_HHR:  REF to 2D hash of classification output info, possibly modified here
-#  $to_remove_AR:    REF to array of alignment files to remove
-#  $dir_tail:        prefix added to model sequence names
-#  $FH_HR:           ref to hash of file handles
-#
-# Returns:  void
-#           
-#################################################################
-sub OLD_classify_based_on_alignment {
-  my $sub_name = "classify_based_on_alignment";
-  my $nargs_exp = 9;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($esl_alimerge, $mdl_stk_file, $in_stk_file, $nseq_in_stk, $mdl_alninfo_HHR, $cls_output_HHR, $to_remove_AR, $dir_tail, $FH_HR) = (@_);
-
-  # merge the two alignments
-  my $merged_stk_file = $in_stk_file;
-  $merged_stk_file =~ s/\.stk$//;
-  $merged_stk_file .= ".merged.stk";
-
-  my $merge_cmd = "$esl_alimerge $in_stk_file $mdl_stk_file > $merged_stk_file";
-  utl_RunCommand($merge_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
-
-  my $msa = Bio::Easel::MSA->new({
-    fileLocation => $merged_stk_file,
-    isDna => 1});
-
-  my $nseq_merged = $msa->nseq;
-  my @is_mdl_A = ();
-  my $i;
-  for($i = 0; $i < $nseq_in_stk; $i++) {
-    $is_mdl_A[$i] = 0;
-  }
-  for($i = $nseq_in_stk; $i < $nseq_merged; $i++) {
-    $is_mdl_A[$i] = 1;
-  }
-  for(my $i = 0; $i < $nseq_in_stk; $i++) {
-    my $seqname = $msa->get_sqname($i);
-    my ($avg_pid, $min_pid, $min_idx, $max_pid, $max_idx) = $msa->avg_min_max_pid_to_seq($i, \@is_mdl_A);
-    my $max_seqname = $msa->get_sqname($max_idx);
-#    $max_seqname =~ s/^$dir_tail//;
-    printf("max_seqname: $max_seqname\n");
-    if(defined $mdl_alninfo_HHR->{$max_seqname}{"group"}) {
-      $cls_output_HHR->{$seqname}{"group1"} = $mdl_alninfo_HHR->{$max_seqname}{"group"};
-      print($msa->get_sqname($i) . " group is " . $mdl_alninfo_HHR->{$max_seqname}{"group"} . " pid: $max_pid to $max_seqname\n");
-    }
-    if(defined $mdl_alninfo_HHR->{$max_seqname}{"subgroup"}) {
-      $cls_output_HHR->{$seqname}{"subgroup1"} = $mdl_alninfo_HHR->{$max_seqname}{"subgroup"};
-      print($msa->get_sqname($i) . " subgroup is " . $mdl_alninfo_HHR->{$max_seqname}{"subgroup"} . " pid: $max_pid to $max_seqname\n");
-    }
-  }
-  push(@{$to_remove_AR}, $merged_stk_file);
   
+  # Store VADR-default-rc_match in model info if it exists
+  if(defined $vadr_default_rc_match) {
+    vdr_ModelInfoSetNumericalValue($mdl_info_HR, "VADR_DEFAULT_RC_MATCH", $vadr_default_rc_match, 0.0, 0.999, $FH_HR);
+  }
+
   undef $msa;
   return;
 }
@@ -15933,17 +15883,81 @@ sub count_model_sequence_pairwise_differences {
 #             sequences based on the nearest neighbors.
 #
 # Arguments:
-#  $mdl_name:          model name the $mdl_msa pertains to
-#  $mdl_msa:           the model MSA
-#  $in_stk_file:       path to stockholm alignment file with alignment of 1 or more input sequences
-#  $rf_start_pos:      the first RF start position to use for the nearest-neighbor classification, 1 to start at beginning
-#  $rf_stop_pos:       the final RF start position to use for the nearest-neighbor classification, $mdl_len to end at end
-#  $mdl_alninfo_HHR:   REF to 2D hash with group/subgroup information in 
-#  $cls_output_HHR:    REF to 2D hash of classification output info, possibly modified here
-#  $mdl_nn_cls_ct_HHR: REF to 2D hash of counts of seqs assigned to each model/group/subgroup trio
-#  $to_remove_AR:      REF to array of alignment files to remove
-#  $opt_HHR:           ref to hash of file handles
-#  $FH_HR:             ref to hash of file handles
+#  $mdl_name:               model name the $mdl_msa pertains to
+#  $mdl_msa:                the model MSA
+#  $in_stk_file:            path to stockholm alignment file with alignment of 1 or more input sequences
+#  $rf_start_pos:           the first RF start position to use for the nearest-neighbor classification, 1 to start at beginning
+#  $rf_stop_pos:            the final RF start position to use for the nearest-neighbor classification, $mdl_len to end at end
+#  $mdl_alninfo_HHR:        REF to 2D hash with group/subgroup information in 
+#  $cls_output_HHR:         REF to 2D hash of classification output info, possibly modified here
+#  $mdl_nn_cls_ct_HHR:      REF to 2D hash of counts of seqs assigned to each model/group/subgroup trio
+#  $alt_seq_instances_HHR:  REF to 2D hash with per-sequence alerts, added to here
+#  $alt_info_HHR:           REF to the alert info hash of arrays, PRE-FILLED
+#  $to_remove_AR:           REF to array of alignment files to remove
+#  $opt_HHR:                ref to hash of file handles
+#  $FH_HR:                  ref to hash of file handles
+#
+# Returns:  void
+#           
+#################################################################
+sub helper_nucleotide_ambiguity_distribution {
+  my $sub_name = "helper_nucleotide_ambiguity_distribution";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($nt, $counts_HR) = @_;
+  
+  # Initialize counts
+  $counts_HR->{'A'} = 0;
+  $counts_HR->{'C'} = 0;
+  $counts_HR->{'G'} = 0;
+  $counts_HR->{'T'} = 0;
+  
+  # Unambiguous nucleotides
+  if($nt eq 'A')    { $counts_HR->{'A'} = 1; }
+  elsif($nt eq 'C') { $counts_HR->{'C'} = 1; }
+  elsif($nt eq 'G') { $counts_HR->{'G'} = 1; }
+  elsif($nt eq 'T' || $nt eq 'U') { $counts_HR->{'T'} = 1; }
+  # 2-fold ambiguities
+  elsif($nt eq 'R') { $counts_HR->{'A'} = 0.5; $counts_HR->{'G'} = 0.5; } # A or G
+  elsif($nt eq 'Y') { $counts_HR->{'C'} = 0.5; $counts_HR->{'T'} = 0.5; } # C or T
+  elsif($nt eq 'S') { $counts_HR->{'G'} = 0.5; $counts_HR->{'C'} = 0.5; } # G or C
+  elsif($nt eq 'W') { $counts_HR->{'A'} = 0.5; $counts_HR->{'T'} = 0.5; } # A or T
+  elsif($nt eq 'K') { $counts_HR->{'G'} = 0.5; $counts_HR->{'T'} = 0.5; } # G or T
+  elsif($nt eq 'M') { $counts_HR->{'A'} = 0.5; $counts_HR->{'C'} = 0.5; } # A or C
+  # 3-fold ambiguities
+  elsif($nt eq 'B') { $counts_HR->{'C'} = 0.333; $counts_HR->{'G'} = 0.333; $counts_HR->{'T'} = 0.333; } # not A
+  elsif($nt eq 'D') { $counts_HR->{'A'} = 0.333; $counts_HR->{'G'} = 0.333; $counts_HR->{'T'} = 0.333; } # not C
+  elsif($nt eq 'H') { $counts_HR->{'A'} = 0.333; $counts_HR->{'C'} = 0.333; $counts_HR->{'T'} = 0.333; } # not G
+  elsif($nt eq 'V') { $counts_HR->{'A'} = 0.333; $counts_HR->{'C'} = 0.333; $counts_HR->{'G'} = 0.333; } # not T
+  # Complete ambiguity
+  elsif($nt eq 'N' || $nt eq 'X') { $counts_HR->{'A'} = 0.25; $counts_HR->{'C'} = 0.25; $counts_HR->{'G'} = 0.25; $counts_HR->{'T'} = 0.25; }
+  # else: gaps or other characters - leave all at 0
+  
+  return;
+}
+
+#################################################################
+# Subroutine:  classify_based_on_alignment()
+# Incept:      EPN, Wed Mar 25 09:15:07 2020
+#
+# Purpose:     Classify sequences by comparing to a multiple
+#              sequence alignment of model sequences. Determine
+#              the best matching model sequence for each test
+#              sequence and check for recombination.
+#
+# Arguments: 
+#  $mdl_info_HR:            REF to the model info hash (for one model)
+#  $mdl_msa:                Bio::Easel::MSA object with model sequences 
+#  $in_stk_file:            input stockholm file name with test sequences aligned to model
+#  $mdl_alninfo_HHR:        REF to 2D hash with group/subgroup information in 
+#  $cls_output_HHR:         REF to 2D hash of classification output info, possibly modified here
+#  $mdl_nn_cls_ct_HHR:      REF to 2D hash of counts of seqs assigned to each model/group/subgroup trio
+#  $alt_seq_instances_HHR:  REF to 2D hash with per-sequence alerts, added to here
+#  $alt_info_HHR:           REF to the alert info hash of arrays, PRE-FILLED
+#  $to_remove_AR:           REF to array of alignment files to remove
+#  $opt_HHR:                ref to hash of file handles
+#  $FH_HR:                  ref to hash of file handles
 #
 # Returns:  void
 #           
@@ -15953,12 +15967,90 @@ sub classify_based_on_alignment {
   my $nargs_exp = 11;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($mdl_name, $mdl_msa, $in_stk_file, $rf_start_pos, $rf_stop_pos, $mdl_alninfo_HHR, $cls_output_HHR, $mdl_nn_cls_ct_HHR, $to_remove_AR, $opt_HHR, $FH_HR) = (@_);
+  my ($mdl_info_HR, $mdl_msa, $in_stk_file, $mdl_alninfo_HHR, $cls_output_HHR, $mdl_nn_cls_ct_HHR, 
+      $alt_seq_instances_HHR, $alt_info_HHR, $to_remove_AR, $opt_HHR, $FH_HR) = (@_);
+
+  # related to nearest-neighbor classification
+  my $small_value    = 0.00000001; # for handling precision issues
+  my $nn_indefclass_thr = opt_Get("--nn_indefclass", $opt_HHR) - $small_value;
+  my $nn_lowidclass_thr = opt_Get("--nn_lowidclass", $opt_HHR) - $small_value;
+  my $nn_partclass_thr  = opt_Get("--nn_partclass",  $opt_HHR) - $small_value;
+  # related to recombination detection
+  my $rc_thresh = opt_Get("--rc_thresh", $opt_HHR) - $small_value; # minimum per-base bit score difference to report recombination
+  my $rc_minlen = opt_Get("--rc_minlen", $opt_HHR);  # minimum number of non-gap positions in each segment
+  my $rc_match  = opt_Get("--rc_match",  $opt_HHR);  # expected match probability for homology model
+  
+  # set rf_start_pos and rf_stop_pos from mdl_info if it's defined, else set as 1 and mdl_len
+  my $rf_start_pos = 1; 
+  my $rf_stop_pos  = $mdl_info_HR->{"length"};
+  if(! opt_Get("--ignore_nnregion", \%opt_HH)) { 
+	  my ($tmp_rf_start_pos, $tmp_rf_stop_pos) = vdr_ModelInfoGetClassificationRefStartAndStopPositions(\%{$mdl_info_AH[$mdl_idx]}, $FH_HR);
+	  if(defined $tmp_rf_start_pos) { $rf_start_pos = $tmp_rf_start_pos; }
+	  if(defined $tmp_rf_stop_pos)  { $rf_stop_pos = $tmp_rf_stop_pos; }
+	}   
+
+  # If --rc_match was not explicitly set by user AND model has VADR-default-rc_match, use that instead
+  if((! opt_IsUsed("--rc_match", $opt_HHR)) && (defined $mdl_info_HR->{"VADR_DEFAULT_RC_MATCH"})) {
+    $rc_match = $mdl_info_HR->{"VADR_DEFAULT_RC_MATCH"};
+  }
+  my $rc_mismatch = (1.0 - $rc_match) / 3.0;          # expected probability of specific mismatch (divide by 3 for 3 alternative nucleotides)
+
+  # store rc_iglist_A array
+  my @rc_iglist_A = ();
+  if(opt_Get("--rc_iglist", $opt_HHR)) { 
+    @rc_iglist_A = split(",", opt_Get("--rc_iglist", $opt_HHR));
+  }
 
   # read in the input alignment
+  my $mdl_name = $mdl_info_HR->{"name"};
   my $seq_msa = Bio::Easel::MSA->new({
     fileLocation => $in_stk_file,
     isDna => 1});
+  
+  # Build RF-to-unaligned position map for all sequences BEFORE removing gap RF columns
+  # This is needed for reporting sequence coordinates in recombination alerts
+  my $orig_alen = $seq_msa->alen;
+  my $seq_nseq_pre = $seq_msa->nseq;
+  my @rf_to_uapos_AA = (); # 2D array: $rf_to_uapos_AA[$sidx][$rfpos] = unaligned position (1-based), or -1 for gaps
+  
+  # Get the RF line to track RF positions
+  my $rf_line = $seq_msa->get_rf();
+  
+  for(my $sidx_pre = 0; $sidx_pre < $seq_nseq_pre; $sidx_pre++) {
+    my $seq_sqstring_pre = $seq_msa->get_sqstring_aligned($sidx_pre);
+    my $rfpos = 0;   # RF position counter (0-based, only increments for non-gap RF positions)
+    my $uapos = 0;   # unaligned sequence position counter (0-based during construction)
+    @{$rf_to_uapos_AA[$sidx_pre]} = ();
+    
+    # Loop over all alignment positions
+    for(my $apos = 0; $apos < $orig_alen; $apos++) {
+      my $rf_char = substr($rf_line, $apos, 1);
+      my $seq_char = substr($seq_sqstring_pre, $apos, 1);
+      
+      # Check if this is a non-gap RF position
+      if($rf_char !~ m/[.\-~]/) {
+        # This is a non-gap RF position
+        if($seq_char =~ m/[A-Za-z]/) {
+          # Sequence has a non-gap character at this RF position
+          $uapos++;
+          $rf_to_uapos_AA[$sidx_pre][$rfpos] = $uapos;
+        }
+        else {
+          # Sequence has a gap at this RF position
+          $rf_to_uapos_AA[$sidx_pre][$rfpos] = -1;
+        }
+        $rfpos++;
+      }
+      else {
+        # This is a gap RF position (will be removed)
+        # We still need to count sequence non-gap characters for uapos
+        if($seq_char =~ m/[A-Za-z]/) {
+          $uapos++;
+        }
+      }
+    }
+  }
+  
   # remove gap RF columns
   $seq_msa->remove_rf_gap_columns(".-~");
   
@@ -15967,7 +16059,6 @@ sub classify_based_on_alignment {
 		       $mdl_msa->alen, $seq_msa->alen), 1, $FH_HR);
   }
 
-  my $min_nnregion_length = opt_Get("--nnregionlen", $opt_HHR);
   my $alen = $seq_msa->alen;
   my $mdl_nseq = $mdl_msa->nseq;
   my $seq_nseq = $seq_msa->nseq;
@@ -15976,15 +16067,64 @@ sub classify_based_on_alignment {
   my $midx; # index over sequences in $mdl_msa
   # store group and subgroup names for each model sequence
   my @mdl_group_subgroup_A = ();
+  my @mdl_has_subgroup_A = ();  # does this model have a valid subgroup? need to know this when comparing because two models with same group but no subgroup can be max1/max2
   for($midx = 0; $midx < $mdl_nseq; $midx++) {
     $mdl_group_subgroup_A[$midx] =  (defined $mdl_alninfo_HHR->{$mdl_msa->get_sqname($midx)}{"group"}) ? $mdl_alninfo_HHR->{$mdl_msa->get_sqname($midx)}{"group"} : "";
     $mdl_group_subgroup_A[$midx] .= (defined $mdl_alninfo_HHR->{$mdl_msa->get_sqname($midx)}{"subgroup"}) ? "." . $mdl_alninfo_HHR->{$mdl_msa->get_sqname($midx)}{"subgroup"} : "";
-  }    
+    $mdl_has_subgroup_A[$midx]    = (defined $mdl_alninfo_HHR->{$mdl_msa->get_sqname($midx)}{"subgroup"}) ? 1 : 0;
+  }
   
+  # Calculate position-specific nucleotide frequencies from model alignment for recombination detection
+  my @nt_freq_HA = (); # array of hashes: $nt_freq_HA[$apos]{'A'} = frequency of A at position $apos
+  for(my $apos = 0; $apos < $alen; $apos++) {
+    my $column = $mdl_msa->get_column(($apos+1));
+    my %nucleotide_counts = ('A'=>0, 'C'=>0, 'G'=>0, 'T'=>0);
+    my $total_nongap = 0;
+    my %nt_dist = ();
+    
+    # Count each nucleotide in the column, handling ambiguities
+    for(my $i = 0; $i < length($column); $i++) {
+      my $nt = uc(substr($column, $i, 1));
+      if($nt =~ m/[\.\-~]/) { next; } # skip gaps
+      
+      helper_nucleotide_ambiguity_distribution($nt, \%nt_dist);
+      $nucleotide_counts{'A'} += $nt_dist{'A'};
+      $nucleotide_counts{'C'} += $nt_dist{'C'};
+      $nucleotide_counts{'G'} += $nt_dist{'G'};
+      $nucleotide_counts{'T'} += $nt_dist{'T'};
+      if($nt_dist{'A'} + $nt_dist{'C'} + $nt_dist{'G'} + $nt_dist{'T'} > 0) {
+        $total_nongap++;
+      }
+    }
+    
+    # Calculate frequencies
+    $nt_freq_HA[$apos] = {};
+    if($total_nongap > 0) {
+      foreach my $nt ('A', 'C', 'G', 'T') {
+        $nt_freq_HA[$apos]{$nt} = $nucleotide_counts{$nt} / $total_nongap;
+      }
+    } else {
+      # All gaps - use uniform distribution
+      foreach my $nt ('A', 'C', 'G', 'T') {
+        $nt_freq_HA[$apos]{$nt} = 0.25;
+      }
+    }
+  }
+  
+  # determine minimum allowed length for nn region, use --nnregion_len but if region is specified 
+  # and specified region length is below that minimum, use that
+  my $specified_defined_nn_region = (($rf_start_pos == 1) && ($rf_stop_pos == $alen)) ? 0 : 1; # is there a specified nn region?
+  my $specified_defined_nn_region_coords = vdr_CoordsSegmentCreate( $rf_start_pos, $rf_stop_pos, "+", $FH_HR );
+  my $min_nnregion_length = opt_Get("--nn_regionlen", $opt_HHR);
+  if(vdr_CoordsLength($specified_defined_nn_region_coords, $FH_HR) < $min_nnregion_length) { 
+    $min_nnregion_length = vdr_CoordsLength($specified_defined_nn_region_coords, $FH_HR);
+  }
+
   for(my $sidx = 0; $sidx < $seq_nseq; $sidx++) {
     my $seqname = $seq_msa->get_sqname($sidx);
     my $seq_sqstring = $seq_msa->get_sqstring_aligned($sidx);
     $seq_sqstring =~ tr/a-z/A-Z/; # shouldn't be necessary, but just to be safe
+    
     # find first and final rf positions with a nongap, if none, these will stay 1
     my $seq_rf_start = 1;
     my $seq_rf_stop  = 1;
@@ -15994,7 +16134,7 @@ sub classify_based_on_alignment {
     my $rev_seq_sqstring = reverse($seq_sqstring);
     if ($rev_seq_sqstring =~ /[^.\-~]/) {
       my $pos_rev = $-[0];            # index from the right side
-      $seq_rf_stop = length($rev_seq_sqstring) - 1 - $pos_rev + 1;  # convert to left-side index
+      $seq_rf_stop = length($rev_seq_sqstring) - 1 - $pos_rev + 1;  # convert to left-side (index)
     }
     # determine the first and final positions we will compare to model sequences
     my $apos_start = undef;  # nongap RF alignment start position for region we will compare to model for this sequence
@@ -16024,179 +16164,585 @@ sub classify_based_on_alignment {
     }
     my @seq_sqstring_A = split("", $possibly_subseq_sqstring);
     my $alen_p = ($apos_stop) - ($apos_start) + 1;
-    #printf("apos_start: $apos_start apos_stop: $apos_stop seq_rf_start: $seq_rf_start, seq_rf_stop: $seq_rf_stop, alen_p: $alen_p, scalar(seq_sqstring_A): " . scalar(@seq_sqstring_A) . "\n");
     if(scalar(@seq_sqstring_A) != $alen_p) {
       ofile_FAIL("ERROR, in $sub_name, apos_start: $apos_start apos_stop: $apos_stop seq_rf_start: $seq_rf_start, seq_rf_stop: $seq_rf_stop, alen_p: $alen_p, scalar(seq_sqstring_A): " . scalar(@seq_sqstring_A) . "\n", 1, $FH_HR);
     }					    
-    my @fwd_nmatch_AA = ();
-    my @bck_nmatch_AA = ();
-    my @fwd_denom_AA = ();
-    my @bck_denom_AA = ();
+    
     my ($apos_p, $seq_char, $mdl_char, $seq_is_res, $mdl_is_res);
-    my $out_weighted_avg_diff = "";
-    for(my $midx = 0; $midx < $mdl_nseq; $midx++) { 
-      my $mdl_sqstring = $mdl_msa->get_sqstring_aligned($midx);
-      $mdl_sqstring =~ tr/a-z/A-Z/; # shouldn't be necessary, but just to be safe
-      my $possibly_submdl_sqstring = substr($mdl_sqstring, ($apos_start - 1), ($apos_stop - $apos_start + 1));
-      my @mdl_sqstring_A = split("", $possibly_submdl_sqstring);
-      @{$fwd_nmatch_AA[$midx]} = ();
-      @{$fwd_denom_AA[$midx]} = ();
-      for($apos_p = 0; $apos_p < $alen_p; $apos_p++) {
-        $seq_char = $seq_sqstring_A[$apos_p];
-        $mdl_char = $mdl_sqstring_A[$apos_p];
-        $seq_is_res = ($seq_char =~ m/[A-Z]/) ? 1 : 0;
-        $mdl_is_res = ($mdl_char =~ m/[A-Z]/) ? 1 : 0;
-        $fwd_nmatch_AA[$midx][$apos_p] = ($apos_p > 0) ? $fwd_nmatch_AA[$midx][($apos_p-1)] : 0;
-        $fwd_denom_AA[$midx][$apos_p]  = ($apos_p > 0) ? $fwd_denom_AA[$midx][($apos_p-1)]  : 0;
-        if(($seq_is_res) && ($mdl_is_res)) {
-          $fwd_denom_AA[$midx][$apos_p]++;
-          if($seq_char eq $mdl_char) {
-            $fwd_nmatch_AA[$midx][$apos_p]++;
+
+    # fwd/bck LLR score arrays for the NN region, populated below and used by STEP 4
+    my @fwd_logscore_AA = (); # cumulative LLR score from start of NN region to position
+    my @bck_logscore_AA = (); # cumulative LLR score from position to end of NN region
+    my @fwd_npos_AA = ();     # number of non-gap positions scored in forward direction
+    my @bck_npos_AA = ();     # number of non-gap positions scored in backward direction
+
+    if(opt_Get("--do_rc", $opt_HHR)) {
+      # STEP 1 (--do_rc path): compute fwd/bck LLR scores over FULL sequence
+      # (seq_rf_start..seq_rf_stop). These full-sequence arrays are needed by
+      # both STEP 3 (recombination scan) and STEP 2 (to derive NN-region arrays).
+      my @full_fwd_logscore_AA = (); # cumulative LLR score from start to position (FULL sequence)
+      my @full_bck_logscore_AA = (); # cumulative LLR score from position to end (FULL sequence)
+      my @full_fwd_npos_AA = ();     # non-gap positions scored forward (FULL sequence)
+      my @full_bck_npos_AA = ();     # non-gap positions scored backward (FULL sequence)
+
+      my $full_alen = $seq_rf_stop - $seq_rf_start + 1;
+      my $full_seq_sqstring = substr($seq_sqstring, ($seq_rf_start - 1), $full_alen);
+      my @full_seq_sqstring_A = split("", $full_seq_sqstring);
+
+      for(my $midx = 0; $midx < $mdl_nseq; $midx++) {
+        my $mdl_sqstring = $mdl_msa->get_sqstring_aligned($midx);
+        $mdl_sqstring =~ tr/a-z/A-Z/;
+        my $full_mdl_sqstring = substr($mdl_sqstring, ($seq_rf_start - 1), $full_alen);
+        my @full_mdl_sqstring_A = split("", $full_mdl_sqstring);
+
+        @{$full_fwd_logscore_AA[$midx]} = ();
+        @{$full_fwd_npos_AA[$midx]} = ();
+
+        # Forward pass over FULL sequence - accumulate log-likelihood scores
+        for($apos_p = 0; $apos_p < $full_alen; $apos_p++) {
+          $seq_char = $full_seq_sqstring_A[$apos_p];
+          $mdl_char = $full_mdl_sqstring_A[$apos_p];
+          $seq_is_res = ($seq_char =~ m/[A-Z]/) ? 1 : 0;
+          $mdl_is_res = ($mdl_char =~ m/[A-Z]/) ? 1 : 0;
+
+          $full_fwd_logscore_AA[$midx][$apos_p] = ($apos_p > 0) ? $full_fwd_logscore_AA[$midx][($apos_p-1)] : 0;
+          $full_fwd_npos_AA[$midx][$apos_p]     = ($apos_p > 0) ? $full_fwd_npos_AA[$midx][($apos_p-1)]     : 0;
+
+          if(($seq_is_res) && ($mdl_is_res)) {
+            my $actual_apos = $seq_rf_start + $apos_p - 1;
+            my $position_score;
+            if($seq_char eq $mdl_char) {
+              my $freq_nt = (defined $nt_freq_HA[$actual_apos]{$seq_char}) ? $nt_freq_HA[$actual_apos]{$seq_char} : 0.25;
+              $freq_nt = 0.001 if $freq_nt < 0.001;
+              $freq_nt = 0.999 if $freq_nt > 0.999;
+              $position_score = (log($rc_match) / log(2)) - 2.0 * (log($freq_nt) / log(2));
+            } else {
+              my $freq_seq = (defined $nt_freq_HA[$actual_apos]{$seq_char}) ? $nt_freq_HA[$actual_apos]{$seq_char} : 0.25;
+              my $freq_mdl = (defined $nt_freq_HA[$actual_apos]{$mdl_char}) ? $nt_freq_HA[$actual_apos]{$mdl_char} : 0.25;
+              $freq_seq = 0.001 if $freq_seq < 0.001;
+              $freq_mdl = 0.001 if $freq_mdl < 0.001;
+              $freq_seq = 0.999 if $freq_seq > 0.999;
+              $freq_mdl = 0.999 if $freq_mdl > 0.999;
+              $position_score = (log($rc_mismatch) / log(2)) - (log($freq_seq) / log(2)) - (log($freq_mdl) / log(2));
+            }
+            $full_fwd_logscore_AA[$midx][$apos_p] += $position_score;
+            $full_fwd_npos_AA[$midx][$apos_p]++;
+          }
+        }
+
+        @{$full_bck_logscore_AA[$midx]} = ();
+        @{$full_bck_npos_AA[$midx]} = ();
+
+        # Backward pass over FULL sequence - accumulate log-likelihood scores
+        for($apos_p = ($full_alen-1); $apos_p >= 0; $apos_p--) {
+          $seq_char = $full_seq_sqstring_A[$apos_p];
+          $mdl_char = $full_mdl_sqstring_A[$apos_p];
+          $seq_is_res = ($seq_char =~ m/[A-Z]/) ? 1 : 0;
+          $mdl_is_res = ($mdl_char =~ m/[A-Z]/) ? 1 : 0;
+
+          $full_bck_logscore_AA[$midx][$apos_p] = ($apos_p < ($full_alen-1)) ? $full_bck_logscore_AA[$midx][($apos_p+1)] : 0;
+          $full_bck_npos_AA[$midx][$apos_p]     = ($apos_p < ($full_alen-1)) ? $full_bck_npos_AA[$midx][($apos_p+1)]     : 0;
+
+          if(($seq_is_res) && ($mdl_is_res)) {
+            my $actual_apos = $seq_rf_start + $apos_p - 1;
+            my $position_score;
+            if($seq_char eq $mdl_char) {
+              my $freq_nt = (defined $nt_freq_HA[$actual_apos]{$seq_char}) ? $nt_freq_HA[$actual_apos]{$seq_char} : 0.25;
+              $freq_nt = 0.001 if $freq_nt < 0.001;
+              $freq_nt = 0.999 if $freq_nt > 0.999;
+              $position_score = (log($rc_match) / log(2)) - 2.0 * (log($freq_nt) / log(2));
+            } else {
+              my $freq_seq = (defined $nt_freq_HA[$actual_apos]{$seq_char}) ? $nt_freq_HA[$actual_apos]{$seq_char} : 0.25;
+              my $freq_mdl = (defined $nt_freq_HA[$actual_apos]{$mdl_char}) ? $nt_freq_HA[$actual_apos]{$mdl_char} : 0.25;
+              $freq_seq = 0.001 if $freq_seq < 0.001;
+              $freq_mdl = 0.001 if $freq_mdl < 0.001;
+              $freq_seq = 0.999 if $freq_seq > 0.999;
+              $freq_mdl = 0.999 if $freq_mdl > 0.999;
+              $position_score = (log($rc_mismatch) / log(2)) - (log($freq_seq) / log(2)) - (log($freq_mdl) / log(2));
+            }
+            $full_bck_logscore_AA[$midx][$apos_p] += $position_score;
+            $full_bck_npos_AA[$midx][$apos_p]++;
           }
         }
       }
-      @{$bck_nmatch_AA[$midx]} = ();
-      @{$bck_denom_AA[$midx]} = ();
-      for($apos_p = ($alen_p-1); $apos_p >= 0; $apos_p--) {
-        $seq_char = $seq_sqstring_A[$apos_p];
-        $mdl_char = $mdl_sqstring_A[$apos_p];
-        $seq_is_res = ($seq_char =~ m/[A-Z]/) ? 1 : 0;
-        $mdl_is_res = ($mdl_char =~ m/[A-Z]/) ? 1 : 0;
-        $bck_nmatch_AA[$midx][$apos_p] = ($apos_p < ($alen_p-1)) ? $bck_nmatch_AA[$midx][($apos_p+1)] : 0;
-        $bck_denom_AA[$midx][$apos_p]  = ($apos_p < ($alen_p-1)) ? $bck_denom_AA[$midx][($apos_p+1)]  : 0;
-        if(($seq_is_res) && ($mdl_is_res)) {
-          $bck_denom_AA[$midx][$apos_p]++;
-          if($seq_char eq $mdl_char) {
-            $bck_nmatch_AA[$midx][$apos_p]++;
+
+      # STEP 2 (--do_rc path): derive NN-region fwd/bck arrays from the full arrays
+      if($apos_start == $seq_rf_start && $apos_stop == $seq_rf_stop) {
+        # NN region is the full sequence - just copy the references
+        @fwd_logscore_AA = @full_fwd_logscore_AA;
+        @bck_logscore_AA = @full_bck_logscore_AA;
+        @fwd_npos_AA = @full_fwd_npos_AA;
+        @bck_npos_AA = @full_bck_npos_AA;
+      } else {
+        # NN region is a subset - extract by subtracting the out-of-region prefix/suffix
+        my $offset = $apos_start - $seq_rf_start; # offset into full arrays
+        for(my $midx = 0; $midx < $mdl_nseq; $midx++) {
+          @{$fwd_logscore_AA[$midx]} = ();
+          @{$fwd_npos_AA[$midx]} = ();
+          @{$bck_logscore_AA[$midx]} = ();
+          @{$bck_npos_AA[$midx]} = ();
+
+          for($apos_p = 0; $apos_p < $alen_p; $apos_p++) {
+            my $full_idx = $offset + $apos_p;
+
+            # Forward: score from start of NN region = full score minus score before region
+            my $score_before_region = ($offset > 0) ? $full_fwd_logscore_AA[$midx][$offset - 1] : 0;
+            my $npos_before_region  = ($offset > 0) ? $full_fwd_npos_AA[$midx][$offset - 1]     : 0;
+            $fwd_logscore_AA[$midx][$apos_p] = $full_fwd_logscore_AA[$midx][$full_idx] - $score_before_region;
+            $fwd_npos_AA[$midx][$apos_p]     = $full_fwd_npos_AA[$midx][$full_idx]     - $npos_before_region;
+
+            # Backward: score to end of NN region = full backward score minus score after region
+            $bck_logscore_AA[$midx][$apos_p] = $full_bck_logscore_AA[$midx][$full_idx];
+            $bck_npos_AA[$midx][$apos_p]     = $full_bck_npos_AA[$midx][$full_idx];
+            if($apos_p < $alen_p - 1) {
+              my $after_end_idx = $offset + $alen_p;
+              if($after_end_idx < $full_alen) {
+                $bck_logscore_AA[$midx][$apos_p] -= $full_bck_logscore_AA[$midx][$after_end_idx];
+                $bck_npos_AA[$midx][$apos_p]     -= $full_bck_npos_AA[$midx][$after_end_idx];
+              }
+            }
           }
         }
       }
-    }
-    my $fwd_max = undef;
-    my $bck_max = undef;
-    my $fwd_argmax = undef;
-    my $bck_argmax = undef;
-    my $fwd_argmax_gsg = undef;
-    my $bck_argmax_gsg = undef;
-    my $max_weighted_avg_diff = 0;
-    my $argmax_weighted_avg_diff = -1;
-    # convert to fractional ids, and determine highest scoring model at each position
-    for($apos_p = 0; $apos_p < $alen_p; $apos_p++) {
-      # find max in fwd and bck matrix
-      if($fwd_denom_AA[0][$apos_p] > 0) { $fwd_nmatch_AA[0][$apos_p] = $fwd_nmatch_AA[0][$apos_p] / $fwd_denom_AA[0][$apos_p]; }
-      if($bck_denom_AA[0][$apos_p] > 0) { $bck_nmatch_AA[0][$apos_p] = $bck_nmatch_AA[0][$apos_p] / $bck_denom_AA[0][$apos_p]; }
-      $fwd_max = $fwd_nmatch_AA[0][$apos_p];
-      $bck_max = $bck_nmatch_AA[0][$apos_p];
-      $fwd_argmax = 0;
-      $bck_argmax = 0;
-      $fwd_argmax_gsg = $mdl_group_subgroup_A[$fwd_argmax];
-      $bck_argmax_gsg = $mdl_group_subgroup_A[$bck_argmax];
-      for(my $midx = 1; $midx < $mdl_nseq; $midx++) { 
-        if($fwd_denom_AA[$midx][$apos_p] > 0) { $fwd_nmatch_AA[$midx][$apos_p] = $fwd_nmatch_AA[$midx][$apos_p] / $fwd_denom_AA[$midx][$apos_p]; }
-        if($bck_denom_AA[$midx][$apos_p] > 0) { $bck_nmatch_AA[$midx][$apos_p] = $bck_nmatch_AA[$midx][$apos_p] / $bck_denom_AA[$midx][$apos_p]; }
-	if($fwd_nmatch_AA[$midx][$apos_p] > $fwd_max) {
-	  $fwd_max = $fwd_nmatch_AA[$midx][$apos_p];
-	  $fwd_argmax = $midx;
-	  $fwd_argmax_gsg = $mdl_group_subgroup_A[$fwd_argmax];
-	}
-	if($bck_nmatch_AA[$midx][$apos_p] > $bck_max) {
-	  $bck_max = $bck_nmatch_AA[$midx][$apos_p];
-	  $bck_argmax = $midx;
-	  $bck_argmax_gsg = $mdl_group_subgroup_A[$bck_argmax];
-	}
-      }
-      if($fwd_argmax_gsg ne $bck_argmax_gsg) {
-        if((abs($fwd_nmatch_AA[$fwd_argmax][$apos_p] - $fwd_nmatch_AA[$bck_argmax][$apos_p]) > 0.00001) &&
-           (abs($bck_nmatch_AA[$fwd_argmax][$apos_p] - $bck_nmatch_AA[$bck_argmax][$apos_p]) > 0.00001)) { 
-#          printf("apos_p: $apos_p [(%s) sum: %d fwd_argmax_gsg: $fwd_argmax_gsg fwd: $fwd_max bck: $bck_nmatch_AA[$fwd_argmax][$apos_p]] [(%s) sum: %d bck_argmax_gsg : $bck_argmax_gsg fwd: $fwd_nmatch_AA[$bck_argmax][$apos_p] bck: $bck_max]\n", $mdl_msa->get_sqname($fwd_argmax), (($fwd_nmatch_AA[$fwd_argmax][$apos_p] * $fwd_denom_AA[$fwd_argmax][$apos_p]) + ($bck_nmatch_AA[$fwd_argmax][$apos_p] * $bck_denom_AA[$fwd_argmax][$apos_p])), $mdl_msa->get_sqname($bck_argmax), (($fwd_nmatch_AA[$bck_argmax][$apos_p] * $fwd_denom_AA[$bck_argmax][$apos_p]) + ($bck_nmatch_AA[$bck_argmax][$apos_p] * $bck_denom_AA[$bck_argmax][$apos_p])));
-          my $fwd_contri = ($fwd_denom_AA[$fwd_argmax][$apos_p] + $fwd_denom_AA[$bck_argmax][$apos_p]) / 2.;
-          my $bck_contri = ($bck_denom_AA[$bck_argmax][$apos_p] + $bck_denom_AA[$fwd_argmax][$apos_p]) / 2.;
-          my $fwd_wgt    = $fwd_contri / ($fwd_contri + $bck_contri);
-          my $bck_wgt    = $bck_contri / ($fwd_contri + $bck_contri);
-          my $fwd_diff   = $fwd_nmatch_AA[$fwd_argmax][$apos_p] - $fwd_nmatch_AA[$bck_argmax][$apos_p];
-          my $bck_diff   = $bck_nmatch_AA[$bck_argmax][$apos_p] - $bck_nmatch_AA[$fwd_argmax][$apos_p];
-          my $weighted_avg_diff = (($fwd_diff * $fwd_wgt) + ($bck_diff * $bck_wgt));
-          if($weighted_avg_diff > $max_weighted_avg_diff) {
-            $max_weighted_avg_diff = $weighted_avg_diff;
-            $argmax_weighted_avg_diff = $apos_p;
-            #$out_weighted_avg_diff = sprintf("$seqname apos_p: $apos_p [(%s) fwd_argmax_gsg: %s fwd: %.5f bck: %.5f] [(%s) bck_argmax_gsg: %s fwd: %.5f bck: %.5f] [fwddiff: %.7f wgt: %.5f bckdiff: %.7f wgt: %.5f wavgdiff: %.7f]\n", $mdl_msa->get_sqname($fwd_argmax), $fwd_argmax_gsg, $fwd_max, $bck_nmatch_AA[$fwd_argmax][$apos_p], $mdl_msa->get_sqname($bck_argmax), $bck_argmax_gsg, $fwd_nmatch_AA[$bck_argmax][$apos_p], $bck_max, $fwd_diff, $fwd_wgt, $bck_diff, $bck_wgt, $max_weighted_avg_diff);
-          }
-#	  printf("apos_p: $apos_p [(%s) fwd_argmax_gsg: %s fwd: %.5f bck: %.5f] [(%s) bck_argmax_gsg: %s fwd: %.5f bck: %.5f] [fwddiff: %.7f wgt: %.5f bckdiff: %.7f wgt: %.5f wavgdiff: %.7f]\n", $mdl_msa->get_sqname($fwd_argmax), $fwd_argmax_gsg, $fwd_max, $bck_nmatch_AA[$fwd_argmax][$apos_p], $mdl_msa->get_sqname($bck_argmax), $bck_argmax_gsg, $fwd_nmatch_AA[$bck_argmax][$apos_p], $bck_max, $fwd_diff, $fwd_wgt, $bck_diff, $bck_wgt, (($fwd_diff * $fwd_wgt) + ($bck_diff * $bck_wgt)));
+
+      # STEP 3: Recombination detection using FULL sequence data
+    # RECOMBINATION DETECTION (experimental, shelved as of Feb 26 2026)
+    # -------------------------------------------------------------------------
+    # Detects sequences whose 5' and 3' halves are most similar to different
+    # subgroup parent sequences (possible inter-subgroup recombinants).
+    #
+    # Algorithm summary:
+    #  - Per-position log-likelihood ratio (LLR) forward/backward scores are
+    #    computed for each model sequence using a position-specific nucleotide
+    #    frequency null model. The null terms cancel in pairwise comparisons,
+    #    giving a direct left-half vs. right-half model comparison.
+    #  - The scan finds the breakpoint where the best left-half model differs
+    #    from the best right-half model AND both LLR differentials exceed
+    #    --rc_thresh. Reports a non-fatal 'recombin' alert if found.
+    #  - Note: when --do_rc is enabled, STEP 1 computes scores over the full
+    #    sequence (needed for STEP 3's breakpoint scan). When --do_rc is off,
+    #    scores are computed directly over the NN region only (faster).
+    #
+    # Status as of Feb 26 2026:
+    #  WORKS:   10/10 toy 50/50 recombinants detected.
+    #           All 4 Goya et al. (2024, J Infect Dis 231:e154-e164)
+    #           HRV-A105/A21 recombinants flagged correctly, with breakpoint
+    #           correctly placed near nt 5250.
+    #  PROBLEM: Zhao et al. (2023, Microbiol Spectr 11:e00840-23) A10/A64 and
+    #           A30/A45 recombinants: wrong parent serotypes called for A10/A64
+    #           (Tests 2/3); no signal at all for A10/A30 (Test 4). Suspected
+    #           cause: the HRV reference alignment
+    #           lacks sufficient serotype diversity for reliable LLR resolution.
+    #  NEXT STEP TO IMPROVE: expand the VADR-HRV model reference alignment to
+    #           cover more serotypes; consider per-model tuning of --rc_thresh
+    #           and --rc_match. Feature may be more valuable for viruses with
+    #           high recombination rates (e.g. HIV) once good model coverage
+    #           exists.
+    #
+    # To enable: v-annotate.pl --do_rc [--rc_thresh x] [--rc_match x] ...
+    my $max_recomb_score = 0;
+    my $best_breakpoint = -1;
+    my $best_parent1_idx = -1;
+    my $best_parent2_idx = -1;
+    my $best_parent1_gsg = "";
+    my $best_parent2_gsg = "";
+    my $best_fwd_score = 0;
+    my $best_bck_score = 0;
+    my $best_left_diff = 0;  # LLR differential for left segment (L vs R)
+    my $best_right_diff = 0; # LLR differential for right segment (R vs L)
+    my $best_single_score = -999999;
+    my $found_valid_single_model = 0;
+    
+    # Find best single-model score for comparison (using FULL sequence)
+    for(my $midx = 0; $midx < $mdl_nseq; $midx++) {
+      if($full_fwd_npos_AA[$midx][($full_alen-1)] >= $rc_minlen) {
+        my $single_score = $full_fwd_logscore_AA[$midx][($full_alen-1)];
+        if($single_score > $best_single_score) {
+          $best_single_score = $single_score;
+          $found_valid_single_model = 1;
         }
       }
     }
     
-    # find closest matching model sequence for this sequence, make sure that we have at least $min_nnregion_length positions (fwd_denom_AA)
+    # Only proceed with recombination detection if we have a valid single model baseline
+    if($found_valid_single_model) {
+      # Test each potential breakpoint (using FULL sequence)
+      my $min_segment_len = ($rc_minlen > int($full_alen * 0.1)) ? $rc_minlen : int($full_alen * 0.1);
+      
+      my $tested_breakpoints = 0;
+      my $valid_candidates = 0;
+      
+      for($apos_p = $min_segment_len; $apos_p < ($full_alen - $min_segment_len); $apos_p++) {
+        # Find best model for left segment
+        my $fwd_max_score = -999999;
+        my $fwd_argmax = -1;
+        my $L_len = $apos_p + 1;
+        my $R_len = $alen - $L_len;
+        for(my $midx = 0; $midx < $mdl_nseq; $midx++) {
+          # Skip self if --rc_igself enabled (model name is substring of sequence name)
+          my $skip_this_mdl = 0;
+          my $mdl_sqname = $mdl_msa->get_sqname($midx);
+          $mdl_sqname =~ s/^.*\///;  # Remove directory path if present
+          if(opt_Get("--rc_igself", $opt_HHR) && index($seqname, $mdl_sqname) != -1) {
+            $skip_this_mdl = 1;
+          }
+          if((! $skip_this_mdl) && (opt_Get("--rc_iglist", $opt_HHR))) { 
+            foreach my $rc_iglist_el (@rc_iglist_A) { 
+              if(index($mdl_group_subgroup_A[$midx], $rc_iglist_el) != -1) {  
+                $skip_this_mdl = 1;
+              }
+            }
+          }
+          if((! $skip_this_mdl) && ($full_fwd_npos_AA[$midx][$apos_p] >= $rc_minlen && $full_fwd_logscore_AA[$midx][$apos_p] > $fwd_max_score)) {
+            $fwd_max_score = $full_fwd_logscore_AA[$midx][$apos_p];
+            $fwd_argmax = $midx;
+          }
+        }
+        my $fwd_argmax_gsg = ($fwd_argmax == -1) ? "" : $mdl_group_subgroup_A[$fwd_argmax];
+
+        # Find best model for right segment, this can be $fwd_argmax, but can't be a different model with same subgroup as fwd_argmax
+        my $bck_max_score = -999999;
+        my $bck_argmax = -1;
+        if($apos_p + 1 < $full_alen) {
+          for(my $midx = 0; $midx < $mdl_nseq; $midx++) {
+            # Skip self if --rc_igself enabled (model name is substring of sequence name)
+            my $skip_this_mdl = 0;
+            my $mdl_sqname = $mdl_msa->get_sqname($midx);
+            $mdl_sqname =~ s/^.*\///;  # Remove directory path if present
+            if(opt_Get("--rc_igself", $opt_HHR) && index($seqname, $mdl_sqname) != -1) {
+              $skip_this_mdl = 1;
+            }
+            if((! $skip_this_mdl) && (opt_Get("--rc_iglist", $opt_HHR))) { 
+              foreach my $rc_iglist_el (@rc_iglist_A) { 
+                if(index($mdl_group_subgroup_A[$midx], $rc_iglist_el) != -1) {  
+                  $skip_this_mdl = 1;
+                }
+              }
+            }
+            if(($midx != $fwd_argmax) && $mdl_has_subgroup_A[$midx] && ($mdl_group_subgroup_A[$midx] eq $fwd_argmax_gsg)) { 
+              # don't consider different models in same group/subgroup as fwd argmax
+              $skip_this_mdl = 1;
+            }
+            if((! $skip_this_mdl) && ($full_bck_npos_AA[$midx][$apos_p+1] >= $rc_minlen && $full_bck_logscore_AA[$midx][$apos_p+1] > $bck_max_score)) {
+              $bck_max_score = $full_bck_logscore_AA[$midx][$apos_p+1];
+              $bck_argmax = $midx;
+            }
+          }
+        }
+        
+        # Skip if we couldn't find valid models for both segments
+        if($fwd_argmax < 0 || $bck_argmax < 0) { next; }
+        
+        $tested_breakpoints++;
+        
+        my $bck_argmax_gsg = $mdl_group_subgroup_A[$bck_argmax];
+        
+        # Only consider if different groups
+        if($fwd_argmax_gsg ne $bck_argmax_gsg) {
+          $valid_candidates++;
+          # Calculate recombination score using proper null models:
+          # For left segment: parent L vs parent R as null
+          # For right segment: parent R vs parent L as null
+          # This gives us: (score_L_left - score_R_left) + (score_R_right - score_L_right)
+          my $parent_L_left = $fwd_max_score;
+          my $parent_L_left_per_base = $parent_L_left / $L_len;
+          my $parent_R_left = $full_fwd_logscore_AA[$bck_argmax][$apos_p];
+          my $parent_R_left_per_base = $parent_R_left / $L_len;
+          my $parent_R_right = $bck_max_score;
+          my $parent_R_right_per_base = $parent_R_right / $R_len;
+          my $parent_L_right = $full_bck_logscore_AA[$fwd_argmax][$apos_p+1];
+          my $parent_L_right_per_base = $parent_L_right / $R_len;
+          
+          my $recomb_score = ($parent_L_left_per_base - $parent_R_left_per_base) + ($parent_R_right_per_base - $parent_L_right_per_base);
+          # Require that both differential scores exceed the threshold
+          # This ensures parent L is significantly better than R on left segment,
+          # and parent R is significantly better than L on right segment
+          my $left_diff = $parent_L_left - $parent_R_left;
+          my $right_diff = $parent_R_right - $parent_L_right;
+          my $left_diff_per_base = $left_diff / $L_len;
+          my $right_diff_per_base = $right_diff / $R_len;
+          
+          # Require:
+          # 1. Both differential scores (left_diff, right_diff) exceed threshold
+          # 2. Both absolute parent scores (parent_L_left, parent_R_right) exceed threshold
+          #    This ensures we're confident in each parent assignment
+          if($left_diff_per_base >= $rc_thresh && $right_diff_per_base >= $rc_thresh &&
+             $parent_L_left_per_base >= $rc_thresh && $parent_R_right_per_base >= $rc_thresh) {
+            if($recomb_score > $max_recomb_score) {
+              $max_recomb_score = $recomb_score;
+              $best_breakpoint = $apos_p;
+              $best_parent1_idx = $fwd_argmax;
+              $best_parent2_idx = $bck_argmax;
+              $best_parent1_gsg = $fwd_argmax_gsg;
+              $best_parent2_gsg = $bck_argmax_gsg;
+              $best_fwd_score = $parent_L_left_per_base;
+              $best_bck_score = $parent_R_right_per_base;
+              $best_left_diff = $left_diff_per_base;
+              $best_right_diff = $right_diff_per_base;
+            }
+          }
+        }
+      }
+      
+    }
+    
+    # Report alert for best recombination if above threshold
+    # Verify all conditions:
+    # - Recombination score >= threshold
+    # - Both differentials >= threshold
+    # - Both absolute parent scores >= threshold (confidence in parent assignments)
+    if($max_recomb_score >= $rc_thresh && $best_left_diff >= $rc_thresh && $best_right_diff >= $rc_thresh &&
+       $best_fwd_score >= $rc_thresh && $best_bck_score >= $rc_thresh) {
+      # Calculate fractional identity to parent L on left segment and parent R on right segment
+      my $parent_L_mdl_sqstring = $mdl_msa->get_sqstring_aligned($best_parent1_idx);
+      $parent_L_mdl_sqstring =~ tr/a-z/A-Z/;
+      my $parent_L_full_sqstring = substr($parent_L_mdl_sqstring, ($seq_rf_start - 1), $full_alen);
+      my @parent_L_sqstring_A = split("", $parent_L_full_sqstring);
+      
+      my $parent_R_mdl_sqstring = $mdl_msa->get_sqstring_aligned($best_parent2_idx);
+      $parent_R_mdl_sqstring =~ tr/a-z/A-Z/;
+      my $parent_R_full_sqstring = substr($parent_R_mdl_sqstring, ($seq_rf_start - 1), $full_alen);
+      my @parent_R_sqstring_A = split("", $parent_R_full_sqstring);
+      
+      # Calculate fractional identity for left segment (0 to best_breakpoint)
+      my ($left_L_matches, $left_L_total) = (0, 0);
+      my ($left_R_matches, $left_R_total) = (0, 0);
+      for(my $i = 0; $i <= $best_breakpoint; $i++) {
+        my $seq_char_i = $full_seq_sqstring_A[$i];
+        my $L_char_i = $parent_L_sqstring_A[$i];
+        my $R_char_i = $parent_R_sqstring_A[$i];
+        
+        # Parent L on left segment
+        if(($seq_char_i =~ m/[A-Z]/) && ($L_char_i =~ m/[A-Z]/)) {
+          $left_L_total++;
+          $left_L_matches++ if($seq_char_i eq $L_char_i);
+        }
+        # Parent R on left segment (cross-score)
+        if(($seq_char_i =~ m/[A-Z]/) && ($R_char_i =~ m/[A-Z]/)) {
+          $left_R_total++;
+          $left_R_matches++ if($seq_char_i eq $R_char_i);
+        }
+      }
+      my $left_L_fid = ($left_L_total > 0) ? ($left_L_matches / $left_L_total) : 0;
+      my $left_R_fid = ($left_R_total > 0) ? ($left_R_matches / $left_R_total) : 0;
+      
+      # Calculate fractional identity for right segment (best_breakpoint+1 to end)
+      my ($right_R_matches, $right_R_total) = (0, 0);
+      my ($right_L_matches, $right_L_total) = (0, 0);
+      for(my $i = $best_breakpoint + 1; $i < $full_alen; $i++) {
+        my $seq_char_i = $full_seq_sqstring_A[$i];
+        my $R_char_i = $parent_R_sqstring_A[$i];
+        my $L_char_i = $parent_L_sqstring_A[$i];
+        
+        # Parent R on right segment
+        if(($seq_char_i =~ m/[A-Z]/) && ($R_char_i =~ m/[A-Z]/)) {
+          $right_R_total++;
+          $right_R_matches++ if($seq_char_i eq $R_char_i);
+        }
+        # Parent L on right segment (cross-score)
+        if(($seq_char_i =~ m/[A-Z]/) && ($L_char_i =~ m/[A-Z]/)) {
+          $right_L_total++;
+          $right_L_matches++ if($seq_char_i eq $L_char_i);
+        }
+      }
+      my $right_R_fid = ($right_R_total > 0) ? ($right_R_matches / $right_R_total) : 0;
+      my $right_L_fid = ($right_L_total > 0) ? ($right_L_matches / $right_L_total) : 0;
+      
+      my $left_diff = $left_L_fid - $left_R_fid;
+      my $right_diff = $right_R_fid - $right_L_fid;
+      
+      # Calculate sequence and model coordinates for breakpoint
+      # $best_breakpoint is in the post-gap-removal coordinate system (0-based index into alignment)
+      # $seq_rf_start is also in post-removal coordinates (the first non-gap RF position in the sequence)
+      # So breakpoint_rf_pos is the RF position (post-removal, 0-based) of the breakpoint
+      my $breakpoint_rf_pos = $seq_rf_start + $best_breakpoint - 1; # -1 because seq_rf_start is 1-based
+      my $seq_coord = "?";
+      if($breakpoint_rf_pos >= 0 && $breakpoint_rf_pos <= $#{$rf_to_uapos_AA[$sidx]} && defined $rf_to_uapos_AA[$sidx][$breakpoint_rf_pos] && $rf_to_uapos_AA[$sidx][$breakpoint_rf_pos] > 0) {
+        $seq_coord = $rf_to_uapos_AA[$sidx][$breakpoint_rf_pos];
+      }
+      my $mdl_coord = $breakpoint_rf_pos + 1; # Convert to 1-based for output
+      
+      # Get parent model names and strip directory prefix
+      my $parent_L_name = $mdl_msa->get_sqname($best_parent1_idx);
+      my $parent_R_name = $mdl_msa->get_sqname($best_parent2_idx);
+      # Remove directory prefix from model names
+      # Model names in the alignment have format: "outputdir/seqname"
+      # Extract the output directory from the stockholm file path
+      my $dir_prefix = "";
+      if($in_stk_file =~ m/([^\/]+)\/[^\/]+\.stk$/) {
+        $dir_prefix = $1 . "/";
+      }
+      if($dir_prefix ne "") {
+        $parent_L_name =~ s/^\Q$dir_prefix\E//;
+        $parent_R_name =~ s/^\Q$dir_prefix\E//;
+      }
+      
+      # Format consistent with .rpn files
+      my $errmsg = sprintf("%s,%d,%d,%s;L:%s;id:%.3f(+%.3f);llr:%.3f(+%.3f),R:%s;id:%.3f(+%.3f);llr:%.3f(+%.3f),S:%.3f", 
+                $best_parent1_gsg, $seq_coord, $mdl_coord, $best_parent2_gsg,
+                $parent_L_name, $left_L_fid, $left_diff, $best_fwd_score, $best_left_diff,
+                $parent_R_name, $right_R_fid, $right_diff, $best_bck_score, $best_right_diff,
+                $max_recomb_score);
+      
+      my $alt_scoords = "seq:" . vdr_CoordsSinglePositionSegmentCreate($seq_coord, "+", $FH_HR) . ";";
+      my $alt_mcoords = "mdl:" . vdr_CoordsSinglePositionSegmentCreate($mdl_coord, "+", $FH_HR) . ";";
+      
+      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "recombin", $seqname, $alt_scoords . $alt_mcoords . $errmsg, $FH_HR);
+    }
+    } # end if(opt_Get("--do_rc"))
+    else {
+      # STEP 1 (default path, --do_rc off): compute fwd/bck LLR scores directly
+      # over the NN region (apos_start..apos_stop), skipping the full sequence.
+      # This is more efficient when a classification region covers only a subset
+      # of the genome (e.g. VP1 for HRV is ~1/7 of the full genome length).
+      my $nn_seq_sqstring = substr($seq_sqstring, ($apos_start - 1), $alen_p);
+      my @nn_seq_sqstring_A = split("", $nn_seq_sqstring);
+
+      for(my $midx = 0; $midx < $mdl_nseq; $midx++) {
+        my $mdl_sqstring = $mdl_msa->get_sqstring_aligned($midx);
+        $mdl_sqstring =~ tr/a-z/A-Z/;
+        my $nn_mdl_sqstring = substr($mdl_sqstring, ($apos_start - 1), $alen_p);
+        my @nn_mdl_sqstring_A = split("", $nn_mdl_sqstring);
+
+        @{$fwd_logscore_AA[$midx]} = ();
+        @{$fwd_npos_AA[$midx]} = ();
+
+        # Forward pass over NN region
+        for($apos_p = 0; $apos_p < $alen_p; $apos_p++) {
+          $seq_char = $nn_seq_sqstring_A[$apos_p];
+          $mdl_char = $nn_mdl_sqstring_A[$apos_p];
+          $seq_is_res = ($seq_char =~ m/[A-Z]/) ? 1 : 0;
+          $mdl_is_res = ($mdl_char =~ m/[A-Z]/) ? 1 : 0;
+
+          $fwd_logscore_AA[$midx][$apos_p] = ($apos_p > 0) ? $fwd_logscore_AA[$midx][($apos_p-1)] : 0;
+          $fwd_npos_AA[$midx][$apos_p]     = ($apos_p > 0) ? $fwd_npos_AA[$midx][($apos_p-1)]     : 0;
+
+          if(($seq_is_res) && ($mdl_is_res)) {
+            my $actual_apos = $apos_start + $apos_p - 1;
+            my $position_score;
+            if($seq_char eq $mdl_char) {
+              my $freq_nt = (defined $nt_freq_HA[$actual_apos]{$seq_char}) ? $nt_freq_HA[$actual_apos]{$seq_char} : 0.25;
+              $freq_nt = 0.001 if $freq_nt < 0.001;
+              $freq_nt = 0.999 if $freq_nt > 0.999;
+              $position_score = (log($rc_match) / log(2)) - 2.0 * (log($freq_nt) / log(2));
+            } else {
+              my $freq_seq = (defined $nt_freq_HA[$actual_apos]{$seq_char}) ? $nt_freq_HA[$actual_apos]{$seq_char} : 0.25;
+              my $freq_mdl = (defined $nt_freq_HA[$actual_apos]{$mdl_char}) ? $nt_freq_HA[$actual_apos]{$mdl_char} : 0.25;
+              $freq_seq = 0.001 if $freq_seq < 0.001;
+              $freq_mdl = 0.001 if $freq_mdl < 0.001;
+              $freq_seq = 0.999 if $freq_seq > 0.999;
+              $freq_mdl = 0.999 if $freq_mdl > 0.999;
+              $position_score = (log($rc_mismatch) / log(2)) - (log($freq_seq) / log(2)) - (log($freq_mdl) / log(2));
+            }
+            $fwd_logscore_AA[$midx][$apos_p] += $position_score;
+            $fwd_npos_AA[$midx][$apos_p]++;
+          }
+        }
+
+        # No backward pass needed here. The backward LLR scores (bck_logscore_AA,
+        # bck_npos_AA) are only used by STEP 3 (recombination breakpoint scan),
+        # which requires knowing, for each position, the best-scoring model to the
+        # RIGHT of that position. STEP 4 (NN classification) uses only the full
+        # forward score at the last position (fwd_logscore_AA[$midx][$alen_p-1])
+        # and per-position percent identity -- neither requires backward scores.
+        # The --do_rc path above computes backward scores because it needs them
+        # for STEP 3; this default path skips them entirely.
+      }
+    } # end else (! opt_Get("--do_rc"))
+
+    # STEP 4: Nearest neighbor classification uses the NN region data (fwd_logscore_AA, etc.)
+    # Calculate percent identity for each model sequence to find nearest neighbor
+    my @pid_A = ();
+    my @npos_A = ();
+    for($midx = 0; $midx < $mdl_nseq; $midx++) {
+      my $nmatch = 0;
+      my $npos = $fwd_npos_AA[$midx][($alen_p-1)];
+      $npos_A[$midx] = $npos;
+      
+      # Count matches for NN percent identity calculation
+      my $mdl_sqstring = $mdl_msa->get_sqstring_aligned($midx);
+      $mdl_sqstring =~ tr/a-z/A-Z/;
+      my $possibly_submdl_sqstring = substr($mdl_sqstring, ($apos_start - 1), ($apos_stop - $apos_start + 1));
+      my @mdl_sqstring_A = split("", $possibly_submdl_sqstring);
+      
+      for($apos_p = 0; $apos_p < $alen_p; $apos_p++) {
+        $seq_char = $seq_sqstring_A[$apos_p];
+        $mdl_char = $mdl_sqstring_A[$apos_p];
+        next if($seq_char !~ m/[A-Z]/ || $mdl_char !~ m/[A-Z]/);
+        
+        if($seq_char eq $mdl_char) {
+          $nmatch++;
+        }
+      }
+      
+      $pid_A[$midx] = ($npos > 0) ? ($nmatch / $npos) : 0;
+    }
+    
+    # find closest matching model sequence for this sequence, make sure that we have at least $min_nnregion_length positions
     # first we need to find the maximum number of positions, if less than $min_nnregion_length use that
     my $max_nnregion_len = 0;
     for($midx = 0; $midx < $mdl_nseq; $midx++) { 
-      if($fwd_denom_AA[$midx][($alen_p-1)] > $max_nnregion_len) { 
-        $max_nnregion_len = $fwd_denom_AA[$midx][($alen_p-1)];
+      if($npos_A[$midx] > $max_nnregion_len) { 
+        $max_nnregion_len = $npos_A[$midx];
       } 
     }
     # we divide max_nnregion_len by 2 so we don't automatically choose the one model with the max (if only one model has the max)
-    # this should be rare (min_nnregion_length may be 40, max_nnregion may be 20 before this (meaning most aligned positions any model 
+    # this should be rare, min_nnregion_length may be 40, max_nnregion may be 20 before this (meaning most aligned positions any model 
     # has with this seq is 20), and it will be 10 afterwards. This means we'll consider any model that has at least 10 matching positions
     # with this seq as its possible nearest neighbor
     $max_nnregion_len /= 2; 
     $max_nnregion_len = int($max_nnregion_len);
     my $eff_min_nnregion_length = ($min_nnregion_length < $max_nnregion_len) ? $min_nnregion_length : $max_nnregion_len;
     $midx = 0;
-    while($fwd_denom_AA[$midx][($alen_p-1)] < $eff_min_nnregion_length) { 
+    while($npos_A[$midx] < $eff_min_nnregion_length) { 
       $midx++;
       if($midx >= $mdl_nseq) { 
         ofile_FAIL("ERROR, in $sub_name, unexpectedly unable to find sequence with min number of matches on second pass", 1, $FH_HR);
       }
     }
-    my $max1        = $fwd_nmatch_AA[$midx][ ( $alen_p - 1 ) ];    # max fractional id across all seqs
-    my $argmax1     = $midx;                                       # mdl idx of current max1
+    my $max1        = $pid_A[$midx];    # max fractional id across all seqs
+    my $argmax1     = $midx;            # mdl idx of current max1
     my $max1_sqname = $mdl_msa->get_sqname($argmax1);
     my $max1_grp =
       ( defined $mdl_alninfo_HHR->{$max1_sqname}{"group"} ) ? $mdl_alninfo_HHR->{$max1_sqname}{"group"} : "-";
     my $max1_subgrp =
       ( defined $mdl_alninfo_HHR->{$max1_sqname}{"subgroup"} ) ? $mdl_alninfo_HHR->{$max1_sqname}{"subgroup"} : "-";
 
-    my $max2 = undef;          # second best fractional id across all seqs in different subgroup from $max1 (if subgroup undef it is different from all subgroups)
-    my $argmax2     = $midx;   # mdl idx of current max2
+    my $max2        = undef;   # second best fractional id across all seqs in different subgroup from $max1 (if subgroup undef it is different from all subgroups)
+    my $argmax2     = undef;   # mdl idx of current max2
     my $max2_sqname = undef;
     my $max2_grp    = undef;
     my $max2_subgrp = undef;
+    $midx++; # move on to next model
     for ( ; $midx < $mdl_nseq ; $midx++ ) {
-      if ( $fwd_denom_AA[$midx][ ( $alen_p - 1 ) ] >= $eff_min_nnregion_length ) {
-        my $cur_pid = $fwd_nmatch_AA[$midx][ ( $alen_p - 1 ) ];
+      if ( $npos_A[$midx] >= $eff_min_nnregion_length ) {
+        my $cur_pid = $pid_A[$midx];
         my $cur_sqname = $mdl_msa->get_sqname($midx);
         my $cur_grp    = ( defined $mdl_alninfo_HHR->{$cur_sqname}{"group"} ) ? $mdl_alninfo_HHR->{$cur_sqname}{"group"} : "-";
         my $cur_subgrp = ( defined $mdl_alninfo_HHR->{$cur_sqname}{"subgroup"} ) ? $mdl_alninfo_HHR->{$cur_sqname}{"subgroup"} : "-";
-        if ( $cur_pid > $max1 ) {
-
-          # new max1, first update max2 if necessary
-          my $cur_matches_max1_subgrp =
+        my $cur_matches_max1_subgrp =
             ( ( $max1_grp ne "-" ) && ( $max1_subgrp ne "-" ) && ( $max1_grp eq $cur_grp ) && ( $max1_subgrp eq $cur_subgrp ) ) ? 1 : 0;
-          if ( ( !defined $max2 )
-            || ( ( $cur_pid > $max2 ) && ( !$cur_matches_max1_subgrp ) ) )
-          {
-            # update max2 to be equal to old max1
+        if ( $cur_pid > $max1 ) {
+          # new max1, first update max2 if necessary
+          if ( ( ( !defined $max2 ) || ( $cur_pid > $max2 ) ) && ( !$cur_matches_max1_subgrp ) ) {
+             # update max2 to be equal to old max1
             ( $max2, $argmax2, $max2_sqname, $max2_grp, $max2_subgrp ) = ( $max1, $argmax1, $max1_sqname, $max1_grp, $max1_subgrp );
           }
 
           # update max1
           ( $max1, $argmax1, $max1_sqname, $max1_grp, $max1_subgrp ) = ( $cur_pid, $midx, $cur_sqname, $cur_grp, $cur_subgrp );
         }
-        else {    # not a new max, but maybe a new max2
-          my $cur_matches_max2_subgrp =
-            ( ( defined $max2 ) && ( $max2_grp ne "-" ) && ( $max2_subgrp ne "-" ) && ( $max2_grp eq $cur_grp ) && ( $max2_subgrp eq $cur_subgrp ) ) ? 1 : 0;
-          if ( ( !defined $max2 )
-            || ( ( $cur_pid > $max2 ) && ( !$cur_matches_max2_subgrp ) ) )
-          {
-            # update max2 to be equal to old max1
-            ( $max2, $argmax2, $max2_sqname, $max2_grp, $max2_subgrp ) = ( $cur_pid, $midx, $cur_sqname, $cur_grp, $cur_subgrp );
+        else { # not a new max, but maybe a new max2
+          if ( (! defined $max2 ) || ( $cur_pid > $max2 ) && ( !$cur_matches_max1_subgrp ) ) { 
+             # update max2 to be equal to current model sequence
+             ( $max2, $argmax2, $max2_sqname, $max2_grp, $max2_subgrp ) = ( $cur_pid, $midx, $cur_sqname, $cur_grp, $cur_subgrp );
           }
         }
       }
-
-#printf("\t\tfwd_nmatch_AA[$midx][%d]: %.3f (%s)\n", ($alen_p-1), $fwd_nmatch_AA[$midx][($alen_p-1)], $mdl_msa->get_sqname($midx));
+      #printf("\t\tfwd_nmatch_AA[$midx][%d]: %.3f (%s)\n", ($alen_p-1), $fwd_nmatch_AA[$midx][($alen_p-1)], $mdl_msa->get_sqname($midx));
     }
     $cls_output_HHR->{$seqname}{"model1_pid"} = $max1;
+  
     my $max1_sqname2print = $max1_sqname;
     $max1_sqname2print =~ s/^.+\///;    # remove dir added by validate_and_copy_classification_alignment_file()
     $cls_output_HHR->{$seqname}{"model1_seq"} = $max1_sqname2print;
@@ -16215,7 +16761,8 @@ sub classify_based_on_alignment {
 
       #printf("\twinner for $seqname is $max1_sqname ($max)\n");
     }
-    else {                                # $max2 is undef
+    else {  
+      # $max2 is undef
       $cls_output_HHR->{$seqname}{"model2_pid"} = "-";
       $cls_output_HHR->{$seqname}{"model2_seq"} = "-";
       $cls_output_HHR->{$seqname}{"group2"}     = "-";
@@ -16231,6 +16778,41 @@ sub classify_based_on_alignment {
       vdr_CoordsSegmentCreate( $rf_start_pos, $rf_stop_pos, "+", $FH_HR ) :
       vdr_CoordsSegmentCreate( 1,             $alen,        "+", $FH_HR );
     $cls_output_HHR->{$seqname}{"nnregion_seq"} = vdr_CoordsSegmentCreate( $apos_start, $apos_stop, "+", $FH_HR );
+
+    # report any alerts
+    if(defined $cls_output_HHR->{$seqname}{"model2_pid"}) { 
+      my $id_diff = abs($cls_output_HHR->{$seqname}{"model1_pid"} - $cls_output_HHR->{$seqname}{"model2_pid"});
+      if($id_diff < $nn_indefclass_thr) { 
+        my $errmsg = sprintf("(%.3f-%.3f)=%.3f<%.3f", 
+          $cls_output_HHR->{$seqname}{"model1_pid"}, 
+          $cls_output_HHR->{$seqname}{"model2_pid"},
+          $id_diff, $nn_indefclass_thr);
+        alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "nnindfcl", $seqname, $errmsg, $FH_HR);
+      }
+    }
+    if($cls_output_HHR->{$seqname}{"model1_pid"} < $nn_lowidclass_thr) { 
+      my $errmsg = sprintf("%.3f<%.3f", 
+          $cls_output_HHR->{$seqname}{"model1_pid"}, 
+          $nn_lowidclass_thr);
+      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "nnloidcl", $seqname, $errmsg, $FH_HR);
+    }
+    if ($specified_defined_nn_region) {
+      if (! $using_defined_nn_region) {
+        my $errmsg = sprintf("region used %s != %s", $cls_output_HHR->{$seqname}{"nnregion_seq"}, $specified_defined_nn_region_coords);
+        alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "nnalrgcl", $seqname, $errmsg, $FH_HR);
+      }
+      else {
+        my $fract_used = (vdr_CoordsLength($cls_output_HHR->{$seqname}{"nnregion_seq"}, $FH_HR) / 
+                          vdr_CoordsLength($cls_output_HHR->{$seqname}{"nnregion_mdl"}, $FH_HR));
+        if($fract_used < $nn_partclass_thr) {
+          my $errmsg = sprintf("%s overlaps %s only %.3f<%.3f",
+            $cls_output_HHR->{$seqname}{"nnregion_seq"}, 
+            $cls_output_HHR->{$seqname}{"nnregion_mdl"}, 
+            $fract_used, $nn_partclass_thr);
+          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "nnptrgcl", $seqname, $errmsg, $FH_HR);
+        }
+      }
+    }
 
     #print $out_weighted_avg_diff;
   }    # end of loop over sequences

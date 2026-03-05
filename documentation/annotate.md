@@ -27,6 +27,7 @@
 * [Additional information on `v-annotate.pl` alerts](#alerts2)
 * [Non-essential features: allowing sequences to pass despite fatal alerts for specific features](#mnf)
 * [Alert *exceptions*: ignoring alerts in specific model position ranges](#exceptions)
+* [Alternative classification mode based on nearest-neighbors](#nn)
 * [Other ways to modify default behavior for features by manually changing the `.minfo` file](#minfo)
 * [Limiting memory usage and multi-threading](#memory)
 * [Alternative parallelization using a cluster](#altparallel)
@@ -663,7 +664,10 @@ In the table below, `<n>` represents a positive interger argument and
 | ...........option........... | relevant alert code(s) | relevant error(s) | default value that triggers alert | explanation |
 |---------------------|---------------------|----------------|-----------------------------------|-------------|
 | `--lowsc <x>`       | [*lowscore*](#lowscore1)                             | LOW_SCORE                              | < 0.3  | <a name="options-alerts-lowsc"></a> set bits per nt threshold for alert to `<x>` | 
-| `--indefclass <x>`  | [*indfclas*](#indfclas1)                             | INDEFINITE_CLASSIFICATION              | < 0.03 | <a name="options-alerts-indefclas"></a> set bits per nt difference threshold for alert between top two models (not in same subgroup) to `<x>` |
+| `--indefclass <x>`  | [*indfclas*](#indfclas1)                             | INDEFINITE_CLASSIFICATION              | < 0.03 | <a name="options-alerts-indefclass"></a> set bits per nt difference threshold for alert between top two models (not in same subgroup) to `<x>` |
+| `--nn_indefclass <x>`| [*nnindfcl*](#nnindfcl1)                            | INDEFINITE_CLASSIFICATION_NN           | < 0.05 | <a name="options-alerts-nn_indefclass"></a> set fractional difference threshold for alert between top two nearest neighbors (not in same subgroup) to `<x>`, only relevant in nearest-neighbor classification mode when model info file specifies an alignment file for group and subgroup definition |
+| `--nn_lowidclass <x>`| [*nnloidcl*](#nnloidcl1)                            | LOW_ID_CLASSIFICATION_NN               | < 0.75 | <a name="options-alerts-nn_lowidclass"></a> set fractional identity threshold for alert to `<x>`, only relevant in nearest-neighbor classification mode when model info file specifies an alignment file for group and subgroup definition |
+| `--nn_partregclass <x>`| [*nnptrgcl*](#nnptrgcl1)                          | PARTIAL_REGION_CLASSIFICATION_NN       | < 0.5   | <a name="options-alerts-nn_partregclass"></a> set threshold for fractional length within pre-specified NN region for alert to `<x>`, only relevant in nearest-neighbor classification mode when model info file specifies an alignment file for group and subgroup definition |
 | `--incspec <x>`     | [*incgroup*](#incgroup1), [*incsubgrp*](#incsubgrp1) | INCORRECT_SPECIFIED_GROUP, INCORRECT_SPECIFIED_SUBGROUP | < 0.2   | <a name="options-alerts-incspec"></a> set bits per nt difference threshold for alert between best-matching model `<m>` and highest-scoring model in specified group `<s1>` (from `--group <s1>`) or subgroup `<s2>` (from `--subgroup <s2>`), where `<m>` is not in group/subgroup `<s1>`/`<s2>` to `<x>` |
 | `--lowcov <x>`      | [*lowcovrg*](#lowcovrg1)                             | LOW_COVERAGE                           | < 0.9  | <a name="options-alerts-lowcov"></a> set fractional coverage threshold for alert to `<x>` |
 | `--dupregolp <n>`   | [*dupregin*](#dupregin1)                             | DUPLICATE_REGIONS                      | >= 20  | <a name="options-alerts-dupreg"></a>set min number of model position overlap for alert to  `<n>` positions | 
@@ -695,6 +699,21 @@ In the table below, `<n>` represents a positive interger argument and
 | `--nmaxdel <n>`     | [*deletinn*](#deletinn1)                             | DELETION_OF_NT                        | > 27    | <a name="options-alerts-nmaxdel"></a> set maximum allowed nucleotide deletion length in CDS nt  alignment without alert to `<n>` |
 | `--xlonescore <n>`  | [*indfantp*](#indfantp1)                             | INDEFINITE_ANNOTATION                 | >= 80   | <a name="options-alerts-xlonescore"></a> set minimum blastx *raw* score for a lone blastx hit not supported by CM analysis for alert to `<n>` | 
 | `--hlonescore <n>`  | [*indfantp*](#indfantp1)                             | INDEFINITE_ANNOTATION                 | >= 10   | <a name="options-alerts-hlonescore"></a>  set minimum hmmer bit score for a lone hmmsearch hit not supported by CM analysis for alert to `<n>` | 
+
+### `v-annotate.pl` options for experimental recombination detection <a name="options-recomb"></a>
+
+Recombination detection is an **experimental** feature that is disabled by default. It
+requires nearest-neighbor classification mode (i.e., a model info file with alignment files
+specifying group/subgroup information). Enable with `--do_rc`.
+
+| .........option......... | explanation |
+|---------------------|--------------------|  
+| `--do_rc`           | enable recombination detection: flag sequences where the nearest-neighbor switches between different subgroups at some breakpoint position (experimental, off by default) |
+| `--rc_thresh <x>`   | for `--do_rc`, set the minimum per-nucleotide bit score differential required on each side of the breakpoint to report a [*recombin*](#recombin1) alert to `<x>`, the default value for `<x>` is `0.05` |
+| `--rc_match <x>`    | for `--do_rc`, set the expected match probability for the homology model used in log-likelihood scoring to `<x>`, the default value for `<x>` is `0.95`; if the model info file specifies a `VADR-default-rc_match` value, that takes precedence when `--rc_match` is not explicitly set by the user |
+| `--rc_minlen <n>`   | for `--do_rc`, set the minimum number of non-gap aligned positions required on each side of the breakpoint to `<n>`, the default value for `<n>` is `10` |
+| `--rc_igself`       | for `--do_rc`, when testing a sequence that is also present in the model alignment, skip that model sequence as a candidate parent (prevents self-matching, useful when testing sequences within the reference set) |
+| `--rc_iglist <s>`   | for `--do_rc`, ignore model sequences whose group.subgroup string contains any token in the comma-separated list `<s>` as a candidate parent |
 
 ### `v-annotate.pl` options for controlling cmalign alignment stage <a name="options-align"></a>
 
@@ -826,7 +845,7 @@ between hits for content of Ns. Ns in regions that satisfy the following three c
 are then replaced with the expected nucleotide at each corresponding position:
 
 * missing sequence region must be at least 5 nt
-  (controllable with `--r_minlen` option)
+  
 
 * length of missing sequence region must equal length of
    missing model region
@@ -957,6 +976,7 @@ explained more [here](#memory).
 | `--forcedcrins`  | force insert type alignment doctoring, requires `--cmindi`, mainly useful for debugging/testing |
 | `--xnoid`        | ignore blastx hits that are full length and 100% identical, mainly useful for testing |
 | `--intlen <n>`   | define intron as any gap >= `<n>` nucleotides between segments in a CDS, only relevant for identifying canonical splice sites, the default value for `<n>` is `40` |
+| `--nn_regionlen <n>`| define minimum length for region-specific NN-based classification to `<n>` nucleotides. If a sequence has fewer than `<n>` nucleotides spanning the region, NN-based classification will use the entire sequence instead. The default value for `<n>` is `40`, if the user-defined region length is `<m>` with `<m> < <n>`, then `<m>` will be used |
 
 ## Information on `v-annotate.pl` alerts <a name="alerts"></a>
 
@@ -1071,6 +1091,11 @@ exception ranges are not allowed.
 | [*ambgnt3c*](#ambgnt3c2)  | feature  | no    | AMBIGUITY_AT_CDS_END            | <a name="ambgnt3c1"></a> final nucleotide of CDS is an ambiguous nucleotide |  - | - |
 | [*ambgcd5c*](#ambgcd5c2)  | feature  | no    | AMBIGUITY_IN_START_CODON        | <a name="ambgcd5c1"></a> 5' complete CDS starts with canonical nt but includes ambiguous nt in its start codon | - | - |
 | [*ambgcd3c*](#ambgcd3c2)  | feature  | no    | AMBIGUITY_IN_STOP_CODON         | <a name="ambgcd3c1"></a> 3' complete CDS ends with canonical nt but includes ambiguous nt in its stop codon | - | - |
+| [*nnindfcl*](#nnindfcl2)  | sequence | never | INDEFINITE_CLASSIFICATION_NN    | <a name="nnindfcl1"></a> low difference between fractional identity of sequence and its nearest neighbor and sequence and its 2nd nearest neighbor | - | - |
+| [*nnloidcl*](#nnloidcl2)  | sequence | never | LOW_ID_CLASSIFICATION_NN        | <a name="nnloidcl1"></a> low fractional identity of sequence and its nearest neighbor model sequence | - | - 
+| [*nnalrgcl*](#nnalrgcl2)  | sequence | never | ALT_REGION_CLASSIFICATION_NN    | <a name="nnalrgcl1"></a> alternative alignment region used to find nearest neighbor b/c sequence does not include specified region | - | - |
+| [*nnptrgcl*](#nnptrgcl2)  | sequence | never | PARTIAL_REGION_CLASSIFICATION_NN| <a name="nnptrgcl1"></a> only part of the specified alignment region used to find nearest neighbor b/c sequence doesn't span full region | - | - |
+| [*recombin*](#recombin2)  | sequence | never | POSSIBLE_RECOMBINATION          | <a name="recombin1"></a> possible recombination detected: nearest-neighbor switches subgroup at some breakpoint position (only reported with `--do_rc`) | - | - |
 
 ### Additional information on `v-annotate.pl` alerts <a name="alerts2"></a> 
 
@@ -1153,7 +1178,7 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*qstgroup*](#qstgroup1)  | QUESTIONABLE_SPECIFIED_GROUP    | none | - | - <a name="qstgroup2"></a> | 
 | [*ambgnt5s*](#ambgnt5s1)  | AMBIGUITY_AT_START              | none | - | - <a name="ambgnt5s2"></a> | 
 | [*ambgnt3s*](#ambgnt3s1)  | AMBIGUITY_AT_END                | none | - | - <a name="ambgnt3s2"></a> | 
-| [*indfclas*](#indfclas1)  | INDEFINITE_CLASSIFICATION       | [`--indefclas`](#options-alerts-indefclas) | - | - <a name="indfclas2"></a> | 
+| [*indfclas*](#indfclas1)  | INDEFINITE_CLASSIFICATION       | [`--indefclass`](#options-alerts-indefclass) | - | - <a name="indfclas2"></a> | 
 | [*lowscore*](#lowscore1)  | LOW_SCORE                       | [`--lowsc`](#options-alerts-lowscore) | - | - <a name="lowscore2"></a> | 
 | [*biasdseq*](#biasdseq1)  | BIASED_SEQUENCE                 | [`--biasfrac`](#options-alerts-biasfrac) | - | - <a name="biasdseq2"></a> | 
 | [*extrant5*](#extrant51)  | EXTRA_SEQUENCE_START            | [`--extrant5`](#options-alerts-extrant5) | - | - <a name="extrant52"></a> |
@@ -1176,10 +1201,19 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*ambgnt3c*](#ambgnt3c1)  | AMBIGUITY_AT_CDS_END            | none | CDS | - <a name="ambgnt3c2"></a> | 
 | [*ambgcd5c*](#ambgcd5c1)  | AMBIGUITY_IN_START_CODON        | none | CDS | - <a name="ambgcd5c2"></a> | 
 | [*ambgcd3c*](#ambgcd3c1)  | AMBIGUITY_IN_STOP_CODON         | none | CDS | - <a name="ambgcd3c2"></a> | 
+| [*ambgnt5c*](#ambgnt5c1)  | AMBIGUITY_AT_CDS_START          | none | CDS | - <a name="ambgnt5c2"></a> | 
+| [*ambgnt3c*](#ambgnt3c1)  | AMBIGUITY_AT_CDS_END            | none | CDS | - <a name="ambgnt3c2"></a> | 
+| [*ambgcd5c*](#ambgcd5c1)  | AMBIGUITY_IN_START_CODON        | none | CDS | - <a name="ambgcd5c2"></a> | 
+| [*ambgcd3c*](#ambgcd3c1)  | AMBIGUITY_IN_STOP_CODON         | none | CDS | - <a name="ambgcd3c2"></a> | 
+| [*nnindfcl*](#nnindfcl1)  | INDEFINITE_CLASSIFICATION_NN    | [`--nn_indefclass`](#options-alerts-nn_indefclass) | - | - <a name="nnindfcl2"></a> | 
+| [*nnloidcl*](#nnloidcl1)  | LOW_ID_CLASSIFICATION_NN        | [`--nn_lowidclass`](#options-alerts-nn_lowidclass) | - | - <a name="nnloidcl2"></a> | 
+| [*nnalrgcl*](#nnalrgcl1)  | ALT_REGION_CLASSIFICATION_NN    | none | - | - <a name="nnalrgcl2"></a> | 
+| [*nnptrgcl*](#nnptrgcl1)  | PARTIAL_REGION_CLASSIFICATION_NN| [`--nn_partregclass`](#options-alerts-nn_partregclass) | - | - <a name="nnptrgcl2"></a> |
+| [*recombin*](#recombin1)  | POSSIBLE_RECOMBINATION          | [`--rc_thresh`, `--rc_match`, `--rc_minlen`, `--rc_igself`, `--rc_iglist`](#options-recomb) | - | - <a name="recombin2"></a> |
 
 ---
 
-## <a name="mnf"></a>Non-essential features: allowing sequences to pass despite fatal alerts for specific features
+## <a name="mnf"></a>Non-essential features:allowing sequences to pass despite fatal alerts for specific features
 
 It is possible to specify that certain features are *non-essential* and so
 have relaxed requirements. Some alerts that are normally fatal are not
@@ -1405,6 +1439,15 @@ Prior to VADR version 1.6, some alert exceptions in model info files
 were permitted in different formats. As of version 1.6, the formats
 above are enforced, but the formats present in publicly available
 model files created prior to v1.6 are also compatible with v1.6+.
+
+---
+
+## <a name="nn"></a>Alternative classification mode based on nearest-neighbors
+
+If your model is built from an alignment instead of a single sequence, you can define groups and subgroups for each sequence
+in the alignment file used to build the model and then classify sequences to those groups and subgroups based on similarity
+to the sequences in that alignment. For more information on this nearest-neighbor based classification mode see 
+[this file](nn-classification.md#top).
 
 ---
 
