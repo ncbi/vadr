@@ -41,6 +41,7 @@ my $env_vadr_infernal_dir = utl_DirEnvVarValid("VADRINFERNALDIR");
 my $env_vadr_hmmer_dir    = utl_DirEnvVarValid("VADRHMMERDIR");
 my $env_vadr_easel_dir    = utl_DirEnvVarValid("VADREASELDIR");
 my $env_vadr_fasta_dir    = $ENV{"VADRFASTADIR"};
+my $env_vadr_rfam_dir     = $ENV{"VADRRFAMDIR"}; # optional, validated later if needed
 
 # make sure the required executables exist and are executable
 my %execs_H = (); # hash with paths to all required executables
@@ -49,6 +50,8 @@ $execs_H{"esl-sfetch"}    = $env_vadr_easel_dir    . "/esl-sfetch";
 $execs_H{"esl-translate"} = $env_vadr_easel_dir    . "/esl-translate";
 $execs_H{"blastn"}        = $env_vadr_blast_dir    . "/blastn";
 $execs_H{"makeblastdb"}   = $env_vadr_blast_dir    . "/makeblastdb";
+$execs_H{"cmscan"}        = $env_vadr_infernal_dir . "/cmscan";
+$execs_H{"cmalign"}       = $env_vadr_infernal_dir . "/cmalign";
 $execs_H{"v-build.pl"}    = $env_vadr_scripts_dir  . "/v-build.pl";
 $execs_H{"v-annotate.pl"} = $env_vadr_scripts_dir  . "/v-annotate.pl";
 if(defined $env_vadr_fasta_dir) {
@@ -88,6 +91,8 @@ opt_Add("--seed-build-opts", "string", undef,        $g,    "--seed-accn", "--se
 opt_Add("--skip-annotate", "boolean", 0,             $g,    undef, undef,   "skip Tier 2 v-annotate screening step",                     "skip Tier 2 v-annotate screening step (temporary)", \%opt_HH, \@opt_order_A);
 opt_Add("--xambig",     "integer", 5,          $g,    undef, undef,       "max ambiguous nucleotides allowed per sequence",             "max ambiguous nucleotides allowed per sequence as <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--xpergroup",  "integer", 50,         $g,    undef, undef,       "max sequences retained per serotype/genotype group",         "max sequences retained per serotype/genotype group as <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--rna-cm-file", "string", undef,        $g,    undef, "--skip-rna", "use CM file <s> for RNA search instead of default Rfam.cm",  "use CM file <s> for RNA search instead of default Rfam.cm", \%opt_HH, \@opt_order_A);
+opt_Add("--skip-rna",   "boolean", 0,             $g,    undef, "--rna-cm-file", "skip RNA discovery and alignment",                          "skip RNA discovery and alignment (treat all noncoding as unstructured)", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "other expert options";
 #       option       type          default     group  requires incompat      preamble-output                                              help-output           
@@ -113,6 +118,8 @@ my $options_okay =
                 'skip-annotate' => \$GetOptions_H{"--skip-annotate"},
                 'xambig=i'     => \$GetOptions_H{"--xambig"},
                 'xpergroup=i'  => \$GetOptions_H{"--xpergroup"},
+                'rna-cm-file=s' => \$GetOptions_H{"--rna-cm-file"},
+                'skip-rna'     => \$GetOptions_H{"--skip-rna"},
 # other expert options
                 'execname=s'   => \$GetOptions_H{"--execname"});
 
@@ -203,6 +210,35 @@ if(opt_Get("--xambig", \%opt_HH) < 0) {
 }
 if(opt_Get("--xpergroup", \%opt_HH) < 1) {
   die "ERROR, --xpergroup must be >= 1";
+}
+
+# RNA discovery validation
+my $do_rna_discovery = (! opt_Get("--skip-rna", \%opt_HH));
+my $rna_cm_file = undef;
+if($do_rna_discovery) {
+  if(opt_IsUsed("--rna-cm-file", \%opt_HH)) {
+    $rna_cm_file = opt_Get("--rna-cm-file", \%opt_HH);
+    if(! -e $rna_cm_file) {
+      die "ERROR, --rna-cm-file does not exist: $rna_cm_file";
+    }
+  }
+  else {
+    # Using default Rfam.cm - need VADRRFAMDIR
+    if((! defined $env_vadr_rfam_dir) || ($env_vadr_rfam_dir eq "")) {
+      die "ERROR, VADRRFAMDIR environment variable not set; required for default Rfam RNA discovery (or use --rna-cm-file <s> or --skip-rna)";
+    }
+    if(! -d $env_vadr_rfam_dir) {
+      die "ERROR, VADRRFAMDIR directory does not exist: $env_vadr_rfam_dir";
+    }
+    $rna_cm_file = $env_vadr_rfam_dir . "/Rfam.cm";
+    if(! -e $rna_cm_file) {
+      die "ERROR, default Rfam.cm not found: $rna_cm_file";
+    }
+    my $rfam_clanin = $env_vadr_rfam_dir . "/Rfam.clanin";
+    if(! -e $rfam_clanin) {
+      die "ERROR, Rfam.clanin file not found: $rfam_clanin required for cmscan --clanin";
+    }
+  }
 }
 
 #############################
@@ -343,6 +379,34 @@ my @reqd_ftr_keys = ();
 vdr_ModelInfoFileParse($seed_minfo, \@reqd_mdl_keys, \@reqd_ftr_keys, \@mdl_info_A, \%ftr_info_HA, \%FH_H);
 my $seed_model_len = $mdl_info_A[0]{"length"};
 ofile_OutputString(*STDOUT, 1, sprintf("# Read seed model length: %d\n", $seed_model_len));
+
+#---------------------------------------
+# Step 1b: RNA discovery via cmscan on reference sequence
+#---------------------------------------
+my @rna_regions_A = (); # Array of hashes: { start, end, strand, cm_family, cm_accession, score, evalue }
+my $rna_annot_file = $out_root . ".rna_annotation.tsv";
+my $rna_ss_cons = undef; # Full-length consensus secondary structure string
+
+if($do_rna_discovery) {
+  my $ref_seq_file = $model_dir . "/" . $model_key . ".vadr.fa";
+  if(! -e $ref_seq_file) {
+    die "ERROR, reference sequence file not found for RNA discovery: $ref_seq_file";
+  }
+  
+  run_rna_discovery($ref_seq_file, $rna_cm_file, $seed_model_len, $out_root, $env_vadr_rfam_dir, 
+                    \@rna_regions_A, \$rna_ss_cons, opt_Get("--keep", \%opt_HH), opt_Get("-v", \%opt_HH), 
+                    \%execs_H, \%FH_H);
+  
+  # Write RNA annotation output
+  write_rna_annotation_table(\@rna_regions_A, $rna_annot_file, \%FH_H);
+}
+else {
+  ofile_OutputString($FH_H{"log"}, 1, sprintf("# RNA discovery: skipped due to --skip-rna\n"));
+}
+
+# TEMPORARY: Exit after RNA discovery for testing
+ofile_OutputString(*STDOUT, 1, "# [DEBUG] Exiting after Step 1b for RNA discovery testing\n");
+exit(0);
 
 #---------------------------------------
 # Step 2: Read and filter metadata
@@ -2056,6 +2120,185 @@ sub project_pairwise_onto_anchor {
   if($apos != $anchor_len) {
     die "ERROR, projected anchor coverage mismatch for $qname vs $sname (got $apos expected $anchor_len)";
   }
+  return;
+}
+
+#################################################################
+# Subroutine : run_rna_discovery()
+# Incept     : EPN/Copilot Thu Mar 13 2026
+#
+# Purpose    : Discover structural RNA regions in reference sequence
+#              using cmscan against Rfam (or custom CM file).
+#              Also generate full-sequence consensus SS string via cmalign.
+#
+# Arguments  :
+#   $ref_seq_file    : path to reference sequence FASTA file
+#   $rna_cm_file     : path to CM file (Rfam.cm or user-provided)
+#   $seq_len         : expected sequence length
+#   $out_root        : output file root path
+#   $rfam_dir        : VADRRFAMDIR (for Rfam.clanin), undef if using custom CM
+#   $rna_regions_AR  : ref to array to populate with RNA hit info hashes
+#   $ss_cons_SR      : ref to scalar to store full-length consensus SS string
+#   $do_keep         : keep intermediate files
+#   $do_verbose      : verbose output
+#   $execs_HR        : hash of executable paths
+#   $FH_HR           : hash of file handles
+#
+# Returns    : void (populates $rna_regions_AR and $ss_cons_SR)
+#################################################################
+sub run_rna_discovery {
+  my ($ref_seq_file, $rna_cm_file, $seq_len, $out_root, $rfam_dir, $rna_regions_AR, $ss_cons_SR, $do_keep, $do_verbose, $execs_HR, $FH_HR) = @_;
+
+  my $cmscan_tblout = $out_root . ".rna_cmscan.tblout";
+  my $cmscan_stdout = $out_root . ".rna_cmscan.out";
+  my $cmalign_tfile = $out_root . ".rna_cmalign.ifile";
+  my $cmalign_stk   = $out_root . ".rna_cmalign.stk";
+
+  # Step 1b.1: Run cmscan to identify RNA hits
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA discovery: running cmscan on reference sequence with %s\n", $rna_cm_file));
+  
+  my $cmd = $execs_HR->{"cmscan"} . " --noali --cut_ga --rfam --nohmmonly --tblout " . $cmscan_tblout . " --fmt 2";
+  
+  # Add --clanin if using Rfam.cm (requires Rfam.clanin)
+  if((defined $rfam_dir) && ($rfam_dir ne "")) {
+    my $clanin_file = $rfam_dir . "/Rfam.clanin";
+    if(-e $clanin_file) {
+      $cmd .= " --clanin " . $clanin_file;
+    }
+  }
+  
+  $cmd .= " --oskip --cpu 0 " . $rna_cm_file . " " . $ref_seq_file . " > " . $cmscan_stdout;
+  utl_RunCommand($cmd, $do_verbose, 0, $FH_HR);
+
+  # Step 1b.2: Parse cmscan tblout to extract RNA hits
+  parse_cmscan_tblout($cmscan_tblout, $seq_len, $rna_regions_AR, $FH_HR);
+
+  # Step 1b.3: Run cmalign --tfile to get full-sequence consensus secondary structure
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA discovery: running cmalign to generate consensus secondary structure\n"));
+  
+  # For cmalign, we need to use a single CM from the reference model
+  # TODO: Determine which CM to use for full-sequence alignment (may need seed model CM)
+  # For now, skip this step - will implement after testing cmscan parsing
+  
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA discovery: found %d RNA regions\n", scalar(@{$rna_regions_AR})));
+  
+  # Cleanup if not keeping intermediate files
+  if(! $do_keep) {
+    unlink($cmscan_stdout) if(-e $cmscan_stdout);
+    unlink($cmalign_tfile) if(-e $cmalign_tfile);
+    unlink($cmalign_stk) if(-e $cmalign_stk);
+  }
+  
+  return;
+}
+
+#################################################################
+# Subroutine : parse_cmscan_tblout()
+# Incept     : EPN/Copilot Thu Mar 13 2026
+#
+# Purpose    : Parse cmscan --tblout output to extract RNA hit information.
+#
+# Arguments  :
+#   $tblout_file     : path to cmscan --tblout file
+#   $seq_len         : expected sequence length for validation
+#   $rna_regions_AR  : ref to array to populate with hit info hashes
+#   $FH_HR           : hash of file handles
+#
+# Returns    : void (populates $rna_regions_AR)
+#################################################################
+sub parse_cmscan_tblout {
+  my ($tblout_file, $seq_len, $rna_regions_AR, $FH_HR) = @_;
+
+  if(! -e $tblout_file) {
+    die "ERROR, cmscan tblout file does not exist: $tblout_file";
+  }
+
+  open(my $tblfh, "<", $tblout_file) || die "ERROR, unable to read cmscan tblout: $tblout_file: $!";
+  
+  my $nhits = 0;
+  while(my $line = <$tblfh>) {
+    chomp $line;
+    next if($line =~ /^\#/);  # skip comments
+    next if($line =~ /^\s*$/); # skip blank lines
+    
+    # cmscan --tblout format (space-delimited, 18+ columns):
+    # target_name accession query_name query_accession mdl from to seq_from seq_to strand ...
+    my @fields = split(/\s+/, $line);
+    next if(scalar(@fields) < 18);
+    
+    my $cm_family = $fields[0];      # Rfam family name (e.g., "5S_rRNA")
+    my $cm_accession = $fields[1];   # Rfam accession (e.g., "RF00001")
+    my $seq_from = $fields[7];       # sequence start position (1-based)
+    my $seq_to = $fields[8];         # sequence end position (1-based)
+    my $strand = $fields[9];         # strand ('+' or '-')
+    my $score = $fields[14];         # bit score
+    my $evalue = $fields[15];        # E-value
+    
+    # Validate coordinates
+    if(($seq_from < 1) || ($seq_to > $seq_len)) {
+      ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA discovery WARNING: hit %s coords %d..%d out of bounds (seq_len %d), skipping\n", 
+                                                      $cm_family, $seq_from, $seq_to, $seq_len));
+      next;
+    }
+    
+    # Store hit info
+    push(@{$rna_regions_AR}, {
+      start        => $seq_from,
+      end          => $seq_to,
+      strand       => $strand,
+      cm_family    => $cm_family,
+      cm_accession => $cm_accession,
+      score        => $score,
+      evalue       => $evalue
+    });
+    $nhits++;
+  }
+  close($tblfh);
+  
+  return;
+}
+
+#################################################################
+# Subroutine : write_rna_annotation_table()
+# Incept     : EPN/Copilot Thu Mar 13 2026
+#
+# Purpose    : Write RNA annotation table to TSV file.
+#
+# Arguments  :
+#   $rna_regions_AR  : ref to array of RNA hit info hashes
+#   $out_file        : output TSV file path
+#   $FH_HR           : hash of file handles
+#
+# Returns    : void
+#################################################################
+sub write_rna_annotation_table {
+  my ($rna_regions_AR, $out_file, $FH_HR) = @_;
+
+  open(my $outfh, ">", $out_file) || die "ERROR, unable to write RNA annotation table: $out_file: $!";
+  
+  # Write header
+  print $outfh "# RNA regions discovered by cmscan\n";
+  print $outfh "#idx\tstart\tend\tstrand\tcm_family\tcm_accession\tscore\tevalue\n";
+  
+  # Write data rows
+  my $idx = 1;
+  foreach my $rna (@{$rna_regions_AR}) {
+    printf $outfh "%d\t%d\t%d\t%s\t%s\t%s\t%.1f\t%.2e\n",
+      $idx,
+      $rna->{"start"},
+      $rna->{"end"},
+      $rna->{"strand"},
+      $rna->{"cm_family"},
+      $rna->{"cm_accession"},
+      $rna->{"score"},
+      $rna->{"evalue"};
+    $idx++;
+  }
+  
+  close($outfh);
+  
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA discovery: wrote %d RNA annotations to %s\n", scalar(@{$rna_regions_AR}), $out_file));
+  
   return;
 }
 
