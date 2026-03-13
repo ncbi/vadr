@@ -52,6 +52,8 @@ $execs_H{"blastn"}        = $env_vadr_blast_dir    . "/blastn";
 $execs_H{"makeblastdb"}   = $env_vadr_blast_dir    . "/makeblastdb";
 $execs_H{"cmscan"}        = $env_vadr_infernal_dir . "/cmscan";
 $execs_H{"cmalign"}       = $env_vadr_infernal_dir . "/cmalign";
+$execs_H{"cmbuild"}       = $env_vadr_infernal_dir . "/cmbuild";
+$execs_H{"esl-reformat"}  = $env_vadr_easel_dir    . "/esl-reformat";
 $execs_H{"v-build.pl"}    = $env_vadr_scripts_dir  . "/v-build.pl";
 $execs_H{"v-annotate.pl"} = $env_vadr_scripts_dir  . "/v-annotate.pl";
 if(defined $env_vadr_fasta_dir) {
@@ -398,15 +400,16 @@ if($do_rna_discovery) {
                     \%execs_H, \%FH_H);
   
   # Write RNA annotation output
+  run_rna_sstruct_generation(\@rna_regions_A, $ref_seq_file, $rna_cm_file, $env_vadr_rfam_dir, 
+                             $out_root, opt_Get("--keep", \%opt_HH), opt_Get("-v", \%opt_HH), 
+                             \%execs_H, \%FH_H);
+
+  # Write RNA annotation output (after structure extraction)
   write_rna_annotation_table(\@rna_regions_A, $rna_annot_file, \%FH_H);
 }
 else {
   ofile_OutputString($FH_H{"log"}, 1, sprintf("# RNA discovery: skipped due to --skip-rna\n"));
 }
-
-# TEMPORARY: Exit after RNA discovery for testing
-ofile_OutputString(*STDOUT, 1, "# [DEBUG] Exiting after Step 1b for RNA discovery testing\n");
-exit(0);
 
 #---------------------------------------
 # Step 2: Read and filter metadata
@@ -2222,15 +2225,15 @@ sub parse_cmscan_tblout {
     next if($line =~ /^\s*$/); # skip blank lines
     
     # cmscan --tblout format (space-delimited, 18+ columns):
-    # target_name accession query_name query_accession mdl from to seq_from seq_to strand ...
+    # idx target_name accession query_name accession clan mdl mdl_from mdl_to seq_from seq_to strand ...
     my @fields = split(/\s+/, $line);
     next if(scalar(@fields) < 18);
     
-    my $cm_family = $fields[0];      # Rfam family name (e.g., "5S_rRNA")
-    my $cm_accession = $fields[1];   # Rfam accession (e.g., "RF00001")
-    my $seq_from = $fields[7];       # sequence start position (1-based)
-    my $seq_to = $fields[8];         # sequence end position (1-based)
-    my $strand = $fields[9];         # strand ('+' or '-')
+    my $cm_family = $fields[1];      # Rfam family name (e.g., "IRES_Picorna")
+    my $cm_accession = $fields[2];   # Rfam accession (e.g., "RF00229")
+    my $seq_from = $fields[9];       # sequence start position (1-based)
+    my $seq_to = $fields[10];        # sequence end position (1-based)
+    my $strand = $fields[11];        # strand ('+' or '-')
     my $score = $fields[14];         # bit score
     my $evalue = $fields[15];        # E-value
     
@@ -2277,13 +2280,13 @@ sub write_rna_annotation_table {
   open(my $outfh, ">", $out_file) || die "ERROR, unable to write RNA annotation table: $out_file: $!";
   
   # Write header
-  print $outfh "# RNA regions discovered by cmscan\n";
-  print $outfh "#idx\tstart\tend\tstrand\tcm_family\tcm_accession\tscore\tevalue\n";
+  print $outfh "#idx\tstart\tend\tstrand\tcm_family\tcm_accession\tscore\tevalue\tsstruct\n";
+  print  "#idx\tstart\tend\tstrand\tcm_family\tcm_accession\tscore\tevalue\tsstruct\n";
   
   # Write data rows
   my $idx = 1;
   foreach my $rna (@{$rna_regions_AR}) {
-    printf $outfh "%d\t%d\t%d\t%s\t%s\t%s\t%.1f\t%.2e\n",
+    printf $outfh "%d\t%d\t%d\t%s\t%s\t%s\t%.1f\t%.2e\t%s\n",
       $idx,
       $rna->{"start"},
       $rna->{"end"},
@@ -2291,7 +2294,8 @@ sub write_rna_annotation_table {
       $rna->{"cm_family"},
       $rna->{"cm_accession"},
       $rna->{"score"},
-      $rna->{"evalue"};
+      $rna->{"evalue"},
+      (defined $rna->{"sstruct"} ? $rna->{"sstruct"} : "");
     $idx++;
   }
   
@@ -2302,3 +2306,151 @@ sub write_rna_annotation_table {
   return;
 }
 
+#################################################################
+# Subroutine : run_rna_sstruct_generation()
+# Incept     : EPN/Copilot Thu Mar 13 2026
+#
+# Purpose    : Generate consensus secondary structure for each RNA region
+#              by running cmalign with --tfile on extracted subsequences.
+#
+# Arguments  :
+#   $rna_regions_AR  : ref to array of RNA hit hashes from cmscan
+#   $ref_seq_file    : path to reference sequence FASTA file
+#   $rna_cm_file     : path to CM file (Rfam.cm or custom)
+#   $rfam_dir        : VADRRFAMDIR (for cmfetch), undef if using custom CM
+#   $out_root        : output file root path
+#   $do_keep         : keep intermediate files
+#   $do_verbose      : verbose output
+#   $execs_HR        : hash of executable paths
+#   $FH_HR           : hash of file handles
+#
+# Returns    : void (updates RNA region hashes with sstruct field)
+#################################################################
+sub run_rna_sstruct_generation {
+  my ($rna_regions_AR, $ref_seq_file, $rna_cm_file, $rfam_dir, $out_root, $do_keep, $do_verbose, $execs_HR, $FH_HR) = @_;
+
+  if(! -e $ref_seq_file) {
+    die "ERROR, reference sequence file not found: $ref_seq_file";
+  }
+
+  my $rna_work_dir = $out_root . ".rna_struct";
+  if(! -d $rna_work_dir) {
+    mkdir($rna_work_dir) || die "ERROR, unable to create RNA work directory: $rna_work_dir: $!";
+  }
+
+  # Load reference sequence into memory
+  my %seq_H = ();
+  my $cur_acc = undef;
+  open(my $sfh, "<", $ref_seq_file) || die "ERROR, unable to read reference sequence: $ref_seq_file: $!";
+  while(my $line = <$sfh>) {
+    chomp $line;
+    if($line =~ /^>(\S+)/) {
+      $cur_acc = $1;
+      $seq_H{$cur_acc} = "" if(! exists $seq_H{$cur_acc});
+    }
+    elsif(defined $cur_acc) {
+      $line =~ s/\s+//g;
+      $seq_H{$cur_acc} .= $line;
+    }
+  }
+  close($sfh);
+
+  if(scalar(keys %seq_H) == 0) {
+    die "ERROR, reference sequence file appears empty: $ref_seq_file";
+  }
+
+  # Get the first (and should be only) reference sequence
+  my @ref_accs = sort keys %seq_H;
+  my $ref_acc = $ref_accs[0];
+  my $ref_seq = $seq_H{$ref_acc};
+
+  # Process each RNA region
+  my $idx = 1;
+  foreach my $rna (@{$rna_regions_AR}) {
+    my $rna_start = $rna->{"start"};
+    my $rna_end = $rna->{"end"};
+    my $rna_acc = $rna->{"cm_accession"};
+    my $rna_family = $rna->{"cm_family"};
+
+    # Extract subsequence
+    my $subseq_len = ($rna_end - $rna_start + 1);
+    if(($rna_start < 1) || ($rna_end > length($ref_seq))) {
+      ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA sstruct WARNING: RNA region %d (%s) coords out of bounds, skipping\n", $idx, $rna_family));
+      $rna->{"sstruct"} = "";
+      $idx++;
+      next;
+    }
+    my $rna_subseq = substr($ref_seq, $rna_start - 1, $subseq_len);
+
+    # Write temporary FASTA for this RNA region
+    my $subseq_fa = $rna_work_dir . "/" . sprintf("rna.%03d.fa", $idx);
+    open(my $subfh, ">", $subseq_fa) || die "ERROR, unable to write RNA subsequence: $subseq_fa: $!";
+    printf $subfh ">%s_%d_%d\n", $rna_family, $rna_start, $rna_end;
+    print $subfh $rna_subseq . "\n";
+    close($subfh);
+
+    # Run cmalign to get alignment with secondary structure
+    my $cmalign_tfile = $rna_work_dir . "/" . sprintf("rna.%03d.tfile", $idx);
+    my $cmalign_stk   = $rna_work_dir . "/" . sprintf("rna.%03d.stk", $idx);
+
+    my $cmd;
+    if((defined $rfam_dir) && ($rfam_dir ne "")) {
+      # Using Rfam.cm - use cmfetch to get specific model
+      my $cmfetch_exec = $rfam_dir . "/cmfetch";
+      if(! -e $cmfetch_exec) {
+        $cmfetch_exec = "cmfetch"; # Fall back to PATH
+      }
+      my $rfam_cm = $rfam_dir . "/Rfam.cm";
+      $cmd = "$cmfetch_exec $rfam_cm $rna_acc | " . $execs_HR->{"cmalign"} . 
+             " --outformat pfam -g --tfile " . $cmalign_tfile . " - " . $subseq_fa . " > " . $cmalign_stk;
+    }
+    else {
+      # Using custom CM - assume it's a single model or doesn't need cmfetch
+      $cmd = $execs_HR->{"cmalign"} . " --outformat pfam -g --tfile " . $cmalign_tfile . " " . 
+             $rna_cm_file . " " . $subseq_fa . " > " . $cmalign_stk;
+    }
+
+    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA sstruct: RNA region %d (%s %d..%d): running cmalign\n", $idx, $rna_family, $rna_start, $rna_end));
+    utl_RunCommand($cmd, $do_verbose, 0, $FH_HR);
+
+    # Clean up the alignment using cmbuild to resolve gaps and broken base pairs
+    my $refined_stk = $rna_work_dir . "/" . sprintf("rna.%03d.refined.stk", $idx);
+    my $tmp_cm      = $rna_work_dir . "/" . sprintf("rna.%03d.cm", $idx);
+    my $cmd_cmbuild = $execs_HR->{"cmbuild"} . " -O " . $refined_stk . " -F " . $tmp_cm . " " . $cmalign_stk;
+    
+    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA sstruct: RNA region %d (%s): refining alignment with cmbuild\n", $idx, $rna_family));
+    utl_RunCommand($cmd_cmbuild, $do_verbose, 0, $FH_HR);
+
+    # Convert to PFAM format to get clean SS_cons line
+    my $pfam_stk = $rna_work_dir . "/" . sprintf("rna.%03d.pfam", $idx);
+    my $cmd_reformat = "esl-reformat pfam " . $refined_stk . " > " . $pfam_stk;
+    
+    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA sstruct: RNA region %d (%s): converting to PFAM format\n", $idx, $rna_family));
+    utl_RunCommand($cmd_reformat, $do_verbose, 0, $FH_HR);
+
+    # Extract consensus secondary structure from cleaned SS_cons line
+    my $sstruct = "";
+    if(-e $pfam_stk) {
+      open(my $sfh, "<", $pfam_stk) || die "ERROR, unable to read pfam stk file: $pfam_stk: $!";
+      while(my $line = <$sfh>) {
+        chomp $line;
+        if($line =~ /^#=GC SS_cons\s+(.+)$/) {
+          my $ss_part = $1;
+          $ss_part =~ s/^\s+|\s+$//g;
+          $sstruct .= $ss_part;
+        }
+      }
+      close($sfh);
+    }
+    $rna->{"sstruct"} = $sstruct;
+
+    $idx++;
+  }
+
+  # Cleanup if not keeping intermediate files
+  if(! $do_keep) {
+    system("rm -rf $rna_work_dir");
+  }
+
+  return;
+}
