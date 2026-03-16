@@ -48,6 +48,8 @@ my %execs_H = (); # hash with paths to all required executables
 $execs_H{"esl-reformat"}  = $env_vadr_easel_dir    . "/esl-reformat";
 $execs_H{"esl-sfetch"}    = $env_vadr_easel_dir    . "/esl-sfetch";
 $execs_H{"esl-translate"} = $env_vadr_easel_dir    . "/esl-translate";
+$execs_H{"esl-alimask"}   = $env_vadr_easel_dir    . "/esl-alimask";
+$execs_H{"esl-alimanip"}  = $env_vadr_easel_dir    . "/esl-alimanip";
 $execs_H{"blastn"}        = $env_vadr_blast_dir    . "/blastn";
 $execs_H{"makeblastdb"}   = $env_vadr_blast_dir    . "/makeblastdb";
 $execs_H{"cmscan"}        = $env_vadr_infernal_dir . "/cmscan";
@@ -455,12 +457,14 @@ my $stitch_cds_msa_nt_fa_file = $out_root . ".stitch.cds.msa.nt.fa";
 write_accession_list_from_candidates(\%candidate_AH, $tier1_accn_file, \%FH_H);
 fetch_fasta_from_accession_list($tier1_accn_file, $tier2_fasta_file, \%FH_H);
 apply_ambiguity_filter_to_candidates(\%candidate_AH, $tier2_fasta_file, $max_ambig_nt, \%decision_H, \%FH_H);
+
+my $tier2_align_stk_file = undef;
 if($do_skip_annotate) {
   ofile_OutputString($FH_H{"log"}, 1, sprintf("# Tier 2 v-annotate filter: skipped due to --skip-annotate\n"));
   mark_all_remaining_as_selected_for_tier3(\%candidate_AH, \%decision_H);
 }
 else {
-  run_vannotate_filter_fails(\%candidate_AH, $tier2_fasta_file, $tier2_ant_outdir, $model_dir, $model_key, opt_Get("--keep", \%opt_HH), opt_Get("-v", \%opt_HH), \%execs_H, \%decision_H, \%FH_H);
+  $tier2_align_stk_file = run_vannotate_filter_fails(\%candidate_AH, $tier2_fasta_file, $tier2_ant_outdir, $model_dir, $model_key, opt_Get("--keep", \%opt_HH), opt_Get("-v", \%opt_HH), \%execs_H, \%decision_H, \%FH_H);
 }
 
 #---------------------------------------
@@ -488,7 +492,7 @@ prepare_cds_translation_for_stitching(\%candidate_AH, $stitch_selected_fa_file, 
 run_reference_anchored_pairwise_aa(\%candidate_AH, $centroid_tsv_file, $stitch_cds_aa_fa_file, $stitch_cds_anchor_tsv_file, $stitch_cds_anchor_fa_file, $stitch_cds_pairwise_tsv_file, $do_skip_annotate, opt_Get("--keep", \%opt_HH), opt_Get("-v", \%opt_HH), \%execs_H, \%FH_H);
 
 #---------------------------------------
-# Step 8: Build protein MSA from pairwise CIGARs and backconvert CDS nt alignment
+# Step 8a: Build protein MSA from pairwise CIGARs and backconvert CDS nt alignment
 #---------------------------------------
 build_anchor_projected_cds_msa($stitch_cds_aa_fa_file,
                                $stitch_cds_nt_fa_file,
@@ -500,6 +504,16 @@ build_anchor_projected_cds_msa($stitch_cds_aa_fa_file,
                                $stitch_cds_msa_nt_fa_file,
                                $do_skip_annotate,
                                \%FH_H);
+
+#---------------------------------------
+# Step 8b-d: RNA region extraction and alignment refinement
+#---------------------------------------
+if($do_rna_discovery && (scalar(@rna_regions_A) > 0) && (!$do_skip_annotate)) {
+  my $rna_struct_dir = $out_root . ".rna_struct";
+  extract_and_align_rna_regions(\@rna_regions_A, $tier2_align_stk_file, $rna_struct_dir, 
+                                $out_root, opt_Get("--keep", \%opt_HH), opt_Get("-v", \%opt_HH), 
+                                \%execs_H, \%FH_H);
+}
 
 ofile_OutputString(\*STDOUT, 1, sprintf("All done.\n"));
 
@@ -839,8 +853,9 @@ sub run_vannotate_filter_fails {
 
   my $annot_mkey = $model_key . ".vadr";
 
-  my $keep_opt = ($do_keep) ? " --keep" : "";
-  my $cmd = $execs_HR->{"v-annotate.pl"} . " -f --mdir " . $model_dir . " --mkey " . $annot_mkey . $keep_opt . " " . $fasta_file . " " . $annot_outdir;
+  # Note: --out_stk and --keep are incompatible in v-annotate.pl, so we only use --out_stk
+  # which outputs the Stockholm alignment we need for Step 6 block extraction
+  my $cmd = $execs_HR->{"v-annotate.pl"} . " -f --mdir " . $model_dir . " --mkey " . $annot_mkey . " --out_stk " . $fasta_file . " " . $annot_outdir;
   if(! $do_verbose) {
     $cmd .= " > /dev/null";
   }
@@ -890,7 +905,11 @@ sub run_vannotate_filter_fails {
   }
 
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Tier 2 v-annotate filter: kept %d removed %d (removed all accessions in .vadr.fail.list)\n", $nkept, $nremoved));
-  return;
+  
+  # Return path to alignment file for later use in Step 8 RNA refinement
+  # v-annotate creates: <outdir>/<outdir>.vadr.<modelkey>.align.stk
+  my $align_stk_file = $annot_outdir . "/" . $annot_outdir_tail . ".vadr." . $model_key . ".align.stk";
+  return $align_stk_file;
 }
 
 #################################################################
@@ -2454,3 +2473,87 @@ sub run_rna_sstruct_generation {
 
   return;
 }
+
+#################################################################
+# Subroutine : extract_and_align_rna_regions()
+# Incept     : EPN Mon Mar 16 2026
+#
+# Purpose    : Extract RNA regions from tier2 v-annotate alignment
+#              and realign with custom CMs built in Step 1c.
+#              This implements Step 8b-8d from the updated plan.
+#
+# Arguments  :
+#   $rna_regions_AR     : ref to array of RNA region hashes from Step 1b
+#   $tier2_align_stk    : path to tier2 v-annotate Stockholm alignment 
+#   $rna_struct_dir     : directory with CM files from Step 1c (rna.001.cm, etc)
+#   $out_root           : output file root path
+#   $do_keep            : keep intermediate files
+#   $do_verbose         : verbose output
+#   $execs_HR           : hash of executable paths
+#   $FH_HR              : hash of file handles
+#
+# Returns    : void (writes RNA block Stockholm files)
+#################################################################
+sub extract_and_align_rna_regions {
+  my ($rna_regions_AR, $tier2_align_stk, $rna_struct_dir, $out_root, $do_keep, $do_verbose, $execs_HR, $FH_HR) = @_;
+
+  if(! -e $tier2_align_stk) {
+    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA alignment: WARNING - tier2 alignment not found, skipping RNA refinement\n"));
+    return;
+  }
+
+  my $nrna = scalar(@{$rna_regions_AR});
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA alignment: extracting and aligning %d RNA region%s\n", $nrna, ($nrna == 1) ? "" : "s"));
+
+  # Process each RNA region
+  my $idx = 1;
+  foreach my $rna (@{$rna_regions_AR}) {
+    my $rna_start = $rna->{"start"};
+    my $rna_end = $rna->{"end"};
+    my $rna_family = $rna->{"cm_family"};
+    
+    # Step 8b: Extract RNA region from tier2 alignment using esl-alimask
+    # Then filter out sequences with length < 1 using esl-alimanip
+    my $rna_extracted_fa = $out_root . ".stitch.rna." . sprintf("%03d", $idx) . ".extracted.fa";
+    my $coords = sprintf("%d..%d", $rna_start, $rna_end);
+    
+    my $cmd_extract = $execs_HR->{"esl-alimask"} . " -t --t-rf " . $tier2_align_stk . " " . $coords .
+                      " | " . $execs_HR->{"esl-alimanip"} . " --informat stockholm --lmin 1 - " .
+                      " | " . $execs_HR->{"esl-reformat"} . " --informat stockholm fasta - > " . $rna_extracted_fa;
+    
+    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA alignment: region %d (%s %d..%d): extracting from tier2 alignment\n", 
+                                                     $idx, $rna_family, $rna_start, $rna_end));
+    utl_RunCommand($cmd_extract, $do_verbose, 0, $FH_HR);
+    
+    # Step 8c: Align with custom CM from Step 1c
+    my $cm_file = $rna_struct_dir . "/rna." . sprintf("%03d", $idx) . ".cm";
+    if(! -e $cm_file) {
+      ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA alignment: WARNING - CM not found for region %d, skipping\n", $idx));
+      $idx++;
+      next;
+    }
+    
+    # Step 8d: Output refined RNA block Stockholm
+    my $rna_aligned_stk = $out_root . ".stitch.rna." . sprintf("%03d", $idx) . ".stk";
+    
+    my $cmd_align = $execs_HR->{"cmalign"} . " --outformat pfam -g " . $cm_file . " " . $rna_extracted_fa .
+                    " > " . $rna_aligned_stk;
+    
+    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA alignment: region %d (%s): aligning with custom CM\n", 
+                                                     $idx, $rna_family));
+    utl_RunCommand($cmd_align, $do_verbose, 0, $FH_HR);
+    
+    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA alignment: region %d (%s): wrote aligned Stockholm to %s\n", 
+                                                     $idx, $rna_family, $rna_aligned_stk));
+    
+    # Cleanup extracted FASTA if not keeping
+    if(! $do_keep) {
+      unlink($rna_extracted_fa);
+    }
+    
+    $idx++;
+  }
+
+  return;
+}
+
