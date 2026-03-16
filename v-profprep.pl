@@ -2681,7 +2681,9 @@ sub stitch_and_refine_final_alignment {
 #################################################################
 # Subroutine : merge_rna_into_blocks()
 # Purpose    : Merge RNA blocks into existing block plan,
-#              splitting blocks where RNA regions occur
+#              splitting blocks where RNA regions occur.
+#              Priority: CDS > RNA > noncoding
+#              (RNA overlapping CDS is skipped - CDS alignment used)
 #
 # Arguments  :
 #   $blocks_AR  : ref to array of block hashes
@@ -2720,10 +2722,23 @@ sub merge_rna_into_blocks {
       next;
     }
     
+    # Priority rule: CDS > RNA
+    # If this is a CDS block, RNA regions are ignored (CDS alignment takes precedence)
+    if($block_type eq "coding") {
+      push(@merged_A, $block);
+      my $n_skipped = scalar(@overlapping_rna);
+      if($n_skipped > 0) {
+        my @families = map { $_->{"family"} } @overlapping_rna;
+        ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: skipped %d RNA region(s) overlapping CDS (%s) - CDS alignment has priority\n", 
+                                                         $n_skipped, join(", ", @families)));
+      }
+      next;
+    }
+    
     # Sort overlapping RNA by start position
     @overlapping_rna = sort { $a->{"start"} <=> $b->{"start"} } @overlapping_rna;
     
-    # Split block around RNA regions
+    # Split noncoding block around RNA regions
     my $cur_pos = $block_start;
     foreach my $rna (@overlapping_rna) {
       my $rna_start = $rna->{"start"};
@@ -2810,17 +2825,23 @@ sub concatenate_all_blocks {
     $final_seqs_H{$name} = "";
   }
   
+  # Track whether CDS MSA has been added (only add once even if split into multiple blocks)
+  my $cds_added = 0;
+  
   # Process each block in order
   foreach my $block (@{$blocks_AR}) {
     my $type = $block->{"type"};
     
     if($type eq "coding") {
-      # Add CDS MSA sequence
-      foreach my $name (@seq_names) {
-        $final_seqs_H{$name} .= $cds_seqs_H{$name};
+      # Add CDS MSA sequence (should only see one coding block with priority system)
+      if(!$cds_added) {
+        foreach my $name (@seq_names) {
+          $final_seqs_H{$name} .= $cds_seqs_H{$name};
+        }
+        $cds_added = 1;
+        ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: added CDS MSA (%d..%d, %d alignment columns)\n", 
+                                                         $block->{"start"}, $block->{"end"}, length($cds_seqs_H{$seq_names[0]})));
       }
-      ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: added CDS block (%d..%d, %d nt)\n", 
-                                                       $block->{"start"}, $block->{"end"}, $block->{"len"}));
     }
     elsif($type eq "rna") {
       # Read RNA Stockholm file and extract sequences
