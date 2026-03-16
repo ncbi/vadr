@@ -2672,10 +2672,13 @@ sub stitch_and_refine_final_alignment {
 
   # Refine alignment and add RF consensus line with cmbuild --refine
   # Use --noss since concatenated alignment has no consensus structure annotation
+  # Options: --verbose (progress), --notrunc (no truncation), --sub (save sub CM), --tau (convergence), --mxsize (matrix size)
+  my $cmbuild_out = $refined_stk_file . ".cmbuild.out";
   my $cmd_cmbuild = $execs_HR->{"cmbuild"} . " --noss --refine " . $refined_stk_file . 
-                    " -O " . $refined_stk_file . " " . $temp_cm_file . " " . $final_stk_file;
+                    " -O " . $refined_stk_file . " --verbose --notrunc --sub --tau 1E-3 --mxsize 16000 " . 
+                    $temp_cm_file . " " . $final_stk_file . " > " . $cmbuild_out;
   
-  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: refining alignment with cmbuild --noss --refine\n"));
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: refining alignment with cmbuild --noss --refine (output to %s)\n", $cmbuild_out));
   utl_RunCommand($cmd_cmbuild, 1, 0, $FH_HR);
   
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: wrote refined alignment with RF to %s\n", $refined_stk_file));
