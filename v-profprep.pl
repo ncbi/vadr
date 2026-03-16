@@ -538,6 +538,15 @@ stitch_and_refine_final_alignment($stitch_block_plan_file,
                                   \%execs_H,
                                   \%FH_H);
 
+#---------------------------------------
+# Step 11: Generate updated .minfo file with RNA features
+#---------------------------------------
+if($do_rna_discovery && !$do_skip_annotate && scalar(@rna_regions_A) > 0) {
+  my $updated_minfo_file = $out_root . ".minfo";
+  generate_updated_minfo($seed_minfo, $rna_annotation_file, \@rna_regions_A,
+                         $updated_minfo_file, $model_key, \%execs_H, \%FH_H);
+}
+
 ofile_OutputString(\*STDOUT, 1, sprintf("All done.\n"));
 
 $total_seconds += ofile_SecondsSinceEpoch();
@@ -2952,5 +2961,145 @@ sub read_stockholm_sequences {
   close($fh);
   
   return %seqs_H;
+}
+
+#################################################################
+# Subroutine : generate_updated_minfo()
+# Purpose    : Generate updated .minfo file with RNA features
+#              added as misc_structure annotations
+#
+# Arguments  :
+#   $seed_minfo_file : path to seed model .minfo file
+#   $rna_annot_file  : path to RNA annotation TSV file
+#   $rna_regions_AR  : ref to array of RNA region hashes
+#   $out_minfo_file  : output .minfo file path
+#   $model_key       : model name
+#   $execs_HR        : ref to hash of executable paths
+#   $FH_HR           : ref to hash of file handles
+#
+# Returns    : void
+#################################################################
+sub generate_updated_minfo {
+  my ($seed_minfo_file, $rna_annot_file, $rna_regions_AR, $out_minfo_file, $model_key, $execs_HR, $FH_HR) = @_;
+
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Generating updated .minfo file with RNA features\n"));
+
+  # Read seed .minfo file
+  my @seed_lines = ();
+  open(my $seedfh, $seed_minfo_file) || die "ERROR unable to read seed .minfo $seed_minfo_file: $!";
+  while(my $line = <$seedfh>) {
+    chomp $line;
+    push(@seed_lines, $line);
+  }
+  close($seedfh);
+
+  # Read RNA annotations with structure
+  my @rna_features = ();
+  if(defined($rna_regions_AR) && scalar(@{$rna_regions_AR}) > 0) {
+    open(my $rnafh, $rna_annot_file) || die "ERROR unable to read RNA annotation $rna_annot_file: $!";
+    my $header = <$rnafh>;
+    while(my $line = <$rnafh>) {
+      chomp $line;
+      my @f = split(/\t/, $line);
+      my ($idx, $start, $end, $strand, $family, $accession, $score, $evalue, $sstruct) = @f;
+      
+      # Find first and last basepaired positions (skip single-stranded ends)
+      my ($bp_start, $bp_end) = find_basepaired_bounds($sstruct, $start);
+      
+      # Skip if no basepairs found
+      if(!defined($bp_start) || !defined($bp_end)) {
+        ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# .minfo: skipped RNA %s (%d..%d) - no basepairs in structure\n", 
+                                                         $family, $start, $end));
+        next;
+      }
+      
+      # Get Rfam model description
+      my $rfam_cm = $ENV{'VADRMODELDIR'} ? $ENV{'VADRMODELDIR'} . "/rfam/Rfam.cm" : "/net/intdev/oblast01/dnaorg/virseqannot/code/vadr-install-1.7/rfam/Rfam.cm";
+      my $desc_cmd = "cmfetch " . $rfam_cm . " " . $accession . " 2>/dev/null | grep '^DESC' | awk '{for(i=2;i<=NF;i++) printf \"%s \", \$i; print \"\"}'";
+      my $description = `$desc_cmd`;
+      chomp $description;
+      $description =~ s/\s+$//;  # trim trailing whitespace
+      
+      if(!$description) {
+        $description = $family;  # fallback to family name
+      }
+      
+      push(@rna_features, {
+        "start" => $bp_start,
+        "end"   => $bp_end,
+        "strand" => $strand,
+        "family" => $family,
+        "note"  => $description
+      });
+      
+      ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# .minfo: added RNA feature %s (%d..%d%s) note:\"%s\"\n", 
+                                                       $family, $bp_start, $bp_end, $strand, $description));
+    }
+    close($rnafh);
+  }
+
+  # Write updated .minfo file
+  open(my $outfh, ">", $out_minfo_file) || die "ERROR unable to write .minfo $out_minfo_file: $!";
+  
+  # Copy seed lines and insert RNA features after gene/CDS features
+  foreach my $line (@seed_lines) {
+    print $outfh $line . "\n";
+  }
+  
+  # Add RNA features as misc_structure
+  foreach my $rna (@rna_features) {
+    my $coords = $rna->{"start"} . ".." . $rna->{"end"} . ":" . $rna->{"strand"};
+    my $feature_line = sprintf("FEATURE %s type:\"misc_structure\" coords:\"%s\" parent_idx_str:\"GBNULL\" note:\"%s\"",
+                               $model_key, $coords, $rna->{"note"});
+    print $outfh $feature_line . "\n";
+  }
+  
+  close($outfh);
+  
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Wrote updated .minfo with %d RNA features to %s\n", 
+                                                   scalar(@rna_features), $out_minfo_file));
+  
+  return;
+}
+
+#################################################################
+# Subroutine : find_basepaired_bounds()
+# Purpose    : Find first and last basepaired positions in 
+#              consensus structure (skip single-stranded ends)
+#
+# Arguments  :
+#   $sstruct : consensus structure string (e.g., ":::<<___>>:")
+#   $start   : start coordinate of structure
+#
+# Returns    : ($bp_start, $bp_end) adjusted coordinates
+#################################################################
+sub find_basepaired_bounds {
+  my ($sstruct, $start) = @_;
+  
+  # Find first basepaired position (first non-colon/comma/dash)
+  my $first_bp = -1;
+  my $last_bp = -1;
+  
+  my @chars = split(//, $sstruct);
+  for(my $i = 0; $i < scalar(@chars); $i++) {
+    my $c = $chars[$i];
+    # Basepaired characters: <, >, (, ), [, ], {, }
+    if($c =~ /[<>()\[\]{}]/) {
+      if($first_bp == -1) {
+        $first_bp = $i;
+      }
+      $last_bp = $i;
+    }
+  }
+  
+  if($first_bp == -1 || $last_bp == -1) {
+    return (undef, undef);
+  }
+  
+  # Adjust coordinates relative to start position
+  my $bp_start = $start + $first_bp;
+  my $bp_end = $start + $last_bp;
+  
+  return ($bp_start, $bp_end);
 }
 
