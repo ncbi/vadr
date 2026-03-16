@@ -2969,7 +2969,9 @@ sub read_stockholm_sequences {
 #################################################################
 # Subroutine : generate_updated_minfo()
 # Purpose    : Generate updated .minfo file with RNA features
-#              added as misc_structure annotations
+#              added as misc_structure annotations.
+#              All RNA features are added (overlaps with CDS allowed -
+#              v-annotate.pl handles overlapping features)
 #
 # Arguments  :
 #   $seed_minfo_file : path to seed model .minfo file
