@@ -453,6 +453,7 @@ my $stitch_cds_pairwise_tsv_file = $out_root . ".stitch.cds.pairwise.tsv";
 my $stitch_cds_msa_aa_fa_file = $out_root . ".stitch.cds.msa.aa.fa";
 my $stitch_cds_msa_aa_stk_file = $out_root . ".stitch.cds.msa.aa.stk";
 my $stitch_cds_msa_nt_fa_file = $out_root . ".stitch.cds.msa.nt.fa";
+my $rna_annotation_file       = $out_root . ".rna_annotation.tsv";
 
 write_accession_list_from_candidates(\%candidate_AH, $tier1_accn_file, \%FH_H);
 fetch_fasta_from_accession_list($tier1_accn_file, $tier2_fasta_file, \%FH_H);
@@ -514,6 +515,28 @@ if($do_rna_discovery && (scalar(@rna_regions_A) > 0) && (!$do_skip_annotate)) {
                                 $out_root, opt_Get("--keep", \%opt_HH), opt_Get("-v", \%opt_HH), 
                                 \%execs_H, \%FH_H);
 }
+
+#---------------------------------------
+#---------------------------------------
+# Step 10: Stitch all blocks into final training alignment
+#---------------------------------------
+my $final_stk_file = $out_root . ".stitch.final.stk";
+my $refined_stk_file = $out_root . ".stitch.final.refined.stk";
+my $temp_cm_file = $out_root . ".stitch.temp.cm";
+
+stitch_and_refine_final_alignment($stitch_block_plan_file,
+                                  $rna_annotation_file,
+                                  $tier2_align_stk_file,
+                                  $stitch_cds_msa_nt_fa_file,
+                                  $out_root,
+                                  \@rna_regions_A,
+                                  $final_stk_file,
+                                  $refined_stk_file,
+                                  $temp_cm_file,
+                                  $do_rna_discovery,
+                                  $do_skip_annotate,
+                                  \%execs_H,
+                                  \%FH_H);
 
 ofile_OutputString(\*STDOUT, 1, sprintf("All done.\n"));
 
@@ -2555,5 +2578,358 @@ sub extract_and_align_rna_regions {
   }
 
   return;
+}
+
+#################################################################
+# Subroutine : stitch_and_refine_final_alignment()
+# Purpose    : Stitch all alignment blocks (CDS, RNA, noncoding)  
+#              into final training alignment and refine with cmbuild
+#
+# Arguments  :
+#   $block_plan_file    : block plan TSV file
+#   $rna_annot_file     : RNA annotation TSV file
+#   $tier2_stk_file     : tier2 full-sequence Stockholm alignment
+#   $cds_msa_fa_file    : CDS nucleotide MSA FASTA file
+#   $out_root           : output root path
+#   $rna_regions_AR     : ref to array of RNA region hashes
+#   $final_stk_file     : output final stitched Stockholm
+#   $refined_stk_file   : output refined Stockholm from cmbuild
+#   $temp_cm_file       : temporary CM file for cmbuild
+#   $do_rna_discovery   : flag for RNA discovery
+#   $do_skip_annotate   : flag to skip annotation
+#   $execs_HR           : ref to hash of executable paths
+#   $FH_HR              : ref to hash of file handles
+#
+# Returns    : void
+#################################################################
+sub stitch_and_refine_final_alignment {
+  my ($block_plan_file, $rna_annot_file, $tier2_stk_file, $cds_msa_fa_file, $out_root, 
+      $rna_regions_AR, $final_stk_file, $refined_stk_file, $temp_cm_file,
+      $do_rna_discovery, $do_skip_annotate, $execs_HR, $FH_HR) = @_;
+
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: merging CDS, RNA, and noncoding blocks\n"));
+
+  # Read block plan
+  my @blocks_A = ();
+  open(my $bpfh, $block_plan_file) || die "ERROR unable to read block plan $block_plan_file: $!";
+  my $header = <$bpfh>;
+  while(my $line = <$bpfh>) {
+    chomp $line;
+    my @f = split(/\t/, $line);
+    push(@blocks_A, {
+      "idx"      => $f[0],
+      "type"     => $f[1],
+      "start"    => $f[2],
+      "end"      => $f[3],
+      "len"      => $f[4],
+      "source"   => $f[5]
+    });
+  }
+  close($bpfh);
+
+  # Read RNA annotations if available
+  my @rna_A = ();
+  if($do_rna_discovery && !$do_skip_annotate && defined($rna_regions_AR) && scalar(@{$rna_regions_AR}) > 0) {
+    open(my $rnafh, $rna_annot_file) || die "ERROR unable to read RNA annotation $rna_annot_file: $!";
+    $header = <$rnafh>;
+    my $rna_idx = 1;
+    while(my $line = <$rnafh>) {
+      chomp $line;
+      my @f = split(/\t/, $line);
+      push(@rna_A, {
+        "idx"      => $rna_idx,
+        "start"    => $f[1],
+        "end"      => $f[2],
+        "strand"   => $f[3],
+        "family"   => $f[4],
+        "stk_file" => $out_root . ".stitch.rna." . sprintf("%03d", $rna_idx) . ".stk"
+      });
+      $rna_idx++;
+    }
+    close($rnafh);
+    
+    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: merging %d RNA regions into block plan\n", scalar(@rna_A)));
+  }
+
+  # Merge RNA blocks into the plan
+  my @merged_blocks_A = merge_rna_into_blocks(\@blocks_A, \@rna_A, $FH_HR);
+  
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: merged block plan has %d blocks\n", scalar(@merged_blocks_A)));
+
+  # Extract and concatenate all blocks
+  concatenate_all_blocks(\@merged_blocks_A, $tier2_stk_file, $cds_msa_fa_file, $final_stk_file, $execs_HR, $FH_HR);
+
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: wrote concatenated alignment to %s\n", $final_stk_file));
+
+  # Add RF consensus line with cmbuild
+  my $cmd_cmbuild = $execs_HR->{"cmbuild"} . " --noss -O " . $refined_stk_file . 
+                    " " . $temp_cm_file . " " . $final_stk_file;
+  
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: adding RF line with cmbuild\n"));
+  utl_RunCommand($cmd_cmbuild, 1, 0, $FH_HR);
+  
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: wrote final alignment with RF to %s\n", $refined_stk_file));
+
+  # Cleanup temp CM
+  if(-e $temp_cm_file) {
+    unlink($temp_cm_file);
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine : merge_rna_into_blocks()
+# Purpose    : Merge RNA blocks into existing block plan,
+#              splitting blocks where RNA regions occur
+#
+# Arguments  :
+#   $blocks_AR  : ref to array of block hashes
+#   $rna_AR     : ref to array of RNA annotation hashes
+#   $FH_HR      : ref to hash of file handles
+#
+# Returns    : array of merged blocks
+#################################################################
+sub merge_rna_into_blocks {
+  my ($blocks_AR, $rna_AR, $FH_HR) = @_;
+  
+  my @merged_A = ();
+  
+  # If no RNA, just return original blocks
+  if(scalar(@{$rna_AR}) == 0) {
+    return @{$blocks_AR};
+  }
+  
+  # Iterate through original blocks and insert/split for RNA
+  foreach my $block (@{$blocks_AR}) {
+    my $block_start = $block->{"start"};
+    my $block_end   = $block->{"end"};
+    my $block_type  = $block->{"type"};
+    
+    # Find RNA regions that overlap this block
+    my @overlapping_rna = ();
+    foreach my $rna (@{$rna_AR}) {
+      if($rna->{"start"} <= $block_end && $rna->{"end"} >= $block_start) {
+        push(@overlapping_rna, $rna);
+      }
+    }
+    
+    # If no RNA overlaps, add block as-is
+    if(scalar(@overlapping_rna) == 0) {
+      push(@merged_A, $block);
+      next;
+    }
+    
+    # Sort overlapping RNA by start position
+    @overlapping_rna = sort { $a->{"start"} <=> $b->{"start"} } @overlapping_rna;
+    
+    # Split block around RNA regions
+    my $cur_pos = $block_start;
+    foreach my $rna (@overlapping_rna) {
+      my $rna_start = $rna->{"start"};
+      my $rna_end   = $rna->{"end"};
+      
+      # Add segment before RNA if exists
+      if($cur_pos < $rna_start) {
+        push(@merged_A, {
+          "type"     => $block_type,
+          "start"    => $cur_pos,
+          "end"      => $rna_start - 1,
+          "len"      => $rna_start - $cur_pos,
+          "source"   => $block->{"source"}
+        });
+      }
+      
+      # Add RNA block
+      push(@merged_A, {
+        "type"     => "rna",
+        "start"    => $rna_start,
+        "end"      => $rna_end,
+        "len"      => $rna_end - $rna_start + 1,
+        "source"   => "rna_discovery",
+        "rna_idx"  => $rna->{"idx"},
+        "rna_file" => $rna->{"stk_file"},
+        "family"   => $rna->{"family"}
+      });
+      
+      $cur_pos = $rna_end + 1;
+    }
+    
+    # Add segment after last RNA if exists
+    if($cur_pos <= $block_end) {
+      push(@merged_A, {
+        "type"     => $block_type,
+        "start"    => $cur_pos,
+        "end"      => $block_end,
+        "len"      => $block_end - $cur_pos + 1,
+        "source"   => $block->{"source"}
+      });
+    }
+  }
+  
+  return @merged_A;
+}
+
+#################################################################
+# Subroutine : concatenate_all_blocks()
+# Purpose    : Extract and concatenate all blocks into final Stockholm
+#
+# Arguments  :
+#   $blocks_AR       : ref to array of merged block hashes
+#   $tier2_stk_file  : tier2 full-sequence alignment
+#   $cds_msa_fa_file : CDS MSA FASTA file
+#   $out_stk_file    : output Stockholm file
+#   $execs_HR        : ref to hash of executable paths
+#   $FH_HR           : ref to hash of file handles
+#
+# Returns    : void
+#################################################################
+sub concatenate_all_blocks {
+  my ($blocks_AR, $tier2_stk_file, $cds_msa_fa_file, $out_stk_file, $execs_HR, $FH_HR) = @_;
+  
+  # First, read CDS MSA and convert to Stockholm if needed
+  my %cds_seqs_H = ();
+  open(my $cdsfh, $cds_msa_fa_file) || die "ERROR unable to read CDS MSA $cds_msa_fa_file: $!";
+  my $cur_name = "";
+  while(my $line = <$cdsfh>) {
+    chomp $line;
+    if($line =~ /^>(\S+)/) {
+      $cur_name = $1;
+      $cds_seqs_H{$cur_name} = "";
+    }
+    elsif($cur_name ne "") {
+      $cds_seqs_H{$cur_name} .= $line;
+    }
+  }
+  close($cdsfh);
+  
+  # Collect sequence names (assume all blocks have same sequences)
+  my @seq_names = sort keys %cds_seqs_H;
+  my %final_seqs_H = ();
+  foreach my $name (@seq_names) {
+    $final_seqs_H{$name} = "";
+  }
+  
+  # Process each block in order
+  foreach my $block (@{$blocks_AR}) {
+    my $type = $block->{"type"};
+    
+    if($type eq "coding") {
+      # Add CDS MSA sequence
+      foreach my $name (@seq_names) {
+        $final_seqs_H{$name} .= $cds_seqs_H{$name};
+      }
+      ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: added CDS block (%d..%d, %d nt)\n", 
+                                                       $block->{"start"}, $block->{"end"}, $block->{"len"}));
+    }
+    elsif($type eq "rna") {
+      # Read RNA Stockholm file and extract sequences
+      my %rna_seqs_H = read_stockholm_sequences($block->{"rna_file"});
+      foreach my $name (@seq_names) {
+        if(exists $rna_seqs_H{$name}) {
+          $final_seqs_H{$name} .= $rna_seqs_H{$name};
+        }
+        else {
+          # Pad with gaps if sequence not present in RNA alignment
+          $final_seqs_H{$name} .= "-" x $block->{"len"};
+        }
+      }
+      ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: added RNA block %d (%s, %d..%d, %d nt)\n", 
+                                                       $block->{"rna_idx"}, $block->{"family"}, 
+                                                       $block->{"start"}, $block->{"end"}, $block->{"len"}));
+    }
+    elsif($type eq "noncoding") {
+      # Extract noncoding region from tier2 alignment
+      my $nc_stk_tmp = $out_stk_file . ".tmp.nc." . $block->{"start"} . "_" . $block->{"end"} . ".stk";
+      my $nc_fa_tmp  = $nc_stk_tmp . ".fa";
+      
+      my $cmd_extract = $execs_HR->{"esl-alimask"} . " -t --t-rf " . $tier2_stk_file . " " . 
+                        $block->{"start"} . ".." . $block->{"end"} . " | " .
+                        $execs_HR->{"esl-reformat"} . " --informat stockholm afa - > " . $nc_fa_tmp;
+      
+      utl_RunCommand($cmd_extract, 0, 0, $FH_HR);
+      
+      # Read extracted noncoding FASTA
+      my %nc_seqs_H = ();
+      open(my $ncfh, $nc_fa_tmp) || die "ERROR unable to read $nc_fa_tmp: $!";
+      $cur_name = "";
+      while(my $line = <$ncfh>) {
+        chomp $line;
+        if($line =~ /^>(\S+)/) {
+          $cur_name = $1;
+          $nc_seqs_H{$cur_name} = "";
+        }
+        elsif($cur_name ne "") {
+          $nc_seqs_H{$cur_name} .= $line;
+        }
+      }
+      close($ncfh);
+      
+      # Add to final sequences
+      foreach my $name (@seq_names) {
+        if(exists $nc_seqs_H{$name}) {
+          $final_seqs_H{$name} .= $nc_seqs_H{$name};
+        }
+        else {
+          # Pad with gaps if sequence not present
+          $final_seqs_H{$name} .= "-" x $block->{"len"};
+        }
+      }
+      
+      # Cleanup temp files
+      unlink($nc_stk_tmp);
+      unlink($nc_fa_tmp);
+      
+      ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: added noncoding block (%d..%d, %d nt)\n", 
+                                                       $block->{"start"}, $block->{"end"}, $block->{"len"}));
+    }
+  }
+  
+  # Write final Stockholm file
+  open(my $outfh, ">", $out_stk_file) || die "ERROR unable to write $out_stk_file: $!";
+  print $outfh "# STOCKHOLM 1.0\n";
+  foreach my $name (@seq_names) {
+    printf $outfh "%-30s %s\n", $name, $final_seqs_H{$name};
+  }
+  print $outfh "//\n";
+  close($outfh);
+  
+  return;
+}
+
+#################################################################
+# Subroutine : read_stockholm_sequences()
+# Purpose    : Read sequences from a Stockholm file into a hash
+#
+# Arguments  :
+#   $stk_file : Stockholm file path
+#
+# Returns    : hash of sequence_name => aligned_sequence
+#################################################################
+sub read_stockholm_sequences {
+  my ($stk_file) = @_;
+  
+  my %seqs_H = ();
+  open(my $fh, $stk_file) || die "ERROR unable to read Stockholm $stk_file: $!";
+  while(my $line = <$fh>) {
+    chomp $line;
+    # Skip comments, markup, and blank lines
+    if($line =~ /^#/ || $line =~ /^\/\// || $line =~ /^\s*$/) {
+      next;
+    }
+    # Parse sequence line
+    if($line =~ /^(\S+)\s+([A-Za-z\-\.]+)/) {
+      my ($name, $seq) = ($1, $2);
+      if(exists $seqs_H{$name}) {
+        $seqs_H{$name} .= $seq;
+      }
+      else {
+        $seqs_H{$name} = $seq;
+      }
+    }
+  }
+  close($fh);
+  
+  return %seqs_H;
 }
 
