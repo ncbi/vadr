@@ -2670,19 +2670,22 @@ sub stitch_and_refine_final_alignment {
 
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: wrote concatenated alignment to %s\n", $final_stk_file));
 
-  # Add RF consensus line with cmbuild
-  my $cmd_cmbuild = $execs_HR->{"cmbuild"} . " --noss -O " . $refined_stk_file . 
-                    " " . $temp_cm_file . " " . $final_stk_file;
+  # Add RF consensus line with cmbuild (DISABLED: cmbuild hangs on large alignments)
+  # TODO: Enable this once cmbuild performance issue is resolved or run separately
+  # my $cmd_cmbuild = $execs_HR->{"cmbuild"} . " --noss -O " . $refined_stk_file . 
+  #                   " " . $temp_cm_file . " " . $final_stk_file;
+  # 
+  # ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: adding RF line with cmbuild\n"));
+  # utl_RunCommand($cmd_cmbuild, 1, 0, $FH_HR);
+  # 
+  # ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: wrote final alignment with RF to %s\n", $refined_stk_file));
+  #
+  # # Cleanup temp CM
+  # if(-e $temp_cm_file) {
+  #   unlink($temp_cm_file);
+  # }
   
-  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: adding RF line with cmbuild\n"));
-  utl_RunCommand($cmd_cmbuild, 1, 0, $FH_HR);
-  
-  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: wrote final alignment with RF to %s\n", $refined_stk_file));
-
-  # Cleanup temp CM
-  if(-e $temp_cm_file) {
-    unlink($temp_cm_file);
-  }
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: skipped cmbuild RF line addition (disabled, alignment complete without RF)\n"));
 
   return;
 }
