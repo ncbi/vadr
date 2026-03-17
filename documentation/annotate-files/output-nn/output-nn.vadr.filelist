@@ -1,0 +1,18 @@
+# esl-seqstat -a output for input fasta file saved in:                             output-nn.vadr.seqstat
+# model toy-ev full sequence alignment (stockholm) saved in:                         output-nn.vadr.toy-ev.align.stk
+# 5 column feature table output for passing sequences saved in:                      output-nn.vadr.pass.tbl
+# 5 column feature table output for failing sequences saved in:                      output-nn.vadr.fail.tbl
+# list of passing sequences saved in:                                                output-nn.vadr.pass.list
+# list of failing sequences saved in:                                                output-nn.vadr.fail.list
+# list of alerts in the feature tables saved in:                                     output-nn.vadr.alt.list
+# fasta file with passing sequences saved in:                                        output-nn.vadr.pass.fa
+# fasta file with failing sequences saved in:                                        output-nn.vadr.fail.fa
+# per-sequence tabular classification summary file saved in:                         output-nn.vadr.sqc
+# per-model tabular summary file saved in:                                           output-nn.vadr.mdl
+# per-sequence tabular annotation summary file saved in:                             output-nn.vadr.sqa
+# per-feature tabular summary file saved in:                                         output-nn.vadr.ftr
+# per-model-segment tabular summary file saved in:                                   output-nn.vadr.sgm
+# per-alert tabular summary file saved in:                                           output-nn.vadr.alt
+# alert count tabular summary file saved in:                                         output-nn.vadr.alc
+# alignment doctoring tabular summary file saved in:                                 output-nn.vadr.dcr
+# per-sequence tabular nn-based classification summary file saved in:                output-nn.vadr.scn

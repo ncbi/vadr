@@ -1,0 +1,15 @@
+>Feature seq1_should_be_E30
+1	32	gene
+			gene	TEST
+>Feature seq2_should_be_E18
+1	32	gene
+			gene	TEST
+>Feature seq3_closest_to_CVB5
+1	32	gene
+			gene	TEST
+>Feature seq4_different_inserts
+1	36	gene
+			gene	TEST
+>Feature seq5_partial_region
+1	32	gene
+			gene	TEST

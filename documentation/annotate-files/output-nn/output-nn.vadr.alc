@@ -1,0 +1,8 @@
+#     alert     causes   short                              per    num   num  long       
+#idx  code      failure  description                       type  cases  seqs  description
+#---  --------  -------  ----------------------------  --------  -----  ----  -----------
+1     nnindfcl  no       INDEFINITE_CLASSIFICATION_NN  sequence      3     3  low difference between fractional identity of sequence and its nearest neighbor (NN) and sequence and its 2nd NN
+2     nnloidcl  no       LOW_ID_CLASSIFICATION_NN      sequence      1     1  low fractional identity of sequence and its nearest neighbor model sequence
+#---  --------  -------  ----------------------------  --------  -----  ----  -----------
+3     indf5lcn  yes      INDEFINITE_ANNOTATION_START    feature      5     5  alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS
+#---  --------  -------  ----------------------------  --------  -----  ----  -----------

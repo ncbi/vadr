@@ -1,0 +1,6 @@
+#sequence	model	feature-type	feature-name	error	seq-coords	mdl-coords	error-description
+seq1_should_be_E30	toy-ev	gene	TEST	INDEFINITE_ANNOTATION_START	1..1:+	1..1:+	alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS [0.60<0.80]
+seq2_should_be_E18	toy-ev	gene	TEST	INDEFINITE_ANNOTATION_START	1..1:+	1..1:+	alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS [0.60<0.80]
+seq3_closest_to_CVB5	toy-ev	gene	TEST	INDEFINITE_ANNOTATION_START	1..1:+	1..1:+	alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS [0.60<0.80]
+seq4_different_inserts	toy-ev	gene	TEST	INDEFINITE_ANNOTATION_START	1..1:+	1..1:+	alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS [0.60<0.80]
+seq5_partial_region	toy-ev	gene	TEST	INDEFINITE_ANNOTATION_START	1..1:+	1..1:+	alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS [0.60<0.80]

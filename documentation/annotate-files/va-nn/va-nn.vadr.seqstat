@@ -1,0 +1,12 @@
+= seq1_should_be_E30              32 
+= seq2_should_be_E18              32 
+= seq3_closest_to_CVB5            32 
+= seq4_different_inserts          36 
+= seq5_partial_region             32 
+Format:              FASTA
+Alphabet type:       DNA
+Number of sequences: 5
+Total # residues:    164
+Smallest:            32
+Largest:             36
+Average length:      32.8

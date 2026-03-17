@@ -1,0 +1,10 @@
+#                               num   num   num
+#idx  model   group  subgroup  seqs  pass  fail
+#---  ------  -----  --------  ----  ----  ----
+1     toy-ev  EVB    E30          3     0     3
+1     toy-ev  EVB    CV-B5        1     0     1
+1     toy-ev  EVB    E18          1     0     1
+#---  ------  -----  --------  ----  ----  ----
+-     *all*   -      -            5     0     5
+-     *none*  -      -            0     0     0
+#---  ------  -----  --------  ----  ----  ----

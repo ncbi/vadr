@@ -1,0 +1,12 @@
+#      seq                     seq                ftr   ftr   ftr  num  sgm   seq  seq   mdl  mdl  sgm               5'     3'  5'   3' 
+#idx   name                    len  p/f   model   type  name  idx  sgm  idx  from   to  from   to  len  str  trc     pp     pp  gap  gap
+#----  ----------------------  ---  ----  ------  ----  ----  ---  ---  ---  ----  ---  ----  ---  ---  ---  ---  -----  -----  ---  ---
+1.1.1  seq1_should_be_E30       32  PASS  toy-nn  gene  TEST    1    1    1     1   32     1   32   32    +  no   0.975  0.975  no   no 
+#
+2.1.1  seq2_should_be_E18       32  PASS  toy-nn  gene  TEST    1    1    1     1   32     1   32   32    +  no   0.975  0.975  no   no 
+#
+3.1.1  seq3_closest_to_CVB5     32  PASS  toy-nn  gene  TEST    1    1    1     1   32     1   32   32    +  no   0.975  0.975  no   no 
+#
+4.1.1  seq4_different_inserts   36  PASS  toy-nn  gene  TEST    1    1    1     1   36     1   32   36    +  no   0.975  0.975  no   no 
+#
+5.1.1  seq5_partial_region      32  PASS  toy-nn  gene  TEST    1    1    1     1   32     1   32   32    +  no   0.975  0.975  no   no 

@@ -1,0 +1,8 @@
+#seq  seq                     seq                           sub                    seq    mdl         num                     sub   score  diff/  seq   
+#idx  name                    len  p/f   ant  model1  grp1  grp1   score  sc/nt    cov    cov  bias  hits  str  model2  grp2  grp2   diff     nt  alerts
+#---  ----------------------  ---  ----  ---  ------  ----  -----  -----  -----  -----  -----  ----  ----  ---  ------  ----  ----  -----  -----  ------
+1     seq1_should_be_E30       32  PASS  yes  toy-nn  EVB   E30     36.1  1.128  1.000  1.000     0     1    +  -       EVB   E18       -      -  -     
+2     seq2_should_be_E18       32  PASS  yes  toy-nn  EVB   E18     37.1  1.159  1.000  1.000   0.2     1    +  -       EVB   E30       -      -  -     
+3     seq3_closest_to_CVB5     32  PASS  yes  toy-nn  EVB   CV-B5   35.4  1.106  1.000  1.000     1     1    +  -       EVB   E30       -      -  -     
+4     seq4_different_inserts   36  PASS  yes  toy-nn  EVB   E30     27.6  0.767  1.000  1.000     0     1    +  -       EVB   E18       -      -  -     
+5     seq5_partial_region      32  PASS  yes  toy-nn  EVB   E30     22.2  0.694  1.000  1.000   0.8     1    +  -       EVB   E18       -      -  INDEFINITE_CLASSIFICATION_NN(nnindfcl),LOW_ID_CLASSIFICATION_NN(nnloidcl)

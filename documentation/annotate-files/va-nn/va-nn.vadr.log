@@ -1,0 +1,76 @@
+# v-annotate.pl :: classify and annotate sequences using a model library
+# VADR 1.7 (Sep 2025)
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# date:              Fri Jan  9 14:23:33 2026
+# $VADRBIOEASELDIR:  /net/intdev/oblast01/infernal/notebook/25_0902_vadr_1p7_release/test-install1/Bio-Easel
+# $VADRBLASTDIR:     /net/intdev/oblast01/infernal/notebook/25_0902_vadr_1p7_release/test-install1/ncbi-blast/bin
+# $VADREASELDIR:     /net/intdev/oblast01/infernal/notebook/25_0902_vadr_1p7_release/test-install1/infernal/binaries
+# $VADRINFERNALDIR:  /net/intdev/oblast01/infernal/notebook/25_0902_vadr_1p7_release/test-install1/infernal/binaries
+# $VADRMODELDIR:     /net/intdev/oblast01/infernal/notebook/25_0902_vadr_1p7_release/test-install1/vadr-models-calici
+# $VADRSCRIPTSDIR:   /net/intdev/oblast01/infernal/git/nawrockie/vadr
+#
+# sequence file:                                                                  test-nn.fa
+# output directory:                                                               va-nn
+# force directory overwrite:                                                      yes [-f]
+# .cm, .minfo, blastn .fa files in $VADRMODELDIR start with key <s>, not 'vadr':  toy-nn [--mkey]
+# model files are in directory <s>, not in $VADRMODELDIR:                         /net/intdev/oblast01/infernal/git/nawrockie/vadr/documentation/annotate-files [--mdir]
+# output per-model full length stockholm alignments (.stk):                       yes [--out_stk]
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Validating input                                                                        ... done. [    0.1 seconds]
+# Classifying sequences (5 seqs)                                                          ... done. [    0.1 seconds]
+# Determining sequence coverage (toy-nn: 5 seqs)                                          ... done. [    0.1 seconds]
+# Aligning sequences (toy-nn: 5 seqs)                                                     ... done. [    0.1 seconds]
+# Determining annotation                                                                  ... done. [    0.0 seconds]
+# Generating feature table output                                                         ... done. [    0.0 seconds]
+# Generating tabular output                                                               ... done. [    0.0 seconds]
+#
+# Summary of classified sequences:
+#
+#                               num   num   num
+#idx  model   group  subgroup  seqs  pass  fail
+#---  ------  -----  --------  ----  ----  ----
+1     toy-nn  EVB    E30          3     3     0
+1     toy-nn  EVB    CV-B5        1     1     0
+1     toy-nn  EVB    E18          1     1     0
+#---  ------  -----  --------  ----  ----  ----
+-     *all*   -      -            5     5     0
+-     *none*  -      -            0     0     0
+#---  ------  -----  --------  ----  ----  ----
+#
+# Summary of reported alerts:
+#
+#     alert     causes   short                              per    num   num  long
+#idx  code      failure  description                       type  cases  seqs  description
+#---  --------  -------  ----------------------------  --------  -----  ----  -----------
+1     nnindfcl  no       INDEFINITE_CLASSIFICATION_NN  sequence      1     1  low difference between fractional identity of sequence and its nearest neighbor (NN) and sequence and its 2nd NN
+2     nnloidcl  no       LOW_ID_CLASSIFICATION_NN      sequence      1     1  low fractional identity of sequence and its nearest neighbor model sequence
+#---  --------  -------  ----------------------------  --------  -----  ----  -----------
+#
+# Output printed to screen saved in:                                    va-nn.vadr.log
+# List of executed commands saved in:                                   va-nn.vadr.cmd
+# List and description of all output files saved in:                    va-nn.vadr.filelist
+# esl-seqstat -a output for input fasta file saved in:                  va-nn.vadr.seqstat
+# model toy-nn full sequence alignment (stockholm) saved in:            va-nn.vadr.toy-nn.align.stk
+# 5 column feature table output for passing sequences saved in:         va-nn.vadr.pass.tbl
+# 5 column feature table output for failing sequences saved in:         va-nn.vadr.fail.tbl
+# list of passing sequences saved in:                                   va-nn.vadr.pass.list
+# list of failing sequences saved in:                                   va-nn.vadr.fail.list
+# list of alerts in the feature tables saved in:                        va-nn.vadr.alt.list
+# fasta file with passing sequences saved in:                           va-nn.vadr.pass.fa
+# fasta file with failing sequences saved in:                           va-nn.vadr.fail.fa
+# per-sequence tabular classification summary file saved in:            va-nn.vadr.sqc
+# per-model tabular summary file saved in:                              va-nn.vadr.mdl
+# per-sequence tabular annotation summary file saved in:                va-nn.vadr.sqa
+# per-feature tabular summary file saved in:                            va-nn.vadr.ftr
+# per-model-segment tabular summary file saved in:                      va-nn.vadr.sgm
+# per-alert tabular summary file saved in:                              va-nn.vadr.alt
+# alert count tabular summary file saved in:                            va-nn.vadr.alc
+# alignment doctoring tabular summary file saved in:                    va-nn.vadr.dcr
+# per-sequence tabular nn-based classification summary file saved in:   va-nn.vadr.scn
+#
+# All output files created in directory ./va-nn/
+#
+# Elapsed time:  00:00:00.65
+#                hh:mm:ss
+# 
+[ok]

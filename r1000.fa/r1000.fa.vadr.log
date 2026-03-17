@@ -1,0 +1,23 @@
+# v-annotate.pl :: classify and annotate sequences using a model library
+# VADR 1.7 (Sep 2025)
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# date:              Tue Jan 13 11:49:01 2026
+# $VADRBIOEASELDIR:  /net/intdev/oblast01/infernal/notebook/25_0902_vadr_1p7_release/test-install1/Bio-Easel
+# $VADRBLASTDIR:     /net/intdev/oblast01/infernal/notebook/25_0902_vadr_1p7_release/test-install1/ncbi-blast/bin
+# $VADREASELDIR:     /net/intdev/oblast01/infernal/notebook/25_0902_vadr_1p7_release/test-install1/infernal/binaries
+# $VADRINFERNALDIR:  /net/intdev/oblast01/infernal/notebook/25_0902_vadr_1p7_release/test-install1/infernal/binaries
+# $VADRMODELDIR:     /net/intdev/oblast01/infernal/notebook/25_0902_vadr_1p7_release/test-install1/vadr-models-calici
+# $VADRSCRIPTSDIR:   /net/intdev/oblast01/infernal/git/nawrockie/vadr
+#
+# sequence file:                                                                                va-r1000
+# output directory:                                                                             r1000.fa
+# force directory overwrite:                                                                    yes [-f]
+# set expected classification of all seqs to group <s>:                                         Enterovirus [--group]
+# .cm, .minfo, blastn .fa files in $VADRMODELDIR start with key <s>, not 'vadr':                NC_001612 [--mkey]
+# model files are in directory <s>, not in $VADRMODELDIR:                                       /panfs/pan1.be-md.ncbi.nlm.nih.gov/dnaorg/2024-03-enterovirus/2024-03-12-nc_001612-select-from-c4-plus/vadr-models-entero-1.6.4-2 [--mdir]
+# recombin/POSSIBLE_RECOMBINATION min fractional difference on each side of breakpoint is <x>:  10 [--rc_thresh]
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Validating input                                                                        ... 
+ERROR in utl_FileValidateExistsAndNonEmpty(), file va-r1000 (input fasta sequence file) does not exist.
+
+[fail]

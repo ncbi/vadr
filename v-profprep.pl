@@ -2841,6 +2841,9 @@ sub concatenate_all_blocks {
   # Track whether CDS MSA has been added (only add once even if split into multiple blocks)
   my $cds_added = 0;
   
+  # Build SS_cons line as we concatenate blocks
+  my $final_ss_cons = "";
+  
   # Process each block in order
   foreach my $block (@{$blocks_AR}) {
     my $type = $block->{"type"};
@@ -2848,17 +2851,22 @@ sub concatenate_all_blocks {
     if($type eq "coding") {
       # Add CDS MSA sequence (should only see one coding block with priority system)
       if(!$cds_added) {
+        my $cds_len = length($cds_seqs_H{$seq_names[0]});
         foreach my $name (@seq_names) {
           $final_seqs_H{$name} .= $cds_seqs_H{$name};
         }
+        # CDS has no secondary structure, use dots
+        $final_ss_cons .= "." x $cds_len;
         $cds_added = 1;
         ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: added CDS MSA (%d..%d, %d alignment columns)\n", 
-                                                         $block->{"start"}, $block->{"end"}, length($cds_seqs_H{$seq_names[0]})));
+                                                         $block->{"start"}, $block->{"end"}, $cds_len));
       }
     }
     elsif($type eq "rna") {
-      # Read RNA Stockholm file and extract sequences
+      # Read RNA Stockholm file and extract sequences and SS_cons
       my %rna_seqs_H = read_stockholm_sequences($block->{"rna_file"});
+      my $rna_ss_cons = read_stockholm_ss_cons($block->{"rna_file"});
+      
       foreach my $name (@seq_names) {
         if(exists $rna_seqs_H{$name}) {
           $final_seqs_H{$name} .= $rna_seqs_H{$name};
@@ -2868,6 +2876,15 @@ sub concatenate_all_blocks {
           $final_seqs_H{$name} .= "-" x $block->{"len"};
         }
       }
+      
+      # Add RNA secondary structure (or dots if not found)
+      if($rna_ss_cons ne "") {
+        $final_ss_cons .= $rna_ss_cons;
+      }
+      else {
+        $final_ss_cons .= "." x $block->{"len"};
+      }
+      
       ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: added RNA block %d (%s, %d..%d, %d nt)\n", 
                                                        $block->{"rna_idx"}, $block->{"family"}, 
                                                        $block->{"start"}, $block->{"end"}, $block->{"len"}));
@@ -2910,6 +2927,9 @@ sub concatenate_all_blocks {
         }
       }
       
+      # Noncoding has no secondary structure, use dots
+      $final_ss_cons .= "." x $block->{"len"};
+      
       # Cleanup temp files
       unlink($nc_stk_tmp);
       unlink($nc_fa_tmp);
@@ -2925,6 +2945,8 @@ sub concatenate_all_blocks {
   foreach my $name (@seq_names) {
     printf $outfh "%-30s %s\n", $name, $final_seqs_H{$name};
   }
+  # Write SS_cons line
+  printf $outfh "#=GC %-24s %s\n", "SS_cons", $final_ss_cons;
   print $outfh "//\n";
   close($outfh);
   
@@ -2965,6 +2987,32 @@ sub read_stockholm_sequences {
   close($fh);
   
   return %seqs_H;
+}
+
+#################################################################
+# Subroutine : read_stockholm_ss_cons()
+# Purpose    : Read SS_cons line from a Stockholm file
+#
+# Arguments  :
+#   $stk_file : Stockholm file path
+#
+# Returns    : SS_cons string (empty string if not found)
+#################################################################
+sub read_stockholm_ss_cons {
+  my ($stk_file) = @_;
+  
+  my $ss_cons = "";
+  open(my $fh, $stk_file) || die "ERROR unable to read Stockholm $stk_file: $!";
+  while(my $line = <$fh>) {
+    chomp $line;
+    # Look for SS_cons line
+    if($line =~ /^#=GC\s+SS_cons\s+([\S]+)/) {
+      $ss_cons .= $1;
+    }
+  }
+  close($fh);
+  
+  return $ss_cons;
 }
 
 #################################################################

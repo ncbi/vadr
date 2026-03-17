@@ -1,0 +1,49 @@
+# v-test.pl :: test VADR scripts [TEST SCRIPT]
+# VADR 1.7 (Sep 2025)
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# date:    Mon Jan  5 14:47:14 2026
+#
+# test file:                                                         /net/intdev/oblast01/infernal/git/nawrockie/vadr/testfiles/entoy100a-minfo.testin
+# output directory:                                                  entoy100a-minfo
+# forcing directory overwrite:                                       yes [-f]
+# if output files listed in testin file already exist, remove them:  yes [--rmout]
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Parsing test file                                  ... done. [    0.0 seconds]
+##teamcity[testStarted name='entoy100a-minfo1' captureStandardOutput='true']
+# Running command  1 [    entoy100a-minfo1]          ... done. [    2.1 seconds]
+#	checking va-entoy100a-minfo1/va-entoy100a-minfo1.vadr.pass.tbl                                                ... pass
+#	checking va-entoy100a-minfo1/va-entoy100a-minfo1.vadr.fail.tbl                                                ... FAIL [files differ, see entoy100a-minfo/entoy100a-minfo.vadr.1.2.diff]
+##teamcity[testFailed name='entoy100a-minfo1' message='v-test.pl failure']
+##teamcity[testFinished name='entoy100a-minfo1']
+##teamcity[testStarted name='entoy100a-minfo2' captureStandardOutput='true']
+# Running command  2 [    entoy100a-minfo2]          ... done. [    2.1 seconds]
+#	checking va-entoy100a-minfo2/va-entoy100a-minfo2.vadr.pass.tbl                                                ... pass
+#	checking va-entoy100a-minfo2/va-entoy100a-minfo2.vadr.fail.tbl                                                ... FAIL [files differ, see entoy100a-minfo/entoy100a-minfo.vadr.2.2.diff]
+##teamcity[testFailed name='entoy100a-minfo2' message='v-test.pl failure']
+##teamcity[testFinished name='entoy100a-minfo2']
+##teamcity[testStarted name='entoy100a-minfo3' captureStandardOutput='true']
+# Running command  3 [    entoy100a-minfo3]          ... done. [    2.0 seconds]
+#	checking va-entoy100a-minfo3/va-entoy100a-minfo3.vadr.pass.tbl                                                ... pass
+#	checking va-entoy100a-minfo3/va-entoy100a-minfo3.vadr.fail.tbl                                                ... FAIL [files differ, see entoy100a-minfo/entoy100a-minfo.vadr.3.2.diff]
+##teamcity[testFailed name='entoy100a-minfo3' message='v-test.pl failure']
+##teamcity[testFinished name='entoy100a-minfo3']
+##teamcity[testStarted name='entoy100a-minfo4' captureStandardOutput='true']
+# Running command  4 [    entoy100a-minfo4]          ... done. [    2.0 seconds]
+#	checking va-entoy100a-minfo4/va-entoy100a-minfo4.vadr.pass.tbl                                                ... pass
+#	checking va-entoy100a-minfo4/va-entoy100a-minfo4.vadr.fail.tbl                                                ... FAIL [files differ, see entoy100a-minfo/entoy100a-minfo.vadr.4.2.diff]
+##teamcity[testFailed name='entoy100a-minfo4' message='v-test.pl failure']
+##teamcity[testFinished name='entoy100a-minfo4']
+#
+#
+# FAIL: 4 of 8 files were not created correctly.
+#
+# Output printed to screen saved in:                   entoy100a-minfo.vadr.log
+# List of executed commands saved in:                  entoy100a-minfo.vadr.cmd
+# List and description of all output files saved in:   entoy100a-minfo.vadr.list
+#
+# All output files created in directory ./entoy100a-minfo/
+#
+# Elapsed time:  00:00:08.50
+#                hh:mm:ss
+# 
+[FAIL]

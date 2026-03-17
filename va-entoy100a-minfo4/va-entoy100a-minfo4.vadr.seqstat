@@ -1,0 +1,9 @@
+= ENTOY100A                      100 reference sequence, no frameshifts
+= ENTOY100A-fs1                  101 single segment 1nt insertion that breaks frame, not fixed (CDS1, RFPOS13+1)
+Format:              FASTA
+Alphabet type:       DNA
+Number of sequences: 2
+Total # residues:    201
+Smallest:            100
+Largest:             101
+Average length:      100.5

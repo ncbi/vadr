@@ -1,0 +1,16 @@
+# esl-seqstat -a output for input fasta file saved in:                             va-entoy100a-minfo1.vadr.seqstat
+# 5 column feature table output for passing sequences saved in:                    va-entoy100a-minfo1.vadr.pass.tbl
+# 5 column feature table output for failing sequences saved in:                    va-entoy100a-minfo1.vadr.fail.tbl
+# list of passing sequences saved in:                                              va-entoy100a-minfo1.vadr.pass.list
+# list of failing sequences saved in:                                              va-entoy100a-minfo1.vadr.fail.list
+# list of alerts in the feature tables saved in:                                   va-entoy100a-minfo1.vadr.alt.list
+# fasta file with passing sequences saved in:                                      va-entoy100a-minfo1.vadr.pass.fa
+# fasta file with failing sequences saved in:                                      va-entoy100a-minfo1.vadr.fail.fa
+# per-sequence tabular classification summary file saved in:                       va-entoy100a-minfo1.vadr.sqc
+# per-model tabular summary file saved in:                                         va-entoy100a-minfo1.vadr.mdl
+# per-sequence tabular annotation summary file saved in:                           va-entoy100a-minfo1.vadr.sqa
+# per-feature tabular summary file saved in:                                       va-entoy100a-minfo1.vadr.ftr
+# per-model-segment tabular summary file saved in:                                 va-entoy100a-minfo1.vadr.sgm
+# per-alert tabular summary file saved in:                                         va-entoy100a-minfo1.vadr.alt
+# alert count tabular summary file saved in:                                       va-entoy100a-minfo1.vadr.alc
+# alignment doctoring tabular summary file saved in:                               va-entoy100a-minfo1.vadr.dcr

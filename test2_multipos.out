@@ -1,0 +1,64 @@
+# v-build.pl :: build homology model for feature annotation
+# VADR 1.7 (Sep 2025)
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# date:              Wed Mar  4 15:18:21 2026
+# $VADRBLASTDIR:     /net/intdev/oblast01/infernal/notebook/25_0902_vadr_1p7_release/test-install1/ncbi-blast/bin
+# $VADREASELDIR:     /net/intdev/oblast01/infernal/notebook/25_0902_vadr_1p7_release/test-install1/infernal/binaries
+# $VADRINFERNALDIR:  /net/intdev/oblast01/infernal/notebook/25_0902_vadr_1p7_release/test-install1/infernal/binaries
+# $VADRSCRIPTSDIR:   /net/intdev/oblast01/infernal/git/nawrockie/vadr
+#
+# accession/model name:                                                                     test2
+# output directory:                                                                         test2_multipos_out
+# forcing directory overwrite:                                                              yes [-f]
+# build a model from an input multi-sequence alignment (--stk) and model info (--minfoin):  yes [--profile]
+# read stockholm alignment from <s> (single-seq unless --profile):                          /net/intdev/oblast01/infernal/git/nawrockie/vadr/testfiles/profile-build/test2_multipos.stk [--stk]
+# read model info file from <s> (for --profile mode):                                       /net/intdev/oblast01/infernal/git/nawrockie/vadr/testfiles/profile-build/test2_multipos.minfo [--minfoin]
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Processing --profile inputs                                  ... done. [    0.0 seconds]
+# Pruning data read from GenBank                               ... done. [    0.0 seconds]
+# Validating input Stockholm file                              ... done. [    0.0 seconds]
+# Building BLAST nucleotide database                           ... done. [    0.2 seconds]
+# Finalizing feature information                               ... done. [    0.0 seconds]
+# Translating CDS                                              ... done. [    0.1 seconds]
+# Building BLAST protein database                              ... done. [    0.1 seconds]
+# Checking intron splice sites, if any                         ... done. [    0.0 seconds]
+# Building CM (shouldn't take more than a few minutes)         ... done. [    0.2 seconds]
+# Pressing CM file                                             ... done. [    0.0 seconds]
+# Creating model info file                                     ... done. [    0.0 seconds]
+#
+# Output printed to screen saved in:                             test2_multipos_out.vadr.log
+# List of executed commands saved in:                            test2_multipos_out.vadr.cmd
+# List and description of all output files saved in:             test2_multipos_out.vadr.filelist
+# nucleotide blastn db fasta sequence file for test2 saved in:   test2_multipos_out.vadr.fa
+# BLAST db .nhr file for test2 saved in:                         test2_multipos_out.vadr.fa.nhr
+# BLAST db .nin file for test2 saved in:                         test2_multipos_out.vadr.fa.nin
+# BLAST db .nsq file for test2 saved in:                         test2_multipos_out.vadr.fa.nsq
+# BLAST db .ndb file for test2 saved in:                         test2_multipos_out.vadr.fa.ndb
+# BLAST db .not file for test2 saved in:                         test2_multipos_out.vadr.fa.not
+# BLAST db .ntf file for test2 saved in:                         test2_multipos_out.vadr.fa.ntf
+# BLAST db .nto file for test2 saved in:                         test2_multipos_out.vadr.fa.nto
+# BLAST db .njs file for test2 saved in:                         test2_multipos_out.vadr.fa.njs
+# fasta sequence file for CDS from test2 saved in:               test2_multipos_out.vadr.cds.fa
+# fasta sequence file for translated CDS from test2 saved in:    test2_multipos_out.vadr.protein.fa
+# BLAST db .phr file for test2 saved in:                         test2_multipos_out.vadr.protein.fa.phr
+# BLAST db .pin file for test2 saved in:                         test2_multipos_out.vadr.protein.fa.pin
+# BLAST db .psq file for test2 saved in:                         test2_multipos_out.vadr.protein.fa.psq
+# BLAST db .pdb file for test2 saved in:                         test2_multipos_out.vadr.protein.fa.pdb
+# BLAST db .pot file for test2 saved in:                         test2_multipos_out.vadr.protein.fa.pot
+# BLAST db .ptf file for test2 saved in:                         test2_multipos_out.vadr.protein.fa.ptf
+# BLAST db .pto file for test2 saved in:                         test2_multipos_out.vadr.protein.fa.pto
+# CM file saved in:                                              test2_multipos_out.vadr.cm
+# cmbuild output file saved in:                                  test2_multipos_out.vadr.cmbuild
+# binary CM and p7 HMM filter file saved in:                     test2_multipos_out.vadr.cm.i1m
+# SSI index for binary CM file saved in:                         test2_multipos_out.vadr.cm.i1i
+# optimized p7 HMM filters (MSV part) saved in:                  test2_multipos_out.vadr.cm.i1f
+# optimized p7 HMM filters (remainder) saved in:                 test2_multipos_out.vadr.cm.i1p
+# cmpress output file saved in:                                  test2_multipos_out.vadr.cmpress
+# VADR 'model info' format file for test2 saved in:              test2_multipos_out.vadr.minfo
+#
+# All output files created in directory ./test2_multipos_out/
+#
+# Elapsed time:  00:00:00.69
+#                hh:mm:ss
+# 
+[ok]

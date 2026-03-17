@@ -1,0 +1,16 @@
+#      seq                             ftr   ftr   ftr  alert           alert                            seq  seq     mdl  mdl  alert 
+#idx   name                    model   type  name  idx  code      fail  description                   coords  len  coords  len  detail
+#----  ----------------------  ------  ----  ----  ---  --------  ----  ----------------------------  ------  ---  ------  ---  ------
+1.1.1  seq1_should_be_E30      toy-ev  -     -       -  nnindfcl  no    INDEFINITE_CLASSIFICATION_NN       -    -       -    -  low difference between fractional identity of sequence and its nearest neighbor (NN) and sequence and its 2nd NN [(1.000-1.000)=0.000<0.050]
+1.2.1  seq1_should_be_E30      toy-ev  gene  TEST    1  indf5lcn  yes   INDEFINITE_ANNOTATION_START   1..1:+    1  1..1:+    1  alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS [0.60<0.80]
+#
+2.1.1  seq2_should_be_E18      toy-ev  gene  TEST    1  indf5lcn  yes   INDEFINITE_ANNOTATION_START   1..1:+    1  1..1:+    1  alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS [0.60<0.80]
+#
+3.1.1  seq3_closest_to_CVB5    toy-ev  gene  TEST    1  indf5lcn  yes   INDEFINITE_ANNOTATION_START   1..1:+    1  1..1:+    1  alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS [0.60<0.80]
+#
+4.1.1  seq4_different_inserts  toy-ev  -     -       -  nnindfcl  no    INDEFINITE_CLASSIFICATION_NN       -    -       -    -  low difference between fractional identity of sequence and its nearest neighbor (NN) and sequence and its 2nd NN [(1.000-1.000)=0.000<0.050]
+4.2.1  seq4_different_inserts  toy-ev  gene  TEST    1  indf5lcn  yes   INDEFINITE_ANNOTATION_START   1..1:+    1  1..1:+    1  alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS [0.60<0.80]
+#
+5.1.1  seq5_partial_region     toy-ev  -     -       -  nnindfcl  no    INDEFINITE_CLASSIFICATION_NN       -    -       -    -  low difference between fractional identity of sequence and its nearest neighbor (NN) and sequence and its 2nd NN [(0.333-0.333)=0.000<0.050]
+5.1.2  seq5_partial_region     toy-ev  -     -       -  nnloidcl  no    LOW_ID_CLASSIFICATION_NN           -    -       -    -  low fractional identity of sequence and its nearest neighbor model sequence [0.333<0.750]
+5.2.1  seq5_partial_region     toy-ev  gene  TEST    1  indf5lcn  yes   INDEFINITE_ANNOTATION_START   1..1:+    1  1..1:+    1  alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS [0.60<0.80]

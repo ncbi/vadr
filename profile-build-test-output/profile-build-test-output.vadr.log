@@ -1,0 +1,12 @@
+# v-test.pl :: test VADR scripts [TEST SCRIPT]
+# VADR 1.7 (Sep 2025)
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# date:    Fri Dec 19 15:49:30 2025
+#
+# test file:         testfiles/profile-build.testin
+# output directory:  profile-build-test-output
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Parsing test file                                  ... 
+ERROR, expected file /net/intdev/oblast01/infernal/git/nawrockie/vadr/testfiles/profile-build/test3_singleneg.cds.fa does not exist
+
+[fail]

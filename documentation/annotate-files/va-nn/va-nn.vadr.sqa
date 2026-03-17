@@ -1,0 +1,8 @@
+#seq  seq                     seq             best         sub                               seq   
+#idx  name                    len  p/f   ant  model   grp  grp    nfa  nfn  nf5  nf3  nfalt  alerts
+#---  ----------------------  ---  ----  ---  ------  ---  -----  ---  ---  ---  ---  -----  ------
+1     seq1_should_be_E30       32  PASS  yes  toy-nn  EVB  E30      1    0    0    0      0  -     
+2     seq2_should_be_E18       32  PASS  yes  toy-nn  EVB  E18      1    0    0    0      0  -     
+3     seq3_closest_to_CVB5     32  PASS  yes  toy-nn  EVB  CV-B5    1    0    0    0      0  -     
+4     seq4_different_inserts   36  PASS  yes  toy-nn  EVB  E30      1    0    0    0      0  -     
+5     seq5_partial_region      32  PASS  yes  toy-nn  EVB  E30      1    0    0    0      0  INDEFINITE_CLASSIFICATION_NN(nnindfcl),LOW_ID_CLASSIFICATION_NN(nnloidcl)

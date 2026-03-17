@@ -1,0 +1,30 @@
+--- va-entoy100a-minfo2/va-entoy100a-minfo2.vadr.fail.tbl	2026-01-05 14:47:18.556790000 -0500
++++ /net/intdev/oblast01/infernal/git/nawrockie/vadr/testfiles/expected-files/va-entoy100a-minfo2/va-entoy100a-minfo2.vadr.fail.tbl	2023-12-19 15:37:32.367897000 -0500
+@@ -13,8 +13,4 @@
+-11	23	mat_peptide
+-			product	protein one mp1
+-			gene	one
+-			protein_id	ENTOY100A-fs1_1
+-24	29	mat_peptide
+-			product	protein one mp2
+-			gene	one
+-			protein_id	ENTOY100A-fs1_1
++11	23	misc_feature
++			note	similar to protein one mp1
++24	29	misc_feature
++			note	similar to protein one mp2
+@@ -26 +22 @@
+-			protein_id	ENTOY100A-fs1_2
++			protein_id	ENTOY100A-fs1_1
+@@ -31 +27 @@
+-			protein_id	ENTOY100A-fs1_3
++			protein_id	ENTOY100A-fs1_2
+@@ -35 +31 @@
+-			protein_id	ENTOY100A-fs1_3
++			protein_id	ENTOY100A-fs1_2
+@@ -40 +36 @@
+-			protein_id	ENTOY100A-fs1_3
++			protein_id	ENTOY100A-fs1_2
+@@ -44 +40 @@
+-			protein_id	ENTOY100A-fs1_4
++			protein_id	ENTOY100A-fs1_3

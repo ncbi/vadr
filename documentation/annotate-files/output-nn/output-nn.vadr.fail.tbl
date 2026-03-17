@@ -1,0 +1,30 @@
+>Feature seq1_should_be_E30
+1	33	gene
+			gene	TEST
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_START: (gene:TEST) alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS [0.60<0.80]; seq-coords:1..1:+; mdl-coords:1..1:+; mdl:toy-ev;
+>Feature seq2_should_be_E18
+1	33	gene
+			gene	TEST
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_START: (gene:TEST) alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS [0.60<0.80]; seq-coords:1..1:+; mdl-coords:1..1:+; mdl:toy-ev;
+>Feature seq3_closest_to_CVB5
+1	33	gene
+			gene	TEST
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_START: (gene:TEST) alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS [0.60<0.80]; seq-coords:1..1:+; mdl-coords:1..1:+; mdl:toy-ev;
+>Feature seq4_different_inserts
+1	35	gene
+			gene	TEST
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_START: (gene:TEST) alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS [0.60<0.80]; seq-coords:1..1:+; mdl-coords:1..1:+; mdl:toy-ev;
+>Feature seq5_partial_region
+1	33	gene
+			gene	TEST
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_START: (gene:TEST) alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS [0.60<0.80]; seq-coords:1..1:+; mdl-coords:1..1:+; mdl:toy-ev;

@@ -1,0 +1,76 @@
+# v-annotate.pl :: classify and annotate sequences using a model library
+# VADR 1.7 (Sep 2025)
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# date:              Thu Feb 26 15:36:24 2026
+# $VADRBIOEASELDIR:  /net/intdev/oblast01/infernal/notebook/25_0902_vadr_1p7_release/test-install1/Bio-Easel
+# $VADREASELDIR:     /net/intdev/oblast01/infernal/notebook/25_0902_vadr_1p7_release/test-install1/infernal/binaries
+# $VADRINFERNALDIR:  /net/intdev/oblast01/infernal/notebook/25_0902_vadr_1p7_release/test-install1/infernal/binaries
+# $VADRMODELDIR:     /net/intdev/oblast01/infernal/notebook/25_0902_vadr_1p7_release/test-install1/vadr-models-calici
+# $VADRSCRIPTSDIR:   /net/intdev/oblast01/infernal/git/nawrockie/vadr
+#
+# sequence file:                                                                           /net/intdev/oblast01/infernal/git/nawrockie/vadr/testfiles/entoy100a.minfo.fa
+# output directory:                                                                        va-entoy100a-minfo1
+# force directory overwrite:                                                               yes [-f]
+# min CDS/mat_peptide/gene length for feature table output and protein validation is <n>:  3 [--minpvlen]
+# use CM file <s> instead of default:                                                      /net/intdev/oblast01/infernal/git/nawrockie/vadr/testfiles/models/entoy100a.cm [-m]
+# use model info file <s> instead of default:                                              /net/intdev/oblast01/infernal/git/nawrockie/vadr/testfiles/models/entoy100a.qual.minfo [-i]
+# do not perform blastx-based protein validation:                                          yes [--pv_skip]
+# for debugging, check aligned sequence vs input sequence for identity:                    yes [--alicheck]
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Validating input                                                                        ... done. [    0.1 seconds]
+# Classifying sequences (2 seqs)                                                          ... done. [    0.2 seconds]
+# Determining sequence coverage (ENTOY100A: 2 seqs)                                       ... done. [    0.1 seconds]
+# Aligning sequences (ENTOY100A: 2 seqs)                                                  ... done. [    0.1 seconds]
+# Determining annotation                                                                  ... done. [    0.0 seconds]
+# Skipping protein validation step (--pv_skip)                                            ... done. [    0.0 seconds]
+# Generating feature table output                                                         ... done. [    0.0 seconds]
+# Generating tabular output                                                               ... done. [    0.0 seconds]
+#
+# Summary of classified sequences:
+#
+#                                  num   num   num
+#idx  model      group  subgroup  seqs  pass  fail
+#---  ---------  -----  --------  ----  ----  ----
+1     ENTOY100A  toy    A            2     1     1
+#---  ---------  -----  --------  ----  ----  ----
+-     *all*      -      -            2     1     1
+-     *none*     -      -            0     0     0
+#---  ---------  -----  --------  ----  ----  ----
+#
+# Summary of reported alerts:
+#
+#     alert     causes   short                              per    num   num  long
+#idx  code      failure  description                       type  cases  seqs  description
+#---  --------  -------  -----------------------------  -------  -----  ----  -----------
+1     mutendns  yes      MUTATION_AT_END                feature      1     1  expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
+2     unexleng  yes      UNEXPECTED_LENGTH              feature      2     1  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3
+3     fsthicft  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF  feature      1     1  high confidence possible frameshift in CDS (frame not restored before end)
+4     peptrans  yes      PEPTIDE_TRANSLATION_PROBLEM    feature      2     1  mat_peptide may not be translated because its parent CDS has a problem
+#---  --------  -------  -----------------------------  -------  -----  ----  -----------
+#
+# Output printed to screen saved in:                              va-entoy100a-minfo1.vadr.log
+# List of executed commands saved in:                             va-entoy100a-minfo1.vadr.cmd
+# List and description of all output files saved in:              va-entoy100a-minfo1.vadr.filelist
+# esl-seqstat -a output for input fasta file saved in:            va-entoy100a-minfo1.vadr.seqstat
+# 5 column feature table output for passing sequences saved in:   va-entoy100a-minfo1.vadr.pass.tbl
+# 5 column feature table output for failing sequences saved in:   va-entoy100a-minfo1.vadr.fail.tbl
+# list of passing sequences saved in:                             va-entoy100a-minfo1.vadr.pass.list
+# list of failing sequences saved in:                             va-entoy100a-minfo1.vadr.fail.list
+# list of alerts in the feature tables saved in:                  va-entoy100a-minfo1.vadr.alt.list
+# fasta file with passing sequences saved in:                     va-entoy100a-minfo1.vadr.pass.fa
+# fasta file with failing sequences saved in:                     va-entoy100a-minfo1.vadr.fail.fa
+# per-sequence tabular classification summary file saved in:      va-entoy100a-minfo1.vadr.sqc
+# per-model tabular summary file saved in:                        va-entoy100a-minfo1.vadr.mdl
+# per-sequence tabular annotation summary file saved in:          va-entoy100a-minfo1.vadr.sqa
+# per-feature tabular summary file saved in:                      va-entoy100a-minfo1.vadr.ftr
+# per-model-segment tabular summary file saved in:                va-entoy100a-minfo1.vadr.sgm
+# per-alert tabular summary file saved in:                        va-entoy100a-minfo1.vadr.alt
+# alert count tabular summary file saved in:                      va-entoy100a-minfo1.vadr.alc
+# alignment doctoring tabular summary file saved in:              va-entoy100a-minfo1.vadr.dcr
+#
+# All output files created in directory ./va-entoy100a-minfo1/
+#
+# Elapsed time:  00:00:00.62
+#                hh:mm:ss
+# 
+[ok]

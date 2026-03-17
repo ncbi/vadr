@@ -1,0 +1,5 @@
+#      seq                          ftr   ftr   ftr  alert           alert                            seq  seq     mdl  mdl  alert 
+#idx   name                 model   type  name  idx  code      fail  description                   coords  len  coords  len  detail
+#----  -------------------  ------  ----  ----  ---  --------  ----  ----------------------------  ------  ---  ------  ---  ------
+5.1.1  seq5_partial_region  toy-nn  -     -       -  nnindfcl  no    INDEFINITE_CLASSIFICATION_NN       -    -       -    -  low difference between fractional identity of sequence and its nearest neighbor (NN) and sequence and its 2nd NN [(0.333-0.333)=0.000<0.050]
+5.1.2  seq5_partial_region  toy-nn  -     -       -  nnloidcl  no    LOW_ID_CLASSIFICATION_NN           -    -       -    -  low fractional identity of sequence and its nearest neighbor model sequence [0.333<0.750]

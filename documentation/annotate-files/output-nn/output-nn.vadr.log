@@ -1,0 +1,79 @@
+# v-annotate.pl :: classify and annotate sequences using a model library
+# VADR 1.7 (Sep 2025)
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# date:              Fri Jan  9 12:59:10 2026
+# $VADRBIOEASELDIR:  /net/intdev/oblast01/infernal/notebook/25_0902_vadr_1p7_release/test-install1/Bio-Easel
+# $VADRBLASTDIR:     /net/intdev/oblast01/infernal/notebook/25_0902_vadr_1p7_release/test-install1/ncbi-blast/bin
+# $VADREASELDIR:     /net/intdev/oblast01/infernal/notebook/25_0902_vadr_1p7_release/test-install1/infernal/binaries
+# $VADRINFERNALDIR:  /net/intdev/oblast01/infernal/notebook/25_0902_vadr_1p7_release/test-install1/infernal/binaries
+# $VADRMODELDIR:     /net/intdev/oblast01/infernal/notebook/25_0902_vadr_1p7_release/test-install1/vadr-models-calici
+# $VADRSCRIPTSDIR:   /net/intdev/oblast01/infernal/git/nawrockie/vadr
+#
+# sequence file:                                                                  test-seqs.fa
+# output directory:                                                               output-nn
+# force directory overwrite:                                                      yes [-f]
+# .cm, .minfo, blastn .fa files in $VADRMODELDIR start with key <s>, not 'vadr':  toy-ev [--mkey]
+# model files are in directory <s>, not in $VADRMODELDIR:                         /net/intdev/oblast01/infernal/git/nawrockie/vadr/documentation/annotate-files [--mdir]
+# output per-model full length stockholm alignments (.stk):                       yes [--out_stk]
+# set min subsequence length for NN-based classification to <n>:                  12 [--nnregionlen]
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Validating input                                                                        ... done. [    0.4 seconds]
+# Classifying sequences (5 seqs)                                                          ... done. [    0.1 seconds]
+# Determining sequence coverage (toy-ev: 5 seqs)                                          ... done. [    0.1 seconds]
+# Aligning sequences (toy-ev: 5 seqs)                                                     ... done. [    0.1 seconds]
+# Determining annotation                                                                  ... done. [    0.1 seconds]
+# Generating feature table output                                                         ... done. [    0.0 seconds]
+# Generating tabular output                                                               ... done. [    0.0 seconds]
+#
+# Summary of classified sequences:
+#
+#                               num   num   num
+#idx  model   group  subgroup  seqs  pass  fail
+#---  ------  -----  --------  ----  ----  ----
+1     toy-ev  EVB    E30          3     0     3
+1     toy-ev  EVB    CV-B5        1     0     1
+1     toy-ev  EVB    E18          1     0     1
+#---  ------  -----  --------  ----  ----  ----
+-     *all*   -      -            5     0     5
+-     *none*  -      -            0     0     0
+#---  ------  -----  --------  ----  ----  ----
+#
+# Summary of reported alerts:
+#
+#     alert     causes   short                              per    num   num  long
+#idx  code      failure  description                       type  cases  seqs  description
+#---  --------  -------  ----------------------------  --------  -----  ----  -----------
+1     nnindfcl  no       INDEFINITE_CLASSIFICATION_NN  sequence      3     3  low difference between fractional identity of sequence and its nearest neighbor (NN) and sequence and its 2nd NN
+2     nnloidcl  no       LOW_ID_CLASSIFICATION_NN      sequence      1     1  low fractional identity of sequence and its nearest neighbor model sequence
+#---  --------  -------  ----------------------------  --------  -----  ----  -----------
+3     indf5lcn  yes      INDEFINITE_ANNOTATION_START    feature      5     5  alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS
+#---  --------  -------  ----------------------------  --------  -----  ----  -----------
+#
+# Output printed to screen saved in:                                    output-nn.vadr.log
+# List of executed commands saved in:                                   output-nn.vadr.cmd
+# List and description of all output files saved in:                    output-nn.vadr.filelist
+# esl-seqstat -a output for input fasta file saved in:                  output-nn.vadr.seqstat
+# model toy-ev full sequence alignment (stockholm) saved in:            output-nn.vadr.toy-ev.align.stk
+# 5 column feature table output for passing sequences saved in:         output-nn.vadr.pass.tbl
+# 5 column feature table output for failing sequences saved in:         output-nn.vadr.fail.tbl
+# list of passing sequences saved in:                                   output-nn.vadr.pass.list
+# list of failing sequences saved in:                                   output-nn.vadr.fail.list
+# list of alerts in the feature tables saved in:                        output-nn.vadr.alt.list
+# fasta file with passing sequences saved in:                           output-nn.vadr.pass.fa
+# fasta file with failing sequences saved in:                           output-nn.vadr.fail.fa
+# per-sequence tabular classification summary file saved in:            output-nn.vadr.sqc
+# per-model tabular summary file saved in:                              output-nn.vadr.mdl
+# per-sequence tabular annotation summary file saved in:                output-nn.vadr.sqa
+# per-feature tabular summary file saved in:                            output-nn.vadr.ftr
+# per-model-segment tabular summary file saved in:                      output-nn.vadr.sgm
+# per-alert tabular summary file saved in:                              output-nn.vadr.alt
+# alert count tabular summary file saved in:                            output-nn.vadr.alc
+# alignment doctoring tabular summary file saved in:                    output-nn.vadr.dcr
+# per-sequence tabular nn-based classification summary file saved in:   output-nn.vadr.scn
+#
+# All output files created in directory ./output-nn/
+#
+# Elapsed time:  00:00:01.04
+#                hh:mm:ss
+# 
+[ok]

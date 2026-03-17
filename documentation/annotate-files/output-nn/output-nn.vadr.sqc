@@ -1,0 +1,8 @@
+#seq  seq                     seq                           sub                    seq    mdl         num                     sub   score  diff/  seq   
+#idx  name                    len  p/f   ant  model1  grp1  grp1   score  sc/nt    cov    cov  bias  hits  str  model2  grp2  grp2   diff     nt  alerts
+#---  ----------------------  ---  ----  ---  ------  ----  -----  -----  -----  -----  -----  ----  ----  ---  ------  ----  ----  -----  -----  ------
+1     seq1_should_be_E30       33  FAIL  yes  toy-ev  EVB   E30     36.0  1.091  0.970  1.000     0     1    +  -       EVB   E30       -      -  INDEFINITE_CLASSIFICATION_NN(nnindfcl)
+2     seq2_should_be_E18       33  FAIL  yes  toy-ev  EVB   E18     36.9  1.118  0.970  1.000   0.2     1    +  -       EVB   E30       -      -  -     
+3     seq3_closest_to_CVB5     33  FAIL  yes  toy-ev  EVB   CV-B5   35.3  1.070  0.970  1.000     1     1    +  -       EVB   E30       -      -  -     
+4     seq4_different_inserts   35  FAIL  yes  toy-ev  EVB   E30     32.5  0.929  0.971  1.000     0     1    +  -       EVB   E30       -      -  INDEFINITE_CLASSIFICATION_NN(nnindfcl)
+5     seq5_partial_region      33  FAIL  yes  toy-ev  EVB   E30     22.1  0.670  0.970  1.000   0.8     1    +  -       EVB   E30       -      -  INDEFINITE_CLASSIFICATION_NN(nnindfcl),LOW_ID_CLASSIFICATION_NN(nnloidcl)

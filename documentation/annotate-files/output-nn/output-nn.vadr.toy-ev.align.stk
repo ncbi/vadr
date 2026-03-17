@@ -1,0 +1,18 @@
+# STOCKHOLM 1.0
+#=GF AU Infernal 1.1.5
+
+seq1_should_be_E30             AAaAAACGGGGCCCCCTTTTTAAAA..GGGGGGGG
+#=GR seq1_should_be_E30     PP 651679*******************..********
+seq2_should_be_E18             AAaAAACGGGGTTTTTTTTTTAAAA..GGGGGGGG
+#=GR seq2_should_be_E18     PP 651679*******************..********
+seq3_closest_to_CVB5           AAaAAACGGGGAAAAGTTTTTAAAA..GGGGGGGG
+#=GR seq3_closest_to_CVB5   PP 651679*******************..********
+seq4_different_inserts         AAaAAACGGGGCCCCCTTTTTAAAAttGGGGGGGG
+#=GR seq4_different_inserts PP 651679*****************************
+seq5_partial_region            AAaAAACGGGGNNNNNNNNNNAAAA..GGGGGGGG
+#=GR seq5_partial_region    PP 651679*******************..********
+#=GC SS_cons                   ::.::::::::::::::::::::::..::::::::
+#=GC RF                        AA.AAACGGGGtttttTTTTTAAAA..GGGGGGGG
+#=GC RFCOLX.                   00.0000000111111111122222..22222333
+#=GC RFCOL.X                   12.3456789012345678901234..56789012
+//

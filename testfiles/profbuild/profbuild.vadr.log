@@ -1,0 +1,50 @@
+# v-test.pl :: test VADR scripts [TEST SCRIPT]
+# VADR 1.7dev (Sep 2025)
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# date:    Mon Jan  5 16:07:22 2026
+#
+# test file:                                                         /net/intdev/oblast01/infernal/git/nawrockie/vadr/testfiles/profile-build.testin
+# output directory:                                                  profbuild
+# forcing directory overwrite:                                       yes [-f]
+# if output files listed in testin file already exist, remove them:  yes [--rmout]
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Parsing test file                                  ... done. [    0.0 seconds]
+##teamcity[testStarted name='profile-build-test1-single-pos-strand' captureStandardOutput='true']
+# Running command  1 [profile-build-test1-single-pos-strand] ... done. [    3.1 seconds]
+#	checking test1_singlepos_out/test1_singlepos_out.vadr.cds.fa                                                  ... pass
+#	checking test1_singlepos_out/test1_singlepos_out.vadr.protein.fa                                              ... pass
+#	checking test1_singlepos_out/test1_singlepos_out.vadr.minfo                                                   ... pass
+#	removing directory test1_singlepos_out                       ... done
+##teamcity[testFinished name='profile-build-test1-single-pos-strand']
+##teamcity[testStarted name='profile-build-test2-multi-pos-strand' captureStandardOutput='true']
+# Running command  2 [profile-build-test2-multi-pos-strand] ... done. [    3.3 seconds]
+#	checking test2_multipos_out/test2_multipos_out.vadr.cds.fa                                                    ... pass
+#	checking test2_multipos_out/test2_multipos_out.vadr.protein.fa                                                ... pass
+#	removing directory test2_multipos_out                        ... done
+##teamcity[testFinished name='profile-build-test2-multi-pos-strand']
+##teamcity[testStarted name='profile-build-test3-single-neg-strand' captureStandardOutput='true']
+# Running command  3 [profile-build-test3-single-neg-strand] ... done. [    3.2 seconds]
+#	checking test3_singleneg_out/test3_singleneg_out.vadr.cds.fa                                                  ... pass
+#	checking test3_singleneg_out/test3_singleneg_out.vadr.protein.fa                                              ... pass
+#	removing directory test3_singleneg_out                       ... done
+##teamcity[testFinished name='profile-build-test3-single-neg-strand']
+##teamcity[testStarted name='profile-build-test4-multi-neg-strand' captureStandardOutput='true']
+# Running command  4 [profile-build-test4-multi-neg-strand] ... done. [    3.2 seconds]
+#	checking test4_multineg_out/test4_multineg_out.vadr.cds.fa                                                    ... pass
+#	checking test4_multineg_out/test4_multineg_out.vadr.protein.fa                                                ... pass
+#	removing directory test4_multineg_out                        ... done
+##teamcity[testFinished name='profile-build-test4-multi-neg-strand']
+#
+#
+# PASS: all 9 files were created correctly.
+#
+# Output printed to screen saved in:                   profbuild.vadr.log
+# List of executed commands saved in:                  profbuild.vadr.cmd
+# List and description of all output files saved in:   profbuild.vadr.list
+#
+# All output files created in directory ./profbuild/
+#
+# Elapsed time:  00:00:13.09
+#                hh:mm:ss
+# 
+[ok]

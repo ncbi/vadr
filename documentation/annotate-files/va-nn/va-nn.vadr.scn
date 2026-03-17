@@ -1,0 +1,8 @@
+#seq  seq                     seq                           sub     fract                     sub    fract                 fid  nnregion_seqspan    nnregion  nnregion  seq   
+#idx  name                    len  p/f   ant  model   grp1  grp1      id1  seq1         grp2  grp2     id2  seq2          diff        mdl_coords  mdl_coords     covrg  alerts
+#---  ----------------------  ---  ----  ---  ------  ----  -----  ------  -----------  ----  ----  ------  ----------  ------  ----------------  ----------  --------  ------
+1     seq1_should_be_E30       32  PASS  yes  toy-nn  EVB   E30    1.0000  refseq_E30   EVB   E18   0.5833  refseq_E18  0.4167           7..18:+     7..18:+    1.0000  -     
+2     seq2_should_be_E18       32  PASS  yes  toy-nn  EVB   E18    1.0000  refseq_E18   EVB   E30   0.5833  refseq_E30  0.4167           7..18:+     7..18:+    1.0000  -     
+3     seq3_closest_to_CVB5     32  PASS  yes  toy-nn  EVB   CV-B5  0.9167  refseq_CVB5  EVB   E30   0.5833  refseq_E30  0.3334           7..18:+     7..18:+    1.0000  -     
+4     seq4_different_inserts   36  PASS  yes  toy-nn  EVB   E30    1.0000  refseq_E30   EVB   E18   0.5833  refseq_E18  0.4167           7..18:+     7..18:+    1.0000  -     
+5     seq5_partial_region      32  PASS  yes  toy-nn  EVB   E30    0.3333  refseq_E30   EVB   E18   0.3333  refseq_E18  0.0000           7..18:+     7..18:+    1.0000  INDEFINITE_CLASSIFICATION_NN(nnindfcl),LOW_ID_CLASSIFICATION_NN(nnloidcl)
