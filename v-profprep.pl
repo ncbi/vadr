@@ -506,6 +506,7 @@ build_anchor_projected_cds_msa($stitch_cds_aa_fa_file,
                                $do_skip_annotate,
                                \%FH_H);
 
+
 #---------------------------------------
 # Step 8b-d: RNA region extraction and alignment refinement
 #---------------------------------------
@@ -535,6 +536,7 @@ stitch_and_refine_final_alignment($stitch_block_plan_file,
                                   $temp_cm_file,
                                   $do_rna_discovery,
                                   $do_skip_annotate,
+                                  $seed_model_len,
                                   \%execs_H,
                                   \%FH_H);
 
@@ -2606,6 +2608,7 @@ sub extract_and_align_rna_regions {
 #   $temp_cm_file       : temporary CM file for cmbuild
 #   $do_rna_discovery   : flag for RNA discovery
 #   $do_skip_annotate   : flag to skip annotation
+#   $seed_model_len     : reference sequence length
 #   $execs_HR           : ref to hash of executable paths
 #   $FH_HR              : ref to hash of file handles
 #
@@ -2614,7 +2617,7 @@ sub extract_and_align_rna_regions {
 sub stitch_and_refine_final_alignment {
   my ($block_plan_file, $rna_annot_file, $tier2_stk_file, $cds_msa_fa_file, $out_root, 
       $rna_regions_AR, $final_stk_file, $refined_stk_file, $temp_cm_file,
-      $do_rna_discovery, $do_skip_annotate, $execs_HR, $FH_HR) = @_;
+      $do_rna_discovery, $do_skip_annotate, $seed_model_len, $execs_HR, $FH_HR) = @_;
 
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: merging CDS, RNA, and noncoding blocks\n"));
 
@@ -2665,23 +2668,44 @@ sub stitch_and_refine_final_alignment {
   
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: merged block plan has %d blocks\n", scalar(@merged_blocks_A)));
 
-  # Extract and concatenate all blocks
-  concatenate_all_blocks(\@merged_blocks_A, $tier2_stk_file, $cds_msa_fa_file, $final_stk_file, $execs_HR, $FH_HR);
+  # Build ungapped reference-length SS_cons (RNA structures overlaid on single-strand background)
+  my $ungapped_ss_cons = build_ungapped_ss_cons($seed_model_len, \@rna_A, $FH_HR);
+
+  # Read anchor accession from anchor TSV (second line, field [1])
+  my $anchor_accn = "";
+  my $anchor_tsv_file = $out_root . ".stitch.cds.anchor.tsv";
+  open(my $atsvfh, $anchor_tsv_file) || die "ERROR unable to read anchor TSV $anchor_tsv_file: $!";
+  my $atsvhdr = <$atsvfh>;  # skip header
+  if(my $atsvline = <$atsvfh>) {
+    chomp $atsvline;
+    my @atsvf = split(/\t/, $atsvline);
+    $anchor_accn = $atsvf[1];
+  }
+  close($atsvfh);
+  if($anchor_accn eq "") {
+    die "ERROR: could not read anchor accession from $anchor_tsv_file";
+  }
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: anchor accession: %s\n", $anchor_accn));
+
+  # Extract and concatenate all blocks with interleaved Stockholm and per-block RF/SS_cons
+  concatenate_all_blocks(\@merged_blocks_A, $tier2_stk_file, $cds_msa_fa_file, $final_stk_file,
+                         $anchor_accn, $ungapped_ss_cons, $execs_HR, $FH_HR);
 
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: wrote concatenated alignment to %s\n", $final_stk_file));
 
   # Refine alignment and add RF consensus line with cmbuild --refine
-  # Use --noss since concatenated alignment has no consensus structure annotation
+  # Use SS_cons from concatenated alignment to build structure into the model
   # Options: --verbose (progress), --sub (sub CM for speed), --tau (convergence), --mxsize (matrix size)
+  # Note: -O saves alignment without wrapping, --refine saves wrapped alignment
   my $cmbuild_out = $refined_stk_file . ".cmbuild.out";
-  my $cmd_cmbuild = $execs_HR->{"cmbuild"} . " --noss --refine " . $refined_stk_file . 
-                    " -O " . $refined_stk_file . " --verbose --sub --tau 1E-3 --mxsize 16000 " . 
+  my $output_stk_file = $out_root . ".vadr.stitch.final.rf.stk";
+  my $cmd_cmbuild = $execs_HR->{"cmbuild"} . " --hand -O " . $output_stk_file . " " .
                     $temp_cm_file . " " . $final_stk_file . " > " . $cmbuild_out;
-  
-  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: refining alignment with cmbuild --noss --refine (output to %s)\n", $cmbuild_out));
+
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: running cmbuild to add RF annotation (output to %s)\n", $cmbuild_out));
   utl_RunCommand($cmd_cmbuild, 1, 0, $FH_HR);
-  
-  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: wrote refined alignment with RF to %s\n", $refined_stk_file));
+
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: wrote RF-annotated alignment to %s\n", $output_stk_file));
 
   # Cleanup temp CM
   if(-e $temp_cm_file) {
@@ -2798,158 +2822,203 @@ sub merge_rna_into_blocks {
   return @merged_A;
 }
 
+
 #################################################################
 # Subroutine : concatenate_all_blocks()
 # Purpose    : Extract and concatenate all blocks into final Stockholm
+#              using interleaved format with per-block RF and full SS_cons.
 #
 # Arguments  :
-#   $blocks_AR       : ref to array of merged block hashes
-#   $tier2_stk_file  : tier2 full-sequence alignment
-#   $cds_msa_fa_file : CDS MSA FASTA file
-#   $out_stk_file    : output Stockholm file
-#   $execs_HR        : ref to hash of executable paths
-#   $FH_HR           : ref to hash of file handles
+#   $blocks_AR         : ref to array of merged block hashes
+#   $tier2_stk_file    : tier2 full-sequence alignment (Stockholm)
+#   $cds_msa_fa_file   : CDS MSA FASTA file
+#   $out_stk_file      : output Stockholm file
+#   $anchor_accn       : accession of CDS anchor/reference sequence
+#   $ungapped_ss_cons  : ungapped reference-length SS_cons string
+#   $execs_HR          : ref to hash of executable paths
+#   $FH_HR             : ref to hash of file handles
 #
 # Returns    : void
 #################################################################
 sub concatenate_all_blocks {
-  my ($blocks_AR, $tier2_stk_file, $cds_msa_fa_file, $out_stk_file, $execs_HR, $FH_HR) = @_;
-  
-  # First, read CDS MSA and convert to Stockholm if needed
+  my ($blocks_AR, $tier2_stk_file, $cds_msa_fa_file, $out_stk_file,
+      $anchor_accn, $ungapped_ss_cons, $execs_HR, $FH_HR) = @_;
+
+  # Read CDS MSA FASTA, key by accession (strip ':coords:strand' suffix)
   my %cds_seqs_H = ();
   open(my $cdsfh, $cds_msa_fa_file) || die "ERROR unable to read CDS MSA $cds_msa_fa_file: $!";
   my $cur_name = "";
   while(my $line = <$cdsfh>) {
     chomp $line;
-    if($line =~ /^>(\S+)/) {
-      $cur_name = $1;
-      $cds_seqs_H{$cur_name} = "";
-    }
-    elsif($cur_name ne "") {
-      $cds_seqs_H{$cur_name} .= $line;
-    }
+    if($line =~ /^>(\S+)/) { $cur_name = $1; $cds_seqs_H{$cur_name} = ""; }
+    elsif($cur_name ne "")  { $cds_seqs_H{$cur_name} .= $line; }
   }
   close($cdsfh);
-  
-  # Collect sequence names (assume all blocks have same sequences)
-  my @seq_names = sort keys %cds_seqs_H;
-  my %final_seqs_H = ();
-  foreach my $name (@seq_names) {
-    $final_seqs_H{$name} = "";
+
+  my %accn_to_cds_seq_H = ();
+  foreach my $cds_name (keys %cds_seqs_H) {
+    my $accn = $cds_name;
+    $accn =~ s/:.+//;  # strip from first colon onward
+    $accn_to_cds_seq_H{$accn} = $cds_seqs_H{$cds_name};
   }
-  
-  # Track whether CDS MSA has been added (only add once even if split into multiple blocks)
-  my $cds_added = 0;
-  
-  # Build SS_cons line as we concatenate blocks
-  my $final_ss_cons = "";
-  
-  # Process each block in order
-  foreach my $block (@{$blocks_AR}) {
-    my $type = $block->{"type"};
-    
-    if($type eq "coding") {
-      # Add CDS MSA sequence (should only see one coding block with priority system)
-      if(!$cds_added) {
-        my $cds_len = length($cds_seqs_H{$seq_names[0]});
-        foreach my $name (@seq_names) {
-          $final_seqs_H{$name} .= $cds_seqs_H{$name};
-        }
-        # CDS has no secondary structure, use dots
-        $final_ss_cons .= "." x $cds_len;
-        $cds_added = 1;
-        ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: added CDS MSA (%d..%d, %d alignment columns)\n", 
-                                                         $block->{"start"}, $block->{"end"}, $cds_len));
+
+  # Read canonical sequence order from tier2 Stockholm, restricted to sequences
+  # present in the CDS MSA. Non-CDS-MSA sequences are excluded from the final
+  # alignment (they would have all-gaps in the CDS block, producing partial sequences).
+  my @seq_names = ();
+  my %seen_H = ();
+  open(my $t2fh, $tier2_stk_file) || die "ERROR unable to read tier2 STK $tier2_stk_file: $!";
+  while(my $line = <$t2fh>) {
+    chomp $line;
+    next if($line =~ /^#/ || $line =~ /^\/\// || $line =~ /^\s*$/);
+    if($line =~ /^(\S+)\s+/) {
+      my $name = $1;
+      if(!exists $seen_H{$name} && exists $accn_to_cds_seq_H{$name}) {
+        push @seq_names, $name;
+        $seen_H{$name} = 1;
       }
-    }
-    elsif($type eq "rna") {
-      # Read RNA Stockholm file and extract sequences and SS_cons
-      my %rna_seqs_H = read_stockholm_sequences($block->{"rna_file"});
-      my $rna_ss_cons = read_stockholm_ss_cons($block->{"rna_file"});
-      
-      foreach my $name (@seq_names) {
-        if(exists $rna_seqs_H{$name}) {
-          $final_seqs_H{$name} .= $rna_seqs_H{$name};
-        }
-        else {
-          # Pad with gaps if sequence not present in RNA alignment
-          $final_seqs_H{$name} .= "-" x $block->{"len"};
-        }
-      }
-      
-      # Add RNA secondary structure (or dots if not found)
-      if($rna_ss_cons ne "") {
-        $final_ss_cons .= $rna_ss_cons;
-      }
-      else {
-        $final_ss_cons .= "." x $block->{"len"};
-      }
-      
-      ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: added RNA block %d (%s, %d..%d, %d nt)\n", 
-                                                       $block->{"rna_idx"}, $block->{"family"}, 
-                                                       $block->{"start"}, $block->{"end"}, $block->{"len"}));
-    }
-    elsif($type eq "noncoding") {
-      # Extract noncoding region from tier2 alignment
-      my $nc_stk_tmp = $out_stk_file . ".tmp.nc." . $block->{"start"} . "_" . $block->{"end"} . ".stk";
-      my $nc_fa_tmp  = $nc_stk_tmp . ".fa";
-      
-      my $cmd_extract = $execs_HR->{"esl-alimask"} . " -t --t-rf " . $tier2_stk_file . " " . 
-                        $block->{"start"} . ".." . $block->{"end"} . " | " .
-                        $execs_HR->{"esl-reformat"} . " --informat stockholm afa - > " . $nc_fa_tmp;
-      
-      utl_RunCommand($cmd_extract, 0, 0, $FH_HR);
-      
-      # Read extracted noncoding FASTA
-      my %nc_seqs_H = ();
-      open(my $ncfh, $nc_fa_tmp) || die "ERROR unable to read $nc_fa_tmp: $!";
-      $cur_name = "";
-      while(my $line = <$ncfh>) {
-        chomp $line;
-        if($line =~ /^>(\S+)/) {
-          $cur_name = $1;
-          $nc_seqs_H{$cur_name} = "";
-        }
-        elsif($cur_name ne "") {
-          $nc_seqs_H{$cur_name} .= $line;
-        }
-      }
-      close($ncfh);
-      
-      # Add to final sequences
-      foreach my $name (@seq_names) {
-        if(exists $nc_seqs_H{$name}) {
-          $final_seqs_H{$name} .= $nc_seqs_H{$name};
-        }
-        else {
-          # Pad with gaps if sequence not present
-          $final_seqs_H{$name} .= "-" x $block->{"len"};
-        }
-      }
-      
-      # Noncoding has no secondary structure, use dots
-      $final_ss_cons .= "." x $block->{"len"};
-      
-      # Cleanup temp files
-      unlink($nc_stk_tmp);
-      unlink($nc_fa_tmp);
-      
-      ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: added noncoding block (%d..%d, %d nt)\n", 
-                                                       $block->{"start"}, $block->{"end"}, $block->{"len"}));
     }
   }
-  
-  # Write final Stockholm file
+  close($t2fh);
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: %d sequences in final alignment (restricted to CDS MSA members)\n", scalar(@seq_names)));
+
+  # Open output file and write header
   open(my $outfh, ">", $out_stk_file) || die "ERROR unable to write $out_stk_file: $!";
   print $outfh "# STOCKHOLM 1.0\n";
-  foreach my $name (@seq_names) {
-    printf $outfh "%-30s %s\n", $name, $final_seqs_H{$name};
+
+  my $cds_added = 0;
+
+  foreach my $block (@{$blocks_AR}) {
+    my $type        = $block->{"type"};
+    my $block_start = $block->{"start"};
+    my $block_end   = $block->{"end"};
+
+    if($type eq "coding") {
+      next if $cds_added;
+      $cds_added = 1;
+
+      my $anchor_seq = $accn_to_cds_seq_H{$anchor_accn};
+      if(!defined $anchor_seq) {
+        die "ERROR: anchor accession $anchor_accn not found in CDS MSA $cds_msa_fa_file";
+      }
+      my $cds_aln_width = length($anchor_seq);
+
+      # Build RF from anchor: non-gap -> x, gap -> .
+      my $cds_rf = "";
+      foreach my $char (split(//, $anchor_seq)) {
+        $cds_rf .= ($char eq '-' || $char eq '.') ? '.' : 'x';
+      }
+
+      # Write sequence lines in canonical order
+      foreach my $name (@seq_names) {
+        my $seq = exists $accn_to_cds_seq_H{$name} ? $accn_to_cds_seq_H{$name} : '-' x $cds_aln_width;
+        printf $outfh "%-30s %s\n", $name, $seq;
+      }
+      printf $outfh "#=GC %-24s %s\n", "RF", $cds_rf;
+
+      # Build gapped SS_cons for CDS block by following anchor gaps, write per-block
+      my $ungapped_substr = substr($ungapped_ss_cons, $block_start - 1, $block_end - $block_start + 1);
+      my $cds_ss = "";
+      my $ss_pos = 0;
+      foreach my $char (split(//, $anchor_seq)) {
+        if($char eq '-' || $char eq '.') {
+          $cds_ss .= '.';
+        }
+        else {
+          $cds_ss .= ($ss_pos < length($ungapped_substr)) ? substr($ungapped_substr, $ss_pos, 1) : ':';
+          $ss_pos++;
+        }
+      }
+      printf $outfh "#=GC %-24s %s\n", "SS_cons", $cds_ss;
+      print  $outfh "\n";
+
+      ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: added CDS MSA (%d..%d, %d alignment columns)\n",
+                                                       $block_start, $block_end, $cds_aln_width));
+    }
+    elsif($type eq "rna") {
+      # Read RNA Stockholm: sequences, RF, SS_cons
+      my $rna_stk = $block->{"rna_file"};
+      my %rna_seqs_H = ();
+      my $rna_rf      = "";
+      my $rna_ss_cons = "";
+      open(my $rnafh, $rna_stk) || die "ERROR unable to read RNA STK $rna_stk: $!";
+      while(my $line = <$rnafh>) {
+        chomp $line;
+        next if($line =~ /^# STOCKHOLM/ || $line =~ /^\/\// || $line =~ /^\s*$/);
+        if   ($line =~ /^#=GC\s+RF\s+(\S+)/)      { $rna_rf      .= $1; }
+        elsif($line =~ /^#=GC\s+SS_cons\s+(\S+)/) { $rna_ss_cons .= $1; }
+        elsif($line =~ /^#=G[RS]\s+/)              { next; }  # skip per-seq markup
+        elsif($line =~ /^#/)                        { next; }
+        elsif($line =~ /^(\S+)\s+(\S+)/)           { $rna_seqs_H{$1} .= $2; }
+      }
+      close($rnafh);
+
+      my $rna_aln_width = 0;
+      foreach my $v (values %rna_seqs_H) { $rna_aln_width = length($v); last; }
+
+      # Write sequence lines in canonical order
+      foreach my $name (@seq_names) {
+        my $seq = exists $rna_seqs_H{$name} ? $rna_seqs_H{$name} : '-' x $rna_aln_width;
+        printf $outfh "%-30s %s\n", $name, $seq;
+      }
+      printf $outfh "#=GC %-24s %s\n", "RF", $rna_rf;
+      printf $outfh "#=GC %-24s %s\n", "SS_cons", $rna_ss_cons;
+      print  $outfh "\n";
+
+      ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: added RNA block %d (%s, %d..%d, %d alignment columns)\n",
+                                                       $block->{"rna_idx"}, $block->{"family"},
+                                                       $block_start, $block_end, $rna_aln_width));
+    }
+    elsif($type eq "noncoding") {
+      # Extract noncoding region from tier2 as Stockholm (preserves RF and insert columns)
+      my $nc_stk_tmp = $out_stk_file . ".tmp.nc." . $block_start . "_" . $block_end . ".stk";
+      my $cmd_extract = $execs_HR->{"esl-alimask"} . " -t --t-rf " . $tier2_stk_file .
+                        " " . $block_start . ".." . $block_end . " > " . $nc_stk_tmp;
+      utl_RunCommand($cmd_extract, 0, 0, $FH_HR);
+
+      # Parse noncoding Stockholm: sequences and RF (skip tier2 SS_cons)
+      my %nc_seqs_H = ();
+      my $nc_rf      = "";
+      open(my $ncfh, $nc_stk_tmp) || die "ERROR unable to read $nc_stk_tmp: $!";
+      while(my $line = <$ncfh>) {
+        chomp $line;
+        next if($line =~ /^# STOCKHOLM/ || $line =~ /^\/\// || $line =~ /^\s*$/);
+        if   ($line =~ /^#=GC\s+RF\s+(\S+)/)  { $nc_rf .= $1; }
+        elsif($line =~ /^#=GC\s+SS_cons\s+/)  { next; }  # skip tier2 SS_cons
+        elsif($line =~ /^#=G[RS]\s+/)          { next; }  # skip per-seq markup
+        elsif($line =~ /^#/)                    { next; }
+        elsif($line =~ /^(\S+)\s+(\S+)/)       { $nc_seqs_H{$1} .= $2; }
+      }
+      close($ncfh);
+      unlink($nc_stk_tmp);
+
+      my $nc_aln_width = 0;
+      foreach my $v (values %nc_seqs_H) { $nc_aln_width = length($v); last; }
+      if($nc_aln_width == 0) { $nc_aln_width = $block_end - $block_start + 1; }
+
+      # If no RF was found, construct all-x RF of nc_aln_width
+      if($nc_rf eq "") { $nc_rf = 'x' x $nc_aln_width; }
+
+      # Write sequence lines in canonical order
+      foreach my $name (@seq_names) {
+        my $seq = exists $nc_seqs_H{$name} ? $nc_seqs_H{$name} : '-' x $nc_aln_width;
+        printf $outfh "%-30s %s\n", $name, $seq;
+      }
+      printf $outfh "#=GC %-24s %s\n", "RF", $nc_rf;
+      printf $outfh "#=GC %-24s %s\n", "SS_cons", '.' x $nc_aln_width;
+      print  $outfh "\n";
+
+      ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: added noncoding block (%d..%d, %d alignment columns)\n",
+                                                       $block_start, $block_end, $nc_aln_width));
+    }
   }
-  # Write SS_cons line
-  printf $outfh "#=GC %-24s %s\n", "SS_cons", $final_ss_cons;
+
+  # Write footer
   print $outfh "//\n";
   close($outfh);
-  
+
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: wrote interleaved Stockholm with RF and SS_cons to %s\n", $out_stk_file));
+
   return;
 }
 
@@ -3013,6 +3082,136 @@ sub read_stockholm_ss_cons {
   close($fh);
   
   return $ss_cons;
+}
+
+#################################################################
+# Subroutine : build_ungapped_ss_cons()
+# Purpose    : Build ungapped reference-length SS_cons string
+#              by overlaying RNA structures onto single-strand background
+#
+# Arguments  :
+#   $ref_len    : reference sequence length
+#   $rna_AR     : ref to array of RNA hashes (with start, end, stk_file)
+#   $FH_HR      : ref to hash of file handles
+#
+# Returns    : ungapped SS_cons string (length = ref_len)
+#################################################################
+sub build_ungapped_ss_cons {
+  my ($ref_len, $rna_AR, $FH_HR) = @_;
+  
+  # Initialize array with single-stranded characters
+  my @ss_array = (':') x $ref_len;
+  
+  # Overlay RNA structures
+  foreach my $rna (@{$rna_AR}) {
+    my $start = $rna->{"start"};
+    my $end   = $rna->{"end"};
+    my $stk   = $rna->{"stk_file"};
+    
+    # Read SS_cons from RNA alignment
+    my $rna_ss = read_stockholm_ss_cons($stk);
+    
+    # Strip gap characters ('.') to get ungapped structure
+    $rna_ss =~ s/\.//g;
+    
+    my $expected_len = $end - $start + 1;
+    my $actual_len = length($rna_ss);
+    
+    if($actual_len != $expected_len) {
+      ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# WARNING: RNA %s SS_cons length mismatch (expected %d, got %d)\n", 
+                                                       $rna->{"family"}, $expected_len, $actual_len));
+    }
+    
+    # Overlay onto array (convert to 0-based indexing)
+    for(my $i = 0; $i < length($rna_ss) && ($start + $i) <= $end; $i++) {
+      my $ref_pos = $start + $i - 1; # Convert to 0-based
+      if($ref_pos >= 0 && $ref_pos < $ref_len) {
+        $ss_array[$ref_pos] = substr($rna_ss, $i, 1);
+      }
+    }
+    
+    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: overlaid RNA %s structure (%d..%d, %d chars)\n", 
+                                                     $rna->{"family"}, $start, $end, length($rna_ss)));
+  }
+  
+  # Join to create ungapped string
+  my $ungapped_ss = join('', @ss_array);
+  
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: built ungapped SS_cons (%d positions)\n", length($ungapped_ss)));
+  
+  return $ungapped_ss;
+}
+
+#################################################################
+# Subroutine : gap_and_add_ss_cons()
+# Purpose    : Gap the SS_cons based on reference sequence alignment
+#              and add it to the Stockholm file
+#
+# Arguments  :
+#   $stk_file       : Stockholm file path (to modify)
+#   $ungapped_ss    : ungapped reference-length SS_cons string
+#   $ref_name       : reference sequence name
+#   $FH_HR          : ref to hash of file handles
+#
+# Returns    : void
+#################################################################
+sub gap_and_add_ss_cons {
+  my ($stk_file, $ungapped_ss, $ref_name, $FH_HR) = @_;
+  
+  # Read reference sequence from alignment
+  my %seqs_H = read_stockholm_sequences($stk_file);
+  
+  if(!exists $seqs_H{$ref_name}) {
+    die "ERROR: reference sequence $ref_name not found in alignment $stk_file";
+  }
+  
+  my $ref_aligned = $seqs_H{$ref_name};
+  my $aln_len = length($ref_aligned);
+  
+  # Build gapped SS_cons by following reference alignment
+  my $gapped_ss = "";
+  my $ungapped_pos = 0;
+  
+  for(my $i = 0; $i < $aln_len; $i++) {
+    my $ref_char = substr($ref_aligned, $i, 1);
+    
+    # If reference has a gap, insert gap in SS_cons
+    if($ref_char eq '-' || $ref_char eq '.' || $ref_char eq '~') {
+      $gapped_ss .= '.';
+    }
+    else {
+      # Reference has a base, take next character from ungapped SS_cons
+      if($ungapped_pos < length($ungapped_ss)) {
+        $gapped_ss .= substr($ungapped_ss, $ungapped_pos, 1);
+        $ungapped_pos++;
+      }
+      else {
+        # Should not happen - reference longer than expected
+        $gapped_ss .= ':';
+      }
+    }
+  }
+  
+  # Read entire file content
+  open(my $infh, $stk_file) || die "ERROR unable to read $stk_file: $!";
+  my @lines = <$infh>;
+  close($infh);
+  
+  # Write back with SS_cons line added before //
+  open(my $outfh, ">", $stk_file) || die "ERROR unable to write $stk_file: $!";
+  foreach my $line (@lines) {
+    if($line =~ /^\/\//) {
+      # Add SS_cons before end marker
+      printf $outfh "#=GC %-24s %s\n", "SS_cons", $gapped_ss;
+    }
+    print $outfh $line;
+  }
+  close($outfh);
+  
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: added gapped SS_cons to alignment (%d positions, %d gaps)\n", 
+                                                   $aln_len, $aln_len - $ungapped_pos));
+  
+  return;
 }
 
 #################################################################

@@ -1182,7 +1182,6 @@ sub profile_CdsFetchStockholmToFasta {
         my @seq_sgm_coords_A = ();
         my $total_rf_offset_5p = 0; # cumulative 5' RF offset (nt to trim from 5' end)
         my $total_rf_offset_3p = 0; # cumulative 3' RF offset (nt to trim from 3' end)
-
         foreach(my $sgm_idx = 0; $sgm_idx < scalar(@{$sgm_start_AA[$ftr_idx]}); $sgm_idx++) {
           my $rfstart = $sgm_start_AA[$ftr_idx][$sgm_idx];
           my $rfstop  = $sgm_stop_AA[$ftr_idx][$sgm_idx];
