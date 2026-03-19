@@ -480,7 +480,14 @@ write_decision_summary_report(\%decision_H, $decision_summary_tsv_file, \%FH_H);
 #---------------------------------------
 # Step 5: Initial piecewise stitching scaffold outputs
 #---------------------------------------
-write_stitch_scaffold_outputs(\%candidate_AH, $tier2_fasta_file, \%ftr_info_HA, $model_key, $seed_model_len, $stitch_selected_accn_file, $stitch_selected_fa_file, $stitch_block_plan_file, \%FH_H);
+my $n_selected = write_stitch_scaffold_outputs(\%candidate_AH, $tier2_fasta_file, \%ftr_info_HA, $model_key, $seed_model_len, $stitch_selected_accn_file, $stitch_selected_fa_file, $stitch_block_plan_file, \%FH_H);
+
+if($n_selected == 0) {
+  ofile_OutputString($FH_H{"log"}, 1, "#\n# Zero sequences passed all filters. Cannot build profile alignment.\n");
+  ofile_OutputString($FH_H{"log"}, 1, "# Check decision reports for details on why sequences were removed.\n");
+  ofile_OutputString($FH_H{"log"}, 1, "#\n# Exiting with error.\n");
+  ofile_FAIL("ERROR, zero sequences passed all filters, cannot build profile alignment. See $decision_summary_tsv_file for details.", 1, \%FH_H);
+}
 
 #---------------------------------------
 # Step 6: CDS translation prep for protein alignment
@@ -1366,7 +1373,7 @@ sub write_stitch_scaffold_outputs {
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch scaffold: wrote %d selected accessions to %s\n", scalar(@sel_acc_A), $selected_accn_file));
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch scaffold: wrote selected FASTA to %s (missing %d accessions)\n", $selected_fa_file, $n_missing));
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch scaffold: wrote initial block plan (%d blocks) to %s\n", $blk_idx, $block_plan_file));
-  return;
+  return scalar(@sel_acc_A);
 }
 
 #################################################################
@@ -1633,6 +1640,11 @@ sub prepare_cds_translation_for_stitching {
 
 #################################################################
 # Subroutine : run_reference_anchored_pairwise_aa()
+# EPN* 2026-03-19
+# Runs per-CDS-feature pairwise AA alignment. Groups sequences
+# by feature (ref coords after '/' in header), picks one anchor
+# per feature from the centroid, and aligns each query against
+# its own feature's anchor.
 #################################################################
 sub run_reference_anchored_pairwise_aa {
   my ($candidate_AHR, $centroid_tsv_file, $aa_fa_file, $anchor_tsv_file, $anchor_fa_file, $pairwise_tsv_file, $do_skip_annotate, $do_keep, $do_verbose, $execs_HR, $FH_HR) = @_;
@@ -1667,7 +1679,8 @@ sub run_reference_anchored_pairwise_aa {
     close($ctfh);
   }
 
-  my @aa_A = (); # { header, accession, sqstring, len }
+  # Parse AA sequences and extract feature key (ref coords after '/')
+  my @aa_A = (); # { header, accession, feature_key, sqstring, len }
   my $cur_h = undef;
   my $cur_sq = "";
   open(my $aafh_in, "<", $aa_fa_file) || die "ERROR, unable to read AA fasta $aa_fa_file: $!";
@@ -1677,7 +1690,8 @@ sub run_reference_anchored_pairwise_aa {
       if(defined $cur_h) {
         my $acc = $cur_h;
         if($acc =~ /^([^:]+):/) { $acc = $1; }
-        push(@aa_A, { header => $cur_h, accession => $acc, sqstring => $cur_sq, len => length($cur_sq) });
+        my $fkey = ($cur_h =~ /\/(.+)$/) ? $1 : $cur_h;
+        push(@aa_A, { header => $cur_h, accession => $acc, feature_key => $fkey, sqstring => $cur_sq, len => length($cur_sq) });
       }
       $cur_h = $1;
       $cur_sq = "";
@@ -1691,41 +1705,67 @@ sub run_reference_anchored_pairwise_aa {
   if(defined $cur_h) {
     my $acc = $cur_h;
     if($acc =~ /^([^:]+):/) { $acc = $1; }
-    push(@aa_A, { header => $cur_h, accession => $acc, sqstring => $cur_sq, len => length($cur_sq) });
+    my $fkey = ($cur_h =~ /\/(.+)$/) ? $1 : $cur_h;
+    push(@aa_A, { header => $cur_h, accession => $acc, feature_key => $fkey, sqstring => $cur_sq, len => length($cur_sq) });
   }
   if(scalar(@aa_A) == 0) {
     die "ERROR, no AA sequences parsed from $aa_fa_file";
   }
 
-  my @anchor_cand_A = grep { exists $centroid_avg_H{$_->{"accession"}} } @aa_A;
-  my $anchor_method = undef;
-  if(scalar(@anchor_cand_A) > 0) {
-    @anchor_cand_A = sort {
-      $centroid_avg_H{$b->{"accession"}} <=> $centroid_avg_H{$a->{"accession"}} ||
-      $b->{"len"} <=> $a->{"len"} ||
-      $a->{"accession"} cmp $b->{"accession"}
-    } @anchor_cand_A;
-    $anchor_method = "tier3_centroid_max_avg_blastn";
+  # Group sequences by feature key
+  my %fkey_order_A = (); # feature_key => [ seq_hashes ]
+  my @fkey_order = ();   # ordered list of unique feature keys
+  foreach my $seq (@aa_A) {
+    my $fk = $seq->{"feature_key"};
+    if(! exists $fkey_order_A{$fk}) {
+      push(@fkey_order, $fk);
+      $fkey_order_A{$fk} = [];
+    }
+    push(@{$fkey_order_A{$fk}}, $seq);
   }
-  else {
-    @anchor_cand_A = sort {
-      $b->{"len"} <=> $a->{"len"} ||
-      $a->{"accession"} cmp $b->{"accession"}
-    } @aa_A;
-    $anchor_method = "fallback_longest_aa";
+
+  # Pick one anchor per feature group
+  my %anchor_H = (); # feature_key => anchor seq hash
+  my %anchor_method_H = (); # feature_key => method string
+  foreach my $fk (@fkey_order) {
+    my @grp_A = @{$fkey_order_A{$fk}};
+    my @anchor_cand_A = grep { exists $centroid_avg_H{$_->{"accession"}} } @grp_A;
+    if(scalar(@anchor_cand_A) > 0) {
+      @anchor_cand_A = sort {
+        $centroid_avg_H{$b->{"accession"}} <=> $centroid_avg_H{$a->{"accession"}} ||
+        $b->{"len"} <=> $a->{"len"} ||
+        $a->{"accession"} cmp $b->{"accession"}
+      } @anchor_cand_A;
+      $anchor_method_H{$fk} = "tier3_centroid_max_avg_blastn";
+    }
+    else {
+      @anchor_cand_A = sort {
+        $b->{"len"} <=> $a->{"len"} ||
+        $a->{"accession"} cmp $b->{"accession"}
+      } @grp_A;
+      $anchor_method_H{$fk} = "fallback_longest_aa";
+    }
+    $anchor_H{$fk} = $anchor_cand_A[0];
   }
-  my $anchor = $anchor_cand_A[0];
 
-  open(my $ancfh, ">", $anchor_fa_file) || die "ERROR, unable to write anchor AA fasta $anchor_fa_file: $!";
-  print $ancfh ">" . $anchor->{"header"} . "\n";
-  print $ancfh seq_SqstringAddNewlines($anchor->{"sqstring"}, 60);
-  close($ancfh);
-
+  # Write anchor TSV (one row per feature)
   open(my $atfh, ">", $anchor_tsv_file) || die "ERROR, unable to write anchor TSV $anchor_tsv_file: $!";
-  print $atfh join("\t", "anchor_header", "anchor_accession", "anchor_aa_len", "anchor_method", "anchor_centroid_avg_blastn_pident") . "\n";
-  my $anchor_avg = exists $centroid_avg_H{$anchor->{"accession"}} ? $centroid_avg_H{$anchor->{"accession"}} : "NA";
-  print $atfh join("\t", $anchor->{"header"}, $anchor->{"accession"}, $anchor->{"len"}, $anchor_method, $anchor_avg) . "\n";
+  print $atfh join("\t", "anchor_header", "anchor_accession", "anchor_aa_len", "anchor_method", "anchor_centroid_avg_blastn_pident", "feature_key") . "\n";
+  foreach my $fk (@fkey_order) {
+    my $anc = $anchor_H{$fk};
+    my $anchor_avg = exists $centroid_avg_H{$anc->{"accession"}} ? $centroid_avg_H{$anc->{"accession"}} : "NA";
+    print $atfh join("\t", $anc->{"header"}, $anc->{"accession"}, $anc->{"len"}, $anchor_method_H{$fk}, $anchor_avg, $fk) . "\n";
+  }
   close($atfh);
+
+  # Write anchor FASTA (all anchors)
+  open(my $ancfh, ">", $anchor_fa_file) || die "ERROR, unable to write anchor AA fasta $anchor_fa_file: $!";
+  foreach my $fk (@fkey_order) {
+    my $anc = $anchor_H{$fk};
+    print $ancfh ">" . $anc->{"header"} . "\n";
+    print $ancfh seq_SqstringAddNewlines($anc->{"sqstring"}, 60);
+  }
+  close($ancfh);
 
   my $pairwise_dir = $pairwise_tsv_file . ".dir";
   if(! -d $pairwise_dir) {
@@ -1736,72 +1776,91 @@ sub run_reference_anchored_pairwise_aa {
   print $pwfh join("\t", "query_header", "query_accession", "anchor_header", "program", "program_mode", "result_file", "hit_found", "pident", "alen", "qstart", "qend", "sstart", "send", "aln_code") . "\n";
 
   my $pair_idx = 0;
-  foreach my $seq (@aa_A) {
-    next if($seq->{"header"} eq $anchor->{"header"});
-    $pair_idx++;
-    my $qfa_file = sprintf("%s/query.%05d.fa", $pairwise_dir, $pair_idx);
-    my $out_file = sprintf("%s/query.%05d.ggsearch8cc.tsv", $pairwise_dir, $pair_idx);
+  foreach my $fk (@fkey_order) {
+    my $anc = $anchor_H{$fk};
+    # Write per-feature anchor FASTA for ggsearch library
+    my $fk_anchor_fa = sprintf("%s/anchor.%s.fa", $pairwise_dir, $fk);
+    $fk_anchor_fa =~ s/[^A-Za-z0-9._\-\/]/_/g; # sanitize feature key in filename
+    $fk_anchor_fa = sprintf("%s/anchor.%05d.fa", $pairwise_dir, scalar(grep { $_ eq $fk } @fkey_order) ? (grep { $fkey_order[$_] eq $fk } 0..$#fkey_order)[0] + 1 : 0);
+    open(my $afh, ">", $fk_anchor_fa) || die "ERROR, unable to write anchor fasta $fk_anchor_fa: $!";
+    print $afh ">" . $anc->{"header"} . "\n";
+    print $afh seq_SqstringAddNewlines($anc->{"sqstring"}, 60);
+    close($afh);
 
-    open(my $qfh, ">", $qfa_file) || die "ERROR, unable to write query fasta $qfa_file: $!";
-    print $qfh ">" . $seq->{"header"} . "\n";
-    print $qfh seq_SqstringAddNewlines($seq->{"sqstring"}, 60);
-    close($qfh);
+    foreach my $seq (@{$fkey_order_A{$fk}}) {
+      next if($seq->{"header"} eq $anc->{"header"});
+      $pair_idx++;
+      my $qfa_file = sprintf("%s/query.%05d.fa", $pairwise_dir, $pair_idx);
+      my $out_file = sprintf("%s/query.%05d.ggsearch8cc.tsv", $pairwise_dir, $pair_idx);
 
-    my $cmd = $execs_HR->{"ggsearch"} . " -m 8CC -d 0 -T 1 " . $qfa_file . " " . $anchor_fa_file . " > " . $out_file;
-    utl_RunCommand($cmd, $do_verbose, 0, $FH_HR);
+      open(my $qfh, ">", $qfa_file) || die "ERROR, unable to write query fasta $qfa_file: $!";
+      print $qfh ">" . $seq->{"header"} . "\n";
+      print $qfh seq_SqstringAddNewlines($seq->{"sqstring"}, 60);
+      close($qfh);
 
-    my ($hit_found, $pident, $alen, $qstart, $qend, $sstart, $send, $aln_code) = (0, "NA", "NA", "NA", "NA", "NA", "NA", "");
-    if(-s $out_file) {
-      open(my $ofh, "<", $out_file) || die "ERROR, unable to read ggsearch output $out_file: $!";
-      while(my $line = <$ofh>) {
-        chomp $line;
-        next if($line =~ /^\#/);
-        next if($line =~ /^\s*$/);
-        my @tok_A = split(/\t/, $line, -1);
-        if(scalar(@tok_A) >= 13) {
-          $hit_found = 1;
-          $pident = $tok_A[2] if(defined $tok_A[2]);
-          $alen   = $tok_A[3] if(defined $tok_A[3]);
-          $qstart = $tok_A[6] if(defined $tok_A[6]);
-          $qend   = $tok_A[7] if(defined $tok_A[7]);
-          $sstart = $tok_A[8] if(defined $tok_A[8]);
-          $send   = $tok_A[9] if(defined $tok_A[9]);
-          $aln_code = $tok_A[12] if(defined $tok_A[12]);
-          last;
+      my $cmd = $execs_HR->{"ggsearch"} . " -m 8CC -d 0 -T 1 " . $qfa_file . " " . $fk_anchor_fa . " > " . $out_file;
+      utl_RunCommand($cmd, $do_verbose, 0, $FH_HR);
+
+      my ($hit_found, $pident, $alen, $qstart, $qend, $sstart, $send, $aln_code) = (0, "NA", "NA", "NA", "NA", "NA", "NA", "");
+      if(-s $out_file) {
+        open(my $ofh, "<", $out_file) || die "ERROR, unable to read ggsearch output $out_file: $!";
+        while(my $line = <$ofh>) {
+          chomp $line;
+          next if($line =~ /^\#/);
+          next if($line =~ /^\s*$/);
+          my @tok_A = split(/\t/, $line, -1);
+          if(scalar(@tok_A) >= 13) {
+            $hit_found = 1;
+            $pident = $tok_A[2] if(defined $tok_A[2]);
+            $alen   = $tok_A[3] if(defined $tok_A[3]);
+            $qstart = $tok_A[6] if(defined $tok_A[6]);
+            $qend   = $tok_A[7] if(defined $tok_A[7]);
+            $sstart = $tok_A[8] if(defined $tok_A[8]);
+            $send   = $tok_A[9] if(defined $tok_A[9]);
+            $aln_code = $tok_A[12] if(defined $tok_A[12]);
+            last;
+          }
         }
+        close($ofh);
       }
-      close($ofh);
+
+      print $pwfh join("\t", $seq->{"header"},
+                              $seq->{"accession"},
+                              $anc->{"header"},
+                              "ggsearch36",
+                              "global_global_pairwise",
+                              $out_file,
+                              $hit_found,
+                              $pident,
+                              $alen,
+                              $qstart,
+                              $qend,
+                              $sstart,
+                              $send,
+                              $aln_code) . "\n";
+
+      if(! $do_keep) {
+        unlink $qfa_file;
+      }
     }
-
-    print $pwfh join("\t", $seq->{"header"},
-                            $seq->{"accession"},
-                            $anchor->{"header"},
-                            "ggsearch36",
-                            "global_global_pairwise",
-                            $out_file,
-                            $hit_found,
-                            $pident,
-                            $alen,
-                            $qstart,
-                            $qend,
-                            $sstart,
-                            $send,
-                            $aln_code) . "\n";
-
     if(! $do_keep) {
-      unlink $qfa_file;
+      unlink $fk_anchor_fa;
     }
   }
   close($pwfh);
 
-  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS pairwise AA: selected anchor %s (%s) and wrote %s\n", $anchor->{"header"}, $anchor_method, $anchor_tsv_file));
-  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS pairwise AA: wrote anchor fasta %s\n", $anchor_fa_file));
-  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS pairwise AA: wrote pairwise summary for %d queries to %s\n", $pair_idx, $pairwise_tsv_file));
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS pairwise AA: %d CDS features, %d total pairwise alignments\n", scalar(@fkey_order), $pair_idx));
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS pairwise AA: wrote anchor info (%d features) to %s\n", scalar(@fkey_order), $anchor_tsv_file));
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS pairwise AA: wrote pairwise summary to %s\n", $pairwise_tsv_file));
   return;
 }
 
 #################################################################
 # Subroutine : build_anchor_projected_cds_msa()
+# EPN* 2026-03-19
+# Builds per-CDS-feature AA MSAs from pairwise CIGARs, then
+# concatenates them in feature order. Each feature has its own
+# anchor. Backconverts to nucleotide MSA.
 #################################################################
 sub build_anchor_projected_cds_msa {
   my ($aa_fa_file, $cds_nt_fa_file, $map_tsv_file, $anchor_tsv_file, $pairwise_tsv_file, $msa_aa_fa_file, $msa_aa_stk_file, $msa_nt_fa_file, $do_skip_annotate, $FH_HR) = @_;
@@ -1815,8 +1874,10 @@ sub build_anchor_projected_cds_msa {
     return;
   }
 
+  # Parse AA sequences, extract feature key (ref coords after '/')
   my @aa_order_A = ();
   my %aa_seq_H = ();
+  my %aa_fkey_H = (); # header => feature_key
   my $cur_h = undef;
   open(my $aafh, "<", $aa_fa_file) || die "ERROR, unable to read AA fasta $aa_fa_file: $!";
   while(my $line = <$aafh>) {
@@ -1826,6 +1887,7 @@ sub build_anchor_projected_cds_msa {
       if(! exists $aa_seq_H{$cur_h}) {
         push(@aa_order_A, $cur_h);
         $aa_seq_H{$cur_h} = "";
+        $aa_fkey_H{$cur_h} = ($cur_h =~ /\/(.+)$/) ? $1 : $cur_h;
       }
     }
     elsif(defined $cur_h) {
@@ -1838,7 +1900,9 @@ sub build_anchor_projected_cds_msa {
     die "ERROR, no sequences parsed from $aa_fa_file";
   }
 
-  my $anchor_header = undef;
+  # Read per-feature anchors from anchor TSV
+  my %anchor_header_H = (); # feature_key => anchor_header
+  my @fkey_order = ();
   open(my $atfh, "<", $anchor_tsv_file) || die "ERROR, unable to read anchor TSV $anchor_tsv_file: $!";
   my $nline = 0;
   while(my $line = <$atfh>) {
@@ -1847,18 +1911,28 @@ sub build_anchor_projected_cds_msa {
     next if($line =~ /^\s*$/);
     next if($nline == 1);
     my @tok_A = split(/\t/, $line, -1);
-    if(scalar(@tok_A) >= 1) {
-      $anchor_header = $tok_A[0];
-      last;
-    }
+    next if(scalar(@tok_A) < 6);
+    my $a_header = $tok_A[0];
+    my $fk = $tok_A[5];
+    $anchor_header_H{$fk} = $a_header;
+    push(@fkey_order, $fk);
   }
   close($atfh);
-  if((! defined $anchor_header) || (! exists $aa_seq_H{$anchor_header})) {
-    die "ERROR, unable to determine anchor header from $anchor_tsv_file or anchor not present in $aa_fa_file";
+  if(scalar(@fkey_order) == 0) {
+    die "ERROR, no anchor rows parsed from $anchor_tsv_file";
   }
-  my $anchor_seq = $aa_seq_H{$anchor_header};
-  my $anchor_len = length($anchor_seq);
 
+  # Group sequences by feature key, preserving per-feature order
+  my %fkey_seqs_A = (); # feature_key => [ headers ]
+  foreach my $fk (@fkey_order) { $fkey_seqs_A{$fk} = []; }
+  foreach my $h (@aa_order_A) {
+    my $fk = $aa_fkey_H{$h};
+    if(exists $fkey_seqs_A{$fk}) {
+      push(@{$fkey_seqs_A{$fk}}, $h);
+    }
+  }
+
+  # Read pairwise results
   my %pair_HH = ();
   open(my $pwfh, "<", $pairwise_tsv_file) || die "ERROR, unable to read pairwise summary $pairwise_tsv_file: $!";
   my $pw_nline = 0;
@@ -1871,98 +1945,130 @@ sub build_anchor_projected_cds_msa {
     next if(scalar(@tok_A) < 14);
     my ($q_header, $q_acc, $a_header, $program, $mode, $result_file, $hit_found, $pident, $alen, $qstart, $qend, $sstart, $send, $aln_code) = @tok_A;
     $pair_HH{$q_header} = {
-      hit_found => $hit_found,
-      qstart    => $qstart,
-      qend      => $qend,
-      sstart    => $sstart,
-      send      => $send,
-      aln_code  => $aln_code
+      hit_found    => $hit_found,
+      anchor_header=> $a_header,
+      qstart       => $qstart,
+      qend         => $qend,
+      sstart       => $sstart,
+      send         => $send,
+      aln_code     => $aln_code
     };
   }
   close($pwfh);
 
-  my %core_AH = (); # core_AH{header}[1..anchor_len] = aa or '-'
-  my %ins_AH  = (); # ins_AH{header}[0..anchor_len]  = insertion string
-  my @max_ins_len_A = ((0) x ($anchor_len + 1));
-
-  foreach my $h (@aa_order_A) {
-    my @core_A = ("") x ($anchor_len + 1);
-    my @ins_A  = ("") x ($anchor_len + 1);
-
-    if($h eq $anchor_header) {
-      for(my $apos = 1; $apos <= $anchor_len; $apos++) {
-        $core_A[$apos] = substr($anchor_seq, $apos-1, 1);
-      }
-    }
-    else {
-      if((! exists $pair_HH{$h}) || ($pair_HH{$h}{"hit_found"} ne "1")) {
-        die "ERROR, missing successful pairwise alignment data for $h in $pairwise_tsv_file";
-      }
-      my $qseq = $aa_seq_H{$h};
-      my $aln_code = $pair_HH{$h}{"aln_code"};
-      my $qstart = $pair_HH{$h}{"qstart"};
-      my $sstart = $pair_HH{$h}{"sstart"};
-
-      my ($qaln, $saln) = pairwise_from_cigar($qseq, $anchor_seq, $aln_code, $qstart, $sstart, $h, $anchor_header);
-      project_pairwise_onto_anchor($qaln, $saln, $anchor_len, \@core_A, \@ins_A, $h, $anchor_header);
-    }
-
-    $core_AH{$h} = \@core_A;
-    $ins_AH{$h}  = \@ins_A;
-    for(my $k = 0; $k <= $anchor_len; $k++) {
-      my $ilen = length($ins_A[$k]);
-      if($ilen > $max_ins_len_A[$k]) { $max_ins_len_A[$k] = $ilen; }
+  # Build AA MSA per feature, then concatenate
+  # We need a consistent set of accessions across features. Extract accessions from first feature.
+  my @accn_order_A = ();
+  my %accn_seen_H = ();
+  foreach my $h (@{$fkey_seqs_A{$fkey_order[0]}}) {
+    my $acc = ($h =~ /^([^:]+):/) ? $1 : $h;
+    if(! exists $accn_seen_H{$acc}) {
+      push(@accn_order_A, $acc);
+      $accn_seen_H{$acc} = 1;
     }
   }
 
-  my %msa_aa_H = ();
-  my $msa_aa_len = undef;
-  foreach my $h (@aa_order_A) {
-    my $aln = "";
-    my @core_A = @{$core_AH{$h}};
-    my @ins_A  = @{$ins_AH{$h}};
+  my %concat_msa_aa_H = (); # accession => concatenated AA alignment string
+  my $concat_rf = "";
+  foreach my $acc (@accn_order_A) { $concat_msa_aa_H{$acc} = ""; }
+
+  foreach my $fk (@fkey_order) {
+    my @fk_headers = @{$fkey_seqs_A{$fk}};
+    my $anchor_header = $anchor_header_H{$fk};
+    if(! exists $aa_seq_H{$anchor_header}) {
+      die "ERROR, anchor $anchor_header for feature $fk not found in AA fasta";
+    }
+    my $anchor_seq = $aa_seq_H{$anchor_header};
+    my $anchor_len = length($anchor_seq);
+
+    my %core_AH = ();
+    my %ins_AH  = ();
+    my @max_ins_len_A = ((0) x ($anchor_len + 1));
+
+    foreach my $h (@fk_headers) {
+      my @core_A = ("") x ($anchor_len + 1);
+      my @ins_A  = ("") x ($anchor_len + 1);
+
+      if($h eq $anchor_header) {
+        for(my $apos = 1; $apos <= $anchor_len; $apos++) {
+          $core_A[$apos] = substr($anchor_seq, $apos-1, 1);
+        }
+      }
+      else {
+        if((! exists $pair_HH{$h}) || ($pair_HH{$h}{"hit_found"} ne "1")) {
+          die "ERROR, missing successful pairwise alignment data for $h in $pairwise_tsv_file";
+        }
+        my $qseq = $aa_seq_H{$h};
+        my $aln_code = $pair_HH{$h}{"aln_code"};
+        my $qstart = $pair_HH{$h}{"qstart"};
+        my $sstart = $pair_HH{$h}{"sstart"};
+
+        my ($qaln, $saln) = pairwise_from_cigar($qseq, $anchor_seq, $aln_code, $qstart, $sstart, $h, $anchor_header);
+        project_pairwise_onto_anchor($qaln, $saln, $anchor_len, \@core_A, \@ins_A, $h, $anchor_header);
+      }
+
+      $core_AH{$h} = \@core_A;
+      $ins_AH{$h}  = \@ins_A;
+      for(my $k = 0; $k <= $anchor_len; $k++) {
+        my $ilen = length($ins_A[$k]);
+        if($ilen > $max_ins_len_A[$k]) { $max_ins_len_A[$k] = $ilen; }
+      }
+    }
+
+    # Build per-feature AA MSA strings
+    my $fk_msa_len = undef;
+    foreach my $h (@fk_headers) {
+      my $acc = ($h =~ /^([^:]+):/) ? $1 : $h;
+      my $aln = "";
+      my @core_A = @{$core_AH{$h}};
+      my @ins_A  = @{$ins_AH{$h}};
+      for(my $k = 0; $k <= $anchor_len; $k++) {
+        my $ins = $ins_A[$k];
+        $aln .= $ins;
+        if(length($ins) < $max_ins_len_A[$k]) {
+          $aln .= ("-" x ($max_ins_len_A[$k] - length($ins)));
+        }
+        if($k < $anchor_len) {
+          $aln .= $core_A[$k+1];
+        }
+      }
+      if(! defined $fk_msa_len) { $fk_msa_len = length($aln); }
+      elsif(length($aln) != $fk_msa_len) { die "ERROR, internal length mismatch while building AA MSA for feature $fk"; }
+      $concat_msa_aa_H{$acc} .= $aln;
+    }
+
+    # Build per-feature RF
+    my $fk_rf = "";
     for(my $k = 0; $k <= $anchor_len; $k++) {
-      my $ins = $ins_A[$k];
-      $aln .= $ins;
-      if(length($ins) < $max_ins_len_A[$k]) {
-        $aln .= ("-" x ($max_ins_len_A[$k] - length($ins)));
+      if($max_ins_len_A[$k] > 0) {
+        $fk_rf .= ("." x $max_ins_len_A[$k]);
       }
       if($k < $anchor_len) {
-        $aln .= $core_A[$k+1];
+        $fk_rf .= substr($anchor_seq, $k, 1);
       }
     }
-    if(! defined $msa_aa_len) { $msa_aa_len = length($aln); }
-    elsif(length($aln) != $msa_aa_len) { die "ERROR, internal length mismatch while building AA MSA"; }
-    $msa_aa_H{$h} = $aln;
+    $concat_rf .= $fk_rf;
   }
 
+  # Write per-accession concatenated AA MSA FASTA
   open(my $maa_fh, ">", $msa_aa_fa_file) || die "ERROR, unable to write $msa_aa_fa_file: $!";
-  foreach my $h (@aa_order_A) {
-    print $maa_fh ">" . $h . "\n";
-    print $maa_fh seq_SqstringAddNewlines($msa_aa_H{$h}, 60);
+  foreach my $acc (@accn_order_A) {
+    print $maa_fh ">" . $acc . "\n";
+    print $maa_fh seq_SqstringAddNewlines($concat_msa_aa_H{$acc}, 60);
   }
   close($maa_fh);
 
-  my $rf = "";
-  for(my $k = 0; $k <= $anchor_len; $k++) {
-    if($max_ins_len_A[$k] > 0) {
-      $rf .= ("." x $max_ins_len_A[$k]);
-    }
-    if($k < $anchor_len) {
-      $rf .= substr($anchor_seq, $k, 1);
-    }
-  }
-
   open(my $mstk_fh, ">", $msa_aa_stk_file) || die "ERROR, unable to write $msa_aa_stk_file: $!";
   print $mstk_fh "# STOCKHOLM 1.0\n";
-  foreach my $h (@aa_order_A) {
-    print $mstk_fh $h . "\t" . $msa_aa_H{$h} . "\n";
+  foreach my $acc (@accn_order_A) {
+    print $mstk_fh $acc . "\t" . $concat_msa_aa_H{$acc} . "\n";
   }
-  print $mstk_fh "#=GC RF\t" . $rf . "\n";
+  print $mstk_fh "#=GC RF\t" . $concat_rf . "\n";
   print $mstk_fh "//\n";
   close($mstk_fh);
 
-  my %cds_nt_H = (); # key: source_name in cds nt fasta
+  # Read CDS nt sequences and translation map
+  my %cds_nt_H = ();
   my $cur_nt_h = undef;
   open(my $ntfh, "<", $cds_nt_fa_file) || die "ERROR, unable to read CDS nt fasta $cds_nt_fa_file: $!";
   while(my $line = <$ntfh>) {
@@ -1978,7 +2084,7 @@ sub build_anchor_projected_cds_msa {
   }
   close($ntfh);
 
-  my %map_H = (); # map_H{aa_header} => metadata hash
+  my %map_H = ();
   open(my $mapfh, "<", $map_tsv_file) || die "ERROR, unable to read CDS map TSV $map_tsv_file: $!";
   my $map_nline = 0;
   while(my $line = <$mapfh>) {
@@ -1999,75 +2105,176 @@ sub build_anchor_projected_cds_msa {
   }
   close($mapfh);
 
-  my $max_n5 = 0;
-  my $max_n3 = 0;
-  foreach my $h (@aa_order_A) {
-    if(! exists $map_H{$h}) {
-      die "ERROR, unable to find AA->CDS mapping row for $h in $map_tsv_file";
+  # NT backconversion: per-feature, then concatenate per-accession
+  # Compute per-feature max_n5 and max_n3 (flanks can differ between features)
+  my %concat_nt_H = (); # accession => concatenated NT alignment string
+  foreach my $acc (@accn_order_A) { $concat_nt_H{$acc} = ""; }
+
+  foreach my $fk (@fkey_order) {
+    my @fk_headers = @{$fkey_seqs_A{$fk}};
+    my $anchor_header = $anchor_header_H{$fk};
+    my $anchor_seq = $aa_seq_H{$anchor_header};
+    my $anchor_len = length($anchor_seq);
+
+    # Compute per-feature max_n5/max_n3
+    my $fk_max_n5 = 0;
+    my $fk_max_n3 = 0;
+    foreach my $h (@fk_headers) {
+      if(! exists $map_H{$h}) {
+        die "ERROR, unable to find AA->CDS mapping row for $h in $map_tsv_file";
+      }
+      my $n5 = $map_H{$h}{"n5"};
+      my $n3 = $map_H{$h}{"n3"};
+      if($n5 > $fk_max_n5) { $fk_max_n5 = $n5; }
+      if($n3 > $fk_max_n3) { $fk_max_n3 = $n3; }
     }
-    my $n5 = $map_H{$h}{"n5"};
-    my $n3 = $map_H{$h}{"n3"};
-    if($n5 > $max_n5) { $max_n5 = $n5; }
-    if($n3 > $max_n3) { $max_n3 = $n3; }
+
+    foreach my $h (@fk_headers) {
+      my $acc = ($h =~ /^([^:]+):/) ? $1 : $h;
+      my $source = $map_H{$h}{"source"};
+      if(! exists $cds_nt_H{$source}) {
+        die "ERROR, unable to find CDS nt sequence for source $source in $cds_nt_fa_file";
+      }
+      my $cds_nt = $cds_nt_H{$source};
+      my $n5 = $map_H{$h}{"n5"};
+      my $n3 = $map_H{$h}{"n3"};
+
+      if(($n5 < 0) || ($n3 < 0)) {
+        die "ERROR, invalid negative untranslated flank lengths for $h: n5=$n5 n3=$n3";
+      }
+      if(($n5 + $n3) > length($cds_nt)) {
+        die "ERROR, invalid untranslated flank lengths for $h: n5+n3 exceeds CDS nt length";
+      }
+
+      my $prefix_nt = ($n5 > 0) ? substr($cds_nt, 0, $n5) : "";
+      my $suffix_nt = ($n3 > 0) ? substr($cds_nt, length($cds_nt) - $n3, $n3) : "";
+      my $orf_nt_len = length($cds_nt) - $n5 - $n3;
+      if($orf_nt_len < 0) {
+        die "ERROR, invalid CDS map values for $h: cds_nt_len=" . length($cds_nt) . " n5=$n5 n3=$n3";
+      }
+      my $orf_nt = substr($cds_nt, $n5, $orf_nt_len);
+
+      # Backconvert AA alignment to NT using the per-feature per-accession AA MSA
+      # We need to reconstruct the per-feature AA alignment for this header
+      # It's the portion of concat_msa_aa_H{$acc} corresponding to this feature
+      # Instead, rebuild from core/ins arrays (already computed above but out of scope)
+      # Simpler: extract from concat_msa_aa_H using feature offsets
+    }
   }
 
+  # Alternative approach: backconvert per-header using the original aa_order_A loop
+  # but use concat_msa_aa_H keyed by accession — we need per-header AA alignments.
+  # Since we concatenated per-accession, we need to track per-header AA strings separately.
+  # Let's build a per-header AA alignment hash during the feature loop above.
+
+  # Reset and redo: build per-header AA MSA hash
+  my %msa_aa_H = (); # header => per-feature AA alignment string
+  %concat_nt_H = (); # reset
+  foreach my $acc (@accn_order_A) { $concat_nt_H{$acc} = ""; }
+
+  # We need to redo the per-feature MSA building to capture per-header strings.
+  # But the core/ins arrays were computed in the feature loop above and are now out of scope.
+  # To avoid recomputation, store per-header AA alignment during the feature loop.
+  # Since we already concatenated into concat_msa_aa_H by accession, we can split it back
+  # using the per-feature MSA lengths.
+
+  # Compute per-feature MSA lengths from concat_rf
+  my @fk_aa_msa_len_A = ();
+  my $rf_offset = 0;
+  foreach my $fk (@fkey_order) {
+    my $anc_seq = $aa_seq_H{$anchor_header_H{$fk}};
+    my $anc_len = length($anc_seq);
+    # The per-feature AA MSA length = anchor_len + sum of insert columns for that feature
+    # We can measure it from concat_rf: count chars from rf_offset until we've seen anc_len non-dot chars
+    my $fk_msa_len = 0;
+    my $rf_nongap = 0;
+    my $pos = $rf_offset;
+    while($rf_nongap < $anc_len && $pos < length($concat_rf)) {
+      if(substr($concat_rf, $pos, 1) ne ".") {
+        $rf_nongap++;
+      }
+      $fk_msa_len++;
+      $pos++;
+    }
+    # Also count any trailing insert columns
+    while($pos < length($concat_rf) && substr($concat_rf, $pos, 1) eq ".") {
+      # Only if these dots belong to this feature (before next feature's RF chars)
+      # Actually, trailing inserts after last anchor position belong to this feature
+      # But leading inserts of next feature also show as dots. We can't distinguish.
+      # Safer: use the known fk_msa_len from the feature loop. Let's store it.
+      last; # Don't count — the insert-after-last was already counted in the feature loop
+    }
+    push(@fk_aa_msa_len_A, $fk_msa_len);
+    $rf_offset = $pos;
+  }
+
+  # Now extract per-header AA alignments and backconvert
+  foreach my $fk_idx (0..$#fkey_order) {
+    my $fk = $fkey_order[$fk_idx];
+    my @fk_headers = @{$fkey_seqs_A{$fk}};
+    my $fk_msa_len = $fk_aa_msa_len_A[$fk_idx];
+    my $fk_aa_offset = 0;
+    for(my $i = 0; $i < $fk_idx; $i++) { $fk_aa_offset += $fk_aa_msa_len_A[$i]; }
+
+    my $fk_max_n5 = 0;
+    my $fk_max_n3 = 0;
+    foreach my $h (@fk_headers) {
+      my $n5 = $map_H{$h}{"n5"};
+      my $n3 = $map_H{$h}{"n3"};
+      if($n5 > $fk_max_n5) { $fk_max_n5 = $n5; }
+      if($n3 > $fk_max_n3) { $fk_max_n3 = $n3; }
+    }
+
+    foreach my $h (@fk_headers) {
+      my $acc = ($h =~ /^([^:]+):/) ? $1 : $h;
+      my $aa_aln = substr($concat_msa_aa_H{$acc}, $fk_aa_offset, $fk_msa_len);
+
+      my $source = $map_H{$h}{"source"};
+      my $cds_nt = $cds_nt_H{$source};
+      my $n5 = $map_H{$h}{"n5"};
+      my $n3 = $map_H{$h}{"n3"};
+
+      my $prefix_nt = ($n5 > 0) ? substr($cds_nt, 0, $n5) : "";
+      my $suffix_nt = ($n3 > 0) ? substr($cds_nt, length($cds_nt) - $n3, $n3) : "";
+      my $orf_nt_len = length($cds_nt) - $n5 - $n3;
+      my $orf_nt = substr($cds_nt, $n5, $orf_nt_len);
+
+      my $nt_aln = "";
+      my $nt_pos = 0;
+      my @aa_char_A = split(//, $aa_aln);
+      foreach my $aa_char (@aa_char_A) {
+        if($aa_char eq "-") {
+          $nt_aln .= "---";
+        }
+        else {
+          if(($nt_pos + 3) > length($orf_nt)) {
+            die "ERROR, unable to backconvert AA MSA for $h: insufficient nucleotides in ORF segment";
+          }
+          $nt_aln .= substr($orf_nt, $nt_pos, 3);
+          $nt_pos += 3;
+        }
+      }
+
+      my $prefix_pad = ($fk_max_n5 > $n5) ? ("-" x ($fk_max_n5 - $n5)) : "";
+      my $suffix_pad = ($fk_max_n3 > $n3) ? ("-" x ($fk_max_n3 - $n3)) : "";
+      $concat_nt_H{$acc} .= $prefix_pad . $prefix_nt . $nt_aln . $suffix_nt . $suffix_pad;
+    }
+  }
+
+  # Write concatenated NT MSA FASTA (one entry per accession, with header = accn:all_coords)
   open(my $mnt_fh, ">", $msa_nt_fa_file) || die "ERROR, unable to write $msa_nt_fa_file: $!";
   my $n_nt = 0;
-  foreach my $h (@aa_order_A) {
-    if(! exists $map_H{$h}) {
-      die "ERROR, unable to find AA->CDS mapping row for $h in $map_tsv_file";
-    }
-    my $source = $map_H{$h}{"source"};
-    if(! exists $cds_nt_H{$source}) {
-      die "ERROR, unable to find CDS nt sequence for source $source in $cds_nt_fa_file";
-    }
-    my $cds_nt = $cds_nt_H{$source};
-    my $n5 = $map_H{$h}{"n5"};
-    my $n3 = $map_H{$h}{"n3"};
-
-    if(($n5 < 0) || ($n3 < 0)) {
-      die "ERROR, invalid negative untranslated flank lengths for $h: n5=$n5 n3=$n3";
-    }
-    if(($n5 + $n3) > length($cds_nt)) {
-      die "ERROR, invalid untranslated flank lengths for $h: n5+n3 exceeds CDS nt length";
-    }
-
-    my $prefix_nt = ($n5 > 0) ? substr($cds_nt, 0, $n5) : "";
-    my $suffix_nt = ($n3 > 0) ? substr($cds_nt, length($cds_nt) - $n3, $n3) : "";
-    my $orf_nt_len = length($cds_nt) - $n5 - $n3;
-    if($orf_nt_len < 0) {
-      die "ERROR, invalid CDS map values for $h: cds_nt_len=" . length($cds_nt) . " n5=$n5 n3=$n3";
-    }
-    my $orf_nt = substr($cds_nt, $n5, $orf_nt_len);
-
-    my $aa_aln = $msa_aa_H{$h};
-    my $nt_aln = "";
-    my $nt_pos = 0;
-    my @aa_char_A = split(//, $aa_aln);
-    foreach my $aa_char (@aa_char_A) {
-      if($aa_char eq "-") {
-        $nt_aln .= "---";
-      }
-      else {
-        if(($nt_pos + 3) > length($orf_nt)) {
-          die "ERROR, unable to backconvert AA MSA for $h: insufficient nucleotides in ORF segment";
-        }
-        $nt_aln .= substr($orf_nt, $nt_pos, 3);
-        $nt_pos += 3;
-      }
-    }
-
-    my $prefix_pad = ($max_n5 > $n5) ? ("-" x ($max_n5 - $n5)) : "";
-    my $suffix_pad = ($max_n3 > $n3) ? ("-" x ($max_n3 - $n3)) : "";
-    my $full_nt_aln = $prefix_pad . $prefix_nt . $nt_aln . $suffix_nt . $suffix_pad;
-
-    print $mnt_fh ">" . $h . "\n";
-    print $mnt_fh seq_SqstringAddNewlines($full_nt_aln, 60);
+  foreach my $acc (@accn_order_A) {
+    # Build header that includes all feature coords for this accession
+    my @acc_headers = grep { /^\Q$acc\E:/ } @aa_order_A;
+    my $nt_header = join("+", @acc_headers);
+    print $mnt_fh ">" . $nt_header . "\n";
+    print $mnt_fh seq_SqstringAddNewlines($concat_nt_H{$acc}, 60);
     $n_nt++;
   }
   close($mnt_fh);
 
-  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS MSA/backconvert: wrote protein MSA FASTA to %s\n", $msa_aa_fa_file));
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS MSA/backconvert: %d CDS features, wrote protein MSA to %s\n", scalar(@fkey_order), $msa_aa_fa_file));
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS MSA/backconvert: wrote protein MSA Stockholm (with RF) to %s\n", $msa_aa_stk_file));
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS MSA/backconvert: wrote CDS nucleotide MSA for %d sequences to %s\n", $n_nt, $msa_nt_fa_file));
   return;
@@ -2862,24 +3069,24 @@ sub concatenate_all_blocks {
     $accn_to_cds_seq_H{$accn} = $cds_seqs_H{$cds_name};
   }
 
-  # Read canonical sequence order from tier2 Stockholm, restricted to sequences
-  # present in the CDS MSA. Non-CDS-MSA sequences are excluded from the final
-  # alignment (they would have all-gaps in the CDS block, producing partial sequences).
+  # Load tier2 Stockholm via Bio::Easel::MSA (used for seq order and noncoding extraction)
+  my $tier2_msa = Bio::Easel::MSA->new({ fileLocation => $tier2_stk_file, isDna => 1 });
+
+  # Build RF position map for noncoding block extraction
+  my @rf2a_map_A = ();
+  my @a2rf_map_A = ();
+  $tier2_msa->get_rf_map(\@rf2a_map_A, \@a2rf_map_A, "-.");
+
+  # Read canonical sequence order, restricted to CDS MSA members
   my @seq_names = ();
   my %seen_H = ();
-  open(my $t2fh, $tier2_stk_file) || die "ERROR unable to read tier2 STK $tier2_stk_file: $!";
-  while(my $line = <$t2fh>) {
-    chomp $line;
-    next if($line =~ /^#/ || $line =~ /^\/\// || $line =~ /^\s*$/);
-    if($line =~ /^(\S+)\s+/) {
-      my $name = $1;
-      if(!exists $seen_H{$name} && exists $accn_to_cds_seq_H{$name}) {
-        push @seq_names, $name;
-        $seen_H{$name} = 1;
-      }
+  for(my $i = 0; $i < $tier2_msa->nseq(); $i++) {
+    my $name = $tier2_msa->get_sqname($i);
+    if(!exists $seen_H{$name} && exists $accn_to_cds_seq_H{$name}) {
+      push @seq_names, $name;
+      $seen_H{$name} = 1;
     }
   }
-  close($t2fh);
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: %d sequences in final alignment (restricted to CDS MSA members)\n", scalar(@seq_names)));
 
   # Open output file and write header
@@ -2936,25 +3143,19 @@ sub concatenate_all_blocks {
                                                        $block_start, $block_end, $cds_aln_width));
     }
     elsif($type eq "rna") {
-      # Read RNA Stockholm: sequences, RF, SS_cons
+      # Read RNA Stockholm via Bio::Easel::MSA
       my $rna_stk = $block->{"rna_file"};
-      my %rna_seqs_H = ();
-      my $rna_rf      = "";
-      my $rna_ss_cons = "";
-      open(my $rnafh, $rna_stk) || die "ERROR unable to read RNA STK $rna_stk: $!";
-      while(my $line = <$rnafh>) {
-        chomp $line;
-        next if($line =~ /^# STOCKHOLM/ || $line =~ /^\/\// || $line =~ /^\s*$/);
-        if   ($line =~ /^#=GC\s+RF\s+(\S+)/)      { $rna_rf      .= $1; }
-        elsif($line =~ /^#=GC\s+SS_cons\s+(\S+)/) { $rna_ss_cons .= $1; }
-        elsif($line =~ /^#=G[RS]\s+/)              { next; }  # skip per-seq markup
-        elsif($line =~ /^#/)                        { next; }
-        elsif($line =~ /^(\S+)\s+(\S+)/)           { $rna_seqs_H{$1} .= $2; }
-      }
-      close($rnafh);
+      my $rna_msa = Bio::Easel::MSA->new({ fileLocation => $rna_stk, isDna => 1 });
+      my $rna_aln_width = $rna_msa->alen();
+      my $rna_rf      = $rna_msa->has_rf()      ? $rna_msa->get_rf()      : 'x' x $rna_aln_width;
+      my $rna_ss_cons = $rna_msa->has_ss_cons() ? $rna_msa->get_ss_cons() : '.' x $rna_aln_width;
 
-      my $rna_aln_width = 0;
-      foreach my $v (values %rna_seqs_H) { $rna_aln_width = length($v); last; }
+      # Build name->sequence hash for lookup
+      my %rna_seqs_H = ();
+      for(my $i = 0; $i < $rna_msa->nseq(); $i++) {
+        $rna_seqs_H{$rna_msa->get_sqname($i)} = $rna_msa->get_sqstring_aligned($i);
+      }
+
 
       # Write sequence lines in canonical order
       foreach my $name (@seq_names) {
@@ -2970,34 +3171,28 @@ sub concatenate_all_blocks {
                                                        $block_start, $block_end, $rna_aln_width));
     }
     elsif($type eq "noncoding") {
-      # Extract noncoding region from tier2 as Stockholm (preserves RF and insert columns)
-      my $nc_stk_tmp = $out_stk_file . ".tmp.nc." . $block_start . "_" . $block_end . ".stk";
-      my $cmd_extract = $execs_HR->{"esl-alimask"} . " -t --t-rf " . $tier2_stk_file .
-                        " " . $block_start . ".." . $block_end . " > " . $nc_stk_tmp;
-      utl_RunCommand($cmd_extract, 0, 0, $FH_HR);
-
-      # Parse noncoding Stockholm: sequences and RF (skip tier2 SS_cons)
-      my %nc_seqs_H = ();
-      my $nc_rf      = "";
-      open(my $ncfh, $nc_stk_tmp) || die "ERROR unable to read $nc_stk_tmp: $!";
-      while(my $line = <$ncfh>) {
-        chomp $line;
-        next if($line =~ /^# STOCKHOLM/ || $line =~ /^\/\// || $line =~ /^\s*$/);
-        if   ($line =~ /^#=GC\s+RF\s+(\S+)/)  { $nc_rf .= $1; }
-        elsif($line =~ /^#=GC\s+SS_cons\s+/)  { next; }  # skip tier2 SS_cons
-        elsif($line =~ /^#=G[RS]\s+/)          { next; }  # skip per-seq markup
-        elsif($line =~ /^#/)                    { next; }
-        elsif($line =~ /^(\S+)\s+(\S+)/)       { $nc_seqs_H{$1} .= $2; }
+      # Extract noncoding region from tier2 via Bio::Easel::MSA column_subset
+      # Map RF positions block_start..block_end to alignment columns using rf2a_map
+      # rf2a_map returns 1-based apos; column_subset uses 0-based [0..alen-1]
+      my @useme_A = (0) x $tier2_msa->alen();
+      my $first_acol = $rf2a_map_A[$block_start];  # 1-based
+      my $last_acol  = $rf2a_map_A[$block_end];    # 1-based
+      for(my $a = $first_acol; $a <= $last_acol; $a++) {
+        $useme_A[$a - 1] = 1;  # convert to 0-based
       }
-      close($ncfh);
-      unlink($nc_stk_tmp);
+      my $nc_msa = $tier2_msa->clone_msa();
+      $nc_msa->column_subset(\@useme_A);
+      my $nc_aln_width = $nc_msa->alen();
+      my $nc_rf = $nc_msa->has_rf() ? $nc_msa->get_rf() : 'x' x $nc_aln_width;
 
-      my $nc_aln_width = 0;
-      foreach my $v (values %nc_seqs_H) { $nc_aln_width = length($v); last; }
+      # Build name->sequence hash for lookup
+      my %nc_seqs_H = ();
+      for(my $i = 0; $i < $nc_msa->nseq(); $i++) {
+        $nc_seqs_H{$nc_msa->get_sqname($i)} = $nc_msa->get_sqstring_aligned($i);
+      }
+
+
       if($nc_aln_width == 0) { $nc_aln_width = $block_end - $block_start + 1; }
-
-      # If no RF was found, construct all-x RF of nc_aln_width
-      if($nc_rf eq "") { $nc_rf = 'x' x $nc_aln_width; }
 
       # Write sequence lines in canonical order
       foreach my $name (@seq_names) {
@@ -3017,72 +3212,12 @@ sub concatenate_all_blocks {
   print $outfh "//\n";
   close($outfh);
 
+
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: wrote interleaved Stockholm with RF and SS_cons to %s\n", $out_stk_file));
 
   return;
 }
 
-#################################################################
-# Subroutine : read_stockholm_sequences()
-# Purpose    : Read sequences from a Stockholm file into a hash
-#
-# Arguments  :
-#   $stk_file : Stockholm file path
-#
-# Returns    : hash of sequence_name => aligned_sequence
-#################################################################
-sub read_stockholm_sequences {
-  my ($stk_file) = @_;
-  
-  my %seqs_H = ();
-  open(my $fh, $stk_file) || die "ERROR unable to read Stockholm $stk_file: $!";
-  while(my $line = <$fh>) {
-    chomp $line;
-    # Skip comments, markup, and blank lines
-    if($line =~ /^#/ || $line =~ /^\/\// || $line =~ /^\s*$/) {
-      next;
-    }
-    # Parse sequence line
-    if($line =~ /^(\S+)\s+([A-Za-z\-\.]+)/) {
-      my ($name, $seq) = ($1, $2);
-      if(exists $seqs_H{$name}) {
-        $seqs_H{$name} .= $seq;
-      }
-      else {
-        $seqs_H{$name} = $seq;
-      }
-    }
-  }
-  close($fh);
-  
-  return %seqs_H;
-}
-
-#################################################################
-# Subroutine : read_stockholm_ss_cons()
-# Purpose    : Read SS_cons line from a Stockholm file
-#
-# Arguments  :
-#   $stk_file : Stockholm file path
-#
-# Returns    : SS_cons string (empty string if not found)
-#################################################################
-sub read_stockholm_ss_cons {
-  my ($stk_file) = @_;
-  
-  my $ss_cons = "";
-  open(my $fh, $stk_file) || die "ERROR unable to read Stockholm $stk_file: $!";
-  while(my $line = <$fh>) {
-    chomp $line;
-    # Look for SS_cons line
-    if($line =~ /^#=GC\s+SS_cons\s+([\S]+)/) {
-      $ss_cons .= $1;
-    }
-  }
-  close($fh);
-  
-  return $ss_cons;
-}
 
 #################################################################
 # Subroutine : build_ungapped_ss_cons()
@@ -3108,8 +3243,9 @@ sub build_ungapped_ss_cons {
     my $end   = $rna->{"end"};
     my $stk   = $rna->{"stk_file"};
     
-    # Read SS_cons from RNA alignment
-    my $rna_ss = read_stockholm_ss_cons($stk);
+    # Read SS_cons from RNA alignment via Bio::Easel::MSA
+    my $rna_msa_tmp = Bio::Easel::MSA->new({ fileLocation => $stk, isDna => 1 });
+    my $rna_ss = $rna_msa_tmp->has_ss_cons() ? $rna_msa_tmp->get_ss_cons() : "";
     
     # Strip gap characters ('.') to get ungapped structure
     $rna_ss =~ s/\.//g;
@@ -3140,78 +3276,6 @@ sub build_ungapped_ss_cons {
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: built ungapped SS_cons (%d positions)\n", length($ungapped_ss)));
   
   return $ungapped_ss;
-}
-
-#################################################################
-# Subroutine : gap_and_add_ss_cons()
-# Purpose    : Gap the SS_cons based on reference sequence alignment
-#              and add it to the Stockholm file
-#
-# Arguments  :
-#   $stk_file       : Stockholm file path (to modify)
-#   $ungapped_ss    : ungapped reference-length SS_cons string
-#   $ref_name       : reference sequence name
-#   $FH_HR          : ref to hash of file handles
-#
-# Returns    : void
-#################################################################
-sub gap_and_add_ss_cons {
-  my ($stk_file, $ungapped_ss, $ref_name, $FH_HR) = @_;
-  
-  # Read reference sequence from alignment
-  my %seqs_H = read_stockholm_sequences($stk_file);
-  
-  if(!exists $seqs_H{$ref_name}) {
-    die "ERROR: reference sequence $ref_name not found in alignment $stk_file";
-  }
-  
-  my $ref_aligned = $seqs_H{$ref_name};
-  my $aln_len = length($ref_aligned);
-  
-  # Build gapped SS_cons by following reference alignment
-  my $gapped_ss = "";
-  my $ungapped_pos = 0;
-  
-  for(my $i = 0; $i < $aln_len; $i++) {
-    my $ref_char = substr($ref_aligned, $i, 1);
-    
-    # If reference has a gap, insert gap in SS_cons
-    if($ref_char eq '-' || $ref_char eq '.' || $ref_char eq '~') {
-      $gapped_ss .= '.';
-    }
-    else {
-      # Reference has a base, take next character from ungapped SS_cons
-      if($ungapped_pos < length($ungapped_ss)) {
-        $gapped_ss .= substr($ungapped_ss, $ungapped_pos, 1);
-        $ungapped_pos++;
-      }
-      else {
-        # Should not happen - reference longer than expected
-        $gapped_ss .= ':';
-      }
-    }
-  }
-  
-  # Read entire file content
-  open(my $infh, $stk_file) || die "ERROR unable to read $stk_file: $!";
-  my @lines = <$infh>;
-  close($infh);
-  
-  # Write back with SS_cons line added before //
-  open(my $outfh, ">", $stk_file) || die "ERROR unable to write $stk_file: $!";
-  foreach my $line (@lines) {
-    if($line =~ /^\/\//) {
-      # Add SS_cons before end marker
-      printf $outfh "#=GC %-24s %s\n", "SS_cons", $gapped_ss;
-    }
-    print $outfh $line;
-  }
-  close($outfh);
-  
-  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: added gapped SS_cons to alignment (%d positions, %d gaps)\n", 
-                                                   $aln_len, $aln_len - $ungapped_pos));
-  
-  return;
 }
 
 #################################################################
