@@ -497,7 +497,7 @@ prepare_cds_translation_for_stitching(\%candidate_AH, $stitch_selected_fa_file, 
 #---------------------------------------
 # Step 7: Reference-anchored AA global/global pairwise (ggsearch)
 #---------------------------------------
-run_reference_anchored_pairwise_aa(\%candidate_AH, $centroid_tsv_file, $stitch_cds_aa_fa_file, $stitch_cds_anchor_tsv_file, $stitch_cds_anchor_fa_file, $stitch_cds_pairwise_tsv_file, $do_skip_annotate, opt_Get("--keep", \%opt_HH), opt_Get("-v", \%opt_HH), \%execs_H, \%FH_H);
+run_reference_anchored_pairwise_aa(\%candidate_AH, $centroid_tsv_file, $stitch_cds_aa_fa_file, $stitch_cds_map_tsv_file, $stitch_cds_anchor_tsv_file, $stitch_cds_anchor_fa_file, $stitch_cds_pairwise_tsv_file, $do_skip_annotate, opt_Get("--keep", \%opt_HH), opt_Get("-v", \%opt_HH), \%execs_H, \%FH_H);
 
 #---------------------------------------
 # Step 8a: Build protein MSA from pairwise CIGARs and backconvert CDS nt alignment
@@ -1642,12 +1642,12 @@ sub prepare_cds_translation_for_stitching {
 # Subroutine : run_reference_anchored_pairwise_aa()
 # EPN* 2026-03-19
 # Runs per-CDS-feature pairwise AA alignment. Groups sequences
-# by feature (ref coords after '/' in header), picks one anchor
-# per feature from the centroid, and aligns each query against
-# its own feature's anchor.
+# by model feature index (ftr_idx from translate map), picks one
+# anchor per feature from the centroid, and aligns each query
+# against its own feature's anchor.
 #################################################################
 sub run_reference_anchored_pairwise_aa {
-  my ($candidate_AHR, $centroid_tsv_file, $aa_fa_file, $anchor_tsv_file, $anchor_fa_file, $pairwise_tsv_file, $do_skip_annotate, $do_keep, $do_verbose, $execs_HR, $FH_HR) = @_;
+  my ($candidate_AHR, $centroid_tsv_file, $aa_fa_file, $map_tsv_file, $anchor_tsv_file, $anchor_fa_file, $pairwise_tsv_file, $do_skip_annotate, $do_keep, $do_verbose, $execs_HR, $FH_HR) = @_;
 
   if($do_skip_annotate) {
     ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS pairwise AA: skipped due to --skip-annotate\n"));
@@ -1679,7 +1679,30 @@ sub run_reference_anchored_pairwise_aa {
     close($ctfh);
   }
 
-  # Parse AA sequences and extract feature key (ref coords after '/')
+  # Read translate map to get ftr_idx for each AA header
+  # ftr_idx is the model feature index: same for all sequences annotated
+  # against the same CDS feature, regardless of truncation
+  my %header_to_ftr_idx_H = ();
+  if(-s $map_tsv_file) {
+    open(my $mapfh, "<", $map_tsv_file) || die "ERROR, unable to read translate map $map_tsv_file: $!";
+    my $maphdr = <$mapfh>;  # skip header
+    while(my $line = <$mapfh>) {
+      chomp $line;
+      my @tok_A = split(/\t/, $line);
+      # source (col 0) format: acc__CDSftr_idx/seq_coords
+      # accession (col 1), ftr_idx (col 2), seq_coords (col 3), model_coords (col 4)
+      my $acc = $tok_A[1];
+      my $ftr_idx = $tok_A[2];
+      my $seq_coords = $tok_A[3];
+      my $model_coords = $tok_A[4];
+      # AA header format: acc:seq_coords/model_coords
+      my $aa_header = $acc . ":" . $seq_coords . "/" . $model_coords;
+      $header_to_ftr_idx_H{$aa_header} = $ftr_idx;
+    }
+    close($mapfh);
+  }
+
+  # Parse AA sequences and look up feature key from translate map ftr_idx
   my @aa_A = (); # { header, accession, feature_key, sqstring, len }
   my $cur_h = undef;
   my $cur_sq = "";
@@ -1690,7 +1713,7 @@ sub run_reference_anchored_pairwise_aa {
       if(defined $cur_h) {
         my $acc = $cur_h;
         if($acc =~ /^([^:]+):/) { $acc = $1; }
-        my $fkey = ($cur_h =~ /\/(.+)$/) ? $1 : $cur_h;
+        my $fkey = (exists $header_to_ftr_idx_H{$cur_h}) ? $header_to_ftr_idx_H{$cur_h} : (($cur_h =~ /\/(.+)$/) ? $1 : $cur_h);
         push(@aa_A, { header => $cur_h, accession => $acc, feature_key => $fkey, sqstring => $cur_sq, len => length($cur_sq) });
       }
       $cur_h = $1;
@@ -1705,7 +1728,7 @@ sub run_reference_anchored_pairwise_aa {
   if(defined $cur_h) {
     my $acc = $cur_h;
     if($acc =~ /^([^:]+):/) { $acc = $1; }
-    my $fkey = ($cur_h =~ /\/(.+)$/) ? $1 : $cur_h;
+    my $fkey = (exists $header_to_ftr_idx_H{$cur_h}) ? $header_to_ftr_idx_H{$cur_h} : (($cur_h =~ /\/(.+)$/) ? $1 : $cur_h);
     push(@aa_A, { header => $cur_h, accession => $acc, feature_key => $fkey, sqstring => $cur_sq, len => length($cur_sq) });
   }
   if(scalar(@aa_A) == 0) {
@@ -1874,7 +1897,25 @@ sub build_anchor_projected_cds_msa {
     return;
   }
 
-  # Parse AA sequences, extract feature key (ref coords after '/')
+  # Read translate map to get ftr_idx for each AA header
+  my %header_to_ftr_idx_H = ();
+  if(-s $map_tsv_file) {
+    open(my $mapfh, "<", $map_tsv_file) || die "ERROR, unable to read translate map $map_tsv_file: $!";
+    my $maphdr = <$mapfh>;  # skip header
+    while(my $line = <$mapfh>) {
+      chomp $line;
+      my @tok_A = split(/\t/, $line);
+      my $acc = $tok_A[1];
+      my $ftr_idx = $tok_A[2];
+      my $seq_coords = $tok_A[3];
+      my $model_coords = $tok_A[4];
+      my $aa_header = $acc . ":" . $seq_coords . "/" . $model_coords;
+      $header_to_ftr_idx_H{$aa_header} = $ftr_idx;
+    }
+    close($mapfh);
+  }
+
+  # Parse AA sequences, look up feature key from translate map ftr_idx
   my @aa_order_A = ();
   my %aa_seq_H = ();
   my %aa_fkey_H = (); # header => feature_key
@@ -1887,7 +1928,7 @@ sub build_anchor_projected_cds_msa {
       if(! exists $aa_seq_H{$cur_h}) {
         push(@aa_order_A, $cur_h);
         $aa_seq_H{$cur_h} = "";
-        $aa_fkey_H{$cur_h} = ($cur_h =~ /\/(.+)$/) ? $1 : $cur_h;
+        $aa_fkey_H{$cur_h} = (exists $header_to_ftr_idx_H{$cur_h}) ? $header_to_ftr_idx_H{$cur_h} : (($cur_h =~ /\/(.+)$/) ? $1 : $cur_h);
       }
     }
     elsif(defined $cur_h) {
