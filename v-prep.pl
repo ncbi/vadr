@@ -2722,6 +2722,8 @@ sub run_rna_sstruct_generation {
 # Purpose    : Extract RNA regions from tier2 v-annotate alignment
 #              and realign with custom CMs built in Step 1c.
 #              This implements Step 8b-8d from the updated plan.
+#              Uses Bio::Easel::MSA column_subset() for extraction
+#              and write_single_unaligned_seq() for FASTA output.
 #
 # Arguments  :
 #   $rna_regions_AR     : ref to array of RNA region hashes from Step 1b
@@ -2746,26 +2748,56 @@ sub extract_and_align_rna_regions {
   my $nrna = scalar(@{$rna_regions_AR});
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA alignment: extracting and aligning %d RNA region%s\n", $nrna, ($nrna == 1) ? "" : "s"));
 
+  # Load tier2 Stockholm via Bio::Easel::MSA (read once, clone per region)
+  my $tier2_msa = Bio::Easel::MSA->new({ fileLocation => $tier2_align_stk, isDna => 1 });
+
+  # Build RF position map for column extraction
+  my @rf2a_map_A = ();
+  my @a2rf_map_A = ();
+  $tier2_msa->get_rf_map(\@rf2a_map_A, \@a2rf_map_A, "-.");
+
   # Process each RNA region
   my $idx = 1;
   foreach my $rna (@{$rna_regions_AR}) {
     my $rna_start = $rna->{"start"};
     my $rna_end = $rna->{"end"};
     my $rna_family = $rna->{"cm_family"};
-    
-    # Step 8b: Extract RNA region from tier2 alignment using esl-alimask
-    # Then filter out sequences with length < 1 using esl-alimanip
+
+    # Step 8b: Extract RNA region columns from tier2 alignment via Bio::Easel
+    # Map RF positions to alignment columns and extract with column_subset
     my $rna_extracted_fa = $out_root . ".stitch.rna." . sprintf("%03d", $idx) . ".extracted.fa";
-    my $coords = sprintf("%d..%d", $rna_start, $rna_end);
-    
-    my $cmd_extract = $execs_HR->{"esl-alimask"} . " -t --t-rf " . $tier2_align_stk . " " . $coords .
-                      " | " . $execs_HR->{"esl-alimanip"} . " --informat stockholm --lmin 1 - " .
-                      " | " . $execs_HR->{"esl-reformat"} . " --informat stockholm fasta - > " . $rna_extracted_fa;
-    
-    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA alignment: region %d (%s %d..%d): extracting from tier2 alignment\n", 
+
+    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA alignment: region %d (%s %d..%d): extracting from tier2 alignment\n",
                                                      $idx, $rna_family, $rna_start, $rna_end));
-    utl_RunCommand($cmd_extract, $do_verbose, 0, $FH_HR);
-    
+
+    # Build column mask: rf2a_map is 1-based, column_subset is 0-based
+    my @useme_A = (0) x $tier2_msa->alen();
+    my $first_acol = $rf2a_map_A[$rna_start];  # 1-based
+    my $last_acol  = $rf2a_map_A[$rna_end];    # 1-based
+    for(my $a = $first_acol; $a <= $last_acol; $a++) {
+      $useme_A[$a - 1] = 1;  # convert to 0-based
+    }
+    my $rna_sub_msa = $tier2_msa->clone_msa();
+    $rna_sub_msa->column_subset(\@useme_A);
+
+    # Write unaligned sequences to FASTA, filtering out empty sequences (replaces esl-alimanip --lmin 1)
+    my $nseq_written = 0;
+    unlink($rna_extracted_fa) if(-e $rna_extracted_fa);  # remove if exists so first write is not append
+    for(my $i = 0; $i < $rna_sub_msa->nseq(); $i++) {
+      if($rna_sub_msa->get_sqlen($i) >= 1) {
+        $rna_sub_msa->write_single_unaligned_seq($i, $rna_extracted_fa, ($nseq_written > 0) ? 1 : 0);
+        $nseq_written++;
+      }
+    }
+    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA alignment: region %d (%s): %d of %d sequences have >= 1 residue\n",
+                                                     $idx, $rna_family, $nseq_written, $rna_sub_msa->nseq()));
+
+    if($nseq_written == 0) {
+      ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA alignment: WARNING - no sequences with residues for region %d, skipping\n", $idx));
+      $idx++;
+      next;
+    }
+
     # Step 8c: Align with custom CM from Step 1c
     my $cm_file = $rna_struct_dir . "/rna." . sprintf("%03d", $idx) . ".cm";
     if(! -e $cm_file) {
@@ -2773,25 +2805,25 @@ sub extract_and_align_rna_regions {
       $idx++;
       next;
     }
-    
+
     # Step 8d: Output refined RNA block Stockholm
     my $rna_aligned_stk = $out_root . ".stitch.rna." . sprintf("%03d", $idx) . ".stk";
-    
+
     my $cmd_align = $execs_HR->{"cmalign"} . " --outformat pfam -g " . $cm_file . " " . $rna_extracted_fa .
                     " > " . $rna_aligned_stk;
-    
-    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA alignment: region %d (%s): aligning with custom CM\n", 
+
+    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA alignment: region %d (%s): aligning with custom CM\n",
                                                      $idx, $rna_family));
     utl_RunCommand($cmd_align, $do_verbose, 0, $FH_HR);
-    
-    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA alignment: region %d (%s): wrote aligned Stockholm to %s\n", 
+
+    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA alignment: region %d (%s): wrote aligned Stockholm to %s\n",
                                                      $idx, $rna_family, $rna_aligned_stk));
-    
+
     # Cleanup extracted FASTA if not keeping
     if(! $do_keep) {
       unlink($rna_extracted_fa);
     }
-    
+
     $idx++;
   }
 
