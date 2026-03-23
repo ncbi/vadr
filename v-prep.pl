@@ -512,6 +512,9 @@ build_anchor_projected_cds_msa($stitch_cds_aa_fa_file,
                                $stitch_cds_msa_nt_fa_file,
                                $do_skip_annotate,
                                \%FH_H);
+if(! opt_Get("--keep", \%opt_HH)) {
+  unlink($stitch_cds_msa_aa_fa_file) if(-e $stitch_cds_msa_aa_fa_file);
+}
 
 
 #---------------------------------------
@@ -2978,7 +2981,7 @@ sub stitch_and_refine_final_alignment {
   # Options: --verbose (progress), --sub (sub CM for speed), --tau (convergence), --mxsize (matrix size)
   # Note: -O saves alignment without wrapping, --refine saves wrapped alignment
   my $cmbuild_out = $refined_stk_file . ".cmbuild.out";
-  my $output_stk_file = $out_root . ".vadr.stitch.final.rf.stk";
+  my $output_stk_file = $out_root . ".stk";
   my $cmd_cmbuild = $execs_HR->{"cmbuild"} . " --hand -O " . $output_stk_file . " " .
                     $temp_cm_file . " " . $final_stk_file . " > " . $cmbuild_out;
 
