@@ -307,7 +307,7 @@ ofile_OutputBanner($log_FH, $pkgname, $version, $releasedate, $synopsis, $date, 
 opt_OutputPreamble($log_FH, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 #---------------------------------------
-# Step -1: Optional seed bootstrap via v-build.pl
+# Step 1: Optional seed bootstrap via v-build.pl
 #---------------------------------------
 if($do_seed_bootstrap) {
   my @seed_opt_A = ();
@@ -347,7 +347,7 @@ if(! -e $seed_minfo) {
 }
 
 #---------------------------------------
-# Step 0: Acquire metadata TSV if needed
+# Step 2: Acquire metadata TSV if needed
 #---------------------------------------
 if(opt_IsUsed("--taxid", \%opt_HH)) {
   my $fetch_script = $env_vadr_scripts_dir . "/miniscripts/fetch-seqs-given-taxid.pl";
@@ -374,7 +374,7 @@ if((! defined $meta_tsv) || (! -e $meta_tsv)) {
 }
 
 #---------------------------------------
-# Step 1: Read out the seed model length
+# Step 3: Read out the seed model length
 #---------------------------------------
 my @mdl_info_A = ();
 my %ftr_info_HA = ();
@@ -386,7 +386,7 @@ my $seed_model_len = $mdl_info_A[0]{"length"};
 ofile_OutputString(*STDOUT, 1, sprintf("# Read seed model length: %d\n", $seed_model_len));
 
 #---------------------------------------
-# Step 1b: RNA discovery via cmscan on reference sequence
+# Step 3b: RNA discovery via cmscan on reference sequence
 #---------------------------------------
 my @rna_regions_A = (); # Array of hashes: { start, end, strand, cm_family, cm_accession, score, evalue }
 my $rna_annot_file = $out_root . ".rna_annotation.tsv";
@@ -417,7 +417,7 @@ else {
 }
 
 #---------------------------------------
-# Step 2: Read and filter metadata
+# Step 4: Read and filter metadata
 #---------------------------------------
 
 # %candidate_AH: arrays of hashes [1..nseq-1] grouped by serotype/genotype keys.
@@ -434,7 +434,7 @@ my $max_per_group = opt_Get("--xpergroup", \%opt_HH);
 parse_and_filter_metadata($meta_tsv, $seed_model_len, $max_per_group, \%candidate_AH, \%decision_H, $FH_HR);
 
 #---------------------------------------
-# Step 3: Tier 2 fetch and ambiguity filter
+# Step 5: Tier 2 fetch and ambiguity filter
 #---------------------------------------
 my $tier1_accn_file = $out_root . ".tier1.accn.list";
 my $tier2_fasta_file = $out_root . ".tier2.fa";
@@ -472,7 +472,7 @@ else {
 }
 
 #---------------------------------------
-# Step 4: Tier 3 centroid selection (BLAST all-vs-all)
+# Step 6: Tier 3 centroid selection (BLAST all-vs-all)
 #---------------------------------------
 select_group_centroids_blast(\%candidate_AH, $tier2_fasta_file, $out_root, $centroid_tsv_file, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H, \%decision_H, \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
@@ -483,7 +483,7 @@ if($do_keep) {
 write_decision_summary_report(\%decision_H, $decision_summary_tsv_file, \%ofile_info_HH, $FH_HR);
 
 #---------------------------------------
-# Step 5: Initial piecewise stitching scaffold outputs
+# Step 7: Initial piecewise stitching scaffold outputs
 #---------------------------------------
 my $n_selected = write_stitch_scaffold_outputs(\%candidate_AH, $tier2_fasta_file, \%ftr_info_HA, $model_key, $seed_model_len, $stitch_selected_accn_file, $stitch_selected_fa_file, $stitch_block_plan_file, $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
@@ -495,17 +495,17 @@ if($n_selected == 0) {
 }
 
 #---------------------------------------
-# Step 6: CDS translation prep for protein alignment
+# Step 8: CDS translation prep for protein alignment
 #---------------------------------------
 prepare_cds_translation_for_stitching(\%candidate_AH, $stitch_selected_fa_file, $tier2_ant_outdir, $stitch_cds_nt_fa_file, $stitch_cds_orf_fa_file, $stitch_cds_aa_fa_file, $stitch_cds_map_tsv_file, $do_skip_annotate, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H, \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
 #---------------------------------------
-# Step 7: Reference-anchored AA global/global pairwise (ggsearch)
+# Step 9: Reference-anchored AA global/global pairwise (ggsearch)
 #---------------------------------------
 run_reference_anchored_pairwise_aa(\%candidate_AH, $centroid_tsv_file, $stitch_cds_aa_fa_file, $stitch_cds_map_tsv_file, $stitch_cds_anchor_tsv_file, $stitch_cds_anchor_fa_file, $stitch_cds_pairwise_tsv_file, $do_skip_annotate, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H, \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
 #---------------------------------------
-# Step 8a: Build protein MSA from pairwise CIGARs and backconvert CDS nt alignment
+# Step 10a: Build protein MSA from pairwise CIGARs and backconvert CDS nt alignment
 #---------------------------------------
 build_anchor_projected_cds_msa($stitch_cds_aa_fa_file,
                                $stitch_cds_nt_fa_file,
@@ -520,7 +520,7 @@ build_anchor_projected_cds_msa($stitch_cds_aa_fa_file,
 
 
 #---------------------------------------
-# Step 8b-d: RNA region extraction and alignment refinement
+# Step 10b-d: RNA region extraction and alignment refinement
 #---------------------------------------
 if($do_rna_discovery && (scalar(@rna_regions_A) > 0) && (!$do_skip_annotate)) {
   my $rna_struct_dir = $out_root . ".rna_struct";
@@ -531,7 +531,7 @@ if($do_rna_discovery && (scalar(@rna_regions_A) > 0) && (!$do_skip_annotate)) {
 
 #---------------------------------------
 #---------------------------------------
-# Step 10: Stitch all blocks into final training alignment
+# Step 12: Stitch all blocks into final training alignment
 #---------------------------------------
 my $final_stk_file = $out_root . ".final.stk";
 my $temp_cm_file = $out_root . ".temp.cm";
@@ -551,7 +551,7 @@ stitch_and_refine_final_alignment($stitch_block_plan_file,
                                   $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
 #---------------------------------------
-# Step 11: Generate updated .minfo file with RNA features
+# Step 13: Generate updated .minfo file with RNA features
 #---------------------------------------
 if($do_rna_discovery && !$do_skip_annotate && scalar(@rna_regions_A) > 0) {
   my $updated_minfo_file = $out_root . ".minfo";
@@ -906,7 +906,7 @@ sub run_vannotate_filter_fails {
   my $annot_mkey = $model_key . ".vadr";
 
   # Note: --out_stk and --keep are incompatible in v-annotate.pl, so we only use --out_stk
-  # which outputs the Stockholm alignment we need for Step 6 block extraction
+  # which outputs the Stockholm alignment we need for Step 8 block extraction
   my $cmd = $execs_HR->{"v-annotate.pl"} . " -f --mdir " . $model_dir . " --mkey " . $annot_mkey . " --out_stk " . $fasta_file . " " . $annot_outdir;
   if(! $do_verbose) {
     $cmd .= " > /dev/null";
@@ -958,7 +958,7 @@ sub run_vannotate_filter_fails {
 
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Tier 2 v-annotate filter: kept %d removed %d (removed all accessions in .vadr.fail.list)\n", $nkept, $nremoved));
   
-  # Return path to alignment file for later use in Step 8 RNA refinement
+  # Return path to alignment file for later use in Step 10 RNA refinement
   # v-annotate creates: <outdir>/<outdir>.vadr.<modelkey>.align.stk
   my $align_stk_file = $annot_outdir . "/" . $annot_outdir_tail . ".vadr." . $model_key . ".align.stk";
   return $align_stk_file;
@@ -2498,7 +2498,7 @@ sub run_rna_discovery {
   my $cmalign_tfile = $out_root . ".rna_cmalign.ifile";
   my $cmalign_stk   = $out_root . ".rna_cmalign.stk";
 
-  # Step 1b.1: Run cmscan to identify RNA hits
+  # Step 3b.1: Run cmscan to identify RNA hits
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA discovery: running cmscan on reference sequence with %s\n", $rna_cm_file));
   
   my $cmd = $execs_HR->{"cmscan"} . " --noali --cut_ga --rfam --nohmmonly --tblout " . $cmscan_tblout . " --fmt 2";
@@ -2514,10 +2514,10 @@ sub run_rna_discovery {
   $cmd .= " --oskip --cpu 0 " . $rna_cm_file . " " . $ref_seq_file . " > " . $cmscan_stdout;
   utl_RunCommand($cmd, $do_verbose, 0, $FH_HR);
 
-  # Step 1b.2: Parse cmscan tblout to extract RNA hits
+  # Step 3b.2: Parse cmscan tblout to extract RNA hits
   parse_cmscan_tblout($cmscan_tblout, $seq_len, $rna_regions_AR, $FH_HR);
 
-  # Step 1b.3: Run cmalign --tfile to get full-sequence consensus secondary structure
+  # Step 3b.3: Run cmalign --tfile to get full-sequence consensus secondary structure
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA discovery: running cmalign to generate consensus secondary structure\n"));
   
   # For cmalign, we need to use a single CM from the reference model
@@ -2802,15 +2802,15 @@ sub run_rna_sstruct_generation {
 # Incept     : EPN Mon Mar 16 2026
 #
 # Purpose    : Extract RNA regions from tier2 v-annotate alignment
-#              and realign with custom CMs built in Step 1c.
-#              This implements Step 8b-8d from the updated plan.
+#              and realign with custom CMs built in Step 3c.
+#              This implements Step 10b-10d from the updated plan.
 #              Uses Bio::Easel::MSA column_subset() for extraction
 #              and write_single_unaligned_seq() for FASTA output.
 #
 # Arguments  :
-#   $rna_regions_AR     : ref to array of RNA region hashes from Step 1b
+#   $rna_regions_AR     : ref to array of RNA region hashes from Step 3b
 #   $tier2_align_stk    : path to tier2 v-annotate Stockholm alignment 
-#   $rna_struct_dir     : directory with CM files from Step 1c (rna.001.cm, etc)
+#   $rna_struct_dir     : directory with CM files from Step 3c (rna.001.cm, etc)
 #   $out_root           : output file root path
 #   $do_keep            : keep intermediate files
 #   $do_verbose         : verbose output
@@ -2845,7 +2845,7 @@ sub extract_and_align_rna_regions {
     my $rna_end = $rna->{"end"};
     my $rna_family = $rna->{"cm_family"};
 
-    # Step 8b: Extract RNA region columns from tier2 alignment via Bio::Easel
+    # Step 10b: Extract RNA region columns from tier2 alignment via Bio::Easel
     # Map RF positions to alignment columns and extract with column_subset
     my $rna_extracted_fa = $out_root . ".rna." . sprintf("%03d", $idx) . ".extracted.fa";
 
@@ -2880,7 +2880,7 @@ sub extract_and_align_rna_regions {
       next;
     }
 
-    # Step 8c: Align with custom CM from Step 1c
+    # Step 10c: Align with custom CM from Step 3c
     my $cm_file = $rna_struct_dir . "/rna." . sprintf("%03d", $idx) . ".cm";
     if(! -e $cm_file) {
       ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA alignment: WARNING - CM not found for region %d, skipping\n", $idx));
@@ -2888,7 +2888,7 @@ sub extract_and_align_rna_regions {
       next;
     }
 
-    # Step 8d: Output refined RNA block Stockholm
+    # Step 10d: Output refined RNA block Stockholm
     my $rna_aligned_stk = $out_root . ".rna." . sprintf("%03d", $idx) . ".stk";
 
     my $cmd_align = $execs_HR->{"cmalign"} . " --outformat pfam -g " . $cm_file . " " . $rna_extracted_fa .
