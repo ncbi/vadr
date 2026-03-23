@@ -443,19 +443,19 @@ my $tier2_ant_outdir = $out_root . ".tier2.annot";
 my $centroid_tsv_file = $out_root . ".centroid.tsv";
 my $decision_tsv_file = $out_root . ".filter.seq.tsv";
 my $decision_summary_tsv_file = $out_root . ".filter.sum.tsv";
-my $stitch_selected_accn_file = $out_root . ".stitch.selected.accn.list";
-my $stitch_selected_fa_file   = $out_root . ".stitch.selected.fa";
-my $stitch_block_plan_file    = $out_root . ".stitch.block_plan.tsv";
-my $stitch_cds_nt_fa_file     = $out_root . ".stitch.cds.nt.fa";
-my $stitch_cds_orf_fa_file    = $out_root . ".stitch.cds.orf.fa";
-my $stitch_cds_aa_fa_file     = $out_root . ".stitch.cds.aa.fa";
-my $stitch_cds_map_tsv_file   = $out_root . ".stitch.cds.translate_map.tsv";
-my $stitch_cds_anchor_tsv_file = $out_root . ".stitch.cds.anchor.tsv";
-my $stitch_cds_anchor_fa_file  = $out_root . ".stitch.cds.anchor.fa";
-my $stitch_cds_pairwise_tsv_file = $out_root . ".stitch.cds.pairwise.tsv";
-my $stitch_cds_msa_aa_fa_file = $out_root . ".stitch.cds.msa.aa.afa";
-my $stitch_cds_msa_aa_stk_file = $out_root . ".stitch.cds.msa.aa.stk";
-my $stitch_cds_msa_nt_fa_file = $out_root . ".stitch.cds.msa.nt.afa";
+my $stitch_selected_accn_file = $out_root . ".cds.selected.accn.list";
+my $stitch_selected_fa_file   = $out_root . ".cds.selected.fa";
+my $stitch_block_plan_file    = $out_root . ".block_plan.tsv";
+my $stitch_cds_nt_fa_file     = $out_root . ".cds.nt.fa";
+my $stitch_cds_orf_fa_file    = $out_root . ".cds.orf.fa";
+my $stitch_cds_aa_fa_file     = $out_root . ".cds.aa.fa";
+my $stitch_cds_map_tsv_file   = $out_root . ".cds.translate_map.tsv";
+my $stitch_cds_anchor_tsv_file = $out_root . ".cds.anchor.tsv";
+my $stitch_cds_anchor_fa_file  = $out_root . ".cds.anchor.fa";
+my $stitch_cds_pairwise_tsv_file = $out_root . ".cds.pairwise.tsv";
+my $stitch_cds_msa_aa_fa_file = $out_root . ".cds.msa.aa.afa";
+my $stitch_cds_msa_aa_stk_file = $out_root . ".cds.msa.aa.stk";
+my $stitch_cds_msa_nt_fa_file = $out_root . ".cds.msa.nt.afa";
 my $rna_annotation_file       = $out_root . ".rna_annotation.tsv";
 
 write_accession_list_from_candidates(\%candidate_AH, $tier1_accn_file, $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
@@ -533,8 +533,8 @@ if($do_rna_discovery && (scalar(@rna_regions_A) > 0) && (!$do_skip_annotate)) {
 #---------------------------------------
 # Step 10: Stitch all blocks into final training alignment
 #---------------------------------------
-my $final_stk_file = $out_root . ".stitch.final.stk";
-my $temp_cm_file = $out_root . ".stitch.temp.cm";
+my $final_stk_file = $out_root . ".final.stk";
+my $temp_cm_file = $out_root . ".temp.cm";
 
 stitch_and_refine_final_alignment($stitch_block_plan_file,
                                   $rna_annotation_file,
@@ -1368,7 +1368,7 @@ sub write_stitch_scaffold_outputs {
     }
   }
 
-  open(my $bpfh, ">", $block_plan_file) || die "ERROR, unable to write stitch block plan $block_plan_file: $!";
+  open(my $bpfh, ">", $block_plan_file) || die "ERROR, unable to write block plan $block_plan_file: $!";
   print $bpfh join("\t", "block_idx", "block_type", "nt_start", "nt_end", "nt_len", "source", "feature_type", "feature_count", "coords") . "\n";
 
   my $blk_idx = 0;
@@ -1394,11 +1394,11 @@ sub write_stitch_scaffold_outputs {
   }
   close($bpfh);
 
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.selected.accn", $selected_accn_file, $do_keep, $do_keep, "list of accessions selected for stitching");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "cds.selected.accn", $selected_accn_file, $do_keep, $do_keep, "list of accessions selected for CDS stitching");
   if(! $do_keep) { push(@{$to_remove_AR}, $selected_accn_file); }
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.selected.fa", $selected_fa_file, $do_keep, $do_keep, "FASTA sequences selected for stitching");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "cds.selected.fa", $selected_fa_file, $do_keep, $do_keep, "FASTA sequences selected for CDS stitching");
   if(! $do_keep) { push(@{$to_remove_AR}, $selected_fa_file); }
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.block.plan", $block_plan_file, $do_keep, $do_keep, "initial stitch block plan table");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "block.plan", $block_plan_file, $do_keep, $do_keep, "genome block plan (coding/noncoding partition)");
   if(! $do_keep) { push(@{$to_remove_AR}, $block_plan_file); }
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch scaffold: wrote %d selected accessions to %s\n", scalar(@sel_acc_A), $selected_accn_file));
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch scaffold: wrote selected FASTA to %s (missing %d accessions)\n", $selected_fa_file, $n_missing));
@@ -1658,10 +1658,10 @@ sub prepare_cds_translation_for_stitching {
   close($aafh);
   close($mapfh);
 
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.cds.nt.fa",  $cds_nt_fa_file, $do_keep, $do_keep, "CDS nucleotide sequences for stitching");
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.cds.orf.fa", $orf_fa_file,    $do_keep, $do_keep, "esl-translate ORFs for CDS sequences");
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.cds.aa.fa",  $aa_fa_file,     $do_keep, $do_keep, "selected CDS amino acid sequences for stitching");
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.cds.map.tsv", $map_tsv_file,  $do_keep, $do_keep, "CDS coordinate/ORF mapping table for stitching");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "cds.nt.fa",          $cds_nt_fa_file, $do_keep, $do_keep, "CDS nucleotide sequences for stitching");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "cds.orf.fa",         $orf_fa_file,    $do_keep, $do_keep, "esl-translate ORFs for CDS sequences");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "cds.aa.fa",          $aa_fa_file,     $do_keep, $do_keep, "selected CDS amino acid sequences for stitching");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "cds.translate_map.tsv", $map_tsv_file, $do_keep, $do_keep, "CDS coordinate/ORF mapping table for stitching");
   if(! $do_keep) {
     push(@{$to_remove_AR}, $cds_nt_fa_file);
     push(@{$to_remove_AR}, $orf_fa_file);
@@ -1904,9 +1904,9 @@ sub run_reference_anchored_pairwise_aa {
   }
   close($pwfh);
 
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.cds.anchor.tsv",    $anchor_tsv_file,    1,         1,         "CDS anchor sequence selection table");
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.cds.anchor.fa",     $anchor_fa_file,     $do_keep,  $do_keep,  "CDS anchor amino acid sequences");
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.cds.pairwise.tsv",  $pairwise_tsv_file,  1,         1,         "CDS pairwise AA alignment summary table");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "cds.anchor.tsv",    $anchor_tsv_file,    1,         1,         "CDS anchor sequence selection table");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "cds.anchor.fa",     $anchor_fa_file,     $do_keep,  $do_keep,  "CDS anchor amino acid sequences");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "cds.pairwise.tsv",  $pairwise_tsv_file,  1,         1,         "CDS pairwise AA alignment summary table");
   if(! $do_keep) { push(@{$to_remove_AR}, $anchor_fa_file); }
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS pairwise AA: %d CDS features, %d total pairwise alignments\n", scalar(@fkey_order), $pair_idx));
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS pairwise AA: wrote anchor info (%d features) to %s\n", scalar(@fkey_order), $anchor_tsv_file));
@@ -2351,9 +2351,9 @@ sub build_anchor_projected_cds_msa {
   }
   close($mnt_fh);
 
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.cds.msa.aa.afa", $msa_aa_fa_file,  $do_keep, $do_keep, "concatenated CDS protein MSA (aligned FASTA)");
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.cds.msa.aa.stk", $msa_aa_stk_file, 1,        1,        "concatenated CDS protein MSA (Stockholm with RF)");
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.cds.msa.nt.afa", $msa_nt_fa_file,  1,        1,        "concatenated CDS nucleotide MSA (aligned FASTA)");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "cds.msa.aa.afa", $msa_aa_fa_file,  $do_keep, $do_keep, "concatenated CDS protein MSA (aligned FASTA)");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "cds.msa.aa.stk", $msa_aa_stk_file, 1,        1,        "concatenated CDS protein MSA (Stockholm with RF)");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "cds.msa.nt.afa", $msa_nt_fa_file,  1,        1,        "concatenated CDS nucleotide MSA (aligned FASTA)");
   if(! $do_keep) { push(@{$to_remove_AR}, $msa_aa_fa_file); }
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS MSA/backconvert: %d CDS features, wrote protein MSA to %s\n", scalar(@fkey_order), $msa_aa_fa_file));
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS MSA/backconvert: wrote protein MSA Stockholm (with RF) to %s\n", $msa_aa_stk_file));
@@ -2847,7 +2847,7 @@ sub extract_and_align_rna_regions {
 
     # Step 8b: Extract RNA region columns from tier2 alignment via Bio::Easel
     # Map RF positions to alignment columns and extract with column_subset
-    my $rna_extracted_fa = $out_root . ".stitch.rna." . sprintf("%03d", $idx) . ".extracted.fa";
+    my $rna_extracted_fa = $out_root . ".rna." . sprintf("%03d", $idx) . ".extracted.fa";
 
     ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA alignment: region %d (%s %d..%d): extracting from tier2 alignment\n",
                                                      $idx, $rna_family, $rna_start, $rna_end));
@@ -2889,7 +2889,7 @@ sub extract_and_align_rna_regions {
     }
 
     # Step 8d: Output refined RNA block Stockholm
-    my $rna_aligned_stk = $out_root . ".stitch.rna." . sprintf("%03d", $idx) . ".stk";
+    my $rna_aligned_stk = $out_root . ".rna." . sprintf("%03d", $idx) . ".stk";
 
     my $cmd_align = $execs_HR->{"cmalign"} . " --outformat pfam -g " . $cm_file . " " . $rna_extracted_fa .
                     " > " . $rna_aligned_stk;
@@ -2898,8 +2898,8 @@ sub extract_and_align_rna_regions {
                                                      $idx, $rna_family));
     utl_RunCommand($cmd_align, $do_verbose, 0, $FH_HR);
 
-    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.rna." . sprintf("%03d", $idx) . ".stk",          $rna_aligned_stk,  1,        1,        sprintf("RNA region %d (%s) aligned Stockholm", $idx, $rna_family));
-    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.rna." . sprintf("%03d", $idx) . ".extracted.fa", $rna_extracted_fa, $do_keep, $do_keep, sprintf("RNA region %d (%s) extracted sequences", $idx, $rna_family));
+    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "rna." . sprintf("%03d", $idx) . ".stk",          $rna_aligned_stk,  1,        1,        sprintf("RNA region %d (%s) aligned Stockholm", $idx, $rna_family));
+    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "rna." . sprintf("%03d", $idx) . ".extracted.fa", $rna_extracted_fa, $do_keep, $do_keep, sprintf("RNA region %d (%s) extracted sequences", $idx, $rna_family));
     if(! $do_keep) { push(@{$to_remove_AR}, $rna_extracted_fa); }
     ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA alignment: region %d (%s): wrote aligned Stockholm to %s\n",
                                                      $idx, $rna_family, $rna_aligned_stk));
@@ -2973,7 +2973,7 @@ sub stitch_and_refine_final_alignment {
         "end"      => $f[2],
         "strand"   => $f[3],
         "family"   => $f[4],
-        "stk_file" => $out_root . ".stitch.rna." . sprintf("%03d", $rna_idx) . ".stk"
+        "stk_file" => $out_root . ".rna." . sprintf("%03d", $rna_idx) . ".stk"
       });
       $rna_idx++;
     }
@@ -2992,7 +2992,7 @@ sub stitch_and_refine_final_alignment {
 
   # Read anchor accession from anchor TSV (second line, field [1])
   my $anchor_accn = "";
-  my $anchor_tsv_file = $out_root . ".stitch.cds.anchor.tsv";
+  my $anchor_tsv_file = $out_root . ".cds.anchor.tsv";
   open(my $atsvfh, $anchor_tsv_file) || die "ERROR unable to read anchor TSV $anchor_tsv_file: $!";
   my $atsvhdr = <$atsvfh>;  # skip header
   if(my $atsvline = <$atsvfh>) {
@@ -3024,7 +3024,7 @@ sub stitch_and_refine_final_alignment {
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: running cmbuild to add RF annotation (output to %s)\n", $cmbuild_out));
   utl_RunCommand($cmd_cmbuild, 1, 0, $FH_HR);
 
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "final.stk",         $final_stk_file,   $do_keep, $do_keep, "stitched pre-refinement alignment (input to cmbuild)");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "final.stk",         $final_stk_file,   $do_keep, $do_keep, "pre-refinement stitched alignment (input to cmbuild)");
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "final.cmbuild.out", $cmbuild_out,      $do_keep, $do_keep, "cmbuild output for final alignment refinement");
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "out.stk",            $output_stk_file,  1,        1,        "final RF-annotated training alignment");
   if(! $do_keep) {
