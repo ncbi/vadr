@@ -459,7 +459,7 @@ my $stitch_cds_msa_nt_fa_file = $out_root . ".cds.msa.nt.afa";
 my $rna_annotation_file       = $out_root . ".rna_annotation.tsv";
 
 write_accession_list_from_candidates(\%candidate_AH, $tier1_accn_file, $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
-fetch_fasta_from_accession_list($tier1_accn_file, $tier2_fasta_file, $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
+fetch_fasta_from_accession_list($tier1_accn_file, $tier2_fasta_file, $do_keep, \%ofile_info_HH, \@to_remove_A, \%opt_HH, $FH_HR);
 apply_ambiguity_filter_to_candidates(\%candidate_AH, $tier2_fasta_file, $max_ambig_nt, \%decision_H, $FH_HR);
 
 my $tier2_align_stk_file = undef;
@@ -772,7 +772,7 @@ sub write_accession_list_from_candidates {
 #              of accessions (batched).
 #################################################################
 sub fetch_fasta_from_accession_list {
-  my ($accn_file, $fasta_out_file, $do_keep, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
+  my ($accn_file, $fasta_out_file, $do_keep, $ofile_info_HHR, $to_remove_AR, $opt_HHR, $FH_HR) = @_;
 
   my @acc_A = ();
   open(my $ifh, "<", $accn_file) or die "ERROR: unable to read $accn_file: $!";
@@ -782,6 +782,8 @@ sub fetch_fasta_from_accession_list {
     push(@acc_A, $line);
   }
   close($ifh);
+
+  my $api_key = (opt_IsUsed("--api_key", $opt_HHR)) ? opt_Get("--api_key", $opt_HHR) : undef;
 
   open(my $ofh, ">", $fasta_out_file) or die "ERROR: unable to write $fasta_out_file: $!";
   my $batch_size = 200;
@@ -795,6 +797,7 @@ sub fetch_fasta_from_accession_list {
 
     my $url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi" .
               "?db=nuccore&id=$id_str&rettype=fasta&retmode=text";
+    if(defined $api_key) { $url .= "&api_key=$api_key"; }
 
     my $res = get($url);
     if(! defined $res) {
