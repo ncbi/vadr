@@ -441,7 +441,7 @@ my $tier2_fasta_file = $out_root . ".tier2.fa";
 my $max_ambig_nt = opt_Get("--xambig", \%opt_HH);
 my $tier2_ant_outdir = $out_root . ".tier2.annot";
 my $centroid_tsv_file = $out_root . ".centroid.tsv";
-my $decision_tsv_file = $out_root . ".filter.tsv";
+my $decision_tsv_file = $out_root . ".filter.seq.tsv";
 my $decision_summary_tsv_file = $out_root . ".filter.sum.tsv";
 my $stitch_selected_accn_file = $out_root . ".stitch.selected.accn.list";
 my $stitch_selected_fa_file   = $out_root . ".stitch.selected.fa";
@@ -1157,7 +1157,7 @@ sub write_decision_report {
   }
   close($dfh);
 
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "filter.tsv", $out_file, 1, 1, "per-sequence filter status/reason table");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "filter.seq.tsv", $out_file, 1, 1, "per-sequence filter status/reason table");
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Decision report: wrote per-sequence status/reason table to %s\n", $out_file));
   return;
 }
