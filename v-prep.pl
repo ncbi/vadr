@@ -417,7 +417,7 @@ else {
 }
 
 #---------------------------------------
-# Step 4: Read and filter metadata
+# Step 4: Tier 1 metadata filtering
 #---------------------------------------
 
 # %candidate_AH: arrays of hashes [1..nseq-1] grouped by serotype/genotype keys.
@@ -434,7 +434,7 @@ my $max_per_group = opt_Get("--xpergroup", \%opt_HH);
 parse_and_filter_metadata($meta_tsv, $seed_model_len, $max_per_group, \%candidate_AH, \%decision_H, $FH_HR);
 
 #---------------------------------------
-# Step 5: Tier 2 fetch and ambiguity filter
+# Step 5: Tier 2 sequence fetch and filtering
 #---------------------------------------
 my $tier1_accn_file = $out_root . ".tier1.accn.list";
 my $tier2_fasta_file = $out_root . ".tier2.fa";
