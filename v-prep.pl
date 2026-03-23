@@ -427,6 +427,7 @@ else {
 #   isolate  => sequence isolate
 my %candidate_AH = ();
 my %decision_H = ();
+my @to_remove_A = (); # files to remove at end unless --keep
 my $max_per_group = opt_Get("--xpergroup", \%opt_HH);
 parse_and_filter_metadata($meta_tsv, $seed_model_len, $max_per_group, \%candidate_AH, \%decision_H, \%FH_H);
 
@@ -495,11 +496,13 @@ if($n_selected == 0) {
 # Step 6: CDS translation prep for protein alignment
 #---------------------------------------
 prepare_cds_translation_for_stitching(\%candidate_AH, $stitch_selected_fa_file, $tier2_ant_outdir, $stitch_cds_nt_fa_file, $stitch_cds_orf_fa_file, $stitch_cds_aa_fa_file, $stitch_cds_map_tsv_file, $do_skip_annotate, opt_Get("--keep", \%opt_HH), opt_Get("-v", \%opt_HH), \%execs_H, \%FH_H);
+push(@to_remove_A, $stitch_selected_fa_file, $stitch_cds_orf_fa_file);
 
 #---------------------------------------
 # Step 7: Reference-anchored AA global/global pairwise (ggsearch)
 #---------------------------------------
 run_reference_anchored_pairwise_aa(\%candidate_AH, $centroid_tsv_file, $stitch_cds_aa_fa_file, $stitch_cds_map_tsv_file, $stitch_cds_anchor_tsv_file, $stitch_cds_anchor_fa_file, $stitch_cds_pairwise_tsv_file, $do_skip_annotate, opt_Get("--keep", \%opt_HH), opt_Get("-v", \%opt_HH), \%execs_H, \%FH_H);
+push(@to_remove_A, $stitch_cds_anchor_fa_file);
 
 #---------------------------------------
 # Step 8a: Build protein MSA from pairwise CIGARs and backconvert CDS nt alignment
@@ -514,9 +517,7 @@ build_anchor_projected_cds_msa($stitch_cds_aa_fa_file,
                                $stitch_cds_msa_nt_fa_file,
                                $do_skip_annotate,
                                \%FH_H);
-if(! opt_Get("--keep", \%opt_HH)) {
-  unlink($stitch_cds_msa_aa_fa_file) if(-e $stitch_cds_msa_aa_fa_file);
-}
+push(@to_remove_A, $stitch_cds_aa_fa_file, $stitch_cds_nt_fa_file, $stitch_cds_map_tsv_file, $stitch_cds_msa_aa_fa_file);
 
 
 #---------------------------------------
@@ -534,7 +535,6 @@ if($do_rna_discovery && (scalar(@rna_regions_A) > 0) && (!$do_skip_annotate)) {
 # Step 10: Stitch all blocks into final training alignment
 #---------------------------------------
 my $final_stk_file = $out_root . ".stitch.final.stk";
-my $refined_stk_file = $out_root . ".stitch.final.refined.stk";
 my $temp_cm_file = $out_root . ".stitch.temp.cm";
 
 stitch_and_refine_final_alignment($stitch_block_plan_file,
@@ -544,13 +544,13 @@ stitch_and_refine_final_alignment($stitch_block_plan_file,
                                   $out_root,
                                   \@rna_regions_A,
                                   $final_stk_file,
-                                  $refined_stk_file,
                                   $temp_cm_file,
                                   $do_rna_discovery,
                                   $do_skip_annotate,
                                   $seed_model_len,
                                   \%execs_H,
                                   \%FH_H);
+push(@to_remove_A, $final_stk_file);
 
 #---------------------------------------
 # Step 11: Generate updated .minfo file with RNA features
@@ -559,6 +559,10 @@ if($do_rna_discovery && !$do_skip_annotate && scalar(@rna_regions_A) > 0) {
   my $updated_minfo_file = $out_root . ".minfo";
   generate_updated_minfo($seed_minfo, $rna_annotation_file, \@rna_regions_A,
                          $updated_minfo_file, $model_key, \%execs_H, \%FH_H);
+}
+
+if(! opt_Get("--keep", \%opt_HH)) {
+  utl_FileRemoveList(\@to_remove_A, "v-prep.pl", \%opt_HH, \%FH_H);
 }
 
 ofile_OutputString(\*STDOUT, 1, sprintf("All done.\n"));
@@ -2889,7 +2893,6 @@ sub extract_and_align_rna_regions {
 #   $out_root           : output root path
 #   $rna_regions_AR     : ref to array of RNA region hashes
 #   $final_stk_file     : output final stitched Stockholm
-#   $refined_stk_file   : output refined Stockholm from cmbuild
 #   $temp_cm_file       : temporary CM file for cmbuild
 #   $do_rna_discovery   : flag for RNA discovery
 #   $do_skip_annotate   : flag to skip annotation
@@ -2900,8 +2903,8 @@ sub extract_and_align_rna_regions {
 # Returns    : void
 #################################################################
 sub stitch_and_refine_final_alignment {
-  my ($block_plan_file, $rna_annot_file, $tier2_stk_file, $cds_msa_fa_file, $out_root, 
-      $rna_regions_AR, $final_stk_file, $refined_stk_file, $temp_cm_file,
+  my ($block_plan_file, $rna_annot_file, $tier2_stk_file, $cds_msa_fa_file, $out_root,
+      $rna_regions_AR, $final_stk_file, $temp_cm_file,
       $do_rna_discovery, $do_skip_annotate, $seed_model_len, $execs_HR, $FH_HR) = @_;
 
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: merging CDS, RNA, and noncoding blocks\n"));
@@ -2982,7 +2985,7 @@ sub stitch_and_refine_final_alignment {
   # Use SS_cons from concatenated alignment to build structure into the model
   # Options: --verbose (progress), --sub (sub CM for speed), --tau (convergence), --mxsize (matrix size)
   # Note: -O saves alignment without wrapping, --refine saves wrapped alignment
-  my $cmbuild_out = $refined_stk_file . ".cmbuild.out";
+  my $cmbuild_out = $final_stk_file . ".cmbuild.out";
   my $output_stk_file = $out_root . ".stk";
   my $cmd_cmbuild = $execs_HR->{"cmbuild"} . " --hand -O " . $output_stk_file . " " .
                     $temp_cm_file . " " . $final_stk_file . " > " . $cmbuild_out;
