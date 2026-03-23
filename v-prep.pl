@@ -453,9 +453,9 @@ my $stitch_cds_map_tsv_file   = $out_root . ".stitch.cds.translate_map.tsv";
 my $stitch_cds_anchor_tsv_file = $out_root . ".stitch.cds.anchor.tsv";
 my $stitch_cds_anchor_fa_file  = $out_root . ".stitch.cds.anchor.fa";
 my $stitch_cds_pairwise_tsv_file = $out_root . ".stitch.cds.pairwise.tsv";
-my $stitch_cds_msa_aa_fa_file = $out_root . ".stitch.cds.msa.aa.fa";
+my $stitch_cds_msa_aa_fa_file = $out_root . ".stitch.cds.msa.aa.afa";
 my $stitch_cds_msa_aa_stk_file = $out_root . ".stitch.cds.msa.aa.stk";
-my $stitch_cds_msa_nt_fa_file = $out_root . ".stitch.cds.msa.nt.fa";
+my $stitch_cds_msa_nt_fa_file = $out_root . ".stitch.cds.msa.nt.afa";
 my $rna_annotation_file       = $out_root . ".rna_annotation.tsv";
 
 write_accession_list_from_candidates(\%candidate_AH, $tier1_accn_file, $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
@@ -2351,9 +2351,9 @@ sub build_anchor_projected_cds_msa {
   }
   close($mnt_fh);
 
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.cds.msa.aa.fa",  $msa_aa_fa_file,  $do_keep, $do_keep, "concatenated CDS protein MSA (FASTA format)");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.cds.msa.aa.afa", $msa_aa_fa_file,  $do_keep, $do_keep, "concatenated CDS protein MSA (aligned FASTA)");
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.cds.msa.aa.stk", $msa_aa_stk_file, 1,        1,        "concatenated CDS protein MSA (Stockholm with RF)");
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.cds.msa.nt.fa",  $msa_nt_fa_file,  1,        1,        "concatenated CDS nucleotide MSA (FASTA format)");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.cds.msa.nt.afa", $msa_nt_fa_file,  1,        1,        "concatenated CDS nucleotide MSA (aligned FASTA)");
   if(! $do_keep) { push(@{$to_remove_AR}, $msa_aa_fa_file); }
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS MSA/backconvert: %d CDS features, wrote protein MSA to %s\n", scalar(@fkey_order), $msa_aa_fa_file));
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS MSA/backconvert: wrote protein MSA Stockholm (with RF) to %s\n", $msa_aa_stk_file));
