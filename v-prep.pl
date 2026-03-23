@@ -374,7 +374,7 @@ if((! defined $meta_tsv) || (! -e $meta_tsv)) {
 }
 
 #---------------------------------------
-# Step 3: Read out the seed model length
+# Read seed model length
 #---------------------------------------
 my @mdl_info_A = ();
 my %ftr_info_HA = ();
@@ -386,7 +386,7 @@ my $seed_model_len = $mdl_info_A[0]{"length"};
 ofile_OutputString(*STDOUT, 1, sprintf("# Read seed model length: %d\n", $seed_model_len));
 
 #---------------------------------------
-# Step 3b: RNA discovery via cmscan on reference sequence
+# Step 3: RNA discovery via cmscan on reference sequence
 #---------------------------------------
 my @rna_regions_A = (); # Array of hashes: { start, end, strand, cm_family, cm_accession, score, evalue }
 my $rna_annot_file = $out_root . ".rna_annotation.tsv";
@@ -404,7 +404,7 @@ if($do_rna_discovery) {
                     \@rna_regions_A, \$rna_ss_cons, $do_keep, opt_Get("-v", \%opt_HH),
                     \%execs_H, \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
-  # Write RNA annotation output
+  # Step 3b: RNA structure generation via cmalign
   run_rna_sstruct_generation(\@rna_regions_A, $ref_seq_file, $rna_cm_file, $env_vadr_rfam_dir,
                              $out_root, $do_keep, opt_Get("-v", \%opt_HH),
                              \%execs_H, \%ofile_info_HH, $FH_HR);
@@ -505,7 +505,7 @@ prepare_cds_translation_for_stitching(\%candidate_AH, $stitch_selected_fa_file, 
 run_reference_anchored_pairwise_aa(\%candidate_AH, $centroid_tsv_file, $stitch_cds_aa_fa_file, $stitch_cds_map_tsv_file, $stitch_cds_anchor_tsv_file, $stitch_cds_anchor_fa_file, $stitch_cds_pairwise_tsv_file, $do_skip_annotate, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H, \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
 #---------------------------------------
-# Step 10a: Build protein MSA from pairwise CIGARs and backconvert CDS nt alignment
+# Step 10: Build protein MSA from pairwise CIGARs and backconvert CDS nt alignment
 #---------------------------------------
 build_anchor_projected_cds_msa($stitch_cds_aa_fa_file,
                                $stitch_cds_nt_fa_file,
@@ -520,7 +520,7 @@ build_anchor_projected_cds_msa($stitch_cds_aa_fa_file,
 
 
 #---------------------------------------
-# Step 10b-d: RNA region extraction and alignment refinement
+# Step 11: RNA region extraction and alignment refinement
 #---------------------------------------
 if($do_rna_discovery && (scalar(@rna_regions_A) > 0) && (!$do_skip_annotate)) {
   my $rna_struct_dir = $out_root . ".rna_struct";
@@ -2498,7 +2498,7 @@ sub run_rna_discovery {
   my $cmalign_tfile = $out_root . ".rna_cmalign.ifile";
   my $cmalign_stk   = $out_root . ".rna_cmalign.stk";
 
-  # Step 3b.1: Run cmscan to identify RNA hits
+  # Step 3.1: Run cmscan to identify RNA hits
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA discovery: running cmscan on reference sequence with %s\n", $rna_cm_file));
   
   my $cmd = $execs_HR->{"cmscan"} . " --noali --cut_ga --rfam --nohmmonly --tblout " . $cmscan_tblout . " --fmt 2";
@@ -2514,10 +2514,10 @@ sub run_rna_discovery {
   $cmd .= " --oskip --cpu 0 " . $rna_cm_file . " " . $ref_seq_file . " > " . $cmscan_stdout;
   utl_RunCommand($cmd, $do_verbose, 0, $FH_HR);
 
-  # Step 3b.2: Parse cmscan tblout to extract RNA hits
+  # Step 3.2: Parse cmscan tblout to extract RNA hits
   parse_cmscan_tblout($cmscan_tblout, $seq_len, $rna_regions_AR, $FH_HR);
 
-  # Step 3b.3: Run cmalign --tfile to get full-sequence consensus secondary structure
+  # Step 3.3: Run cmalign --tfile to get full-sequence consensus secondary structure
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA discovery: running cmalign to generate consensus secondary structure\n"));
   
   # For cmalign, we need to use a single CM from the reference model
@@ -2802,15 +2802,15 @@ sub run_rna_sstruct_generation {
 # Incept     : EPN Mon Mar 16 2026
 #
 # Purpose    : Extract RNA regions from tier2 v-annotate alignment
-#              and realign with custom CMs built in Step 3c.
-#              This implements Step 10b-10d from the updated plan.
+#              and realign with custom CMs built in Step 3b.
+#              This implements Step 11 from the updated plan.
 #              Uses Bio::Easel::MSA column_subset() for extraction
 #              and write_single_unaligned_seq() for FASTA output.
 #
 # Arguments  :
-#   $rna_regions_AR     : ref to array of RNA region hashes from Step 3b
+#   $rna_regions_AR     : ref to array of RNA region hashes from Step 3
 #   $tier2_align_stk    : path to tier2 v-annotate Stockholm alignment 
-#   $rna_struct_dir     : directory with CM files from Step 3c (rna.001.cm, etc)
+#   $rna_struct_dir     : directory with CM files from Step 3b (rna.001.cm, etc)
 #   $out_root           : output file root path
 #   $do_keep            : keep intermediate files
 #   $do_verbose         : verbose output
@@ -2845,7 +2845,7 @@ sub extract_and_align_rna_regions {
     my $rna_end = $rna->{"end"};
     my $rna_family = $rna->{"cm_family"};
 
-    # Step 10b: Extract RNA region columns from tier2 alignment via Bio::Easel
+    # Step 11: Extract RNA region columns from tier2 alignment via Bio::Easel
     # Map RF positions to alignment columns and extract with column_subset
     my $rna_extracted_fa = $out_root . ".rna." . sprintf("%03d", $idx) . ".extracted.fa";
 
@@ -2880,7 +2880,7 @@ sub extract_and_align_rna_regions {
       next;
     }
 
-    # Step 10c: Align with custom CM from Step 3c
+    # Step 11: Align with custom CM from Step 3b
     my $cm_file = $rna_struct_dir . "/rna." . sprintf("%03d", $idx) . ".cm";
     if(! -e $cm_file) {
       ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA alignment: WARNING - CM not found for region %d, skipping\n", $idx));
@@ -2888,7 +2888,7 @@ sub extract_and_align_rna_regions {
       next;
     }
 
-    # Step 10d: Output refined RNA block Stockholm
+    # Step 11: Output refined RNA block Stockholm
     my $rna_aligned_stk = $out_root . ".rna." . sprintf("%03d", $idx) . ".stk";
 
     my $cmd_align = $execs_HR->{"cmalign"} . " --outformat pfam -g " . $cm_file . " " . $rna_extracted_fa .
