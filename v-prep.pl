@@ -438,8 +438,8 @@ my $tier2_fasta_file = $out_root . ".tier2.fa";
 my $max_ambig_nt = opt_Get("--xambig", \%opt_HH);
 my $tier2_ant_outdir = $out_root . ".tier2.annot";
 my $centroid_tsv_file = $out_root . ".centroid.tsv";
-my $decision_tsv_file = $out_root . ".decision.tsv";
-my $decision_summary_tsv_file = $out_root . ".decision.summary.tsv";
+my $decision_tsv_file = $out_root . ".filter.tsv";
+my $decision_summary_tsv_file = $out_root . ".filter.sum.tsv";
 my $stitch_selected_accn_file = $out_root . ".stitch.selected.accn.list";
 my $stitch_selected_fa_file   = $out_root . ".stitch.selected.fa";
 my $stitch_block_plan_file    = $out_root . ".stitch.block_plan.tsv";
@@ -474,7 +474,9 @@ else {
 select_group_centroids_blast(\%candidate_AH, $tier2_fasta_file, $out_root, $centroid_tsv_file, opt_Get("-v", \%opt_HH), \%execs_H, \%decision_H, \%FH_H);
 
 write_decision_report(\%decision_H, $decision_tsv_file, \%FH_H);
-write_decision_stage_reports(\%decision_H, $out_root . ".decision", \%FH_H);
+if(opt_Get("--keep", \%opt_HH)) {
+  write_decision_stage_reports(\%decision_H, $out_root . ".filter", \%FH_H);
+}
 write_decision_summary_report(\%decision_H, $decision_summary_tsv_file, \%FH_H);
 
 #---------------------------------------
