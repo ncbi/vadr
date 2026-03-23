@@ -289,19 +289,19 @@ my %extra_H    = ();
 ofile_OutputBanner(*STDOUT, $pkgname, $version, $releasedate, $synopsis, $date, \%extra_H);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
-# open the log and command files
-my %ofile_info_HH = (); 
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "log",  $out_root . ".log", 1, 1, "Output printed to screen");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cmd",  $out_root . ".cmd", 1, 1, "List of executed commands");
+# open the log, command, and list files
+my %ofile_info_HH = ();
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "log",  $out_root . ".log",      1, 1, "Output printed to screen");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cmd",  $out_root . ".cmd",      1, 1, "List of executed commands");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "list", $out_root . ".filelist", 1, 1, "List and description of all output files");
+my $FH_HR  = $ofile_info_HH{"FH"};
+my $log_FH = $FH_HR->{"log"};
+my $cmd_FH = $FH_HR->{"cmd"};
 
-# Output early commands to .cmd 
-my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
-foreach $cmd (@early_cmd_A) { 
+# Output early commands to .cmd
+foreach $cmd (@early_cmd_A) {
   print $cmd_FH $cmd . "\n";
 }
-
-my %FH_H = ("log" => $ofile_info_HH{"FH"}{"log"}, "cmd" => $cmd_FH);
-my $log_FH = $FH_H{"log"};
 
 ofile_OutputBanner($log_FH, $pkgname, $version, $releasedate, $synopsis, $date, \%extra_H);
 opt_OutputPreamble($log_FH, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
@@ -339,7 +339,7 @@ if($do_seed_bootstrap) {
   my $seed_accn = opt_Get("--seed-accn", \%opt_HH);
   my $seed_opt_str = join(" ", @seed_opt_A);
   $cmd = $execs_H{"v-build.pl"} . " " . (($seed_opt_str ne "") ? ($seed_opt_str . " ") : "") . $seed_accn . " " . $model_dir;
-  utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, \%FH_H);
+  utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
 }
 
 if(! -e $seed_minfo) {
@@ -364,8 +364,9 @@ if(opt_IsUsed("--taxid", \%opt_HH)) {
   if(! opt_Get("-v", \%opt_HH)) {
     $cmd .= " --quiet";
   }
-  utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, \%FH_H);
+  utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
   $meta_tsv = $fetch_out_prefix . ".tsv";
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "metadata.tsv", $meta_tsv, 1, 1, "sequence metadata fetched from NCBI for taxid");
 }
 
 if((! defined $meta_tsv) || (! -e $meta_tsv)) {
@@ -380,7 +381,7 @@ my %ftr_info_HA = ();
 my @reqd_mdl_keys = ("length");
 my @reqd_ftr_keys = ();
 
-vdr_ModelInfoFileParse($seed_minfo, \@reqd_mdl_keys, \@reqd_ftr_keys, \@mdl_info_A, \%ftr_info_HA, \%FH_H);
+vdr_ModelInfoFileParse($seed_minfo, \@reqd_mdl_keys, \@reqd_ftr_keys, \@mdl_info_A, \%ftr_info_HA, $FH_HR);
 my $seed_model_len = $mdl_info_A[0]{"length"};
 ofile_OutputString(*STDOUT, 1, sprintf("# Read seed model length: %d\n", $seed_model_len));
 
@@ -390,6 +391,8 @@ ofile_OutputString(*STDOUT, 1, sprintf("# Read seed model length: %d\n", $seed_m
 my @rna_regions_A = (); # Array of hashes: { start, end, strand, cm_family, cm_accession, score, evalue }
 my $rna_annot_file = $out_root . ".rna_annotation.tsv";
 my $rna_ss_cons = undef; # Full-length consensus secondary structure string
+my $do_keep = opt_Get("--keep", \%opt_HH);
+my @to_remove_A = (); # files to remove at end unless --keep
 
 if($do_rna_discovery) {
   my $ref_seq_file = $model_dir . "/" . $model_key . ".vadr.fa";
@@ -397,20 +400,20 @@ if($do_rna_discovery) {
     die "ERROR, reference sequence file not found for RNA discovery: $ref_seq_file";
   }
   
-  run_rna_discovery($ref_seq_file, $rna_cm_file, $seed_model_len, $out_root, $env_vadr_rfam_dir, 
-                    \@rna_regions_A, \$rna_ss_cons, opt_Get("--keep", \%opt_HH), opt_Get("-v", \%opt_HH), 
-                    \%execs_H, \%FH_H);
-  
+  run_rna_discovery($ref_seq_file, $rna_cm_file, $seed_model_len, $out_root, $env_vadr_rfam_dir,
+                    \@rna_regions_A, \$rna_ss_cons, $do_keep, opt_Get("-v", \%opt_HH),
+                    \%execs_H, \%ofile_info_HH, \@to_remove_A, $FH_HR);
+
   # Write RNA annotation output
-  run_rna_sstruct_generation(\@rna_regions_A, $ref_seq_file, $rna_cm_file, $env_vadr_rfam_dir, 
-                             $out_root, opt_Get("--keep", \%opt_HH), opt_Get("-v", \%opt_HH), 
-                             \%execs_H, \%FH_H);
+  run_rna_sstruct_generation(\@rna_regions_A, $ref_seq_file, $rna_cm_file, $env_vadr_rfam_dir,
+                             $out_root, $do_keep, opt_Get("-v", \%opt_HH),
+                             \%execs_H, \%ofile_info_HH, $FH_HR);
 
   # Write RNA annotation output (after structure extraction)
-  write_rna_annotation_table(\@rna_regions_A, $rna_annot_file, \%FH_H);
+  write_rna_annotation_table(\@rna_regions_A, $rna_annot_file, \%ofile_info_HH, $FH_HR);
 }
 else {
-  ofile_OutputString($FH_H{"log"}, 1, sprintf("# RNA discovery: skipped due to --skip-rna\n"));
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA discovery: skipped due to --skip-rna\n"));
 }
 
 #---------------------------------------
@@ -427,9 +430,8 @@ else {
 #   isolate  => sequence isolate
 my %candidate_AH = ();
 my %decision_H = ();
-my @to_remove_A = (); # files to remove at end unless --keep
 my $max_per_group = opt_Get("--xpergroup", \%opt_HH);
-parse_and_filter_metadata($meta_tsv, $seed_model_len, $max_per_group, \%candidate_AH, \%decision_H, \%FH_H);
+parse_and_filter_metadata($meta_tsv, $seed_model_len, $max_per_group, \%candidate_AH, \%decision_H, $FH_HR);
 
 #---------------------------------------
 # Step 3: Tier 2 fetch and ambiguity filter
@@ -456,53 +458,51 @@ my $stitch_cds_msa_aa_stk_file = $out_root . ".stitch.cds.msa.aa.stk";
 my $stitch_cds_msa_nt_fa_file = $out_root . ".stitch.cds.msa.nt.fa";
 my $rna_annotation_file       = $out_root . ".rna_annotation.tsv";
 
-write_accession_list_from_candidates(\%candidate_AH, $tier1_accn_file, \%FH_H);
-fetch_fasta_from_accession_list($tier1_accn_file, $tier2_fasta_file, \%FH_H);
-apply_ambiguity_filter_to_candidates(\%candidate_AH, $tier2_fasta_file, $max_ambig_nt, \%decision_H, \%FH_H);
+write_accession_list_from_candidates(\%candidate_AH, $tier1_accn_file, $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
+fetch_fasta_from_accession_list($tier1_accn_file, $tier2_fasta_file, $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
+apply_ambiguity_filter_to_candidates(\%candidate_AH, $tier2_fasta_file, $max_ambig_nt, \%decision_H, $FH_HR);
 
 my $tier2_align_stk_file = undef;
 if($do_skip_annotate) {
-  ofile_OutputString($FH_H{"log"}, 1, sprintf("# Tier 2 v-annotate filter: skipped due to --skip-annotate\n"));
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Tier 2 v-annotate filter: skipped due to --skip-annotate\n"));
   mark_all_remaining_as_selected_for_tier3(\%candidate_AH, \%decision_H);
 }
 else {
-  $tier2_align_stk_file = run_vannotate_filter_fails(\%candidate_AH, $tier2_fasta_file, $tier2_ant_outdir, $model_dir, $model_key, opt_Get("--keep", \%opt_HH), opt_Get("-v", \%opt_HH), \%execs_H, \%decision_H, \%FH_H);
+  $tier2_align_stk_file = run_vannotate_filter_fails(\%candidate_AH, $tier2_fasta_file, $tier2_ant_outdir, $model_dir, $model_key, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H, \%decision_H, $FH_HR);
 }
 
 #---------------------------------------
 # Step 4: Tier 3 centroid selection (BLAST all-vs-all)
 #---------------------------------------
-select_group_centroids_blast(\%candidate_AH, $tier2_fasta_file, $out_root, $centroid_tsv_file, opt_Get("-v", \%opt_HH), \%execs_H, \%decision_H, \%FH_H);
+select_group_centroids_blast(\%candidate_AH, $tier2_fasta_file, $out_root, $centroid_tsv_file, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H, \%decision_H, \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
-write_decision_report(\%decision_H, $decision_tsv_file, \%FH_H);
-if(opt_Get("--keep", \%opt_HH)) {
-  write_decision_stage_reports(\%decision_H, $out_root . ".filter", \%FH_H);
+write_decision_report(\%decision_H, $decision_tsv_file, \%ofile_info_HH, $FH_HR);
+if($do_keep) {
+  write_decision_stage_reports(\%decision_H, $out_root . ".filter", $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
 }
-write_decision_summary_report(\%decision_H, $decision_summary_tsv_file, \%FH_H);
+write_decision_summary_report(\%decision_H, $decision_summary_tsv_file, \%ofile_info_HH, $FH_HR);
 
 #---------------------------------------
 # Step 5: Initial piecewise stitching scaffold outputs
 #---------------------------------------
-my $n_selected = write_stitch_scaffold_outputs(\%candidate_AH, $tier2_fasta_file, \%ftr_info_HA, $model_key, $seed_model_len, $stitch_selected_accn_file, $stitch_selected_fa_file, $stitch_block_plan_file, \%FH_H);
+my $n_selected = write_stitch_scaffold_outputs(\%candidate_AH, $tier2_fasta_file, \%ftr_info_HA, $model_key, $seed_model_len, $stitch_selected_accn_file, $stitch_selected_fa_file, $stitch_block_plan_file, $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
 if($n_selected == 0) {
-  ofile_OutputString($FH_H{"log"}, 1, "#\n# Zero sequences passed all filters. Cannot build profile alignment.\n");
-  ofile_OutputString($FH_H{"log"}, 1, "# Check decision reports for details on why sequences were removed.\n");
-  ofile_OutputString($FH_H{"log"}, 1, "#\n# Exiting with error.\n");
-  ofile_FAIL("ERROR, zero sequences passed all filters, cannot build profile alignment. See $decision_summary_tsv_file for details.", 1, \%FH_H);
+  ofile_OutputString($FH_HR->{"log"}, 1, "#\n# Zero sequences passed all filters. Cannot build profile alignment.\n");
+  ofile_OutputString($FH_HR->{"log"}, 1, "# Check decision reports for details on why sequences were removed.\n");
+  ofile_OutputString($FH_HR->{"log"}, 1, "#\n# Exiting with error.\n");
+  ofile_FAIL("ERROR, zero sequences passed all filters, cannot build profile alignment. See $decision_summary_tsv_file for details.", 1, $FH_HR);
 }
 
 #---------------------------------------
 # Step 6: CDS translation prep for protein alignment
 #---------------------------------------
-prepare_cds_translation_for_stitching(\%candidate_AH, $stitch_selected_fa_file, $tier2_ant_outdir, $stitch_cds_nt_fa_file, $stitch_cds_orf_fa_file, $stitch_cds_aa_fa_file, $stitch_cds_map_tsv_file, $do_skip_annotate, opt_Get("--keep", \%opt_HH), opt_Get("-v", \%opt_HH), \%execs_H, \%FH_H);
-push(@to_remove_A, $stitch_selected_fa_file, $stitch_cds_orf_fa_file);
+prepare_cds_translation_for_stitching(\%candidate_AH, $stitch_selected_fa_file, $tier2_ant_outdir, $stitch_cds_nt_fa_file, $stitch_cds_orf_fa_file, $stitch_cds_aa_fa_file, $stitch_cds_map_tsv_file, $do_skip_annotate, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H, \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
 #---------------------------------------
 # Step 7: Reference-anchored AA global/global pairwise (ggsearch)
 #---------------------------------------
-run_reference_anchored_pairwise_aa(\%candidate_AH, $centroid_tsv_file, $stitch_cds_aa_fa_file, $stitch_cds_map_tsv_file, $stitch_cds_anchor_tsv_file, $stitch_cds_anchor_fa_file, $stitch_cds_pairwise_tsv_file, $do_skip_annotate, opt_Get("--keep", \%opt_HH), opt_Get("-v", \%opt_HH), \%execs_H, \%FH_H);
-push(@to_remove_A, $stitch_cds_anchor_fa_file);
+run_reference_anchored_pairwise_aa(\%candidate_AH, $centroid_tsv_file, $stitch_cds_aa_fa_file, $stitch_cds_map_tsv_file, $stitch_cds_anchor_tsv_file, $stitch_cds_anchor_fa_file, $stitch_cds_pairwise_tsv_file, $do_skip_annotate, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H, \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
 #---------------------------------------
 # Step 8a: Build protein MSA from pairwise CIGARs and backconvert CDS nt alignment
@@ -516,8 +516,7 @@ build_anchor_projected_cds_msa($stitch_cds_aa_fa_file,
                                $stitch_cds_msa_aa_stk_file,
                                $stitch_cds_msa_nt_fa_file,
                                $do_skip_annotate,
-                               \%FH_H);
-push(@to_remove_A, $stitch_cds_aa_fa_file, $stitch_cds_nt_fa_file, $stitch_cds_map_tsv_file, $stitch_cds_msa_aa_fa_file);
+                               $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
 
 #---------------------------------------
@@ -525,9 +524,9 @@ push(@to_remove_A, $stitch_cds_aa_fa_file, $stitch_cds_nt_fa_file, $stitch_cds_m
 #---------------------------------------
 if($do_rna_discovery && (scalar(@rna_regions_A) > 0) && (!$do_skip_annotate)) {
   my $rna_struct_dir = $out_root . ".rna_struct";
-  extract_and_align_rna_regions(\@rna_regions_A, $tier2_align_stk_file, $rna_struct_dir, 
-                                $out_root, opt_Get("--keep", \%opt_HH), opt_Get("-v", \%opt_HH), 
-                                \%execs_H, \%FH_H);
+  extract_and_align_rna_regions(\@rna_regions_A, $tier2_align_stk_file, $rna_struct_dir,
+                                $out_root, $do_keep, opt_Get("-v", \%opt_HH),
+                                \%execs_H, \%ofile_info_HH, \@to_remove_A, $FH_HR);
 }
 
 #---------------------------------------
@@ -549,8 +548,7 @@ stitch_and_refine_final_alignment($stitch_block_plan_file,
                                   $do_skip_annotate,
                                   $seed_model_len,
                                   \%execs_H,
-                                  \%FH_H);
-push(@to_remove_A, $final_stk_file);
+                                  $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
 #---------------------------------------
 # Step 11: Generate updated .minfo file with RNA features
@@ -558,11 +556,11 @@ push(@to_remove_A, $final_stk_file);
 if($do_rna_discovery && !$do_skip_annotate && scalar(@rna_regions_A) > 0) {
   my $updated_minfo_file = $out_root . ".minfo";
   generate_updated_minfo($seed_minfo, $rna_annotation_file, \@rna_regions_A,
-                         $updated_minfo_file, $model_key, \%execs_H, \%FH_H);
+                         $updated_minfo_file, $model_key, \%execs_H, \%ofile_info_HH, $FH_HR);
 }
 
-if(! opt_Get("--keep", \%opt_HH)) {
-  utl_FileRemoveList(\@to_remove_A, "v-prep.pl", \%opt_HH, \%FH_H);
+if(! $do_keep) {
+  utl_FileRemoveList(\@to_remove_A, "v-prep.pl", \%opt_HH, $FH_HR);
 }
 
 ofile_OutputString(\*STDOUT, 1, sprintf("All done.\n"));
@@ -747,7 +745,7 @@ sub parse_and_filter_metadata {
 #              selected candidates across all groups.
 #################################################################
 sub write_accession_list_from_candidates {
-  my ($candidate_AHR, $accn_file, $FH_HR) = @_;
+  my ($candidate_AHR, $accn_file, $do_keep, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
 
   open(my $afh, ">", $accn_file) or die "ERROR: unable to write $accn_file: $!";
   my $nacc = 0;
@@ -760,6 +758,8 @@ sub write_accession_list_from_candidates {
   }
   close($afh);
 
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "tier1.accn", $accn_file, $do_keep, $do_keep, "list of accessions selected for tier-2 download");
+  if(! $do_keep) { push(@{$to_remove_AR}, $accn_file); }
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Tier 2 prep: wrote %d accessions to %s\n", $nacc, $accn_file));
   return;
 }
@@ -772,7 +772,7 @@ sub write_accession_list_from_candidates {
 #              of accessions (batched).
 #################################################################
 sub fetch_fasta_from_accession_list {
-  my ($accn_file, $fasta_out_file, $FH_HR) = @_;
+  my ($accn_file, $fasta_out_file, $do_keep, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
 
   my @acc_A = ();
   open(my $ifh, "<", $accn_file) or die "ERROR: unable to read $accn_file: $!";
@@ -807,6 +807,8 @@ sub fetch_fasta_from_accession_list {
   }
   close($ofh);
 
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "tier2.fa", $fasta_out_file, $do_keep, $do_keep, "FASTA sequences downloaded for tier-2 candidates");
+  if(! $do_keep) { push(@{$to_remove_AR}, $fasta_out_file); }
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Tier 2 fetch: downloaded FASTA for %d accessions in %d batches to %s\n", scalar(@acc_A), $nfetched_batches, $fasta_out_file));
   return;
 }
@@ -970,7 +972,7 @@ sub run_vannotate_filter_fails {
 #              sequence using average all-vs-all blastn pident.
 #################################################################
 sub select_group_centroids_blast {
-  my ($candidate_AHR, $fasta_file, $out_root, $centroid_tsv_file, $do_verbose, $execs_HR, $decision_HR, $FH_HR) = @_;
+  my ($candidate_AHR, $fasta_file, $out_root, $centroid_tsv_file, $do_keep, $do_verbose, $execs_HR, $decision_HR, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
 
   my %seq_H = ();
   my $cur_acc = undef;
@@ -1089,10 +1091,19 @@ sub select_group_centroids_blast {
       }
     }
     $candidate_AHR->{$group} = \@new_group_A;
+    if(! $do_keep) {
+      push(@{$to_remove_AR}, $group_fa);
+      push(@{$to_remove_AR}, $group_blast);
+      foreach my $ext ("nhr", "nin", "nsq", "nsi", "nsd", "not", "ntf", "nto", "ndb", "nos") {
+        my $db_file = $group_db . "." . $ext;
+        if(-e $db_file) { push(@{$to_remove_AR}, $db_file); }
+      }
+    }
     $n_groups_with_centroid++;
   }
   close($ctfh);
 
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "centroid.tsv", $centroid_tsv_file, 1, 1, "per-group centroid selection table (blastn average pident)");
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Tier 3 centroid selection (blast): selected 1 sequence in each of %d groups (%d empty groups) and wrote %s\n", $n_groups_with_centroid, $n_groups_empty, $centroid_tsv_file));
   return;
 }
@@ -1118,7 +1129,7 @@ sub mark_all_remaining_as_selected_for_tier3 {
 # Subroutine : write_decision_report()
 #################################################################
 sub write_decision_report {
-  my ($decision_HR, $out_file, $FH_HR) = @_;
+  my ($decision_HR, $out_file, $ofile_info_HHR, $FH_HR) = @_;
 
   open(my $dfh, ">", $out_file) || die "ERROR, unable to write decision report $out_file: $!";
   print $dfh join("\t", "accession", "group_key", "serotype", "genotype", "isolate", "create_date", "seq_length", "status", "reason_code", "reason_detail", "stage_last_seen", "n_ambig_nt", "ambig_threshold") . "\n";
@@ -1146,6 +1157,7 @@ sub write_decision_report {
   }
   close($dfh);
 
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "filter.tsv", $out_file, 1, 1, "per-sequence filter status/reason table");
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Decision report: wrote per-sequence status/reason table to %s\n", $out_file));
   return;
 }
@@ -1154,7 +1166,7 @@ sub write_decision_report {
 # Subroutine : write_decision_stage_reports()
 #################################################################
 sub write_decision_stage_reports {
-  my ($decision_HR, $out_prefix, $FH_HR) = @_;
+  my ($decision_HR, $out_prefix, $do_keep, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
 
   my %stage_AH = ();
   foreach my $acc (keys %{$decision_HR}) {
@@ -1193,6 +1205,8 @@ sub write_decision_stage_reports {
       print $sfh join("\t", @f_A) . "\n";
     }
     close($sfh);
+    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "filter.stage.$stage_safe", $out_file, $do_keep, $do_keep, "per-stage filter status/reason table for stage $stage");
+    if(! $do_keep) { push(@{$to_remove_AR}, $out_file); }
     $nfiles++;
   }
 
@@ -1204,7 +1218,7 @@ sub write_decision_stage_reports {
 # Subroutine : write_decision_summary_report()
 #################################################################
 sub write_decision_summary_report {
-  my ($decision_HR, $out_file, $FH_HR) = @_;
+  my ($decision_HR, $out_file, $ofile_info_HHR, $FH_HR) = @_;
 
   my %count_H = (); # key: status\treason_code\tstage_last_seen\tgroup_key
   foreach my $acc (keys %{$decision_HR}) {
@@ -1224,6 +1238,7 @@ sub write_decision_summary_report {
   }
   close($sfh);
 
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "filter.sum.tsv", $out_file, 1, 1, "filter status/reason summary counts table");
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Decision summary: wrote grouped status/reason/stage counts to %s\n", $out_file));
   return;
 }
@@ -1232,7 +1247,7 @@ sub write_decision_summary_report {
 # Subroutine : write_stitch_scaffold_outputs()
 #################################################################
 sub write_stitch_scaffold_outputs {
-  my ($candidate_AHR, $tier2_fasta_file, $ftr_info_HAR, $model_key, $seed_model_len, $selected_accn_file, $selected_fa_file, $block_plan_file, $FH_HR) = @_;
+  my ($candidate_AHR, $tier2_fasta_file, $ftr_info_HAR, $model_key, $seed_model_len, $selected_accn_file, $selected_fa_file, $block_plan_file, $do_keep, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
 
   my @sel_acc_A = ();
   foreach my $group (sort keys %{$candidate_AHR}) {
@@ -1379,6 +1394,12 @@ sub write_stitch_scaffold_outputs {
   }
   close($bpfh);
 
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.selected.accn", $selected_accn_file, $do_keep, $do_keep, "list of accessions selected for stitching");
+  if(! $do_keep) { push(@{$to_remove_AR}, $selected_accn_file); }
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.selected.fa", $selected_fa_file, $do_keep, $do_keep, "FASTA sequences selected for stitching");
+  if(! $do_keep) { push(@{$to_remove_AR}, $selected_fa_file); }
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.block.plan", $block_plan_file, $do_keep, $do_keep, "initial stitch block plan table");
+  if(! $do_keep) { push(@{$to_remove_AR}, $block_plan_file); }
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch scaffold: wrote %d selected accessions to %s\n", scalar(@sel_acc_A), $selected_accn_file));
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch scaffold: wrote selected FASTA to %s (missing %d accessions)\n", $selected_fa_file, $n_missing));
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch scaffold: wrote initial block plan (%d blocks) to %s\n", $blk_idx, $block_plan_file));
@@ -1415,7 +1436,7 @@ sub parse_coords_bounds {
 # Subroutine : prepare_cds_translation_for_stitching()
 #################################################################
 sub prepare_cds_translation_for_stitching {
-  my ($candidate_AHR, $selected_fa_file, $annot_outdir, $cds_nt_fa_file, $orf_fa_file, $aa_fa_file, $map_tsv_file, $do_skip_annotate, $do_keep, $do_verbose, $execs_HR, $FH_HR) = @_;
+  my ($candidate_AHR, $selected_fa_file, $annot_outdir, $cds_nt_fa_file, $orf_fa_file, $aa_fa_file, $map_tsv_file, $do_skip_annotate, $do_keep, $do_verbose, $execs_HR, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
 
   if($do_skip_annotate) {
     ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS translation prep: skipped due to --skip-annotate (predicted CDS coords unavailable)\n"));
@@ -1637,10 +1658,16 @@ sub prepare_cds_translation_for_stitching {
   close($aafh);
   close($mapfh);
 
-  if((! $do_keep) && ($n_written > 0)) {
-    # keep ORF file for now as a useful debug artifact if needed in follow-on steps
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.cds.nt.fa",  $cds_nt_fa_file, $do_keep, $do_keep, "CDS nucleotide sequences for stitching");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.cds.orf.fa", $orf_fa_file,    $do_keep, $do_keep, "esl-translate ORFs for CDS sequences");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.cds.aa.fa",  $aa_fa_file,     $do_keep, $do_keep, "selected CDS amino acid sequences for stitching");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.cds.map.tsv", $map_tsv_file,  $do_keep, $do_keep, "CDS coordinate/ORF mapping table for stitching");
+  if(! $do_keep) {
+    push(@{$to_remove_AR}, $cds_nt_fa_file);
+    push(@{$to_remove_AR}, $orf_fa_file);
+    push(@{$to_remove_AR}, $aa_fa_file);
+    push(@{$to_remove_AR}, $map_tsv_file);
   }
-
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS translation prep: wrote %d CDS nt sequences to %s\n", $n_cds, $cds_nt_fa_file));
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS translation prep: wrote esl-translate ORFs to %s\n", $orf_fa_file));
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS translation prep: selected one ORF for %d CDS and wrote %s and %s\n", $n_written, $aa_fa_file, $map_tsv_file));
@@ -1656,7 +1683,7 @@ sub prepare_cds_translation_for_stitching {
 # against its own feature's anchor.
 #################################################################
 sub run_reference_anchored_pairwise_aa {
-  my ($candidate_AHR, $centroid_tsv_file, $aa_fa_file, $map_tsv_file, $anchor_tsv_file, $anchor_fa_file, $pairwise_tsv_file, $do_skip_annotate, $do_keep, $do_verbose, $execs_HR, $FH_HR) = @_;
+  my ($candidate_AHR, $centroid_tsv_file, $aa_fa_file, $map_tsv_file, $anchor_tsv_file, $anchor_fa_file, $pairwise_tsv_file, $do_skip_annotate, $do_keep, $do_verbose, $execs_HR, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
 
   if($do_skip_annotate) {
     ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS pairwise AA: skipped due to --skip-annotate\n"));
@@ -1871,16 +1898,16 @@ sub run_reference_anchored_pairwise_aa {
                               $send,
                               $aln_code) . "\n";
 
-      if(! $do_keep) {
-        unlink $qfa_file;
-      }
+      if(! $do_keep) { push(@{$to_remove_AR}, $qfa_file); }
     }
-    if(! $do_keep) {
-      unlink $fk_anchor_fa;
-    }
+    if(! $do_keep) { push(@{$to_remove_AR}, $fk_anchor_fa); }
   }
   close($pwfh);
 
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.cds.anchor.tsv",    $anchor_tsv_file,    1,         1,         "CDS anchor sequence selection table");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.cds.anchor.fa",     $anchor_fa_file,     $do_keep,  $do_keep,  "CDS anchor amino acid sequences");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.cds.pairwise.tsv",  $pairwise_tsv_file,  1,         1,         "CDS pairwise AA alignment summary table");
+  if(! $do_keep) { push(@{$to_remove_AR}, $anchor_fa_file); }
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS pairwise AA: %d CDS features, %d total pairwise alignments\n", scalar(@fkey_order), $pair_idx));
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS pairwise AA: wrote anchor info (%d features) to %s\n", scalar(@fkey_order), $anchor_tsv_file));
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS pairwise AA: wrote pairwise summary to %s\n", $pairwise_tsv_file));
@@ -1895,7 +1922,7 @@ sub run_reference_anchored_pairwise_aa {
 # anchor. Backconverts to nucleotide MSA.
 #################################################################
 sub build_anchor_projected_cds_msa {
-  my ($aa_fa_file, $cds_nt_fa_file, $map_tsv_file, $anchor_tsv_file, $pairwise_tsv_file, $msa_aa_fa_file, $msa_aa_stk_file, $msa_nt_fa_file, $do_skip_annotate, $FH_HR) = @_;
+  my ($aa_fa_file, $cds_nt_fa_file, $map_tsv_file, $anchor_tsv_file, $pairwise_tsv_file, $msa_aa_fa_file, $msa_aa_stk_file, $msa_nt_fa_file, $do_skip_annotate, $do_keep, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
 
   if($do_skip_annotate) {
     ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS MSA/backconvert: skipped due to --skip-annotate\n"));
@@ -2324,6 +2351,10 @@ sub build_anchor_projected_cds_msa {
   }
   close($mnt_fh);
 
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.cds.msa.aa.fa",  $msa_aa_fa_file,  $do_keep, $do_keep, "concatenated CDS protein MSA (FASTA format)");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.cds.msa.aa.stk", $msa_aa_stk_file, 1,        1,        "concatenated CDS protein MSA (Stockholm with RF)");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.cds.msa.nt.fa",  $msa_nt_fa_file,  1,        1,        "concatenated CDS nucleotide MSA (FASTA format)");
+  if(! $do_keep) { push(@{$to_remove_AR}, $msa_aa_fa_file); }
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS MSA/backconvert: %d CDS features, wrote protein MSA to %s\n", scalar(@fkey_order), $msa_aa_fa_file));
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS MSA/backconvert: wrote protein MSA Stockholm (with RF) to %s\n", $msa_aa_stk_file));
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS MSA/backconvert: wrote CDS nucleotide MSA for %d sequences to %s\n", $n_nt, $msa_nt_fa_file));
@@ -2460,7 +2491,7 @@ sub project_pairwise_onto_anchor {
 # Returns    : void (populates $rna_regions_AR and $ss_cons_SR)
 #################################################################
 sub run_rna_discovery {
-  my ($ref_seq_file, $rna_cm_file, $seq_len, $out_root, $rfam_dir, $rna_regions_AR, $ss_cons_SR, $do_keep, $do_verbose, $execs_HR, $FH_HR) = @_;
+  my ($ref_seq_file, $rna_cm_file, $seq_len, $out_root, $rfam_dir, $rna_regions_AR, $ss_cons_SR, $do_keep, $do_verbose, $execs_HR, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
 
   my $cmscan_tblout = $out_root . ".rna_cmscan.tblout";
   my $cmscan_stdout = $out_root . ".rna_cmscan.out";
@@ -2493,15 +2524,15 @@ sub run_rna_discovery {
   # TODO: Determine which CM to use for full-sequence alignment (may need seed model CM)
   # For now, skip this step - will implement after testing cmscan parsing
   
-  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA discovery: found %d RNA regions\n", scalar(@{$rna_regions_AR})));
-  
-  # Cleanup if not keeping intermediate files
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "rna.cmscan.tblout", $cmscan_tblout, 1,        1,        "cmscan tblout for RNA discovery");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "rna.cmscan.out",   $cmscan_stdout, $do_keep, $do_keep, "cmscan stdout for RNA discovery");
   if(! $do_keep) {
-    unlink($cmscan_stdout) if(-e $cmscan_stdout);
-    unlink($cmalign_tfile) if(-e $cmalign_tfile);
-    unlink($cmalign_stk) if(-e $cmalign_stk);
+    push(@{$to_remove_AR}, $cmscan_stdout);
+    push(@{$to_remove_AR}, $cmalign_tfile) if(-e $cmalign_tfile);
+    push(@{$to_remove_AR}, $cmalign_stk)   if(-e $cmalign_stk);
   }
-  
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA discovery: found %d RNA regions\n", scalar(@{$rna_regions_AR})));
+
   return;
 }
 
@@ -2585,7 +2616,7 @@ sub parse_cmscan_tblout {
 # Returns    : void
 #################################################################
 sub write_rna_annotation_table {
-  my ($rna_regions_AR, $out_file, $FH_HR) = @_;
+  my ($rna_regions_AR, $out_file, $ofile_info_HHR, $FH_HR) = @_;
 
   open(my $outfh, ">", $out_file) || die "ERROR, unable to write RNA annotation table: $out_file: $!";
   
@@ -2610,9 +2641,10 @@ sub write_rna_annotation_table {
   }
   
   close($outfh);
-  
+
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "rna.annot.tsv", $out_file, 1, 1, "RNA annotation table");
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA discovery: wrote %d RNA annotations to %s\n", scalar(@{$rna_regions_AR}), $out_file));
-  
+
   return;
 }
 
@@ -2637,7 +2669,7 @@ sub write_rna_annotation_table {
 # Returns    : void (updates RNA region hashes with sstruct field)
 #################################################################
 sub run_rna_sstruct_generation {
-  my ($rna_regions_AR, $ref_seq_file, $rna_cm_file, $rfam_dir, $out_root, $do_keep, $do_verbose, $execs_HR, $FH_HR) = @_;
+  my ($rna_regions_AR, $ref_seq_file, $rna_cm_file, $rfam_dir, $out_root, $do_keep, $do_verbose, $execs_HR, $ofile_info_HHR, $FH_HR) = @_;
 
   if(! -e $ref_seq_file) {
     die "ERROR, reference sequence file not found: $ref_seq_file";
@@ -2788,7 +2820,7 @@ sub run_rna_sstruct_generation {
 # Returns    : void (writes RNA block Stockholm files)
 #################################################################
 sub extract_and_align_rna_regions {
-  my ($rna_regions_AR, $tier2_align_stk, $rna_struct_dir, $out_root, $do_keep, $do_verbose, $execs_HR, $FH_HR) = @_;
+  my ($rna_regions_AR, $tier2_align_stk, $rna_struct_dir, $out_root, $do_keep, $do_verbose, $execs_HR, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
 
   if(! -e $tier2_align_stk) {
     ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA alignment: WARNING - tier2 alignment not found, skipping RNA refinement\n"));
@@ -2866,13 +2898,11 @@ sub extract_and_align_rna_regions {
                                                      $idx, $rna_family));
     utl_RunCommand($cmd_align, $do_verbose, 0, $FH_HR);
 
+    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.rna." . sprintf("%03d", $idx) . ".stk",          $rna_aligned_stk,  1,        1,        sprintf("RNA region %d (%s) aligned Stockholm", $idx, $rna_family));
+    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "stitch.rna." . sprintf("%03d", $idx) . ".extracted.fa", $rna_extracted_fa, $do_keep, $do_keep, sprintf("RNA region %d (%s) extracted sequences", $idx, $rna_family));
+    if(! $do_keep) { push(@{$to_remove_AR}, $rna_extracted_fa); }
     ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA alignment: region %d (%s): wrote aligned Stockholm to %s\n",
                                                      $idx, $rna_family, $rna_aligned_stk));
-
-    # Cleanup extracted FASTA if not keeping
-    if(! $do_keep) {
-      unlink($rna_extracted_fa);
-    }
 
     $idx++;
   }
@@ -2905,7 +2935,8 @@ sub extract_and_align_rna_regions {
 sub stitch_and_refine_final_alignment {
   my ($block_plan_file, $rna_annot_file, $tier2_stk_file, $cds_msa_fa_file, $out_root,
       $rna_regions_AR, $final_stk_file, $temp_cm_file,
-      $do_rna_discovery, $do_skip_annotate, $seed_model_len, $execs_HR, $FH_HR) = @_;
+      $do_rna_discovery, $do_skip_annotate, $seed_model_len, $execs_HR,
+      $do_keep, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
 
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: merging CDS, RNA, and noncoding blocks\n"));
 
@@ -2993,12 +3024,15 @@ sub stitch_and_refine_final_alignment {
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: running cmbuild to add RF annotation (output to %s)\n", $cmbuild_out));
   utl_RunCommand($cmd_cmbuild, 1, 0, $FH_HR);
 
-  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: wrote RF-annotated alignment to %s\n", $output_stk_file));
-
-  # Cleanup temp CM
-  if(-e $temp_cm_file) {
-    unlink($temp_cm_file);
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "final.stk",         $final_stk_file,   $do_keep, $do_keep, "stitched pre-refinement alignment (input to cmbuild)");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "final.cmbuild.out", $cmbuild_out,      $do_keep, $do_keep, "cmbuild output for final alignment refinement");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "out.stk",            $output_stk_file,  1,        1,        "final RF-annotated training alignment");
+  if(! $do_keep) {
+    push(@{$to_remove_AR}, $final_stk_file);
+    push(@{$to_remove_AR}, $cmbuild_out);
+    push(@{$to_remove_AR}, $temp_cm_file) if(-e $temp_cm_file);
   }
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: wrote RF-annotated alignment to %s\n", $output_stk_file));
 
   return;
 }
@@ -3378,7 +3412,7 @@ sub build_ungapped_ss_cons {
 # Returns    : void
 #################################################################
 sub generate_updated_minfo {
-  my ($seed_minfo_file, $rna_annot_file, $rna_regions_AR, $out_minfo_file, $model_key, $execs_HR, $FH_HR) = @_;
+  my ($seed_minfo_file, $rna_annot_file, $rna_regions_AR, $out_minfo_file, $model_key, $execs_HR, $ofile_info_HHR, $FH_HR) = @_;
 
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Generating updated .minfo file with RNA features\n"));
 
@@ -3453,8 +3487,9 @@ sub generate_updated_minfo {
   }
   
   close($outfh);
-  
-  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Wrote updated .minfo with %d RNA features to %s\n", 
+
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "updated.minfo", $out_minfo_file, 1, 1, "updated model info file with RNA features");
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Wrote updated .minfo with %d RNA features to %s\n",
                                                    scalar(@rna_features), $out_minfo_file));
   
   return;
