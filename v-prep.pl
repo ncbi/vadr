@@ -2137,8 +2137,13 @@ sub build_anchor_projected_cds_msa {
       }
       else {
         if((! exists $pair_HH{$h}) || ($pair_HH{$h}{"hit_found"} ne "1")) {
-          die "ERROR, missing successful pairwise alignment data for $h in $pairwise_tsv_file";
+          # Partial/truncated CDS sequences may have no successful ggsearch hit.
+          # Log a warning and fill core positions with '-' so the sequence gets
+          # the correct alignment length (all-gap) for this feature.
+          ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS MSA: WARNING: skipping %s for feature %s (no successful pairwise alignment, likely partial/truncated CDS)\n", $h, $fk));
+          for(my $apos = 1; $apos <= $anchor_len; $apos++) { $core_A[$apos] = '-'; }
         }
+        else {
         my $qseq = $aa_seq_H{$h};
         my $aln_code = $pair_HH{$h}{"aln_code"};
         my $qstart = $pair_HH{$h}{"qstart"};
@@ -2146,7 +2151,8 @@ sub build_anchor_projected_cds_msa {
 
         my ($qaln, $saln) = pairwise_from_cigar($qseq, $anchor_seq, $aln_code, $qstart, $sstart, $h, $anchor_header);
         project_pairwise_onto_anchor($qaln, $saln, $anchor_len, \@core_A, \@ins_A, $h, $anchor_header);
-      }
+        } # end else (hit_found == 1)
+      } # end else (not anchor_header)
 
       $core_AH{$h} = \@core_A;
       $ins_AH{$h}  = \@ins_A;
@@ -3372,10 +3378,17 @@ sub concatenate_all_blocks {
       # If this RNA block was clipped to the non-CDS portion, extract only those columns.
       # The CDS-overlapping portion is already in the CDS block's SS_cons via the
       # ungapped_ss_cons overlay, so we only need the non-CDS columns here.
+      # IMPORTANT: save SS_cons BEFORE column_subset — Easel removes unmatched bracket
+      # symbols during column_subset, but we need to preserve them because their mates
+      # reside in the CDS block (via ungapped_ss_cons).  Using the raw pre-clip string
+      # ensures the final concatenated SS_cons has all base pairs matched.
+      my $clipped_ss_cons = undef;
       if(defined $block->{"rna_clip_rf_start"}) {
         my $clip_rf_start = $block->{"rna_clip_rf_start"};  # 1-based first RF pos to keep
         my $clip_rf_end   = $block->{"rna_clip_rf_end"};    # 1-based last RF pos to keep
         my $full_rf = $rna_msa->has_rf() ? $rna_msa->get_rf() : 'x' x $rna_msa->alen();
+        # Capture original SS_cons before column_subset can modify it
+        my $orig_ss = $rna_msa->has_ss_cons() ? $rna_msa->get_ss_cons() : '.' x $rna_msa->alen();
         my @useme_A = (0) x $rna_msa->alen();
         my $rf_pos = 0;
         my $first_col = -1;
@@ -3387,14 +3400,18 @@ sub concatenate_all_blocks {
           if($is_consensus && $rf_pos == $clip_rf_end)   { $last_col  = $a; }
         }
         if($first_col >= 0 && $last_col >= $first_col) {
+          # Save the SS_cons characters for these columns before Easel touches them
+          $clipped_ss_cons = substr($orig_ss, $first_col, $last_col - $first_col + 1);
           for(my $a = $first_col; $a <= $last_col; $a++) { $useme_A[$a] = 1; }
           $rna_msa->column_subset(\@useme_A);
         }
       }
 
       my $rna_aln_width = $rna_msa->alen();
-      my $rna_rf      = $rna_msa->has_rf()      ? $rna_msa->get_rf()      : 'x' x $rna_aln_width;
-      my $rna_ss_cons = $rna_msa->has_ss_cons() ? $rna_msa->get_ss_cons() : '.' x $rna_aln_width;
+      my $rna_rf      = $rna_msa->has_rf() ? $rna_msa->get_rf() : 'x' x $rna_aln_width;
+      # Use saved pre-clip SS_cons if available; otherwise use MSA's SS_cons
+      my $rna_ss_cons = defined($clipped_ss_cons) ? $clipped_ss_cons :
+                        ($rna_msa->has_ss_cons()  ? $rna_msa->get_ss_cons() : '.' x $rna_aln_width);
 
       # Build name->sequence hash for lookup
       my %rna_seqs_H = ();
