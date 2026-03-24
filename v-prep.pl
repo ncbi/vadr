@@ -474,7 +474,18 @@ else {
 #---------------------------------------
 # Step 6: Tier 3 centroid selection (BLAST all-vs-all)
 #---------------------------------------
-select_group_centroids_blast(\%candidate_AH, $tier2_fasta_file, $out_root, $centroid_tsv_file, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H, \%decision_H, \%ofile_info_HH, \@to_remove_A, $FH_HR);
+# Identify sequences with partial CDS coordinates so they are not chosen as
+# centroids when non-partial alternatives exist in the same group.
+my %partial_cds_H = ();
+if(! $do_skip_annotate) {
+  my $tier2_ant_tail = $tier2_ant_outdir;
+  $tier2_ant_tail =~ s/^.+\///;
+  my $tier2_ftr_file = $tier2_ant_outdir . "/" . $tier2_ant_tail . ".vadr.ftr";
+  if(-e $tier2_ftr_file) {
+    %partial_cds_H = get_partial_cds_accns_from_ftr($tier2_ftr_file);
+  }
+}
+select_group_centroids_blast(\%candidate_AH, $tier2_fasta_file, $out_root, $centroid_tsv_file, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H, \%decision_H, \%partial_cds_H, \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
 write_decision_report(\%decision_H, $decision_tsv_file, \%ofile_info_HH, $FH_HR);
 if($do_keep) {
@@ -968,14 +979,54 @@ sub run_vannotate_filter_fails {
 }
 
 #################################################################
+# Subroutine : get_partial_cds_accns_from_ftr()
+# Incept     : EPN* Tue Mar 24 2026
+#
+# Purpose    : Read a v-annotate .vadr.ftr file and return a hash
+#              of accessions that have at least one CDS feature with
+#              5' or 3' truncation (trc field != 'no').  These
+#              sequences have partial CDS coordinates (<N or >N) and
+#              should be deprioritised for centroid selection.
+#
+# Arguments  :
+#   $ftr_file : path to .vadr.ftr file
+#
+# Returns    : hash (accession => 1) of partial-CDS accessions
+#################################################################
+sub get_partial_cds_accns_from_ftr {
+  my ($ftr_file) = @_;
+  my %partial_H = ();
+  open(my $fh, "<", $ftr_file) || die "ERROR, unable to read ftr file $ftr_file: $!";
+  while(my $line = <$fh>) {
+    chomp $line;
+    next if($line =~ /^\#/);
+    next if($line =~ /^\s*$/);
+    my @tok_A = split(/\s+/, $line);
+    next if(scalar(@tok_A) < 15);
+    my $acc  = $tok_A[1];
+    my $type = $tok_A[5];
+    my $trc  = $tok_A[14];
+    next if($type ne "CDS");
+    if($trc ne "no") {
+      $partial_H{$acc} = 1;
+    }
+  }
+  close($fh);
+  return %partial_H;
+}
+
+#################################################################
 # Subroutine : select_group_centroids_blast()
 # Incept     : Copilot Tue Mar 10 2026
 #
 # Purpose    : For each remaining group, select one centroid
 #              sequence using average all-vs-all blastn pident.
+#              Sequences with partial CDS coordinates (< or > in
+#              coords) are excluded from centroid candidacy unless
+#              they are the only sequence in the group.
 #################################################################
 sub select_group_centroids_blast {
-  my ($candidate_AHR, $fasta_file, $out_root, $centroid_tsv_file, $do_keep, $do_verbose, $execs_HR, $decision_HR, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
+  my ($candidate_AHR, $fasta_file, $out_root, $centroid_tsv_file, $do_keep, $do_verbose, $execs_HR, $decision_HR, $partial_cds_HR, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
 
   my %seq_H = ();
   my $cur_acc = undef;
@@ -1015,6 +1066,16 @@ sub select_group_centroids_blast {
       $decision_HR->{$acc}{"stage_last_seen"} = "selected_for_tier3";
       $n_groups_with_centroid++;
       next;
+    }
+
+    # Filter out sequences with partial CDS coordinates from centroid candidacy.
+    # Only apply when partial info is available and group has non-partial members.
+    if(defined $partial_cds_HR) {
+      my @non_partial_A = grep { ! $partial_cds_HR->{$_->{"acc"}} } @seq_A;
+      if(scalar(@non_partial_A) > 0) {
+        @seq_A = @non_partial_A;
+      }
+      # else: all sequences in group are partial — allow them all as candidates
     }
 
     my $group_safe = $group;
@@ -3056,20 +3117,34 @@ sub stitch_and_refine_final_alignment {
 #################################################################
 sub merge_rna_into_blocks {
   my ($blocks_AR, $rna_AR, $FH_HR) = @_;
-  
+
   my @merged_A = ();
-  
+
   # If no RNA, just return original blocks
   if(scalar(@{$rna_AR}) == 0) {
     return @{$blocks_AR};
   }
-  
+
+  # Collect CDS coordinate ranges for clipping RNA blocks that straddle a CDS boundary.
+  # When an RNA region only partially overlaps CDS, it gets its own block for the non-CDS
+  # portion.  The CDS block handles the overlapping portion via the ungapped_ss_cons overlay
+  # (build_ungapped_ss_cons overlays the full RNA structure, so the CDS block already carries
+  # the RNA SS_cons characters for positions within the CDS).  We clip the RNA block here so
+  # it only covers the non-CDS portion; base pairs that span the boundary will have one half
+  # in the CDS block and the other in the RNA block, keeping them matched in the final SS_cons.
+  my @cds_ranges_A = ();
+  foreach my $block (@{$blocks_AR}) {
+    if($block->{"type"} eq "coding") {
+      push(@cds_ranges_A, { start => $block->{"start"}, end => $block->{"end"} });
+    }
+  }
+
   # Iterate through original blocks and insert/split for RNA
   foreach my $block (@{$blocks_AR}) {
     my $block_start = $block->{"start"};
     my $block_end   = $block->{"end"};
     my $block_type  = $block->{"type"};
-    
+
     # Find RNA regions that overlap this block
     my @overlapping_rna = ();
     foreach my $rna (@{$rna_AR}) {
@@ -3077,13 +3152,13 @@ sub merge_rna_into_blocks {
         push(@overlapping_rna, $rna);
       }
     }
-    
+
     # If no RNA overlaps, add block as-is
     if(scalar(@overlapping_rna) == 0) {
       push(@merged_A, $block);
       next;
     }
-    
+
     # Priority rule: CDS > RNA
     # If this is a CDS block, RNA regions are ignored (CDS alignment takes precedence)
     if($block_type eq "coding") {
@@ -3091,45 +3166,74 @@ sub merge_rna_into_blocks {
       my $n_skipped = scalar(@overlapping_rna);
       if($n_skipped > 0) {
         my @families = map { $_->{"family"} } @overlapping_rna;
-        ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: skipped %d RNA region(s) overlapping CDS (%s) - CDS alignment has priority\n", 
+        ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: skipped %d RNA region(s) overlapping CDS (%s) - CDS alignment has priority\n",
                                                          $n_skipped, join(", ", @families)));
       }
       next;
     }
-    
+
     # Sort overlapping RNA by start position
     @overlapping_rna = sort { $a->{"start"} <=> $b->{"start"} } @overlapping_rna;
-    
+
     # Split noncoding block around RNA regions
     my $cur_pos = $block_start;
     foreach my $rna (@overlapping_rna) {
       my $rna_start = $rna->{"start"};
       my $rna_end   = $rna->{"end"};
-      
+
+      # Clip RNA block to non-CDS portion if it straddles a CDS boundary.
+      # The CDS-overlapping portion is already handled by build_ungapped_ss_cons overlaying
+      # the full RNA structure into the CDS block's SS_cons.
+      my $eff_rna_start = $rna_start;
+      my $eff_rna_end   = $rna_end;
+      foreach my $cds (@cds_ranges_A) {
+        # RNA starts in noncoding and extends into CDS on the right
+        if($eff_rna_start < $cds->{"start"} && $eff_rna_end >= $cds->{"start"}) {
+          $eff_rna_end = $cds->{"start"} - 1;
+        }
+        # RNA starts inside CDS and extends into noncoding on the right
+        if($eff_rna_start <= $cds->{"end"} && $eff_rna_end > $cds->{"end"}) {
+          $eff_rna_start = $cds->{"end"} + 1;
+        }
+      }
+      # 1-based RF position range within the RNA stk to extract for the clipped block
+      my $rna_clip_rf_start = $eff_rna_start - $rna_start + 1;
+      my $rna_clip_rf_end   = $eff_rna_end   - $rna_start + 1;
+      my $is_clipped = ($eff_rna_start != $rna_start || $eff_rna_end != $rna_end);
+
       # Add segment before RNA if exists
-      if($cur_pos < $rna_start) {
+      if($cur_pos < $eff_rna_start) {
         push(@merged_A, {
           "type"     => $block_type,
           "start"    => $cur_pos,
-          "end"      => $rna_start - 1,
-          "len"      => $rna_start - $cur_pos,
+          "end"      => $eff_rna_start - 1,
+          "len"      => $eff_rna_start - $cur_pos,
           "source"   => $block->{"source"}
         });
       }
-      
-      # Add RNA block
-      push(@merged_A, {
+
+      # Add RNA block (clipped to non-CDS portion)
+      my %rna_block = (
         "type"     => "rna",
-        "start"    => $rna_start,
-        "end"      => $rna_end,
-        "len"      => $rna_end - $rna_start + 1,
+        "start"    => $eff_rna_start,
+        "end"      => $eff_rna_end,
+        "len"      => $eff_rna_end - $eff_rna_start + 1,
         "source"   => "rna_discovery",
         "rna_idx"  => $rna->{"idx"},
         "rna_file" => $rna->{"stk_file"},
         "family"   => $rna->{"family"}
-      });
-      
-      $cur_pos = $rna_end + 1;
+      );
+      if($is_clipped) {
+        $rna_block{"rna_clip_rf_start"} = $rna_clip_rf_start;
+        $rna_block{"rna_clip_rf_end"}   = $rna_clip_rf_end;
+        ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: clipped RNA block %s to non-CDS portion (%d..%d, RF pos %d..%d of %d)\n",
+                                                        $rna->{"family"}, $eff_rna_start, $eff_rna_end,
+                                                        $rna_clip_rf_start, $rna_clip_rf_end,
+                                                        $rna_end - $rna_start + 1));
+      }
+      push(@merged_A, \%rna_block);
+
+      $cur_pos = $eff_rna_end + 1;
     }
     
     # Add segment after last RNA if exists
@@ -3264,6 +3368,30 @@ sub concatenate_all_blocks {
       # Read RNA Stockholm via Bio::Easel::MSA
       my $rna_stk = $block->{"rna_file"};
       my $rna_msa = Bio::Easel::MSA->new({ fileLocation => $rna_stk, isDna => 1 });
+
+      # If this RNA block was clipped to the non-CDS portion, extract only those columns.
+      # The CDS-overlapping portion is already in the CDS block's SS_cons via the
+      # ungapped_ss_cons overlay, so we only need the non-CDS columns here.
+      if(defined $block->{"rna_clip_rf_start"}) {
+        my $clip_rf_start = $block->{"rna_clip_rf_start"};  # 1-based first RF pos to keep
+        my $clip_rf_end   = $block->{"rna_clip_rf_end"};    # 1-based last RF pos to keep
+        my $full_rf = $rna_msa->has_rf() ? $rna_msa->get_rf() : 'x' x $rna_msa->alen();
+        my @useme_A = (0) x $rna_msa->alen();
+        my $rf_pos = 0;
+        my $first_col = -1;
+        my $last_col  = -1;
+        for(my $a = 0; $a < $rna_msa->alen(); $a++) {
+          my $is_consensus = (substr($full_rf, $a, 1) ne '.' && substr($full_rf, $a, 1) ne '-');
+          if($is_consensus) { $rf_pos++; }
+          if($is_consensus && $rf_pos == $clip_rf_start) { $first_col = $a; }
+          if($is_consensus && $rf_pos == $clip_rf_end)   { $last_col  = $a; }
+        }
+        if($first_col >= 0 && $last_col >= $first_col) {
+          for(my $a = $first_col; $a <= $last_col; $a++) { $useme_A[$a] = 1; }
+          $rna_msa->column_subset(\@useme_A);
+        }
+      }
+
       my $rna_aln_width = $rna_msa->alen();
       my $rna_rf      = $rna_msa->has_rf()      ? $rna_msa->get_rf()      : 'x' x $rna_aln_width;
       my $rna_ss_cons = $rna_msa->has_ss_cons() ? $rna_msa->get_ss_cons() : '.' x $rna_aln_width;
