@@ -95,6 +95,7 @@ opt_Add("--seed-build-opts", "string", undef,        $g,    "--seed-accn", "--se
 opt_Add("--skip-annotate", "boolean", 0,             $g,    undef, undef,   "skip Tier 2 v-annotate screening step",                     "skip Tier 2 v-annotate screening step (temporary)", \%opt_HH, \@opt_order_A);
 opt_Add("--xambig",     "integer", 5,          $g,    undef, undef,       "max ambiguous nucleotides allowed per sequence",             "max ambiguous nucleotides allowed per sequence as <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--xpergroup",  "integer", 50,         $g,    undef, undef,       "max sequences retained per serotype/genotype group",         "max sequences retained per serotype/genotype group as <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--group",      "string",  undef,      $g,    undef, undef,       "virus group name for #=GS GP annotations in output .stk",   "virus group name for #=GS GP annotations in output .stk as <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--rna-cm-file", "string", undef,        $g,    undef, "--skip-rna", "use CM file <s> for RNA search instead of default Rfam.cm",  "use CM file <s> for RNA search instead of default Rfam.cm", \%opt_HH, \@opt_order_A);
 opt_Add("--skip-rna",   "boolean", 0,             $g,    undef, "--rna-cm-file", "skip RNA discovery and alignment",                          "skip RNA discovery and alignment (treat all noncoding as unstructured)", \%opt_HH, \@opt_order_A);
 
@@ -122,6 +123,7 @@ my $options_okay =
                 'skip-annotate' => \$GetOptions_H{"--skip-annotate"},
                 'xambig=i'     => \$GetOptions_H{"--xambig"},
                 'xpergroup=i'  => \$GetOptions_H{"--xpergroup"},
+                'group=s'      => \$GetOptions_H{"--group"},
                 'rna-cm-file=s' => \$GetOptions_H{"--rna-cm-file"},
                 'skip-rna'     => \$GetOptions_H{"--skip-rna"},
 # other expert options
@@ -273,6 +275,8 @@ push(@early_cmd_A, $cmd);
 my $dir_tail = $dir;
 $dir_tail =~ s/^.+\///; # remove all but last dir
 my $out_root = $dir . "/" . $dir_tail . ".vadr";
+my $group_name = opt_Get("--group", \%opt_HH);
+if(! defined $group_name) { $group_name = $dir_tail; } # auto-guess from output dir basename
 
 if((! defined $meta_tsv) && opt_IsUsed("--taxid", \%opt_HH)) {
   $meta_tsv = $out_root . ".metadata.tsv";
@@ -560,6 +564,12 @@ stitch_and_refine_final_alignment($stitch_block_plan_file,
                                   $seed_model_len,
                                   \%execs_H,
                                   $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
+
+#---------------------------------------
+# Step 12b: Add #=GS GP/SG group/subgroup annotations to final alignment
+#---------------------------------------
+my $output_stk_file = $out_root . ".stk";
+annotate_stk_group_subgroup($output_stk_file, $centroid_tsv_file, $group_name, $FH_HR);
 
 #---------------------------------------
 # Step 13: Generate updated .minfo file with RNA features
@@ -3539,6 +3549,96 @@ sub build_ungapped_ss_cons {
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: built ungapped SS_cons (%d positions)\n", length($ungapped_ss)));
   
   return $ungapped_ss;
+}
+
+#################################################################
+# Subroutine : annotate_stk_group_subgroup()
+# Incept     : EPN* Wed Mar 25 2026
+# Purpose    : Add #=GS GP and #=GS SG annotation lines to a
+#              Stockholm alignment file.  GP is the user-supplied
+#              or auto-guessed virus group name (same for all seqs).
+#              SG is the per-sequence subgroup (group_key) from the
+#              centroid TSV file (only is_centroid==1 rows are used).
+#              Lines are inserted immediately after the last existing
+#              #=GS line (typically the WT weight lines from cmbuild).
+#
+# Arguments  :
+#   $stk_file       : path to Stockholm file to annotate (overwritten in place)
+#   $centroid_tsv   : path to centroid.tsv (cols: group_key, accession, avg_pident, is_centroid)
+#   $group_name     : GP value (same for all sequences)
+#   $FH_HR          : ref to hash of file handles
+#
+# Returns    : void
+#################################################################
+sub annotate_stk_group_subgroup {
+  my ($stk_file, $centroid_tsv, $group_name, $FH_HR) = @_;
+
+  # Build accession -> subgroup map from centroid TSV (is_centroid==1 rows only)
+  my %sg_H = ();
+  if(-s $centroid_tsv) {
+    open(my $cfh, "<", $centroid_tsv) || die "ERROR unable to read centroid TSV $centroid_tsv: $!";
+    my $hdr = <$cfh>;  # skip header
+    while(my $line = <$cfh>) {
+      chomp $line;
+      my @f = split(/\t/, $line);
+      my ($group_key, $accn, $avg, $is_centroid) = @f;
+      if(defined $is_centroid && $is_centroid eq "1") {
+        $sg_H{$accn} = $group_key;
+      }
+    }
+    close($cfh);
+  }
+
+  # Read Stockholm file
+  open(my $infh, "<", $stk_file) || die "ERROR unable to read STK file $stk_file: $!";
+  my @lines = <$infh>;
+  close($infh);
+
+  # Collect sequence names in alignment-order (first occurrence only)
+  my @seqnames = ();
+  my %seen_H = ();
+  for my $line (@lines) {
+    next if $line =~ /^#/;
+    next if $line =~ /^\/\//;
+    next if $line =~ /^\s*$/;
+    if($line =~ /^(\S+)\s/) {
+      my $seqname = $1;
+      if(! $seen_H{$seqname}) {
+        push(@seqnames, $seqname);
+        $seen_H{$seqname} = 1;
+      }
+    }
+  }
+
+  # Find index of last #=GS line for insertion point
+  my $last_gs_idx = -1;
+  for(my $i = 0; $i < scalar(@lines); $i++) {
+    if($lines[$i] =~ /^#=GS/) { $last_gs_idx = $i; }
+  }
+  # Fallback: insert after last #=GF line if no #=GS lines exist
+  if($last_gs_idx == -1) {
+    for(my $i = 0; $i < scalar(@lines); $i++) {
+      if($lines[$i] =~ /^#=GF/) { $last_gs_idx = $i; }
+    }
+  }
+
+  # Rewrite STK file with GP/SG lines inserted after insertion point
+  open(my $outfh, ">", $stk_file) || die "ERROR unable to write STK file $stk_file: $!";
+  for(my $i = 0; $i < scalar(@lines); $i++) {
+    print $outfh $lines[$i];
+    if($i == $last_gs_idx) {
+      for my $seqname (@seqnames) {
+        my $sg = (exists $sg_H{$seqname}) ? $sg_H{$seqname} : "unknown";
+        print $outfh "#=GS $seqname GP $group_name\n";
+        print $outfh "#=GS $seqname SG $sg\n";
+      }
+    }
+  }
+  close($outfh);
+
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Added GP/SG annotations for %d sequences to %s (GP: %s)\n",
+                                                   scalar(@seqnames), $stk_file, $group_name));
+  return;
 }
 
 #################################################################
