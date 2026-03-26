@@ -86,6 +86,7 @@ $opt_group_desc_H{++$g} = "input options";
 opt_Add("--minout",     "string",  undef,      $g,    undef, undef,       "output model info file to <s>",                               "output model info file to <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--mdir",       "string",  undef,      $g,    undef, undef,       "model files are in directory <s>",                            "model files are in directory <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--mkey",       "string",  undef,      $g,    "--mdir", undef,   "model key is <s> (override auto-derived key)",                "model key is <s> (override auto-derived key)", \%opt_HH, \@opt_order_A);
+opt_Add("--refaccn",    "string",  undef,      $g,    undef, undef,       "reference accession is <s> (default: model key)",             "reference accession is <s> (default: model key)", \%opt_HH, \@opt_order_A);
 opt_Add("--taxid",      "string",  undef,      $g,    undef, "--meta",    "fetch metadata from NCBI for taxonomy ID <s>",                "fetch metadata from NCBI for taxonomy ID <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--meta",       "string",  undef,      $g,    undef, "--taxid",   "read metadata TSV from <s> instead of fetching",              "read metadata TSV from <s> instead of fetching", \%opt_HH, \@opt_order_A);
 opt_Add("--api_key",    "string",  undef,      $g,    "--taxid", undef,   "NCBI API key to use for metadata fetch",                      "NCBI API key to use for metadata fetch as <s>", \%opt_HH, \@opt_order_A);
@@ -114,6 +115,7 @@ my $options_okay =
                 'minout=s'     => \$GetOptions_H{"--minout"},
                 'mdir=s'       => \$GetOptions_H{"--mdir"},
                 'mkey=s'       => \$GetOptions_H{"--mkey"},
+                'refaccn=s'    => \$GetOptions_H{"--refaccn"},
                 'taxid=s'      => \$GetOptions_H{"--taxid"},
                 'meta=s'       => \$GetOptions_H{"--meta"},
                 'api_key=s'    => \$GetOptions_H{"--api_key"},
@@ -387,7 +389,7 @@ my @reqd_ftr_keys = ();
 
 vdr_ModelInfoFileParse($seed_minfo, \@reqd_mdl_keys, \@reqd_ftr_keys, \@mdl_info_A, \%ftr_info_HA, $FH_HR);
 my $seed_model_len = $mdl_info_A[0]{"length"};
-my $ref_accn = $model_key; # reference accession = model key (e.g. "NC_006232")
+my $ref_accn = opt_IsUsed("--refaccn", \%opt_HH) ? opt_Get("--refaccn", \%opt_HH) : $model_key; # reference accession (default: model key, e.g. "NC_006232")
 ofile_OutputString(*STDOUT, 1, sprintf("# Read seed model length: %d\n", $seed_model_len));
 ofile_OutputString(*STDOUT, 1, sprintf("# Reference accession: %s\n", $ref_accn));
 
