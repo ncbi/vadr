@@ -41,6 +41,7 @@ my $env_vadr_infernal_dir = utl_DirEnvVarValid("VADRINFERNALDIR");
 my $env_vadr_hmmer_dir    = utl_DirEnvVarValid("VADRHMMERDIR");
 my $env_vadr_easel_dir    = utl_DirEnvVarValid("VADREASELDIR");
 my $env_vadr_fasta_dir    = $ENV{"VADRFASTADIR"};
+my $env_vadr_muscle_dir   = $ENV{"VADRMUSCLEDIR"};  # muscle 3.8.31 (public domain)
 my $env_vadr_rfam_dir     = $ENV{"VADRRFAMDIR"}; # optional, validated later if needed
 
 # make sure the required executables exist and are executable
@@ -62,6 +63,12 @@ if(defined $env_vadr_fasta_dir) {
   my $ggsearch_exec = $env_vadr_fasta_dir . "/ggsearch36";
   if(-x $ggsearch_exec) {
     $execs_H{"ggsearch"} = $ggsearch_exec;
+  }
+}
+if(defined $env_vadr_muscle_dir) {
+  my $muscle_exec = $env_vadr_muscle_dir . "/muscle";
+  if(-x $muscle_exec) {
+    $execs_H{"muscle"} = $muscle_exec;
   }
 }
 utl_ExecHValidate(\%execs_H, undef);
@@ -387,7 +394,9 @@ my @reqd_ftr_keys = ();
 
 vdr_ModelInfoFileParse($seed_minfo, \@reqd_mdl_keys, \@reqd_ftr_keys, \@mdl_info_A, \%ftr_info_HA, $FH_HR);
 my $seed_model_len = $mdl_info_A[0]{"length"};
+my $ref_accn = $model_key; # reference accession = model key (e.g. "NC_006232")
 ofile_OutputString(*STDOUT, 1, sprintf("# Read seed model length: %d\n", $seed_model_len));
+ofile_OutputString(*STDOUT, 1, sprintf("# Reference accession: %s\n", $ref_accn));
 
 #---------------------------------------
 # Step 3: RNA discovery via cmscan on reference sequence
@@ -432,10 +441,40 @@ else {
 #   serotype => sequence serotype
 #   genotype => sequence genotype
 #   isolate  => sequence isolate
+# Resolve reference accession versioning BEFORE filtering.
+# The model key may be unversioned (e.g. "NC_006232") while the metadata
+# uses versioned accessions (e.g. "NC_006232.1"). Scan the metadata header
+# to find the versioned match so all downstream filters use the correct accession.
+{
+  open(my $pre_fh, "<", $meta_tsv) || die "ERROR, unable to read metadata TSV $meta_tsv: $!";
+  my $pre_hdr = <$pre_fh>; # skip header
+  while(my $line = <$pre_fh>) {
+    chomp $line;
+    my ($acc) = split(/\t/, $line);
+    if(defined $acc && $acc =~ /^\Q$ref_accn\E\.\d+$/) {
+      ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Reference accession %s matched versioned accession %s in metadata\n", $ref_accn, $acc));
+      $ref_accn = $acc;
+      last;
+    }
+    elsif(defined $acc && $acc eq $ref_accn) {
+      last; # exact match, no versioning needed
+    }
+  }
+  close($pre_fh);
+}
+
 my %candidate_AH = ();
 my %decision_H = ();
 my $max_per_group = opt_Get("--xpergroup", \%opt_HH);
-parse_and_filter_metadata($meta_tsv, $seed_model_len, $max_per_group, \%candidate_AH, \%decision_H, $FH_HR);
+parse_and_filter_metadata($meta_tsv, $seed_model_len, $max_per_group, \%candidate_AH, \%decision_H, $ref_accn, $FH_HR);
+
+# Verify reference accession was found in metadata
+if(! exists $decision_H{$ref_accn}) {
+  ofile_FAIL("ERROR, reference accession $ref_accn not found in metadata TSV $meta_tsv.\n" .
+             "The reference sequence must be present in the metadata for v-prep.pl to proceed.\n" .
+             "If this accession is not returned by the NCBI taxonomy fetch, you can add it\n" .
+             "manually to the metadata TSV file and re-run with --meta.", 1, $FH_HR);
+}
 
 #---------------------------------------
 # Step 5: Tier 2 sequence fetch and filtering
@@ -457,6 +496,7 @@ my $stitch_cds_map_tsv_file   = $out_root . ".cds.translate_map.tsv";
 my $stitch_cds_anchor_tsv_file = $out_root . ".cds.anchor.tsv";
 my $stitch_cds_anchor_fa_file  = $out_root . ".cds.anchor.fa";
 my $stitch_cds_pairwise_tsv_file = $out_root . ".cds.pairwise.tsv";
+my $stitch_cds_muscle_dir     = $out_root . ".cds.muscle.dir";
 my $stitch_cds_msa_aa_fa_file = $out_root . ".cds.msa.aa.afa";
 my $stitch_cds_msa_aa_stk_file = $out_root . ".cds.msa.aa.stk";
 my $stitch_cds_msa_nt_fa_file = $out_root . ".cds.msa.nt.afa";
@@ -464,7 +504,7 @@ my $rna_annotation_file       = $out_root . ".rna_annotation.tsv";
 
 write_accession_list_from_candidates(\%candidate_AH, $tier1_accn_file, $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
 fetch_fasta_from_accession_list($tier1_accn_file, $tier2_fasta_file, $do_keep, \%ofile_info_HH, \@to_remove_A, \%opt_HH, $FH_HR);
-apply_ambiguity_filter_to_candidates(\%candidate_AH, $tier2_fasta_file, $max_ambig_nt, \%decision_H, $FH_HR);
+apply_ambiguity_filter_to_candidates(\%candidate_AH, $tier2_fasta_file, $max_ambig_nt, \%decision_H, $ref_accn, $FH_HR);
 
 my $tier2_align_stk_file = undef;
 if($do_skip_annotate) {
@@ -489,7 +529,7 @@ if(! $do_skip_annotate) {
     %partial_cds_H = get_partial_cds_accns_from_ftr($tier2_ftr_file);
   }
 }
-select_group_centroids_blast(\%candidate_AH, $tier2_fasta_file, $out_root, $centroid_tsv_file, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H, \%decision_H, \%partial_cds_H, \%ofile_info_HH, \@to_remove_A, $FH_HR);
+select_group_centroids_blast(\%candidate_AH, $tier2_fasta_file, $out_root, $centroid_tsv_file, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H, \%decision_H, \%partial_cds_H, $ref_accn, \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
 write_decision_report(\%decision_H, $decision_tsv_file, \%ofile_info_HH, $FH_HR);
 if($do_keep) {
@@ -515,23 +555,26 @@ if($n_selected == 0) {
 prepare_cds_translation_for_stitching(\%candidate_AH, $stitch_selected_fa_file, $tier2_ant_outdir, $stitch_cds_nt_fa_file, $stitch_cds_orf_fa_file, $stitch_cds_aa_fa_file, $stitch_cds_map_tsv_file, $do_skip_annotate, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H, \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
 #---------------------------------------
-# Step 9: Reference-anchored AA global/global pairwise (ggsearch)
+# Step 9: Multiple AA alignment with muscle (per CDS feature)
 #---------------------------------------
-run_reference_anchored_pairwise_aa(\%candidate_AH, $centroid_tsv_file, $stitch_cds_aa_fa_file, $stitch_cds_map_tsv_file, $stitch_cds_anchor_tsv_file, $stitch_cds_anchor_fa_file, $stitch_cds_pairwise_tsv_file, $do_skip_annotate, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H, \%ofile_info_HH, \@to_remove_A, $FH_HR);
+run_muscle_aa_alignment($stitch_cds_aa_fa_file, $stitch_cds_map_tsv_file, $ref_accn,
+                        $stitch_cds_anchor_tsv_file, $stitch_cds_muscle_dir,
+                        $do_skip_annotate, $do_keep, opt_Get("-v", \%opt_HH),
+                        \%execs_H, \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
 #---------------------------------------
-# Step 10: Build protein MSA from pairwise CIGARs and backconvert CDS nt alignment
+# Step 10: Build CDS MSA from muscle alignment, backconvert to NT
 #---------------------------------------
-build_anchor_projected_cds_msa($stitch_cds_aa_fa_file,
-                               $stitch_cds_nt_fa_file,
-                               $stitch_cds_map_tsv_file,
-                               $stitch_cds_anchor_tsv_file,
-                               $stitch_cds_pairwise_tsv_file,
-                               $stitch_cds_msa_aa_fa_file,
-                               $stitch_cds_msa_aa_stk_file,
-                               $stitch_cds_msa_nt_fa_file,
-                               $do_skip_annotate,
-                               $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
+build_muscle_cds_msa($stitch_cds_aa_fa_file,
+                     $stitch_cds_nt_fa_file,
+                     $stitch_cds_map_tsv_file,
+                     $stitch_cds_anchor_tsv_file,
+                     $stitch_cds_muscle_dir,
+                     $stitch_cds_msa_aa_fa_file,
+                     $stitch_cds_msa_aa_stk_file,
+                     $stitch_cds_msa_nt_fa_file,
+                     $do_skip_annotate,
+                     $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
 
 #---------------------------------------
@@ -609,7 +652,7 @@ exit(0);
 # Returns    : void
 #################################################################
 sub parse_and_filter_metadata {
-  my ($tsv_file, $seed_model_len, $max_per_group, $candidate_AHR, $decision_HR, $FH_HR) = @_;
+  my ($tsv_file, $seed_model_len, $max_per_group, $candidate_AHR, $decision_HR, $ref_accn, $FH_HR) = @_;
 
   my $total_seqs = 0;
   my $kept_len_seqs = 0;
@@ -643,7 +686,8 @@ sub parse_and_filter_metadata {
     $total_seqs++;
     
     # Length check: Keep sequences >90% of the seed model's length
-    if ($seed_model_len > 0 && $len < ($seed_model_len * 0.90)) {
+    # Reference accession is always kept regardless of length
+    if ($seed_model_len > 0 && $len < ($seed_model_len * 0.90) && $acc ne $ref_accn) {
       $decision_HR->{$acc}{"status"} = "removed";
       $decision_HR->{$acc}{"reason_code"} = "len_lt_90pct_seed";
       $decision_HR->{$acc}{"reason_detail"} = "length $len < 0.9 * seed_length $seed_model_len";
@@ -735,7 +779,24 @@ sub parse_and_filter_metadata {
       }
     }
 
-    # Replace the original group array with the filtered top 50
+    # Force-include reference accession even if not chronologically selected
+    if(defined $ref_accn) {
+      my $ref_in_group = 0;
+      foreach my $seq (@seqs) {
+        if($seq->{acc} eq $ref_accn) { $ref_in_group = 1; last; }
+      }
+      if($ref_in_group && !$is_selected{$ref_accn}) {
+        foreach my $seq (@seqs) {
+          if($seq->{acc} eq $ref_accn) {
+            push @selected_for_group, $seq;
+            $is_selected{$ref_accn} = 1;
+            last;
+          }
+        }
+      }
+    }
+
+    # Replace the original group array with the filtered top N
     foreach my $seq (@seqs) {
       my $acc = $seq->{acc};
       if($is_selected{$acc}) {
@@ -846,7 +907,7 @@ sub fetch_fasta_from_accession_list {
 #              with ambiguous nucleotide count above threshold.
 #################################################################
 sub apply_ambiguity_filter_to_candidates {
-  my ($candidate_AHR, $fasta_file, $max_ambig_nt, $decision_HR, $FH_HR) = @_;
+  my ($candidate_AHR, $fasta_file, $max_ambig_nt, $decision_HR, $ref_accn, $FH_HR) = @_;
 
   my %seq_H = ();
   my $cur_acc = undef;
@@ -891,7 +952,8 @@ sub apply_ambiguity_filter_to_candidates {
         $nremoved++;
         next;
       }
-      if($ambig_ct_H{$acc} > $max_ambig_nt) {
+      # Reference accession is always kept regardless of ambiguity count
+      if($ambig_ct_H{$acc} > $max_ambig_nt && $acc ne $ref_accn) {
         $decision_HR->{$acc}{"status"} = "removed";
         $decision_HR->{$acc}{"reason_code"} = "ambig_gt_xambig";
         $decision_HR->{$acc}{"reason_detail"} = "ambiguous nt count $ambig_ct_H{$acc} > threshold $max_ambig_nt";
@@ -962,7 +1024,8 @@ sub run_vannotate_filter_fails {
     my @kept_A = ();
     foreach my $seq (@{$candidate_AHR->{$group}}) {
       my $acc = $seq->{acc};
-      if(exists $is_fail_H{$acc}) {
+      # Reference accession is always kept even if v-annotate reports a failure
+      if(exists $is_fail_H{$acc} && $acc ne $model_key) {
         $decision_HR->{$acc}{"status"} = "removed";
         $decision_HR->{$acc}{"reason_code"} = "vadr_fail";
         $decision_HR->{$acc}{"reason_detail"} = "present in .vadr.fail.list";
@@ -1036,7 +1099,7 @@ sub get_partial_cds_accns_from_ftr {
 #              they are the only sequence in the group.
 #################################################################
 sub select_group_centroids_blast {
-  my ($candidate_AHR, $fasta_file, $out_root, $centroid_tsv_file, $do_keep, $do_verbose, $execs_HR, $decision_HR, $partial_cds_HR, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
+  my ($candidate_AHR, $fasta_file, $out_root, $centroid_tsv_file, $do_keep, $do_verbose, $execs_HR, $decision_HR, $partial_cds_HR, $ref_accn, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
 
   my %seq_H = ();
   my $cur_acc = undef;
@@ -1155,6 +1218,14 @@ sub select_group_centroids_blast {
         $decision_HR->{$acc}{"status"} = "kept";
         $decision_HR->{$acc}{"reason_code"} = "centroid_selected";
         $decision_HR->{$acc}{"reason_detail"} = sprintf("selected by max average blastn pident %.4f in group", $avg_H{$acc});
+        $decision_HR->{$acc}{"stage_last_seen"} = "selected_for_tier3";
+      }
+      elsif(defined $ref_accn && $acc eq $ref_accn) {
+        # Reference accession is always kept even if not centroid
+        push(@new_group_A, $seq);
+        $decision_HR->{$acc}{"status"} = "kept";
+        $decision_HR->{$acc}{"reason_code"} = "reference_forced";
+        $decision_HR->{$acc}{"reason_detail"} = sprintf("reference accession (non-centroid; average blastn pident %.4f)", $avg_H{$acc});
         $decision_HR->{$acc}{"stage_last_seen"} = "selected_for_tier3";
       }
       else {
@@ -1985,6 +2056,534 @@ sub run_reference_anchored_pairwise_aa {
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS pairwise AA: %d CDS features, %d total pairwise alignments\n", scalar(@fkey_order), $pair_idx));
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS pairwise AA: wrote anchor info (%d features) to %s\n", scalar(@fkey_order), $anchor_tsv_file));
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS pairwise AA: wrote pairwise summary to %s\n", $pairwise_tsv_file));
+  return;
+}
+
+#################################################################
+# Subroutine : run_muscle_aa_alignment()
+# Incept:     EPN* Tue Mar 25 2026
+#
+# Purpose:    Run muscle 3.8.31 multiple alignment on CDS protein
+#             sequences, one alignment per CDS feature group. The
+#             reference sequence (identified by $ref_accn) is
+#             included in each alignment and used to define RF
+#             columns in the downstream MSA building step.
+#
+# Arguments:
+#   $aa_fa_file:      CDS amino acid FASTA (from Step 8)
+#   $map_tsv_file:    CDS translate_map.tsv (for ftr_idx grouping)
+#   $ref_accn:        reference accession (for anchor.tsv)
+#   $anchor_tsv_file: output anchor TSV (reference info per feature)
+#   $muscle_dir:      output directory for per-feature muscle MSA files
+#   $do_skip_annotate: skip flag
+#   $do_keep:         keep intermediate files
+#   $do_verbose:      verbose flag
+#   $execs_HR:        executables hash (must contain "muscle")
+#   $ofile_info_HHR:  output file info hash
+#   $to_remove_AR:    files to remove
+#   $FH_HR:           file handle hash
+#
+# Returns:    void
+#################################################################
+sub run_muscle_aa_alignment {
+  my ($aa_fa_file, $map_tsv_file, $ref_accn, $anchor_tsv_file, $muscle_dir,
+      $do_skip_annotate, $do_keep, $do_verbose, $execs_HR, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
+
+  if($do_skip_annotate) {
+    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS muscle AA: skipped due to --skip-annotate\n"));
+    return;
+  }
+  if(! -s $aa_fa_file) {
+    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS muscle AA: skipped, missing or empty AA file %s\n", $aa_fa_file));
+    return;
+  }
+  if(! exists $execs_HR->{"muscle"}) {
+    die "ERROR, unable to run muscle AA alignment: muscle not found (set VADRMUSCLEDIR so \$VADRMUSCLEDIR/muscle exists and is executable)";
+  }
+
+  # Read translate map to get ftr_idx for each AA header
+  my %header_to_ftr_idx_H = ();
+  if(-s $map_tsv_file) {
+    open(my $mapfh, "<", $map_tsv_file) || die "ERROR, unable to read translate map $map_tsv_file: $!";
+    my $maphdr = <$mapfh>;  # skip header
+    while(my $line = <$mapfh>) {
+      chomp $line;
+      my @tok_A = split(/\t/, $line);
+      my $acc = $tok_A[1];
+      my $ftr_idx = $tok_A[2];
+      my $seq_coords = $tok_A[3];
+      my $model_coords = $tok_A[4];
+      my $aa_header = $acc . ":" . $seq_coords . "/" . $model_coords;
+      $header_to_ftr_idx_H{$aa_header} = $ftr_idx;
+    }
+    close($mapfh);
+  }
+
+  # Parse AA sequences and group by feature key (ftr_idx)
+  my @aa_A = ();
+  my $cur_h = undef;
+  my $cur_sq = "";
+  open(my $aafh_in, "<", $aa_fa_file) || die "ERROR, unable to read AA fasta $aa_fa_file: $!";
+  while(my $line = <$aafh_in>) {
+    chomp $line;
+    if($line =~ /^>(\S+)/) {
+      if(defined $cur_h) {
+        my $acc = $cur_h;
+        if($acc =~ /^([^:]+):/) { $acc = $1; }
+        my $fkey = (exists $header_to_ftr_idx_H{$cur_h}) ? $header_to_ftr_idx_H{$cur_h} : (($cur_h =~ /\/(.+)$/) ? $1 : $cur_h);
+        push(@aa_A, { header => $cur_h, accession => $acc, feature_key => $fkey, sqstring => $cur_sq, len => length($cur_sq) });
+      }
+      $cur_h = $1;
+      $cur_sq = "";
+    }
+    elsif(defined $cur_h) {
+      $line =~ s/\s+//g;
+      $cur_sq .= $line;
+    }
+  }
+  close($aafh_in);
+  if(defined $cur_h) {
+    my $acc = $cur_h;
+    if($acc =~ /^([^:]+):/) { $acc = $1; }
+    my $fkey = (exists $header_to_ftr_idx_H{$cur_h}) ? $header_to_ftr_idx_H{$cur_h} : (($cur_h =~ /\/(.+)$/) ? $1 : $cur_h);
+    push(@aa_A, { header => $cur_h, accession => $acc, feature_key => $fkey, sqstring => $cur_sq, len => length($cur_sq) });
+  }
+  if(scalar(@aa_A) == 0) {
+    die "ERROR, no AA sequences parsed from $aa_fa_file";
+  }
+
+  # Group sequences by feature key
+  my %fkey_seqs_A = ();
+  my @fkey_order = ();
+  foreach my $seq (@aa_A) {
+    my $fk = $seq->{"feature_key"};
+    if(! exists $fkey_seqs_A{$fk}) {
+      push(@fkey_order, $fk);
+      $fkey_seqs_A{$fk} = [];
+    }
+    push(@{$fkey_seqs_A{$fk}}, $seq);
+  }
+
+  # Create output directory for per-feature muscle MSA files
+  if(! -d $muscle_dir) {
+    mkdir($muscle_dir) || die "ERROR, unable to create muscle output directory $muscle_dir: $!";
+  }
+
+  # Write anchor TSV with reference as the anchor for each feature
+  open(my $atfh, ">", $anchor_tsv_file) || die "ERROR, unable to write anchor TSV $anchor_tsv_file: $!";
+  print $atfh join("\t", "anchor_header", "anchor_accession", "anchor_aa_len", "anchor_method", "anchor_centroid_avg_blastn_pident", "feature_key") . "\n";
+
+  my $n_alignments = 0;
+  foreach my $fk (@fkey_order) {
+    my @grp_A = @{$fkey_seqs_A{$fk}};
+
+    # Find reference sequence in this feature group
+    my $ref_seq = undef;
+    foreach my $seq (@grp_A) {
+      if($seq->{"accession"} eq $ref_accn) {
+        $ref_seq = $seq;
+        last;
+      }
+    }
+    if(! defined $ref_seq) {
+      die "ERROR, reference accession $ref_accn not found in CDS feature group $fk. " .
+          "The reference must be in the training set for all CDS features.";
+    }
+
+    # Write anchor TSV row (reference = anchor for RF definition)
+    print $atfh join("\t", $ref_seq->{"header"}, $ref_seq->{"accession"}, $ref_seq->{"len"}, "reference", "NA", $fk) . "\n";
+
+    # Write per-feature input FASTA for muscle
+    my $fk_input_fa  = sprintf("%s/ftr.%s.input.fa", $muscle_dir, $fk);
+    my $fk_output_fa = sprintf("%s/ftr.%s.muscle.afa", $muscle_dir, $fk);
+
+    open(my $fkfh, ">", $fk_input_fa) || die "ERROR, unable to write $fk_input_fa: $!";
+    foreach my $seq (@grp_A) {
+      print $fkfh ">" . $seq->{"header"} . "\n";
+      print $fkfh seq_SqstringAddNewlines($seq->{"sqstring"}, 60);
+    }
+    close($fkfh);
+
+    # Run muscle
+    if(scalar(@grp_A) == 1) {
+      # Single sequence: no alignment needed, just copy
+      open(my $out1, ">", $fk_output_fa) || die "ERROR, unable to write $fk_output_fa: $!";
+      print $out1 ">" . $grp_A[0]{"header"} . "\n";
+      print $out1 seq_SqstringAddNewlines($grp_A[0]{"sqstring"}, 60);
+      close($out1);
+    }
+    else {
+      my $cmd = $execs_HR->{"muscle"} . " -in " . $fk_input_fa . " -out " . $fk_output_fa;
+      utl_RunCommand($cmd, $do_verbose, 0, $FH_HR);
+    }
+
+    $n_alignments++;
+    if(! $do_keep) { push(@{$to_remove_AR}, $fk_input_fa); }
+  }
+  close($atfh);
+
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "cds.anchor.tsv", $anchor_tsv_file, 1, 1, "CDS anchor (reference) selection table");
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS muscle AA: %d CDS features, %d muscle alignments\n", scalar(@fkey_order), $n_alignments));
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS muscle AA: per-feature MSA files in %s\n", $muscle_dir));
+  return;
+}
+
+#################################################################
+# Subroutine : build_muscle_cds_msa()
+# Incept:     EPN* Tue Mar 25 2026
+#
+# Purpose:    Build concatenated CDS AA and NT MSAs from per-feature
+#             muscle alignment output. For each feature, RF is
+#             defined from the reference sequence's non-gap positions.
+#             Back-translates AA alignment to NT using ORF nucleotides
+#             and translation map (same logic as the original
+#             build_anchor_projected_cds_msa but reading from muscle
+#             MSA instead of CIGAR projections).
+#
+# Arguments:
+#   $aa_fa_file:       CDS amino acid FASTA (unaligned, for ordering)
+#   $cds_nt_fa_file:   CDS nucleotide FASTA (for back-translation)
+#   $map_tsv_file:     CDS translate_map.tsv
+#   $anchor_tsv_file:  anchor TSV (reference info per feature)
+#   $muscle_dir:       directory with per-feature muscle MSA files
+#   $msa_aa_fa_file:   output: concatenated AA MSA FASTA
+#   $msa_aa_stk_file:  output: concatenated AA MSA Stockholm (with RF)
+#   $msa_nt_fa_file:   output: concatenated NT MSA FASTA
+#   $do_skip_annotate: skip flag
+#   $do_keep:          keep intermediate files
+#   $ofile_info_HHR:   output file info hash
+#   $to_remove_AR:     files to remove
+#   $FH_HR:            file handle hash
+#
+# Returns:    void
+#################################################################
+sub build_muscle_cds_msa {
+  my ($aa_fa_file, $cds_nt_fa_file, $map_tsv_file, $anchor_tsv_file, $muscle_dir,
+      $msa_aa_fa_file, $msa_aa_stk_file, $msa_nt_fa_file,
+      $do_skip_annotate, $do_keep, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
+
+  if($do_skip_annotate) {
+    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS MSA/backconvert: skipped due to --skip-annotate\n"));
+    return;
+  }
+  if((! -s $aa_fa_file) || (! -s $anchor_tsv_file) || (! -s $cds_nt_fa_file) || (! -s $map_tsv_file)) {
+    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS MSA/backconvert: skipped (required input missing or empty)\n"));
+    return;
+  }
+
+  # Read translate map to get ftr_idx for each AA header
+  my %header_to_ftr_idx_H = ();
+  if(-s $map_tsv_file) {
+    open(my $mapfh, "<", $map_tsv_file) || die "ERROR, unable to read translate map $map_tsv_file: $!";
+    my $maphdr = <$mapfh>;  # skip header
+    while(my $line = <$mapfh>) {
+      chomp $line;
+      my @tok_A = split(/\t/, $line);
+      my $acc = $tok_A[1];
+      my $ftr_idx = $tok_A[2];
+      my $seq_coords = $tok_A[3];
+      my $model_coords = $tok_A[4];
+      my $aa_header = $acc . ":" . $seq_coords . "/" . $model_coords;
+      $header_to_ftr_idx_H{$aa_header} = $ftr_idx;
+    }
+    close($mapfh);
+  }
+
+  # Parse original AA sequences (unaligned, for accession ordering)
+  my @aa_order_A = ();
+  my %aa_fkey_H = ();
+  {
+    my $cur_h = undef;
+    open(my $aafh, "<", $aa_fa_file) || die "ERROR, unable to read AA fasta $aa_fa_file: $!";
+    while(my $line = <$aafh>) {
+      chomp $line;
+      if($line =~ /^>(\S+)/) {
+        $cur_h = $1;
+        if(! exists $aa_fkey_H{$cur_h}) {
+          push(@aa_order_A, $cur_h);
+          $aa_fkey_H{$cur_h} = (exists $header_to_ftr_idx_H{$cur_h}) ? $header_to_ftr_idx_H{$cur_h} : (($cur_h =~ /\/(.+)$/) ? $1 : $cur_h);
+        }
+      }
+    }
+    close($aafh);
+  }
+
+  # Read per-feature anchor (reference) info from anchor TSV
+  my %anchor_header_H = ();
+  my @fkey_order = ();
+  open(my $atfh, "<", $anchor_tsv_file) || die "ERROR, unable to read anchor TSV $anchor_tsv_file: $!";
+  my $nline = 0;
+  while(my $line = <$atfh>) {
+    chomp $line;
+    $nline++;
+    next if($line =~ /^\s*$/);
+    next if($nline == 1);
+    my @tok_A = split(/\t/, $line, -1);
+    next if(scalar(@tok_A) < 6);
+    my $a_header = $tok_A[0];
+    my $fk = $tok_A[5];
+    $anchor_header_H{$fk} = $a_header;
+    push(@fkey_order, $fk);
+  }
+  close($atfh);
+  if(scalar(@fkey_order) == 0) {
+    die "ERROR, no anchor rows parsed from $anchor_tsv_file";
+  }
+
+  # Build accession order from first feature group
+  my @accn_order_A = ();
+  my %accn_seen_H = ();
+  foreach my $h (@aa_order_A) {
+    my $fk = $aa_fkey_H{$h};
+    if($fk eq $fkey_order[0]) {
+      my $acc = ($h =~ /^([^:]+):/) ? $1 : $h;
+      if(! exists $accn_seen_H{$acc}) {
+        push(@accn_order_A, $acc);
+        $accn_seen_H{$acc} = 1;
+      }
+    }
+  }
+
+  # Read per-feature muscle MSA files, build concatenated AA MSA and RF
+  my %concat_msa_aa_H = (); # accession => concatenated AA alignment string
+  my $concat_rf = "";
+  foreach my $acc (@accn_order_A) { $concat_msa_aa_H{$acc} = ""; }
+
+  my @fk_aa_msa_len_A = (); # per-feature MSA width (for NT back-translation offset)
+  foreach my $fk (@fkey_order) {
+    my $fk_msa_file = sprintf("%s/ftr.%s.muscle.afa", $muscle_dir, $fk);
+    if(! -s $fk_msa_file) {
+      die "ERROR, per-feature muscle MSA file not found: $fk_msa_file";
+    }
+
+    # Read muscle MSA
+    my %msa_seq_H = (); # header => aligned sequence
+    my @msa_order_A = ();
+    my $cur_h = undef;
+    open(my $msafh, "<", $fk_msa_file) || die "ERROR, unable to read $fk_msa_file: $!";
+    while(my $line = <$msafh>) {
+      chomp $line;
+      if($line =~ /^>(\S+)/) {
+        $cur_h = $1;
+        if(! exists $msa_seq_H{$cur_h}) {
+          push(@msa_order_A, $cur_h);
+          $msa_seq_H{$cur_h} = "";
+        }
+      }
+      elsif(defined $cur_h) {
+        $line =~ s/\s+//g;
+        $msa_seq_H{$cur_h} .= $line;
+      }
+    }
+    close($msafh);
+
+    my $fk_msa_len = length($msa_seq_H{$msa_order_A[0]});
+    push(@fk_aa_msa_len_A, $fk_msa_len);
+
+    # Find reference sequence and build RF from its non-gap positions
+    my $ref_header = $anchor_header_H{$fk};
+    if(! exists $msa_seq_H{$ref_header}) {
+      die "ERROR, reference header $ref_header not found in muscle MSA $fk_msa_file";
+    }
+    my $ref_aln = $msa_seq_H{$ref_header};
+    my $fk_rf = "";
+    for(my $i = 0; $i < length($ref_aln); $i++) {
+      my $c = substr($ref_aln, $i, 1);
+      $fk_rf .= ($c eq '-' || $c eq '.') ? '.' : 'x';
+    }
+    $concat_rf .= $fk_rf;
+
+    # Build per-accession aligned AA strings from muscle MSA
+    # Map header -> accession
+    my %header_to_acc_H = ();
+    foreach my $h (@msa_order_A) {
+      my $acc = ($h =~ /^([^:]+):/) ? $1 : $h;
+      $header_to_acc_H{$h} = $acc;
+    }
+
+    foreach my $acc (@accn_order_A) {
+      # Find this accession's header in the MSA
+      my $found_h = undef;
+      foreach my $h (@msa_order_A) {
+        if($header_to_acc_H{$h} eq $acc) {
+          $found_h = $h;
+          last;
+        }
+      }
+      if(defined $found_h) {
+        $concat_msa_aa_H{$acc} .= $msa_seq_H{$found_h};
+      }
+      else {
+        # Accession not in this feature (e.g. partial CDS) — fill with gaps
+        $concat_msa_aa_H{$acc} .= ('-' x $fk_msa_len);
+      }
+    }
+  }
+
+  # Write per-accession concatenated AA MSA FASTA
+  open(my $maa_fh, ">", $msa_aa_fa_file) || die "ERROR, unable to write $msa_aa_fa_file: $!";
+  foreach my $acc (@accn_order_A) {
+    print $maa_fh ">" . $acc . "\n";
+    print $maa_fh seq_SqstringAddNewlines($concat_msa_aa_H{$acc}, 60);
+  }
+  close($maa_fh);
+
+  # Write AA MSA Stockholm with RF
+  open(my $mstk_fh, ">", $msa_aa_stk_file) || die "ERROR, unable to write $msa_aa_stk_file: $!";
+  print $mstk_fh "# STOCKHOLM 1.0\n";
+  foreach my $acc (@accn_order_A) {
+    print $mstk_fh $acc . "\t" . $concat_msa_aa_H{$acc} . "\n";
+  }
+  print $mstk_fh "#=GC RF\t" . $concat_rf . "\n";
+  print $mstk_fh "//\n";
+  close($mstk_fh);
+
+  # ---------------------------------------------------------------
+  # NT back-translation (same logic as original, reads from muscle MSA)
+  # ---------------------------------------------------------------
+
+  # Read CDS nt sequences
+  my %cds_nt_H = ();
+  my $cur_nt_h = undef;
+  open(my $ntfh, "<", $cds_nt_fa_file) || die "ERROR, unable to read CDS nt fasta $cds_nt_fa_file: $!";
+  while(my $line = <$ntfh>) {
+    chomp $line;
+    if($line =~ /^>(\S+)/) {
+      $cur_nt_h = $1;
+      $cds_nt_H{$cur_nt_h} = "" if(! exists $cds_nt_H{$cur_nt_h});
+    }
+    elsif(defined $cur_nt_h) {
+      $line =~ s/\s+//g;
+      $cds_nt_H{$cur_nt_h} .= $line;
+    }
+  }
+  close($ntfh);
+
+  # Read translation map (also extract strand per feature)
+  my %map_H = ();
+  my %fkey_strand_H = (); # feature_key => strand ("+" or "-")
+  open(my $mapfh, "<", $map_tsv_file) || die "ERROR, unable to read CDS map TSV $map_tsv_file: $!";
+  my $map_nline = 0;
+  while(my $line = <$mapfh>) {
+    chomp $line;
+    $map_nline++;
+    next if($line =~ /^\s*$/);
+    next if($map_nline == 1);
+    my @tok_A = split(/\t/, $line, -1);
+    next if(scalar(@tok_A) < 13);
+    my ($source, $acc, $ftr_idx, $seq_coords, $model_coords, $cds_nt_len, $orf_nt_start, $orf_nt_stop, $orf_aa_len, $orf_frame, $codon_start, $n5, $n3, $n_orfs) = @tok_A;
+    my $aa_header = $acc . ":" . $seq_coords . "/" . $model_coords;
+    $map_H{$aa_header} = {
+      source      => $source,
+      cds_nt_len  => $cds_nt_len,
+      n5          => $n5,
+      n3          => $n3
+    };
+    # Extract strand from seq_coords (e.g. "1734..1033:-" or "51..995:+")
+    if($seq_coords =~ /:([\+\-])$/) {
+      $fkey_strand_H{$ftr_idx} = $1 if(! exists $fkey_strand_H{$ftr_idx});
+    }
+  }
+  close($mapfh);
+
+  # Group headers by feature key
+  my %fkey_headers_A = ();
+  foreach my $h (@aa_order_A) {
+    my $fk = $aa_fkey_H{$h};
+    if(! exists $fkey_headers_A{$fk}) { $fkey_headers_A{$fk} = []; }
+    push(@{$fkey_headers_A{$fk}}, $h);
+  }
+
+  # NT backconversion: per-feature, then concatenate per-accession
+  my %concat_nt_H = ();
+  foreach my $acc (@accn_order_A) { $concat_nt_H{$acc} = ""; }
+
+  foreach my $fk_idx (0..$#fkey_order) {
+    my $fk = $fkey_order[$fk_idx];
+    my @fk_headers = exists $fkey_headers_A{$fk} ? @{$fkey_headers_A{$fk}} : ();
+    my $fk_msa_len = $fk_aa_msa_len_A[$fk_idx];
+    my $fk_aa_offset = 0;
+    for(my $i = 0; $i < $fk_idx; $i++) { $fk_aa_offset += $fk_aa_msa_len_A[$i]; }
+
+    # Compute per-feature max_n5 and max_n3
+    my $fk_max_n5 = 0;
+    my $fk_max_n3 = 0;
+    foreach my $h (@fk_headers) {
+      if(! exists $map_H{$h}) {
+        die "ERROR, unable to find AA->CDS mapping row for $h in $map_tsv_file";
+      }
+      my $n5 = $map_H{$h}{"n5"};
+      my $n3 = $map_H{$h}{"n3"};
+      if($n5 > $fk_max_n5) { $fk_max_n5 = $n5; }
+      if($n3 > $fk_max_n3) { $fk_max_n3 = $n3; }
+    }
+
+    foreach my $h (@fk_headers) {
+      my $acc = ($h =~ /^([^:]+):/) ? $1 : $h;
+      my $aa_aln = substr($concat_msa_aa_H{$acc}, $fk_aa_offset, $fk_msa_len);
+
+      my $source = $map_H{$h}{"source"};
+      my $cds_nt = $cds_nt_H{$source};
+      my $n5 = $map_H{$h}{"n5"};
+      my $n3 = $map_H{$h}{"n3"};
+
+      my $prefix_nt = ($n5 > 0) ? substr($cds_nt, 0, $n5) : "";
+      my $suffix_nt = ($n3 > 0) ? substr($cds_nt, length($cds_nt) - $n3, $n3) : "";
+      my $orf_nt_len = length($cds_nt) - $n5 - $n3;
+      my $orf_nt = substr($cds_nt, $n5, $orf_nt_len);
+
+      my $nt_aln = "";
+      my $nt_pos = 0;
+      my @aa_char_A = split(//, $aa_aln);
+      foreach my $aa_char (@aa_char_A) {
+        if($aa_char eq "-") {
+          $nt_aln .= "---";
+        }
+        else {
+          if(($nt_pos + 3) > length($orf_nt)) {
+            die "ERROR, unable to backconvert AA MSA for $h: insufficient nucleotides in ORF segment";
+          }
+          $nt_aln .= substr($orf_nt, $nt_pos, 3);
+          $nt_pos += 3;
+        }
+      }
+
+      my $prefix_pad = ($fk_max_n5 > $n5) ? ("-" x ($fk_max_n5 - $n5)) : "";
+      my $suffix_pad = ($fk_max_n3 > $n3) ? ("-" x ($fk_max_n3 - $n3)) : "";
+      my $fk_nt_aln = $prefix_pad . $prefix_nt . $nt_aln . $suffix_nt . $suffix_pad;
+
+      # For minus-strand CDS features, reverse-complement the NT alignment
+      # to convert from mRNA orientation back to forward genomic orientation.
+      # Gaps ('-') are preserved; only residues are complemented; column order
+      # is reversed so the alignment stays consistent across all sequences.
+      my $fk_strand = (exists $fkey_strand_H{$fk}) ? $fkey_strand_H{$fk} : "+";
+      if($fk_strand eq "-") {
+        seq_SqstringReverseComplement(\$fk_nt_aln);
+      }
+
+      $concat_nt_H{$acc} .= $fk_nt_aln;
+    }
+  }
+
+  # Write concatenated NT MSA FASTA
+  open(my $mnt_fh, ">", $msa_nt_fa_file) || die "ERROR, unable to write $msa_nt_fa_file: $!";
+  my $n_nt = 0;
+  foreach my $acc (@accn_order_A) {
+    my @acc_headers = grep { /^\Q$acc\E:/ } @aa_order_A;
+    my $nt_header = join("+", @acc_headers);
+    print $mnt_fh ">" . $nt_header . "\n";
+    print $mnt_fh seq_SqstringAddNewlines($concat_nt_H{$acc}, 60);
+    $n_nt++;
+  }
+  close($mnt_fh);
+
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "cds.msa.aa.afa", $msa_aa_fa_file,  $do_keep, $do_keep, "concatenated CDS protein MSA (aligned FASTA)");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "cds.msa.aa.stk", $msa_aa_stk_file, 1,        1,        "concatenated CDS protein MSA (Stockholm with RF)");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "cds.msa.nt.afa", $msa_nt_fa_file,  1,        1,        "concatenated CDS nucleotide MSA (aligned FASTA)");
+  if(! $do_keep) { push(@{$to_remove_AR}, $msa_aa_fa_file); }
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS MSA/backconvert: %d CDS features, wrote protein MSA to %s\n", scalar(@fkey_order), $msa_aa_fa_file));
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS MSA/backconvert: wrote protein MSA Stockholm (with RF) to %s\n", $msa_aa_stk_file));
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS MSA/backconvert: wrote CDS nucleotide MSA for %d sequences to %s\n", $n_nt, $msa_nt_fa_file));
   return;
 }
 
@@ -3327,11 +3926,36 @@ sub concatenate_all_blocks {
   }
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: %d sequences in final alignment (restricted to CDS MSA members)\n", scalar(@seq_names)));
 
+  # Pre-compute CDS MSA column slice [start, end] (0-based) for each coding block,
+  # using the anchor sequence's non-gap positions as a ruler.
+  # This ensures each coding block writes only its own columns in genomic order,
+  # so that RF position n in the stitched alignment corresponds to genome position n.
+  my $anchor_cds_seq = $accn_to_cds_seq_H{$anchor_accn};
+  if(!defined $anchor_cds_seq) {
+    die "ERROR in concatenate_all_blocks: anchor accession $anchor_accn not found in CDS MSA $cds_msa_fa_file";
+  }
+  my @cds_col_ranges_A = ();  # array of [start_col, end_col] (0-based) per coding block
+  {
+    my $col_cursor = 0;
+    my $total_anchor_len = length($anchor_cds_seq);
+    foreach my $blk (@{$blocks_AR}) {
+      next unless $blk->{"type"} eq "coding";
+      my $need = $blk->{"end"} - $blk->{"start"} + 1;  # genomic nt for this block
+      my $start_col = $col_cursor;
+      my $consumed = 0;
+      while($col_cursor < $total_anchor_len && $consumed < $need) {
+        my $c = substr($anchor_cds_seq, $col_cursor, 1);
+        if($c ne '-' && $c ne '.') { $consumed++; }
+        $col_cursor++;
+      }
+      push @cds_col_ranges_A, [$start_col, $col_cursor - 1];
+    }
+  }
+  my $cds_blk_idx = 0;  # index into @cds_col_ranges_A, incremented per coding block
+
   # Open output file and write header
   open(my $outfh, ">", $out_stk_file) || die "ERROR unable to write $out_stk_file: $!";
   print $outfh "# STOCKHOLM 1.0\n";
-
-  my $cds_added = 0;
 
   foreach my $block (@{$blocks_AR}) {
     my $type        = $block->{"type"};
@@ -3339,33 +3963,34 @@ sub concatenate_all_blocks {
     my $block_end   = $block->{"end"};
 
     if($type eq "coding") {
-      next if $cds_added;
-      $cds_added = 1;
+      # Extract only this block's slice of the CDS MSA
+      my $slice_start = $cds_col_ranges_A[$cds_blk_idx][0];
+      my $slice_end   = $cds_col_ranges_A[$cds_blk_idx][1];
+      $cds_blk_idx++;
+      my $slice_len = $slice_end - $slice_start + 1;
 
-      my $anchor_seq = $accn_to_cds_seq_H{$anchor_accn};
-      if(!defined $anchor_seq) {
-        die "ERROR: anchor accession $anchor_accn not found in CDS MSA $cds_msa_fa_file";
-      }
-      my $cds_aln_width = length($anchor_seq);
+      my $anchor_slice = substr($anchor_cds_seq, $slice_start, $slice_len);
 
-      # Build RF from anchor: non-gap -> x, gap -> .
+      # Build RF from anchor slice: non-gap -> x, gap -> .
       my $cds_rf = "";
-      foreach my $char (split(//, $anchor_seq)) {
+      foreach my $char (split(//, $anchor_slice)) {
         $cds_rf .= ($char eq '-' || $char eq '.') ? '.' : 'x';
       }
 
-      # Write sequence lines in canonical order
+      # Write sequence lines in canonical order (slice of each sequence)
+      my $full_anchor_len = length($anchor_cds_seq);
       foreach my $name (@seq_names) {
-        my $seq = exists $accn_to_cds_seq_H{$name} ? $accn_to_cds_seq_H{$name} : '-' x $cds_aln_width;
+        my $full_seq = exists $accn_to_cds_seq_H{$name} ? $accn_to_cds_seq_H{$name} : '-' x $full_anchor_len;
+        my $seq = substr($full_seq, $slice_start, $slice_len);
         printf $outfh "%-30s %s\n", $name, $seq;
       }
       printf $outfh "#=GC %-24s %s\n", "RF", $cds_rf;
 
-      # Build gapped SS_cons for CDS block by following anchor gaps, write per-block
+      # Build gapped SS_cons for this coding block
       my $ungapped_substr = substr($ungapped_ss_cons, $block_start - 1, $block_end - $block_start + 1);
       my $cds_ss = "";
       my $ss_pos = 0;
-      foreach my $char (split(//, $anchor_seq)) {
+      foreach my $char (split(//, $anchor_slice)) {
         if($char eq '-' || $char eq '.') {
           $cds_ss .= '.';
         }
@@ -3377,8 +4002,8 @@ sub concatenate_all_blocks {
       printf $outfh "#=GC %-24s %s\n", "SS_cons", $cds_ss;
       print  $outfh "\n";
 
-      ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: added CDS MSA (%d..%d, %d alignment columns)\n",
-                                                       $block_start, $block_end, $cds_aln_width));
+      ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: added CDS MSA slice (%d..%d, %d alignment columns)\n",
+                                                       $block_start, $block_end, $slice_len));
     }
     elsif($type eq "rna") {
       # Read RNA Stockholm via Bio::Easel::MSA

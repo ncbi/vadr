@@ -41,6 +41,8 @@ IVERSION="1.1.5"
 FVERSION="36.3.8h"
 FVERSIONGIT="v36.3.8h_04-May-2020"
 FVERSIONGITNOV="36.3.8h_04-May-2020"
+# muscle (3.8.31: public domain, by Robert C. Edgar)
+MSCVERSION="3.8.31"
 # minimap2
 MM2VERSIONGIT="v2.30"
 MM2VERSIONGITNOV="2.30"
@@ -211,7 +213,12 @@ if [ "$DOWNLOADORBUILD" != "build" ]; then
     echo "Downloading minimap2 version $MM2VERSIONGIT src distribution"
     curl -k -L -o $MM2VERSIONGIT.zip https://github.com/lh3/minimap2/archive/$MM2VERSIONGIT.zip; unzip $MM2VERSIONGIT.zip; mv minimap2-$MM2VERSIONGITNOV minimap2; rm $MM2VERSIONGIT.zip
     echo "------------------------------------------------------------"
-    
+
+    # download muscle source distribution
+    echo "Downloading muscle version $MSCVERSION src distribution"
+    curl -k -L -o muscle${MSCVERSION}_src.tar.gz https://drive5.com/muscle/downloads${MSCVERSION}/muscle${MSCVERSION}_src.tar.gz; tar xzf muscle${MSCVERSION}_src.tar.gz; mv muscle${MSCVERSION} muscle; rm muscle${MSCVERSION}_src.tar.gz
+    echo "------------------------------------------------------------"
+
     # download blast binaries
     if [ "$INPUTSYSTEM" = "linux" ]; then
         echo "Downloading BLAST version $BVERSION for Linux"
@@ -395,7 +402,31 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
     cd ../../
     echo "Finished building minimap2."
     echo "------------------------------------------------------------"
-    
+
+    # Build muscle:
+    if [ ! -d muscle ]; then
+        echo ""
+        echo "ERROR: muscle dir does not exist"
+        if [ "$DOWNLOADORBUILD" = "build" ]; then
+            echo ""
+            echo "This may be because you did not yet run this script in download mode from this directory,"
+            echo "which is required prior to running in build mode. To do that, execute:"
+            echo "  $0 <\"linux\" or \"macosx-silicon\" or \"macosx-intel\"> download"
+            echo ""
+            exit 1
+        fi
+        exit 1
+    fi
+    echo "------------------------------------------------------------"
+    echo "Building muscle ... "
+    cd muscle/src
+    make
+    cd ../../
+    mkdir -p muscle/bin
+    cp muscle/src/muscle muscle/bin/muscle
+    echo "Finished building muscle."
+    echo "------------------------------------------------------------"
+
     ###############################################
     # Message about setting environment variables
     ###############################################
@@ -420,6 +451,7 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
     echo "export VADRSEQUIPDIR=\"\$VADRINSTALLDIR/sequip\""
     echo "export VADRBLASTDIR=\"\$VADRINSTALLDIR/ncbi-blast/bin\""
     echo "export VADRFASTADIR=\"\$VADRINSTALLDIR/fasta/bin\""
+    echo "export VADRMUSCLEDIR=\"\$VADRINSTALLDIR/muscle/bin\""
     echo "export VADRMINIMAP2DIR=\"\$VADRINSTALLDIR/minimap2\""
     echo "export PERL5LIB=\"\$VADRSCRIPTSDIR\":\"\$VADRSEQUIPDIR\":\"\$VADRBIOEASELDIR/blib/lib\":\"\$VADRBIOEASELDIR/blib/arch\":\"\$PERL5LIB\""
     echo "export PATH=\"\$VADRSCRIPTSDIR\":\"\$PATH\""
@@ -449,6 +481,7 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
     echo "setenv VADRSEQUIPDIR \"\$VADRINSTALLDIR/sequip\""
     echo "setenv VADRBLASTDIR \"\$VADRINSTALLDIR/ncbi-blast/bin\""
     echo "setenv VADRFASTADIR \"\$VADRINSTALLDIR/fasta/bin\""
+    echo "setenv VADRMUSCLEDIR \"\$VADRINSTALLDIR/muscle/bin\""
     echo "setenv VADRMINIMAP2DIR=\"\$VADRINSTALLDIR/minimap2\""
     echo "setenv PERL5LIB \"\$VADRSCRIPTSDIR\":\"\$VADRSEQUIPDIR\":\"\$VADRBIOEASELDIR/blib/lib\":\"\$VADRBIOEASELDIR/blib/arch\":\"\$PERL5LIB\""
     echo "setenv PATH \"\$VADRSCRIPTSDIR\":\"\$PATH\""
