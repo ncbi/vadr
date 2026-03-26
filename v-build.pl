@@ -1237,9 +1237,14 @@ sub profile_CdsFetchStockholmToFasta {
           # Use the full segment coordinates without trimming
           if($ua_first <= $ua_last) {
             my $seg_strand = $sgm_strand_AA[$ftr_idx][$sgm_idx];
-            # Coordinates are always in sequence order (low..high), regardless of strand
-            # The strand indicator (:+ or :-) shows the direction
-            push(@final_seq_sgm_coords_A, $ua_first . ".." . $ua_last . ":" . $seg_strand);
+            # Positive strand: low..high:+ (5'->3' = low->high)
+            # Negative strand: high..low:- (5'->3' = high->low, VADR convention)
+            if($seg_strand eq "-") {
+              push(@final_seq_sgm_coords_A, $ua_last . ".." . $ua_first . ":" . $seg_strand);
+            }
+            else {
+              push(@final_seq_sgm_coords_A, $ua_first . ".." . $ua_last . ":" . $seg_strand);
+            }
           }
         }
 
@@ -1253,7 +1258,27 @@ sub profile_CdsFetchStockholmToFasta {
         #     (which should encode the stop codon). If any of those positions are gapped,
         #     then this sequence doesn't have a stop codon and should be 3'-truncated.
         my $ref_is_trunc5p = ($ref_coords_str =~ /</) ? 1 : 0;
-        my $is_trunc5p_for_this_seq = ($total_rf_offset_5p > 0) ? 1 : 0;
+        # Check if the biological 5' RF position of this CDS is gapped in this sequence.
+        # This catches truncation even when total_rf_offset_5p==0 (i.e., the sequence starts
+        # downstream of rfstart but happens to be in-frame with rfstart).
+        my $is_trunc5p_for_this_seq = 0;
+        if($total_rf_offset_5p > 0) {
+          $is_trunc5p_for_this_seq = 1;
+        }
+        elsif(scalar(@{$sgm_start_AA[$ftr_idx]}) > 0) {
+          my $sgm0_rfstart = $sgm_start_AA[$ftr_idx][0];
+          my $sgm0_rfstop  = $sgm_stop_AA[$ftr_idx][0];
+          my $sgm0_strand  = $sgm_strand_AA[$ftr_idx][0];
+          # Biological 5' RF pos: max for minus strand, min for plus strand
+          my $rf_5p = ($sgm0_strand eq "-") ?
+            ($sgm0_rfstart > $sgm0_rfstop ? $sgm0_rfstart : $sgm0_rfstop) :
+            ($sgm0_rfstart < $sgm0_rfstop ? $sgm0_rfstart : $sgm0_rfstop);
+          my $apos_5p = $msa->rfpos_to_aligned_pos($rf_5p);
+          if($apos_5p >= 1 && $apos_5p <= length($aligned_sqstring)) {
+            my $char_5p = substr($aligned_sqstring, $apos_5p - 1, 1);
+            if($char_5p =~ /[\-\_\.\~]/) { $is_trunc5p_for_this_seq = 1; }
+          }
+        }
         
         # For 3' truncation: check if this sequence has ungapped residues at the biological 3' end.
         # For positive strand: biological 3' end is at high RF positions (stop codon at end)
@@ -1312,9 +1337,8 @@ sub profile_CdsFetchStockholmToFasta {
             if($coord_str =~ /^(\d+)\.\.(\d+):([+-])$/) {
               my ($seg_start, $seg_stop, $seg_strand) = ($1, $2, $3);
               
-              # For positive strand: 5' is at start (low coord), 3' is at stop (high coord)
-              # For negative strand: 5' is at start (high coord), 3' is at stop (low coord)
-              # Note: coords are already ordered correctly (low..high for +, high..low for -)
+              # For positive strand: coords are low..high:+, so start=low=5', stop=high=3'
+              # For negative strand: coords are high..low:-, so start=high=5', stop=low=3'
               
               if($seg_strand eq "+") {
                 # Positive strand: 5' marker at start, 3' marker at stop
@@ -1325,7 +1349,7 @@ sub profile_CdsFetchStockholmToFasta {
                   $seg_stop = ">" . $seg_stop;
                 }
               } else {
-                # Negative strand: 5' marker at start (which is the high coord), 3' marker at stop (which is the low coord)
+                # Negative strand: coords are high..low:-, 5' marker at start (high), 3' marker at stop (low)
                 if($i == 0 && ($ref_is_trunc5p || $is_trunc5p_for_this_seq)) {
                   $seg_start = "<" . $seg_start;
                 }
