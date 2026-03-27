@@ -99,6 +99,9 @@ opt_Add("--xpergroup",  "integer", 50,         $g,    undef, undef,       "max s
 opt_Add("--group",      "string",  undef,      $g,    undef, undef,       "virus group name for #=GS GP annotations in output .stk",   "virus group name for #=GS GP annotations in output .stk as <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--rna-cm-file", "string", undef,        $g,    undef, "--skip-rna", "use CM file <s> for RNA search instead of default Rfam.cm",  "use CM file <s> for RNA search instead of default Rfam.cm", \%opt_HH, \@opt_order_A);
 opt_Add("--skip-rna",   "boolean", 0,             $g,    undef, "--rna-cm-file", "skip RNA discovery and alignment",                          "skip RNA discovery and alignment (treat all noncoding as unstructured)", \%opt_HH, \@opt_order_A);
+opt_Add("--no-auto-alt", "boolean", 0,           $g,    undef, "--alt-file",   "skip auto-detection of alternative CDS features and exceptions", "skip auto-detection of alternative CDS features and exceptions", \%opt_HH, \@opt_order_A);
+opt_Add("--alt-file",   "string",  undef,         $g,    undef, "--no-auto-alt", "read alternative feature definitions from file <s>",           "read alternative feature definitions from file <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--alt-min-ind", "integer", 2,            $g,    undef, "--no-auto-alt", "min independent observations to add an alternative or exception", "min independent observations to add an alternative or exception as <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "other expert options";
 #       option       type          default     group  requires incompat      preamble-output                                              help-output           
@@ -128,6 +131,9 @@ my $options_okay =
                 'group=s'      => \$GetOptions_H{"--group"},
                 'rna-cm-file=s' => \$GetOptions_H{"--rna-cm-file"},
                 'skip-rna'     => \$GetOptions_H{"--skip-rna"},
+                'no-auto-alt'  => \$GetOptions_H{"--no-auto-alt"},
+                'alt-file=s'   => \$GetOptions_H{"--alt-file"},
+                'alt-min-ind=i' => \$GetOptions_H{"--alt-min-ind"},
 # other expert options
                 'execname=s'   => \$GetOptions_H{"--execname"});
 
@@ -3599,7 +3605,315 @@ sub find_basepaired_bounds {
   # Adjust coordinates relative to start position
   my $bp_start = $start + $first_bp;
   my $bp_end = $start + $last_bp;
-  
+
   return ($bp_start, $bp_end);
+}
+
+#################################################################
+# Subroutine: parse_alt_for_cds_boundary_alerts()
+# Incept:     EPN, Thu Mar 27 2026
+#
+# Purpose:    Parse a .vadr.alt file from v-annotate.pl output
+#             and extract CDS boundary alerts (mutendex, cdsstopn,
+#             cdsstopp, mutendcd, mutstart) grouped by feature and
+#             alternative model coordinate.
+#
+# Arguments:
+#   $alt_file: path to .vadr.alt file
+#   $FH_HR:    REF to hash of file handles
+#
+# Returns: REF to hash of hash of arrays:
+#   key1: "<ftr_name>:<ftr_idx>"
+#   key2: "<mdl_coords>"
+#   value: array ref of hashrefs with keys:
+#          acc, alert_code, seq_coords, mdl_coords, fail, detail
+#################################################################
+sub parse_alt_for_cds_boundary_alerts {
+  my $sub_name = "parse_alt_for_cds_boundary_alerts";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+
+  my ($alt_file, $FH_HR) = @_;
+
+  my %target_alerts = map { $_ => 1 } qw(mutendex cdsstopn cdsstopp mutendcd mutstart);
+  my %alt_groups = ();
+
+  open(my $fh, "<", $alt_file) || ofile_FAIL("ERROR in $sub_name, unable to open $alt_file for reading", 1, $FH_HR);
+  while(my $line = <$fh>) {
+    chomp $line;
+    next if($line =~ /^\#/);
+    next if($line =~ /^\s*$/);
+
+    my @tok = split(/\s+/, $line);
+    next if(scalar(@tok) < 13);
+
+    my $seq_name    = $tok[1];
+    my $ftr_type    = $tok[3];
+    my $ftr_name    = $tok[4];
+    my $ftr_idx     = $tok[5];
+    my $alert_code  = $tok[6];
+    my $fail        = $tok[7];
+    my $seq_coords  = $tok[9];
+    my $mdl_coords  = $tok[11];
+    my $detail      = join(" ", @tok[13..$#tok]);
+
+    next if(! exists $target_alerts{$alert_code});
+    next if($ftr_type ne "CDS");
+    next if($mdl_coords eq "-");
+
+    my $ftr_key = $ftr_name . ":" . $ftr_idx;
+
+    if(! exists $alt_groups{$ftr_key}{$mdl_coords}) {
+      $alt_groups{$ftr_key}{$mdl_coords} = [];
+    }
+    push(@{$alt_groups{$ftr_key}{$mdl_coords}},
+         { acc        => $seq_name,
+           alert_code => $alert_code,
+           seq_coords => $seq_coords,
+           mdl_coords => $mdl_coords,
+           fail       => $fail,
+           detail     => $detail });
+  }
+  close($fh);
+
+  return \%alt_groups;
+}
+
+#################################################################
+# Subroutine: count_independent_observations()
+# Incept:     EPN, Thu Mar 27 2026
+#
+# Purpose:    Given an array of accession strings, count the number
+#             of independent submissions by grouping accessions by
+#             their alphabetic prefix (stripping version and trailing
+#             digits). Accessions from the same submission tend to
+#             have sequential numbers with the same prefix.
+#
+# Arguments:
+#   $accessions_AR: REF to array of accession strings
+#
+# Returns: integer count of unique submission prefixes
+#################################################################
+sub count_independent_observations {
+  my $sub_name = "count_independent_observations";
+  my $nargs_expected = 1;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+
+  my ($accessions_AR) = @_;
+
+  my %prefix_H = ();
+  foreach my $acc (@{$accessions_AR}) {
+    # Strip version suffix (e.g., ".1")
+    my $bare = $acc;
+    $bare =~ s/\.\d+$//;
+    # Extract alphabetic prefix (e.g., "DQ" from "DQ649478", "K" from "K02990")
+    my ($prefix) = ($bare =~ /^([A-Za-z]+)/);
+    $prefix = "unknown" if(! defined $prefix);
+    $prefix_H{$prefix} = 1;
+  }
+
+  return scalar(keys %prefix_H);
+}
+
+#################################################################
+# Subroutine: detect_alternative_features()
+# Incept:     EPN, Thu Mar 27 2026
+#
+# Purpose:    Given grouped CDS boundary alerts from
+#             parse_alt_for_cds_boundary_alerts(), apply the
+#             independence threshold and determine which alternative
+#             CDS features to add.
+#
+# Arguments:
+#   $alt_groups_HHR: REF to hash of hash of arrays from
+#                    parse_alt_for_cds_boundary_alerts()
+#   $min_independent: minimum number of independent observations
+#   $ftr_info_AHR:   REF to array of feature info hashes
+#   $model_key:      model name/key
+#   $FH_HR:          REF to hash of file handles
+#
+# Returns: REF to array of hashrefs, each with keys:
+#          ftr_name, ftr_idx, alert_code, mdl_alt_coords,
+#          original_coords, new_coords, n_seqs, n_independent,
+#          accessions_AR
+#################################################################
+sub detect_alternative_features {
+  my $sub_name = "detect_alternative_features";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+
+  my ($alt_groups_HHR, $min_independent, $ftr_info_AHR, $model_key, $FH_HR) = @_;
+
+  my @alt_features = ();
+
+  foreach my $ftr_key (sort keys %{$alt_groups_HHR}) {
+    my ($ftr_name, $ftr_idx) = split(/:/, $ftr_key);
+    $ftr_idx = int($ftr_idx);
+
+    # Get original CDS coords from feature info
+    my $original_coords = $ftr_info_AHR->[$ftr_idx]{"coords"};
+    if(! defined $original_coords) {
+      ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# WARNING: $sub_name, unable to find coords for feature $ftr_key, skipping\n"));
+      next;
+    }
+
+    foreach my $mdl_coords (sort keys %{$alt_groups_HHR->{$ftr_key}}) {
+      my @entries = @{$alt_groups_HHR->{$ftr_key}{$mdl_coords}};
+      my @accessions = map { $_->{"acc"} } @entries;
+      my $n_ind = count_independent_observations(\@accessions);
+
+      if($n_ind < $min_independent) {
+        ofile_OutputString($FH_HR->{"log"}, 1,
+          sprintf("# Alt detect: %s %s n_seqs=%d n_ind=%d < min=%d, skipping\n",
+                  $ftr_key, $mdl_coords, scalar(@entries), $n_ind, $min_independent));
+        next;
+      }
+
+      # Determine alert type: is this an early stop, late stop, or alt start?
+      # Use the first entry's alert_code as representative
+      my $alert_code = $entries[0]{"alert_code"};
+      my $alt_type;
+      if($alert_code eq "cdsstopn" || $alert_code eq "cdsstopp") {
+        $alt_type = "alt_stop_early";
+      }
+      elsif($alert_code eq "mutendex") {
+        $alt_type = "alt_stop_late";
+      }
+      elsif($alert_code eq "mutstart") {
+        $alt_type = "alt_start";
+      }
+      elsif($alert_code eq "mutendcd") {
+        # mutendcd alone: the reference stop is invalid but no clear
+        # alternative identified in this group — skip
+        ofile_OutputString($FH_HR->{"log"}, 1,
+          sprintf("# Alt detect: %s %s mutendcd alone, skipping\n", $ftr_key, $mdl_coords));
+        next;
+      }
+      else {
+        next;
+      }
+
+      # Compute the new CDS coords with the alternative boundary
+      my $new_coords = compute_alternative_cds_coords($original_coords, $mdl_coords, $alt_type, $FH_HR);
+      if(! defined $new_coords) {
+        ofile_OutputString($FH_HR->{"log"}, 1,
+          sprintf("# WARNING: $sub_name, unable to compute alt coords for %s %s %s, skipping\n",
+                  $ftr_key, $mdl_coords, $alt_type));
+        next;
+      }
+
+      # Don't add if the new coords are identical to the original
+      if($new_coords eq $original_coords) {
+        next;
+      }
+
+      ofile_OutputString($FH_HR->{"log"}, 1,
+        sprintf("# Alt detect: %s %s n_seqs=%d n_ind=%d alt_type=%s new_coords=%s ADDED\n",
+                $ftr_key, $mdl_coords, scalar(@entries), $n_ind, $alt_type, $new_coords));
+
+      push(@alt_features, {
+        ftr_name        => $ftr_name,
+        ftr_idx         => $ftr_idx,
+        alert_code      => $alert_code,
+        alt_type        => $alt_type,
+        mdl_alt_coords  => $mdl_coords,
+        original_coords => $original_coords,
+        new_coords      => $new_coords,
+        n_seqs          => scalar(@entries),
+        n_independent   => $n_ind,
+        accessions_AR   => \@accessions,
+      });
+    }
+  }
+
+  return \@alt_features;
+}
+
+#################################################################
+# Subroutine: compute_alternative_cds_coords()
+# Incept:     EPN, Thu Mar 27 2026
+#
+# Purpose:    Given the original CDS coords and an alternative
+#             stop/start position from a v-annotate alert, compute
+#             the new CDS coords string.
+#
+#             For alt_stop_early/alt_stop_late: replace the 3' end
+#             of the last segment with the alternative stop position.
+#             For alt_start: replace the 5' start of the first
+#             segment with the alternative start position.
+#
+#             Handles multi-segment CDS (ribosomal slippage) by
+#             only modifying the relevant terminal segment.
+#
+# Arguments:
+#   $original_coords: original CDS coords string (e.g., "1979..2442:+,2439..2490:+")
+#   $mdl_alt_coords:  model coords of the alternative boundary (e.g., "2470..2472:+")
+#   $alt_type:        "alt_stop_early", "alt_stop_late", or "alt_start"
+#   $FH_HR:           REF to hash of file handles
+#
+# Returns: new coords string, or undef on failure
+#################################################################
+sub compute_alternative_cds_coords {
+  my $sub_name = "compute_alternative_cds_coords";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+
+  my ($original_coords, $mdl_alt_coords, $alt_type, $FH_HR) = @_;
+
+  # Parse mdl_alt_coords to get the alternative boundary position
+  # Format: "2470..2472:+" — for a stop codon, the 3' position (2472) is the new CDS end
+  # For a start codon, the 5' position (2470) is the new CDS start
+  my ($alt_start, $alt_stop, $alt_strand);
+  if($mdl_alt_coords =~ /^(\d+)\.\.(\d+):([\+\-])$/) {
+    ($alt_start, $alt_stop, $alt_strand) = ($1, $2, $3);
+  }
+  else {
+    return undef;
+  }
+
+  # Parse original coords into segments
+  my @segments = split(/,/, $original_coords);
+
+  if($alt_type eq "alt_stop_early" || $alt_type eq "alt_stop_late") {
+    # Modify the last segment's 3' end (for + strand) or 5' end (for - strand)
+    my $last_seg = $segments[$#segments];
+    if($last_seg =~ /^(\d+)\.\.(\d+):([\+\-])$/) {
+      my ($seg_start, $seg_stop, $seg_strand) = ($1, $2, $3);
+      if($seg_strand eq "+") {
+        # For + strand: the 3' end is the higher coordinate
+        $segments[$#segments] = $seg_start . ".." . $alt_stop . ":" . $seg_strand;
+      }
+      else {
+        # For - strand: the 3' end is the lower coordinate
+        $segments[$#segments] = $alt_start . ".." . $seg_stop . ":" . $seg_strand;
+      }
+    }
+    else {
+      return undef;
+    }
+  }
+  elsif($alt_type eq "alt_start") {
+    # Modify the first segment's 5' start
+    my $first_seg = $segments[0];
+    if($first_seg =~ /^(\d+)\.\.(\d+):([\+\-])$/) {
+      my ($seg_start, $seg_stop, $seg_strand) = ($1, $2, $3);
+      if($seg_strand eq "+") {
+        # For + strand: the 5' start is the lower coordinate
+        $segments[0] = $alt_start . ".." . $seg_stop . ":" . $seg_strand;
+      }
+      else {
+        # For - strand: the 5' start is the higher coordinate
+        $segments[0] = $seg_start . ".." . $alt_stop . ":" . $seg_strand;
+      }
+    }
+    else {
+      return undef;
+    }
+  }
+  else {
+    return undef;
+  }
+
+  return join(",", @segments);
 }
 
