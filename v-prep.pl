@@ -4102,3 +4102,340 @@ sub detect_exceptions {
   return \@exceptions;
 }
 
+#################################################################
+# Subroutine: add_alternatives_and_exceptions_to_minfo()
+# Incept:     EPN, Thu Mar 27 2026
+#
+# Purpose:    Read an existing minfo file and write a new one with
+#             alternative CDS features and _exc exception keys added.
+#
+#             For each alternative CDS:
+#             - Adds alternative_ftr_set:"<name>(cds)" to the original
+#               CDS FEATURE line
+#             - Inserts a new CDS FEATURE line with the alternative
+#               coords and the same alternative_ftr_set value
+#             - If a matching gene feature exists, adds alternative
+#               gene features with alternative_ftr_set_subn links
+#
+#             For each exception:
+#             - Appends the _exc key:"value" to the relevant
+#               FEATURE or MODEL line
+#
+# Arguments:
+#   $in_minfo_file:   path to input .minfo file
+#   $out_minfo_file:  path to output .minfo file
+#   $alt_features_AR: REF to array of alternative feature hashrefs
+#                     from detect_alternative_features()
+#   $exceptions_AR:   REF to array of exception hashrefs
+#                     from detect_exceptions()
+#   $model_key:       model name
+#   $FH_HR:           REF to hash of file handles
+#
+# Returns: void
+#################################################################
+sub add_alternatives_and_exceptions_to_minfo {
+  my $sub_name = "add_alternatives_and_exceptions_to_minfo";
+  my $nargs_expected = 6;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+
+  my ($in_minfo_file, $out_minfo_file, $alt_features_AR, $exceptions_AR, $model_key, $FH_HR) = @_;
+
+  # Read all lines from input minfo
+  my @lines = ();
+  open(my $infh, "<", $in_minfo_file) || ofile_FAIL("ERROR in $sub_name, unable to open $in_minfo_file for reading", 1, $FH_HR);
+  while(my $line = <$infh>) {
+    chomp $line;
+    push(@lines, $line);
+  }
+  close($infh);
+
+  # Index FEATURE lines by their 0-based feature index (order they appear)
+  # and extract key info (type, gene name, coords)
+  my @ftr_line_idx = ();  # ftr_line_idx[$ftr_idx] = index into @lines
+  my @ftr_type = ();
+  my @ftr_gene = ();
+  my @ftr_coords = ();
+  my $ftr_count = 0;
+  for(my $i = 0; $i < scalar(@lines); $i++) {
+    if($lines[$i] =~ /^FEATURE\s/) {
+      $ftr_line_idx[$ftr_count] = $i;
+      # Parse type
+      if($lines[$i] =~ /type:"([^"]+)"/) { $ftr_type[$ftr_count] = $1; }
+      else { $ftr_type[$ftr_count] = ""; }
+      # Parse gene
+      if($lines[$i] =~ /gene:"([^"]+)"/) { $ftr_gene[$ftr_count] = $1; }
+      else { $ftr_gene[$ftr_count] = ""; }
+      # Parse coords
+      if($lines[$i] =~ /coords:"([^"]+)"/) { $ftr_coords[$ftr_count] = $1; }
+      else { $ftr_coords[$ftr_count] = ""; }
+      $ftr_count++;
+    }
+  }
+
+  # --- Step 1: Apply exceptions to existing lines ---
+  # Index for MODEL line
+  my $model_line_idx = -1;
+  for(my $i = 0; $i < scalar(@lines); $i++) {
+    if($lines[$i] =~ /^MODEL\s/) { $model_line_idx = $i; last; }
+  }
+
+  foreach my $exc (@{$exceptions_AR}) {
+    my $exc_type   = $exc->{"exc_type"};
+    my $exc_coords = $exc->{"exc_coords"};
+    my $ftr_idx    = $exc->{"ftr_idx"};
+
+    if($exc_type eq "lowsim_exc") {
+      # Append to MODEL line
+      if($model_line_idx >= 0) {
+        # Check if lowsim_exc already exists on the line
+        if($lines[$model_line_idx] =~ /lowsim_exc:"([^"]*)"/) {
+          # Append to existing value
+          my $existing = $1;
+          $lines[$model_line_idx] =~ s/lowsim_exc:"[^"]*"/lowsim_exc:"$existing,$exc_coords"/;
+        }
+        else {
+          $lines[$model_line_idx] .= " lowsim_exc:\"$exc_coords\"";
+        }
+      }
+    }
+    else {
+      # Append to FEATURE line at ftr_idx
+      if($ftr_idx >= 0 && $ftr_idx < $ftr_count) {
+        my $li = $ftr_line_idx[$ftr_idx];
+        # Check if this exc_type already exists on the line
+        if($lines[$li] =~ /$exc_type:"([^"]*)"/) {
+          my $existing = $1;
+          $lines[$li] =~ s/$exc_type:"[^"]*"/$exc_type:"$existing,$exc_coords"/;
+        }
+        else {
+          $lines[$li] .= " $exc_type:\"$exc_coords\"";
+        }
+      }
+    }
+  }
+
+  # --- Step 2: Build alternative feature insertions ---
+  # Group alternatives by ftr_idx so we can handle multiple alternatives
+  # for the same CDS
+  my %alts_by_ftr_idx = ();
+  foreach my $alt (@{$alt_features_AR}) {
+    my $ftr_idx = $alt->{"ftr_idx"};
+    if(! exists $alts_by_ftr_idx{$ftr_idx}) {
+      $alts_by_ftr_idx{$ftr_idx} = [];
+    }
+    push(@{$alts_by_ftr_idx{$ftr_idx}}, $alt);
+  }
+
+  # For each CDS with alternatives, prepare:
+  # 1. Modify the original CDS line to add alternative_ftr_set
+  # 2. Create new CDS line(s) for each alternative
+  # 3. Find and modify the parent gene (if any)
+  # 4. Create new gene line(s)
+  #
+  # We build a map of: line_index -> [lines to insert AFTER this line]
+  # and lines to modify in-place
+  my %insert_after = ();  # line_idx -> [line1, line2, ...]
+
+  foreach my $ftr_idx (sort { $a <=> $b } keys %alts_by_ftr_idx) {
+    my @alts = @{$alts_by_ftr_idx{$ftr_idx}};
+    my $cds_line_idx = $ftr_line_idx[$ftr_idx];
+
+    # Generate the alternative_ftr_set name from the gene name or feature name
+    my $gene_name = $ftr_gene[$ftr_idx];
+    my $set_base = generate_alt_set_name($gene_name, $alts[0]{"ftr_name"});
+    my $cds_set_name = $set_base . "(cds)";
+    my $gene_set_name = $set_base . "(gene)";
+
+    # Add alternative_ftr_set to original CDS line
+    $lines[$cds_line_idx] .= " alternative_ftr_set:\"$cds_set_name\"";
+
+    # Create new CDS lines for each alternative
+    my @new_cds_lines = ();
+    foreach my $alt (@alts) {
+      my $new_line = $lines[$cds_line_idx];
+      # Replace coords with alternative coords
+      $new_line =~ s/coords:"[^"]*"/coords:"$alt->{"new_coords"}"/;
+      push(@new_cds_lines, $new_line);
+    }
+
+    # Insert new CDS lines after the original
+    $insert_after{$cds_line_idx} = \@new_cds_lines;
+
+    # Find the parent gene feature (same gene name, type "gene")
+    my $gene_ftr_idx = -1;
+    for(my $fi = 0; $fi < $ftr_count; $fi++) {
+      if($ftr_type[$fi] eq "gene" && $ftr_gene[$fi] eq $gene_name && $gene_name ne "") {
+        $gene_ftr_idx = $fi;
+        last;
+      }
+    }
+
+    if($gene_ftr_idx >= 0) {
+      my $gene_line_idx = $ftr_line_idx[$gene_ftr_idx];
+
+      # Check if the existing gene already encompasses ALL alternative CDS variants.
+      # If so, no gene alternatives are needed (the gene spans all variants).
+      my $gene_already_spans_all = 1;
+      if($ftr_coords[$gene_ftr_idx] =~ /^(\d+)\.\.(\d+):([\+\-])$/) {
+        my ($gstart, $gstop, $gstrand) = ($1, $2, $3);
+        foreach my $alt (@alts) {
+          my $new_gene_coords = compute_gene_coords_for_alt($ftr_coords[$gene_ftr_idx],
+                                                             $alt->{"original_coords"},
+                                                             $alt->{"new_coords"},
+                                                             $alt->{"alt_type"});
+          if($new_gene_coords ne $ftr_coords[$gene_ftr_idx]) {
+            $gene_already_spans_all = 0;
+            last;
+          }
+        }
+      }
+
+      if(! $gene_already_spans_all) {
+        # Gene coords need to change for some alternatives — add gene alternatives
+        # Add alternative_ftr_set and subn to original gene line
+        # The original gene corresponds to CDS alternative .1 (the original)
+        $lines[$gene_line_idx] .= " alternative_ftr_set:\"$gene_set_name\" alternative_ftr_set_subn:\"$cds_set_name.1\"";
+
+        # Create new gene lines for each CDS alternative
+        my @new_gene_lines = ();
+        my $alt_num = 2;  # .1 is the original, alternatives start at .2
+        foreach my $alt (@alts) {
+          my $new_gene_line = $lines[$gene_line_idx];
+          # Replace coords: gene coords should encompass the CDS coords
+          my $new_gene_coords = compute_gene_coords_for_alt($ftr_coords[$gene_ftr_idx],
+                                                             $alt->{"original_coords"},
+                                                             $alt->{"new_coords"},
+                                                             $alt->{"alt_type"});
+          $new_gene_line =~ s/coords:"[^"]*"/coords:"$new_gene_coords"/;
+          # Update the subn reference
+          $new_gene_line =~ s/alternative_ftr_set_subn:"[^"]*"/alternative_ftr_set_subn:"$cds_set_name.$alt_num"/;
+          push(@new_gene_lines, $new_gene_line);
+          $alt_num++;
+        }
+
+        # Insert new gene lines after the original gene line
+        if(exists $insert_after{$gene_line_idx}) {
+          push(@{$insert_after{$gene_line_idx}}, @new_gene_lines);
+        }
+        else {
+          $insert_after{$gene_line_idx} = \@new_gene_lines;
+        }
+      } # end of if(! $gene_already_spans_all)
+    } # end of if($gene_ftr_idx >= 0)
+  }
+
+  # --- Step 3: Write output minfo ---
+  open(my $outfh, ">", $out_minfo_file) || ofile_FAIL("ERROR in $sub_name, unable to open $out_minfo_file for writing", 1, $FH_HR);
+  for(my $i = 0; $i < scalar(@lines); $i++) {
+    print $outfh $lines[$i] . "\n";
+    if(exists $insert_after{$i}) {
+      foreach my $new_line (@{$insert_after{$i}}) {
+        print $outfh $new_line . "\n";
+      }
+    }
+  }
+  close($outfh);
+
+  return;
+}
+
+#################################################################
+# Subroutine: generate_alt_set_name()
+# Incept:     EPN, Thu Mar 27 2026
+#
+# Purpose:    Generate a short alternative_ftr_set base name from
+#             the gene name and/or product name. Convention from
+#             existing VADR models: lowercase abbreviation.
+#
+# Arguments:
+#   $gene_name: gene qualifier value (e.g., "N", "SH", "P")
+#   $ftr_name:  feature/product name (e.g., "nucleocapsid_protein")
+#
+# Returns: base name string (e.g., "n", "sh", "p")
+#################################################################
+sub generate_alt_set_name {
+  my $sub_name = "generate_alt_set_name";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+
+  my ($gene_name, $ftr_name) = @_;
+
+  # Prefer gene name if available
+  if(defined $gene_name && $gene_name ne "") {
+    return lc($gene_name);
+  }
+
+  # Fall back to first word of product name
+  if(defined $ftr_name && $ftr_name ne "") {
+    my $base = lc($ftr_name);
+    $base =~ s/_.*//;  # take first word
+    return $base;
+  }
+
+  return "alt";
+}
+
+#################################################################
+# Subroutine: compute_gene_coords_for_alt()
+# Incept:     EPN, Thu Mar 27 2026
+#
+# Purpose:    Compute the gene coords for an alternative CDS by
+#             adjusting the original gene coords to encompass the
+#             alternative CDS coords.
+#
+# Arguments:
+#   $gene_coords:    original gene coords (e.g., "146..1795:+")
+#   $orig_cds_coords: original CDS coords
+#   $alt_cds_coords:  alternative CDS coords
+#   $alt_type:       "alt_stop_early", "alt_stop_late", or "alt_start"
+#
+# Returns: new gene coords string
+#################################################################
+sub compute_gene_coords_for_alt {
+  my $sub_name = "compute_gene_coords_for_alt";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+
+  my ($gene_coords, $orig_cds_coords, $alt_cds_coords, $alt_type) = @_;
+
+  # For simple cases: gene coords are single-segment
+  # Adjust the gene end/start to match the CDS change
+  if($gene_coords =~ /^(\d+)\.\.(\d+):([\+\-])$/) {
+    my ($gstart, $gstop, $gstrand) = ($1, $2, $3);
+
+    # Parse the last segment of original and alternative CDS
+    my @orig_segs = split(/,/, $orig_cds_coords);
+    my @alt_segs = split(/,/, $alt_cds_coords);
+
+    if($alt_type eq "alt_stop_early" || $alt_type eq "alt_stop_late") {
+      # Get the 3' end of the last CDS segment
+      if($alt_segs[$#alt_segs] =~ /^(\d+)\.\.(\d+):([\+\-])$/) {
+        my $alt_end = ($3 eq "+") ? $2 : $1;
+        if($gstrand eq "+") {
+          $gstop = $alt_end;
+        }
+        else {
+          $gstart = $alt_end;
+        }
+      }
+    }
+    elsif($alt_type eq "alt_start") {
+      # Get the 5' start of the first CDS segment
+      if($alt_segs[0] =~ /^(\d+)\.\.(\d+):([\+\-])$/) {
+        my $alt_start = ($3 eq "+") ? $1 : $2;
+        if($gstrand eq "+") {
+          $gstart = $alt_start;
+        }
+        else {
+          $gstop = $alt_start;
+        }
+      }
+    }
+
+    return $gstart . ".." . $gstop . ":" . $gstrand;
+  }
+
+  # Multi-segment gene coords: just return the original (rare case)
+  return $gene_coords;
+}
+
