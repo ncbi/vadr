@@ -517,6 +517,151 @@ else {
 }
 
 #---------------------------------------
+# Step 5b: Auto-detect alternative CDS features and exceptions
+#---------------------------------------
+my $do_auto_alt = (! $do_skip_annotate) && (! opt_Get("--no-auto-alt", \%opt_HH));
+if($do_auto_alt) {
+  my $tier2_ant_tail = $tier2_ant_outdir;
+  $tier2_ant_tail =~ s/^.+\///;
+  my $tier2_alt_file = $tier2_ant_outdir . "/" . $tier2_ant_tail . ".vadr.alt";
+  my $tier2_ftr_file = $tier2_ant_outdir . "/" . $tier2_ant_tail . ".vadr.ftr";
+  my $min_independent = opt_Get("--alt-min-ind", \%opt_HH);
+
+  if(-e $tier2_alt_file && -e $tier2_ftr_file) {
+    # Detect alternative CDS features
+    my $alt_groups_HHR = parse_alt_for_cds_boundary_alerts($tier2_alt_file, $FH_HR);
+    my $alt_features_AR = detect_alternative_features($alt_groups_HHR, $min_independent,
+                                                       \@{$ftr_info_HA{$model_key}}, $model_key, $FH_HR);
+
+    # Detect exceptions
+    my $exc_groups_HHR = parse_alt_for_exceptions($tier2_alt_file, $FH_HR);
+    my $exceptions_AR = detect_exceptions($exc_groups_HHR, $min_independent, $FH_HR);
+
+    my $n_alt = scalar(@{$alt_features_AR});
+    my $n_exc = scalar(@{$exceptions_AR});
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# Auto-alt detect: found %d alternative features and %d exceptions\n", $n_alt, $n_exc));
+
+    if($n_alt > 0 || $n_exc > 0) {
+      # Update the minfo file
+      my $updated_minfo = $out_root . ".alt.minfo";
+      add_alternatives_and_exceptions_to_minfo($seed_minfo, $updated_minfo,
+                                                $alt_features_AR, $exceptions_AR,
+                                                $model_key, $FH_HR);
+      ofile_OutputString($FH_HR->{"log"}, 1,
+        sprintf("# Auto-alt detect: wrote updated minfo to %s\n", $updated_minfo));
+
+      # Translate alternative CDS proteins and update BLAST db
+      if($n_alt > 0) {
+        # Copy seed protein.fa to output dir so we can append to it
+        my $updated_protein_fa = $out_root . ".alt.protein.fa";
+        my $seed_protein_fa = $model_dir . "/" . $model_key . ".vadr.protein.fa";
+        if(-e $seed_protein_fa) {
+          utl_RunCommand("cp $seed_protein_fa $updated_protein_fa", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+          translate_alternative_cds_proteins($alt_features_AR, $tier2_ftr_file, $tier2_alt_file,
+                                              $tier2_fasta_file, $updated_protein_fa,
+                                              $model_key, \%execs_H, \%opt_HH, $FH_HR);
+        }
+      }
+
+      # Selective v-annotate re-run: identify sequences that failed
+      # ONLY due to alerts addressed by the new alternatives/exceptions,
+      # and re-run v-annotate.pl on just those sequences
+      my @rerun_accessions = identify_rerun_candidates($tier2_alt_file,
+                                                        \%decision_H,
+                                                        $alt_features_AR,
+                                                        $exceptions_AR,
+                                                        $FH_HR);
+
+      if(scalar(@rerun_accessions) > 0) {
+        ofile_OutputString($FH_HR->{"log"}, 1,
+          sprintf("# Auto-alt detect: re-running v-annotate on %d candidate sequences\n", scalar(@rerun_accessions)));
+
+        # Create a FASTA subset for the re-run candidates
+        my $rerun_fa = $out_root . ".alt.rerun.fa";
+        my $rerun_accn_file = $out_root . ".alt.rerun.accn";
+        open(my $accn_fh, ">", $rerun_accn_file) || ofile_FAIL("ERROR, unable to write $rerun_accn_file", 1, $FH_HR);
+        foreach my $acc (@rerun_accessions) { print $accn_fh "$acc\n"; }
+        close($accn_fh);
+        utl_RunCommand($execs_H{"esl-sfetch"} . " -f $tier2_fasta_file $rerun_accn_file > $rerun_fa",
+                       opt_Get("-v", \%opt_HH), 0, $FH_HR);
+
+        # Set up temp model dir with updated minfo + model files
+        my $tmp_mdir = $out_root . ".alt.mdir";
+        if(! -d $tmp_mdir) { utl_RunCommand("mkdir $tmp_mdir", 0, 0, $FH_HR); }
+        utl_RunCommand("cp $updated_minfo $tmp_mdir/$model_key.vadr.minfo", 0, 0, $FH_HR);
+        # Symlink CM and other model files
+        my @model_exts = (".vadr.cm", ".vadr.cm.i1f", ".vadr.cm.i1i", ".vadr.cm.i1m", ".vadr.cm.i1p",
+                          ".vadr.fa", ".vadr.fa.ssi");
+        foreach my $ext (@model_exts) {
+          my $src = $model_dir . "/" . $model_key . $ext;
+          my $dst = $tmp_mdir . "/" . $model_key . $ext;
+          if(-e $src && ! -e $dst) { utl_RunCommand("ln -s $src $dst", 0, 0, $FH_HR); }
+        }
+        # Copy updated protein.fa and BLAST db
+        my $updated_protein_fa = $out_root . ".alt.protein.fa";
+        if(-e $updated_protein_fa) {
+          utl_RunCommand("cp $updated_protein_fa $tmp_mdir/$model_key.vadr.protein.fa", 0, 0, $FH_HR);
+          # Copy BLAST db files
+          foreach my $ext (".pdb", ".phr", ".pin", ".pjs", ".pot", ".psq", ".ptf", ".pto") {
+            my $src = $updated_protein_fa . $ext;
+            if(-e $src) { utl_RunCommand("cp $src $tmp_mdir/$model_key.vadr.protein.fa$ext", 0, 0, $FH_HR); }
+          }
+        }
+
+        # Run v-annotate.pl on the subset
+        my $rerun_outdir = $out_root . ".vadr.tier2.annot.pass2";
+        my $rerun_mkey = $model_key . ".vadr";
+        my $cmd = $execs_H{"v-annotate.pl"} . " -f --mdir " . $tmp_mdir . " --mkey " . $rerun_mkey .
+                  " --out_stk " . $rerun_fa . " " . $rerun_outdir;
+        if(! opt_Get("-v", \%opt_HH)) { $cmd .= " > /dev/null"; }
+        utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+
+        # Read pass2 fail list and update decisions
+        my $rerun_outdir_tail = $rerun_outdir;
+        $rerun_outdir_tail =~ s/^.+\///;
+        my $pass2_fail_file = $rerun_outdir . "/" . $rerun_outdir_tail . ".vadr.fail.list";
+        my %pass2_fail_H = ();
+        if(-e $pass2_fail_file) {
+          open(my $ffh, "<", $pass2_fail_file) || ofile_FAIL("ERROR, unable to read $pass2_fail_file", 1, $FH_HR);
+          while(my $l = <$ffh>) { chomp $l; $l =~ s/^\s+//; $l =~ s/\s+$//; next if($l eq ""); my ($n) = split(/\s+/, $l); $pass2_fail_H{$n} = 1; }
+          close($ffh);
+        }
+
+        my $n_rescued = 0;
+        foreach my $acc (@rerun_accessions) {
+          if(! exists $pass2_fail_H{$acc}) {
+            # This sequence now passes — restore it to the candidate pool
+            $decision_H{$acc}{"status"} = "kept";
+            $decision_H{$acc}{"reason_code"} = "pass_alt";
+            $decision_H{$acc}{"reason_detail"} = "rescued by auto-alt second pass";
+            $decision_H{$acc}{"stage_last_seen"} = "selected_for_tier3";
+            # Re-add to candidate_AH (need to find its group)
+            # The sequence was removed from candidate_AH by run_vannotate_filter_fails
+            # We need its group info from decision_H or the original candidate data
+            $n_rescued++;
+          }
+        }
+        ofile_OutputString($FH_HR->{"log"}, 1,
+          sprintf("# Auto-alt detect: pass2 rescued %d of %d re-run candidates\n",
+                  $n_rescued, scalar(@rerun_accessions)));
+      }
+      else {
+        ofile_OutputString($FH_HR->{"log"}, 1,
+          sprintf("# Auto-alt detect: no sequences eligible for re-run\n"));
+      }
+
+      # Update seed_minfo to the updated version for downstream steps
+      $seed_minfo = $updated_minfo;
+
+      # Re-parse feature info from updated minfo
+      vdr_ModelInfoFileParse($seed_minfo, \@reqd_mdl_keys, \@reqd_ftr_keys,
+                             \@mdl_info_A, \%ftr_info_HA, $FH_HR);
+    }
+  }
+}
+
+#---------------------------------------
 # Step 6: Tier 3 centroid selection (BLAST all-vs-all)
 #---------------------------------------
 # Identify sequences with partial CDS coordinates so they are not chosen as
@@ -4722,4 +4867,120 @@ sub replace_first_segment_start {
     return join(",", @segs);
   }
   return undef;
+}
+
+#################################################################
+# Subroutine: identify_rerun_candidates()
+# Incept:     EPN, Thu Mar 27 2026
+#
+# Purpose:    Identify sequences that failed the first v-annotate
+#             pass ONLY due to alerts that are now addressed by
+#             the detected alternatives and exceptions. These
+#             sequences are candidates for a second v-annotate pass.
+#
+#             A sequence is a re-run candidate if ALL of its fatal
+#             alerts are of types that would be resolved by the
+#             new alternatives or exceptions.
+#
+# Arguments:
+#   $alt_file:         path to .vadr.alt from first pass
+#   $decision_HR:      REF to decision hash (has status for each accession)
+#   $alt_features_AR:  REF to array of detected alternative features
+#   $exceptions_AR:    REF to array of detected exceptions
+#   $FH_HR:            REF to hash of file handles
+#
+# Returns: array of accession strings eligible for re-run
+#################################################################
+sub identify_rerun_candidates {
+  my $sub_name = "identify_rerun_candidates";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+
+  my ($alt_file, $decision_HR, $alt_features_AR, $exceptions_AR, $FH_HR) = @_;
+
+  # Build a set of (ftr_idx, alert_code) pairs that are addressed
+  # by the new alternatives
+  my %addressed_alt_H = ();
+  foreach my $alt (@{$alt_features_AR}) {
+    my $ftr_idx = $alt->{"ftr_idx"};
+    # These alert codes on this feature are addressed by the new alternative
+    foreach my $code (qw(mutendex cdsstopn cdsstopp mutendcd mutstart)) {
+      $addressed_alt_H{"$ftr_idx:$code"} = 1;
+    }
+  }
+
+  # Build a set of (ftr_idx, alert_code) pairs addressed by exceptions
+  # Map exception types back to the alert codes they suppress
+  my %exc_to_alerts = (
+    "fst_exc"     => [qw(fsthicft fsthicfi fstukcft fstukcfi fstlocft fstlocfi)],
+    "insertn_exc" => [qw(insertnp insertnn)],
+    "deletin_exc" => [qw(deletinp deletinn)],
+    "lowsim_exc"  => [qw(lowsimic lowsim5c lowsim3c lowsim5s lowsim3s lowsim5n lowsim3n lowsimin lowsimil lowsim5l lowsim3l)],
+  );
+  my %addressed_exc_H = ();
+  foreach my $exc (@{$exceptions_AR}) {
+    my $ftr_idx = $exc->{"ftr_idx"};
+    my $exc_type = $exc->{"exc_type"};
+    if(exists $exc_to_alerts{$exc_type}) {
+      foreach my $code (@{$exc_to_alerts{$exc_type}}) {
+        if($ftr_idx == -1) {
+          # MODEL-level exception (lowsim): addresses this alert on ANY feature
+          $addressed_exc_H{"*:$code"} = 1;
+        }
+        else {
+          $addressed_exc_H{"$ftr_idx:$code"} = 1;
+        }
+      }
+    }
+  }
+
+  # Parse .vadr.alt: for each failed sequence, check if ALL fatal alerts
+  # are addressed
+  my %seq_fatal_alerts = ();  # {accession} => [{ftr_idx, code, fail}, ...]
+  open(my $fh, "<", $alt_file) || ofile_FAIL("ERROR in $sub_name, unable to open $alt_file", 1, $FH_HR);
+  while(my $line = <$fh>) {
+    chomp $line;
+    next if($line =~ /^\#/ || $line =~ /^\s*$/);
+    my @tok = split(/\s+/, $line);
+    next if(scalar(@tok) < 13);
+    my $acc  = $tok[1];
+    my $fidx = $tok[5];
+    my $code = $tok[6];
+    my $fail = $tok[7];
+    next if($fail ne "yes");  # only care about fatal alerts
+    if(! exists $seq_fatal_alerts{$acc}) {
+      $seq_fatal_alerts{$acc} = [];
+    }
+    push(@{$seq_fatal_alerts{$acc}}, { ftr_idx => $fidx, code => $code });
+  }
+  close($fh);
+
+  # Check each failed sequence
+  my @rerun_candidates = ();
+  foreach my $acc (sort keys %seq_fatal_alerts) {
+    # Only consider sequences that were removed by the first pass
+    next if(! exists $decision_HR->{$acc});
+    next if($decision_HR->{$acc}{"status"} ne "removed");
+    next if($decision_HR->{$acc}{"reason_code"} ne "vadr_fail");
+
+    my $all_addressed = 1;
+    foreach my $alert (@{$seq_fatal_alerts{$acc}}) {
+      my $fidx = $alert->{"ftr_idx"};
+      my $code = $alert->{"code"};
+      my $key_specific = "$fidx:$code";
+      my $key_wildcard = "*:$code";
+      if(! exists $addressed_alt_H{$key_specific} &&
+         ! exists $addressed_exc_H{$key_specific} &&
+         ! exists $addressed_exc_H{$key_wildcard}) {
+        $all_addressed = 0;
+        last;
+      }
+    }
+
+    if($all_addressed) {
+      push(@rerun_candidates, $acc);
+    }
+  }
+
+  return @rerun_candidates;
 }
