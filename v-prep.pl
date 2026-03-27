@@ -4391,8 +4391,10 @@ sub add_alternatives_and_exceptions_to_minfo {
     my $cds_set_name = $set_base . "(cds)";
     my $gene_set_name = $set_base . "(gene)";
 
-    # Add alternative_ftr_set to original CDS line
-    $lines[$cds_line_idx] .= " alternative_ftr_set:\"$cds_set_name\"";
+    # Add alternative_ftr_set to original CDS line (skip if already present)
+    if($lines[$cds_line_idx] !~ /alternative_ftr_set:/) {
+      $lines[$cds_line_idx] .= " alternative_ftr_set:\"$cds_set_name\"";
+    }
 
     # Create new CDS lines for each alternative
     my @new_cds_lines = ();
@@ -4439,7 +4441,9 @@ sub add_alternatives_and_exceptions_to_minfo {
         # Gene coords need to change for some alternatives — add gene alternatives
         # Add alternative_ftr_set and subn to original gene line
         # The original gene corresponds to CDS alternative .1 (the original)
-        $lines[$gene_line_idx] .= " alternative_ftr_set:\"$gene_set_name\" alternative_ftr_set_subn:\"$cds_set_name.1\"";
+        if($lines[$gene_line_idx] !~ /alternative_ftr_set:/) {
+          $lines[$gene_line_idx] .= " alternative_ftr_set:\"$gene_set_name\" alternative_ftr_set_subn:\"$cds_set_name.1\"";
+        }
 
         # Create new gene lines for each CDS alternative
         my @new_gene_lines = ();
