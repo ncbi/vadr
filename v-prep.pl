@@ -4439,3 +4439,287 @@ sub compute_gene_coords_for_alt {
   return $gene_coords;
 }
 
+#################################################################
+# Subroutine: translate_alternative_cds_proteins()
+# Incept:     EPN, Thu Mar 27 2026
+#
+# Purpose:    For each detected alternative CDS feature, translate
+#             the protein from a representative sequence and append
+#             it to the seed model's protein.fa file. Then rebuild
+#             the BLAST protein database.
+#
+#             For cdsstopn (early stop): uses the n_instp field from
+#             .vadr.ftr which gives the exact sequence position of
+#             the actual in-frame stop codon.
+#
+#             For mutendex (late stop): uses the seq_coords from
+#             .vadr.alt which gives the stop codon position.
+#
+# Arguments:
+#   $alt_features_AR:  REF to array of alternative feature hashrefs
+#   $ftr_file:         path to .vadr.ftr from first v-annotate pass
+#   $alt_file:         path to .vadr.alt from first v-annotate pass
+#   $fasta_file:       path to tier 2 FASTA (indexed with .ssi)
+#   $protein_fa_file:  path to seed model protein.fa (will be appended)
+#   $model_key:        model name
+#   $execs_HR:         REF to hash of executables
+#   $opt_HHR:          REF to hash of option hashes
+#   $FH_HR:            REF to hash of file handles
+#
+# Returns: void (appends to protein_fa_file and rebuilds BLAST db)
+#################################################################
+sub translate_alternative_cds_proteins {
+  my $sub_name = "translate_alternative_cds_proteins";
+  my $nargs_expected = 9;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+
+  my ($alt_features_AR, $ftr_file, $alt_file, $fasta_file, $protein_fa_file,
+      $model_key, $execs_HR, $opt_HHR, $FH_HR) = @_;
+
+  if(scalar(@{$alt_features_AR}) == 0) { return; }
+
+  # Parse .vadr.ftr: for each (accession, ftr_idx), store:
+  #   seq_coords (the multi-segment coords string)
+  #   n_from, n_to (CDS start/end in sequence)
+  #   n_instp (in-frame stop position, or "-" if none)
+  my %ftr_info_HH = ();
+  open(my $ftr_fh, "<", $ftr_file) || ofile_FAIL("ERROR in $sub_name, unable to open $ftr_file", 1, $FH_HR);
+  while(my $line = <$ftr_fh>) {
+    chomp $line;
+    next if($line =~ /^\#/ || $line =~ /^\s*$/);
+    my @tok = split(/\s+/, $line);
+    next if(scalar(@tok) < 25);
+    my $acc        = $tok[1];
+    my $ftr_type   = $tok[5];
+    my $ftr_idx    = $tok[8];
+    my $n_from     = $tok[11];
+    my $n_to       = $tok[12];
+    my $n_instp    = $tok[13];
+    my $seq_coords = $tok[23];
+    next if($ftr_type ne "CDS");
+    $ftr_info_HH{$acc}{$ftr_idx} = {
+      seq_coords => $seq_coords,
+      n_from     => $n_from,
+      n_to       => $n_to,
+      n_instp    => $n_instp,
+    };
+  }
+  close($ftr_fh);
+
+  # Parse .vadr.alt: for each (accession, ftr_idx, alert_code), store seq_coords
+  # This gives the exact position of the alternative boundary in sequence coords
+  my %alt_seq_coords_HH = ();
+  open(my $alt_fh, "<", $alt_file) || ofile_FAIL("ERROR in $sub_name, unable to open $alt_file", 1, $FH_HR);
+  while(my $line = <$alt_fh>) {
+    chomp $line;
+    next if($line =~ /^\#/ || $line =~ /^\s*$/);
+    my @tok = split(/\s+/, $line);
+    next if(scalar(@tok) < 13);
+    my $acc        = $tok[1];
+    my $ftr_idx    = $tok[5];
+    my $alert_code = $tok[6];
+    my $seq_coords = $tok[9];
+    # Store: key is "acc:ftr_idx:alert_code"
+    $alt_seq_coords_HH{"$acc:$ftr_idx:$alert_code"} = $seq_coords;
+  }
+  close($alt_fh);
+
+  # Index the FASTA file for esl-sfetch if not already indexed
+  my $ssi_file = $fasta_file . ".ssi";
+  if(! -e $ssi_file) {
+    utl_RunCommand($execs_HR->{"esl-sfetch"} . " --index " . $fasta_file,
+                   opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  }
+
+  # Open protein.fa for appending
+  open(my $prot_fh, ">>", $protein_fa_file) || ofile_FAIL("ERROR in $sub_name, unable to open $protein_fa_file for appending", 1, $FH_HR);
+
+  foreach my $alt (@{$alt_features_AR}) {
+    my $ftr_idx    = $alt->{"ftr_idx"};
+    my $new_coords = $alt->{"new_coords"};
+    my $alt_type   = $alt->{"alt_type"};
+    my $alert_code = $alt->{"alert_code"};
+    my @accessions = @{$alt->{"accessions_AR"}};
+
+    # Find a representative sequence
+    my $rep_acc = undef;
+    foreach my $acc (@accessions) {
+      if(exists $ftr_info_HH{$acc}{$ftr_idx}) {
+        $rep_acc = $acc;
+        last;
+      }
+    }
+    if(! defined $rep_acc) {
+      ofile_OutputString($FH_HR->{"log"}, 1,
+        sprintf("# WARNING: $sub_name, no representative for alt CDS ftr_idx=%d, skipping\n", $ftr_idx));
+      next;
+    }
+
+    my $ftr_info = $ftr_info_HH{$rep_acc}{$ftr_idx};
+    my $orig_seq_coords = $ftr_info->{"seq_coords"};
+
+    # Build the alternative sequence coords
+    # Strategy: take the original seq_coords and replace the stop/start
+    # boundary using the EXACT position from .vadr.ftr or .vadr.alt
+    my $alt_seq_coords;
+    if($alt_type eq "alt_stop_early") {
+      # cdsstopn: n_instp from .vadr.ftr gives the exact early stop position
+      my $instp = $ftr_info->{"n_instp"};
+      if(!defined $instp || $instp eq "-") {
+        ofile_OutputString($FH_HR->{"log"}, 1,
+          sprintf("# WARNING: $sub_name, no n_instp for %s ftr_idx=%d, skipping\n", $rep_acc, $ftr_idx));
+        next;
+      }
+      $alt_seq_coords = replace_last_segment_end($orig_seq_coords, int($instp));
+    }
+    elsif($alt_type eq "alt_stop_late") {
+      # mutendex: seq_coords from .vadr.alt gives the late stop codon position
+      my $key = "$rep_acc:$ftr_idx:mutendex";
+      if(! exists $alt_seq_coords_HH{$key}) {
+        ofile_OutputString($FH_HR->{"log"}, 1,
+          sprintf("# WARNING: $sub_name, no mutendex seq_coords for %s ftr_idx=%d, skipping\n", $rep_acc, $ftr_idx));
+        next;
+      }
+      # Parse the stop codon end position from the alt seq_coords (e.g., "2536..2538:+")
+      my $alt_stop_coords = $alt_seq_coords_HH{$key};
+      if($alt_stop_coords =~ /^\d+\.\.(\d+):[\+\-]$/) {
+        $alt_seq_coords = replace_last_segment_end($orig_seq_coords, $1);
+      }
+      else { next; }
+    }
+    elsif($alt_type eq "alt_start") {
+      my $key = "$rep_acc:$ftr_idx:mutstart";
+      if(! exists $alt_seq_coords_HH{$key}) { next; }
+      my $alt_start_coords = $alt_seq_coords_HH{$key};
+      if($alt_start_coords =~ /^(\d+)\.\.\d+:[\+\-]$/) {
+        $alt_seq_coords = replace_first_segment_start($orig_seq_coords, $1);
+      }
+      else { next; }
+    }
+    else { next; }
+
+    if(! defined $alt_seq_coords) {
+      ofile_OutputString($FH_HR->{"log"}, 1,
+        sprintf("# WARNING: $sub_name, failed to build alt seq coords for %s ftr_idx=%d, skipping\n", $rep_acc, $ftr_idx));
+      next;
+    }
+
+    # Extract each segment of the CDS from the FASTA and concatenate
+    my $cds_seq = "";
+    my @segments = split(/,/, $alt_seq_coords);
+    foreach my $seg (@segments) {
+      if($seg =~ /^(\d+)\.\.(\d+):([\+\-])$/) {
+        my ($sstart, $sstop, $sstrand) = ($1, $2, $3);
+        my $sfetch_coords = ($sstrand eq "+") ? "$sstart..$sstop" : "$sstop..$sstart";
+        my $seg_seq = `$execs_HR->{"esl-sfetch"} -c $sfetch_coords $fasta_file $rep_acc 2>/dev/null`;
+        $seg_seq =~ s/^>.*\n//;
+        $seg_seq =~ s/\s//g;
+        $cds_seq .= $seg_seq;
+      }
+    }
+
+    if(length($cds_seq) == 0) {
+      ofile_OutputString($FH_HR->{"log"}, 1,
+        sprintf("# WARNING: $sub_name, empty CDS for %s ftr_idx=%d, skipping\n", $rep_acc, $ftr_idx));
+      next;
+    }
+
+    # Translate: write to temp, run esl-translate, find full-length ORF
+    my $tmp_cds = $protein_fa_file . ".tmp.alt.cds.fa";
+    open(my $tmp_fh, ">", $tmp_cds) || ofile_FAIL("ERROR in $sub_name, unable to write $tmp_cds", 1, $FH_HR);
+    print $tmp_fh ">$rep_acc/$alt_seq_coords\n$cds_seq\n";
+    close($tmp_fh);
+
+    my $tmp_prot = $protein_fa_file . ".tmp.alt.prot.fa";
+    utl_RunCommand($execs_HR->{"esl-translate"} . " $tmp_cds > $tmp_prot",
+                   opt_Get("-v", $opt_HHR), 0, $FH_HR);
+
+    # Find ORF starting at position 1 (the full-length translation)
+    my ($protein_seq, $protein_header);
+    open(my $prot_in, "<", $tmp_prot) || ofile_FAIL("ERROR in $sub_name, unable to read $tmp_prot", 1, $FH_HR);
+    my ($ch, $cs) = ("", "");
+    while(my $pl = <$prot_in>) {
+      chomp $pl;
+      if($pl =~ /^>/) {
+        if($ch =~ /coords=1\.\./) { $protein_seq = $cs; $protein_header = $ch; }
+        $ch = $pl; $cs = "";
+      } else { $cs .= $pl; }
+    }
+    if($ch =~ /coords=1\.\./ && ! defined $protein_seq) { $protein_seq = $cs; $protein_header = $ch; }
+    close($prot_in);
+
+    if(! defined $protein_seq) {
+      ofile_OutputString($FH_HR->{"log"}, 1,
+        sprintf("# WARNING: $sub_name, no full-length ORF for alt CDS %s ftr_idx=%d (cds_len=%d), skipping\n",
+                $rep_acc, $ftr_idx, length($cds_seq)));
+      next;
+    }
+
+    # Append to protein.fa
+    my $prot_name = "$model_key/$new_coords";
+    print $prot_fh ">$prot_name\n$protein_seq\n";
+
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# Alt protein: %s from %s (%d aa)\n", $prot_name, $rep_acc, length($protein_seq)));
+
+    unlink($tmp_cds);
+    unlink($tmp_prot);
+  }
+
+  close($prot_fh);
+
+  # Rebuild BLAST protein database
+  sqf_BlastDbCreate($execs_HR->{"makeblastdb"}, "prot", $protein_fa_file, $opt_HHR, $FH_HR);
+
+  return;
+}
+
+#################################################################
+# Subroutine: replace_last_segment_end()
+# Incept:     EPN, Thu Mar 27 2026
+#
+# Purpose:    Replace the 3' end position of the last segment in a
+#             VADR coords string with a new position.
+#
+# Arguments:
+#   $coords:  VADR coords string (e.g., "1979..2442:+,2439..2490:+")
+#   $new_end: new 3' end position for + strand (or 5' for - strand)
+#
+# Returns: updated coords string, or undef on failure
+#################################################################
+sub replace_last_segment_end {
+  my ($coords, $new_end) = @_;
+  my @segs = split(/,/, $coords);
+  if($segs[$#segs] =~ /^(\d+)\.\.(\d+):([\+\-])$/) {
+    my ($ss, $se, $st) = ($1, $2, $3);
+    if($st eq "+") { $segs[$#segs] = "$ss..$new_end:$st"; }
+    else           { $segs[$#segs] = "$new_end..$se:$st"; }
+    return join(",", @segs);
+  }
+  return undef;
+}
+
+#################################################################
+# Subroutine: replace_first_segment_start()
+# Incept:     EPN, Thu Mar 27 2026
+#
+# Purpose:    Replace the 5' start position of the first segment
+#             in a VADR coords string with a new position.
+#
+# Arguments:
+#   $coords:    VADR coords string
+#   $new_start: new 5' start position for + strand
+#
+# Returns: updated coords string, or undef on failure
+#################################################################
+sub replace_first_segment_start {
+  my ($coords, $new_start) = @_;
+  my @segs = split(/,/, $coords);
+  if($segs[0] =~ /^(\d+)\.\.(\d+):([\+\-])$/) {
+    my ($ss, $se, $st) = ($1, $2, $3);
+    if($st eq "+") { $segs[0] = "$new_start..$se:$st"; }
+    else           { $segs[0] = "$ss..$new_start:$st"; }
+    return join(",", @segs);
+  }
+  return undef;
+}
