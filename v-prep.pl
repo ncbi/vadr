@@ -3917,3 +3917,188 @@ sub compute_alternative_cds_coords {
   return join(",", @segments);
 }
 
+#################################################################
+# Subroutine: parse_alt_for_exceptions()
+# Incept:     EPN, Thu Mar 27 2026
+#
+# Purpose:    Parse a .vadr.alt file and extract alerts that could
+#             warrant adding _exc (exception) keys to the minfo.
+#             Groups alerts by feature and exception type, merging
+#             overlapping model coordinate regions.
+#
+#             Alert-to-exception mapping:
+#               fsthicft,fsthicfi,fstukcft,fstukcfi,
+#                 fstlocft,fstlocfi              -> fst_exc (FEATURE)
+#               insertnp,insertnn                -> insertn_exc (FEATURE)
+#               deletinp,deletinn                -> deletin_exc (FEATURE)
+#               lowsimic,lowsim5c,lowsim3c,
+#                 lowsim5s,lowsim3s              -> lowsim_exc (MODEL)
+#
+# Arguments:
+#   $alt_file: path to .vadr.alt file
+#   $FH_HR:    REF to hash of file handles
+#
+# Returns: REF to hash of hash of arrays:
+#   key1: "<exc_type>:<ftr_name>:<ftr_idx>" (or "<exc_type>:MODEL:-1" for lowsim)
+#   key2: "<mdl_coords>"
+#   value: array ref of accession strings
+#################################################################
+sub parse_alt_for_exceptions {
+  my $sub_name = "parse_alt_for_exceptions";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+
+  my ($alt_file, $FH_HR) = @_;
+
+  # Map alert codes to exception types
+  my %alert_to_exc = (
+    "fsthicft" => "fst_exc", "fsthicfi" => "fst_exc",
+    "fstukcft" => "fst_exc", "fstukcfi" => "fst_exc",
+    "fstlocft" => "fst_exc", "fstlocfi" => "fst_exc",
+    "insertnp" => "insertn_exc", "insertnn" => "insertn_exc",
+    "deletinp" => "deletin_exc", "deletinn" => "deletin_exc",
+    "lowsimic" => "lowsim_exc", "lowsim5c" => "lowsim_exc",
+    "lowsim3c" => "lowsim_exc", "lowsim5s" => "lowsim_exc",
+    "lowsim3s" => "lowsim_exc",
+  );
+
+  my %exc_groups = ();
+
+  open(my $fh, "<", $alt_file) || ofile_FAIL("ERROR in $sub_name, unable to open $alt_file for reading", 1, $FH_HR);
+  while(my $line = <$fh>) {
+    chomp $line;
+    next if($line =~ /^\#/ || $line =~ /^\s*$/);
+
+    my @tok = split(/\s+/, $line);
+    next if(scalar(@tok) < 13);
+
+    my $seq_name   = $tok[1];
+    my $ftr_type   = $tok[3];
+    my $ftr_name   = $tok[4];
+    my $ftr_idx    = $tok[5];
+    my $alert_code = $tok[6];
+    my $mdl_coords = $tok[11];
+
+    next if(! exists $alert_to_exc{$alert_code});
+    next if($mdl_coords eq "-");
+
+    my $exc_type = $alert_to_exc{$alert_code};
+
+    # lowsim_exc goes on MODEL line, others go on FEATURE line
+    my $exc_key;
+    if($exc_type eq "lowsim_exc") {
+      $exc_key = "lowsim_exc:MODEL:-1";
+    }
+    else {
+      $exc_key = $exc_type . ":" . $ftr_name . ":" . $ftr_idx;
+    }
+
+    if(! exists $exc_groups{$exc_key}{$mdl_coords}) {
+      $exc_groups{$exc_key}{$mdl_coords} = [];
+    }
+    push(@{$exc_groups{$exc_key}{$mdl_coords}}, $seq_name);
+  }
+  close($fh);
+
+  return \%exc_groups;
+}
+
+#################################################################
+# Subroutine: detect_exceptions()
+# Incept:     EPN, Thu Mar 27 2026
+#
+# Purpose:    Given grouped exception-worthy alerts from
+#             parse_alt_for_exceptions(), apply the independence
+#             threshold and determine which _exc keys to add.
+#             Merges overlapping model coordinate regions for the
+#             same feature and exception type.
+#
+# Arguments:
+#   $exc_groups_HHR: REF to hash from parse_alt_for_exceptions()
+#   $min_independent: minimum independent observations
+#   $FH_HR:          REF to hash of file handles
+#
+# Returns: REF to array of hashrefs, each with keys:
+#          exc_type, ftr_name, ftr_idx, exc_coords, n_seqs,
+#          n_independent
+#################################################################
+sub detect_exceptions {
+  my $sub_name = "detect_exceptions";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+
+  my ($exc_groups_HHR, $min_independent, $FH_HR) = @_;
+
+  my @exceptions = ();
+
+  foreach my $exc_key (sort keys %{$exc_groups_HHR}) {
+    my ($exc_type, $ftr_name, $ftr_idx) = split(/:/, $exc_key);
+
+    # Collect all regions and their accessions across all mdl_coords
+    # for this exception type + feature, then merge overlapping regions
+    my @all_regions = (); # array of [start, stop, strand, \@accessions]
+
+    foreach my $mdl_coords (sort keys %{$exc_groups_HHR->{$exc_key}}) {
+      my @accs = @{$exc_groups_HHR->{$exc_key}{$mdl_coords}};
+
+      if($mdl_coords =~ /^(\d+)\.\.(\d+):([\+\-])$/) {
+        push(@all_regions, [$1, $2, $3, \@accs]);
+      }
+    }
+
+    # Merge overlapping regions (same strand)
+    @all_regions = sort { $a->[0] <=> $b->[0] } @all_regions;
+    my @merged = ();
+    foreach my $region (@all_regions) {
+      my ($rstart, $rstop, $rstrand, $raccs) = @{$region};
+      if(scalar(@merged) > 0 &&
+         $merged[$#merged][2] eq $rstrand &&
+         $rstart <= $merged[$#merged][1] + 1) {
+        # Overlapping or adjacent: extend and merge accessions
+        if($rstop > $merged[$#merged][1]) {
+          $merged[$#merged][1] = $rstop;
+        }
+        push(@{$merged[$#merged][3]}, @{$raccs});
+      }
+      else {
+        push(@merged, [$rstart, $rstop, $rstrand, [@{$raccs}]]);
+      }
+    }
+
+    # Apply independence threshold to each merged region
+    foreach my $region (@merged) {
+      my ($rstart, $rstop, $rstrand, $raccs) = @{$region};
+
+      # Deduplicate accessions (same seq may trigger multiple alerts in region)
+      my %unique_accs = map { $_ => 1 } @{$raccs};
+      my @unique_acc_list = keys %unique_accs;
+      my $n_ind = count_independent_observations(\@unique_acc_list);
+
+      if($n_ind < $min_independent) {
+        ofile_OutputString($FH_HR->{"log"}, 1,
+          sprintf("# Exc detect: %s %s %d..%d:%s n_seqs=%d n_ind=%d < min=%d, skipping\n",
+                  $exc_type, $ftr_name, $rstart, $rstop, $rstrand,
+                  scalar(@unique_acc_list), $n_ind, $min_independent));
+        next;
+      }
+
+      my $exc_coords = $rstart . ".." . $rstop . ":" . $rstrand;
+
+      ofile_OutputString($FH_HR->{"log"}, 1,
+        sprintf("# Exc detect: %s %s %s n_seqs=%d n_ind=%d ADDED\n",
+                $exc_type, $ftr_name, $exc_coords, scalar(@unique_acc_list), $n_ind));
+
+      push(@exceptions, {
+        exc_type      => $exc_type,
+        ftr_name      => $ftr_name,
+        ftr_idx       => int($ftr_idx),
+        exc_coords    => $exc_coords,
+        n_seqs        => scalar(@unique_acc_list),
+        n_independent => $n_ind,
+      });
+    }
+  }
+
+  return \@exceptions;
+}
+
