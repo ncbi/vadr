@@ -603,14 +603,21 @@ if($do_auto_alt) {
           my $dst = $tmp_mdir . "/" . $model_key . $ext;
           if(-e $src && ! -e $dst) { utl_RunCommand("ln -s $src $dst", 0, 0, $FH_HR); }
         }
-        # Copy updated protein.fa and BLAST db
+        # Copy protein.fa and BLAST db into temp mdir
+        # Use updated protein.fa if alternatives were translated, else use seed
         my $updated_protein_fa = $out_root . ".alt.protein.fa";
-        if(-e $updated_protein_fa) {
-          utl_RunCommand("cp $updated_protein_fa $tmp_mdir/$model_key.vadr.protein.fa", 0, 0, $FH_HR);
-          # Copy BLAST db files
+        my $src_protein_fa = (-e $updated_protein_fa) ? $updated_protein_fa :
+                             $model_dir . "/" . $model_key . ".vadr.protein.fa";
+        if(-e $src_protein_fa) {
+          my $dst_protein_fa = $tmp_mdir . "/" . $model_key . ".vadr.protein.fa";
+          utl_RunCommand("cp $src_protein_fa $dst_protein_fa", 0, 0, $FH_HR);
           foreach my $ext (".pdb", ".phr", ".pin", ".pjs", ".pot", ".psq", ".ptf", ".pto") {
-            my $src = $updated_protein_fa . $ext;
-            if(-e $src) { utl_RunCommand("cp $src $tmp_mdir/$model_key.vadr.protein.fa$ext", 0, 0, $FH_HR); }
+            my $src = $src_protein_fa . $ext;
+            if(-e $src) { utl_RunCommand("cp $src $dst_protein_fa$ext", 0, 0, $FH_HR); }
+          }
+          # Build BLAST db if it doesn't exist yet
+          if(! -e $dst_protein_fa . ".psq") {
+            sqf_BlastDbCreate($execs_H{"makeblastdb"}, "prot", $dst_protein_fa, \%opt_HH, $FH_HR);
           }
         }
 
