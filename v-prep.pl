@@ -583,6 +583,11 @@ if($do_auto_alt) {
         open(my $accn_fh, ">", $rerun_accn_file) || ofile_FAIL("ERROR, unable to write $rerun_accn_file", 1, $FH_HR);
         foreach my $acc (@rerun_accessions) { print $accn_fh "$acc\n"; }
         close($accn_fh);
+        # Index the tier2 FASTA for esl-sfetch if not already indexed
+        if(! -e $tier2_fasta_file . ".ssi") {
+          utl_RunCommand($execs_H{"esl-sfetch"} . " --index $tier2_fasta_file",
+                         opt_Get("-v", \%opt_HH), 0, $FH_HR);
+        }
         utl_RunCommand($execs_H{"esl-sfetch"} . " -f $tier2_fasta_file $rerun_accn_file > $rerun_fa",
                        opt_Get("-v", \%opt_HH), 0, $FH_HR);
 
