@@ -4144,10 +4144,20 @@ sub parse_alt_for_exceptions {
       $exc_key = $exc_type . ":" . $ftr_name . ":" . $ftr_idx;
     }
 
+    # For insertn_exc and deletin_exc, extract the actual size from
+    # the alert detail (format: [N>M] where N is actual, M is max allowed)
+    my $exc_value = 0;
+    if($exc_type eq "insertn_exc" || $exc_type eq "deletin_exc") {
+      my $detail = join(" ", @tok[13..$#tok]);
+      if($detail =~ /\[(\d+)>/) {
+        $exc_value = $1;
+      }
+    }
+
     if(! exists $exc_groups{$exc_key}{$mdl_coords}) {
       $exc_groups{$exc_key}{$mdl_coords} = [];
     }
-    push(@{$exc_groups{$exc_key}{$mdl_coords}}, $seq_name);
+    push(@{$exc_groups{$exc_key}{$mdl_coords}}, { acc => $seq_name, value => $exc_value });
   }
   close($fh);
 
@@ -4185,15 +4195,18 @@ sub detect_exceptions {
   foreach my $exc_key (sort keys %{$exc_groups_HHR}) {
     my ($exc_type, $ftr_name, $ftr_idx) = split(/:/, $exc_key);
 
-    # Collect all regions and their accessions across all mdl_coords
+    # Collect all regions and their accessions/values across all mdl_coords
     # for this exception type + feature, then merge overlapping regions
-    my @all_regions = (); # array of [start, stop, strand, \@accessions]
+    my @all_regions = (); # array of [start, stop, strand, \@entries, max_value]
 
     foreach my $mdl_coords (sort keys %{$exc_groups_HHR->{$exc_key}}) {
-      my @accs = @{$exc_groups_HHR->{$exc_key}{$mdl_coords}};
+      my @entries = @{$exc_groups_HHR->{$exc_key}{$mdl_coords}};
 
       if($mdl_coords =~ /^(\d+)\.\.(\d+):([\+\-])$/) {
-        push(@all_regions, [$1, $2, $3, \@accs]);
+        # Track the max value across all entries for this coord
+        my $max_val = 0;
+        foreach my $e (@entries) { if($e->{"value"} > $max_val) { $max_val = $e->{"value"}; } }
+        push(@all_regions, [$1, $2, $3, \@entries, $max_val]);
       }
     }
 
@@ -4201,27 +4214,28 @@ sub detect_exceptions {
     @all_regions = sort { $a->[0] <=> $b->[0] } @all_regions;
     my @merged = ();
     foreach my $region (@all_regions) {
-      my ($rstart, $rstop, $rstrand, $raccs) = @{$region};
+      my ($rstart, $rstop, $rstrand, $rentries, $rmax_val) = @{$region};
       if(scalar(@merged) > 0 &&
          $merged[$#merged][2] eq $rstrand &&
          $rstart <= $merged[$#merged][1] + 1) {
-        # Overlapping or adjacent: extend and merge accessions
+        # Overlapping or adjacent: extend and merge
         if($rstop > $merged[$#merged][1]) {
           $merged[$#merged][1] = $rstop;
         }
-        push(@{$merged[$#merged][3]}, @{$raccs});
+        push(@{$merged[$#merged][3]}, @{$rentries});
+        if($rmax_val > $merged[$#merged][4]) { $merged[$#merged][4] = $rmax_val; }
       }
       else {
-        push(@merged, [$rstart, $rstop, $rstrand, [@{$raccs}]]);
+        push(@merged, [$rstart, $rstop, $rstrand, [@{$rentries}], $rmax_val]);
       }
     }
 
     # Apply independence threshold to each merged region
     foreach my $region (@merged) {
-      my ($rstart, $rstop, $rstrand, $raccs) = @{$region};
+      my ($rstart, $rstop, $rstrand, $rentries, $rmax_val) = @{$region};
 
       # Deduplicate accessions (same seq may trigger multiple alerts in region)
-      my %unique_accs = map { $_ => 1 } @{$raccs};
+      my %unique_accs = map { $_->{"acc"} => 1 } @{$rentries};
       my @unique_acc_list = keys %unique_accs;
       my $n_ind = count_independent_observations(\@unique_acc_list);
 
@@ -4233,7 +4247,15 @@ sub detect_exceptions {
         next;
       }
 
-      my $exc_coords = $rstart . ".." . $rstop . ":" . $rstrand;
+      # For insertn_exc and deletin_exc: use coords-value format (coords:maxlen)
+      # For fst_exc and lowsim_exc: use coords-only format
+      my $exc_coords;
+      if($exc_type eq "insertn_exc" || $exc_type eq "deletin_exc") {
+        $exc_coords = $rstart . ".." . $rstop . ":" . $rstrand . ":" . $rmax_val;
+      }
+      else {
+        $exc_coords = $rstart . ".." . $rstop . ":" . $rstrand;
+      }
 
       ofile_OutputString($FH_HR->{"log"}, 1,
         sprintf("# Exc detect: %s %s %s n_seqs=%d n_ind=%d ADDED\n",
