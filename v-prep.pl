@@ -102,6 +102,7 @@ opt_Add("--skip-rna",   "boolean", 0,             $g,    undef, "--rna-cm-file",
 opt_Add("--no-auto-alt", "boolean", 0,           $g,    undef, "--alt-file",   "skip auto-detection of alternative CDS features and exceptions", "skip auto-detection of alternative CDS features and exceptions", \%opt_HH, \@opt_order_A);
 opt_Add("--alt-file",   "string",  undef,         $g,    undef, "--no-auto-alt", "read alternative feature definitions from file <s>",           "read alternative feature definitions from file <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--alt-min-ind", "integer", 2,            $g,    undef, "--no-auto-alt", "min independent observations to add an alternative or exception", "min independent observations to add an alternative or exception as <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--vannot-opts-file", "string", undef,    $g,    undef, undef,          "read extra v-annotate.pl options from file <s>",              "read extra v-annotate.pl options from file <s>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "other expert options";
 #       option       type          default     group  requires incompat      preamble-output                                              help-output           
@@ -134,6 +135,7 @@ my $options_okay =
                 'no-auto-alt'  => \$GetOptions_H{"--no-auto-alt"},
                 'alt-file=s'   => \$GetOptions_H{"--alt-file"},
                 'alt-min-ind=i' => \$GetOptions_H{"--alt-min-ind"},
+                'vannot-opts-file=s' => \$GetOptions_H{"--vannot-opts-file"},
 # other expert options
                 'execname=s'   => \$GetOptions_H{"--execname"});
 
@@ -399,6 +401,22 @@ my $ref_accn = opt_IsUsed("--refaccn", \%opt_HH) ? opt_Get("--refaccn", \%opt_HH
 ofile_OutputString(*STDOUT, 1, sprintf("# Read seed model length: %d\n", $seed_model_len));
 ofile_OutputString(*STDOUT, 1, sprintf("# Reference accession: %s\n", $ref_accn));
 
+# Read extra v-annotate.pl options from file, if provided
+my $vannot_extra_opts = "";
+if(opt_IsUsed("--vannot-opts-file", \%opt_HH)) {
+  my $vannot_opts_file = opt_Get("--vannot-opts-file", \%opt_HH);
+  open(my $vofh, "<", $vannot_opts_file) || ofile_FAIL("ERROR, unable to open --vannot-opts-file $vannot_opts_file", 1, $FH_HR);
+  while(my $voline = <$vofh>) {
+    chomp $voline;
+    $voline =~ s/^\s+//;
+    $voline =~ s/\s+$//;
+    next if($voline eq "" || $voline =~ /^\#/);
+    $vannot_extra_opts .= " " . $voline;
+  }
+  close($vofh);
+  ofile_OutputString(*STDOUT, 1, sprintf("# Extra v-annotate.pl options:%s\n", $vannot_extra_opts));
+}
+
 #---------------------------------------
 # Step 3: RNA discovery via cmscan on reference sequence
 #---------------------------------------
@@ -513,7 +531,7 @@ if($do_skip_annotate) {
   mark_all_remaining_as_selected_for_tier3(\%candidate_AH, \%decision_H);
 }
 else {
-  $tier2_align_stk_file = run_vannotate_filter_fails(\%candidate_AH, $tier2_fasta_file, $tier2_ant_outdir, $model_dir, $model_key, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H, \%decision_H, $FH_HR);
+  $tier2_align_stk_file = run_vannotate_filter_fails(\%candidate_AH, $tier2_fasta_file, $tier2_ant_outdir, $model_dir, $model_key, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H, \%decision_H, $vannot_extra_opts, $FH_HR);
 }
 
 #---------------------------------------
@@ -619,7 +637,7 @@ if($do_auto_alt) {
         my $rerun_outdir = $out_root . ".vadr.tier2.annot.pass2";
         my $rerun_mkey = $model_key . ".vadr";
         my $cmd = $execs_H{"v-annotate.pl"} . " -f --mdir " . $tmp_mdir . " --mkey " . $rerun_mkey .
-                  " --out_stk " . $rerun_fa . " " . $rerun_outdir;
+                  $vannot_extra_opts . " --out_stk " . $rerun_fa . " " . $rerun_outdir;
         if(! opt_Get("-v", \%opt_HH)) { $cmd .= " > /dev/null"; }
         utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
 
@@ -1139,13 +1157,13 @@ sub apply_ambiguity_filter_to_candidates {
 #              sequences listed in .vadr.fail.list.
 #################################################################
 sub run_vannotate_filter_fails {
-  my ($candidate_AHR, $fasta_file, $annot_outdir, $model_dir, $model_key, $do_keep, $do_verbose, $execs_HR, $decision_HR, $FH_HR) = @_;
+  my ($candidate_AHR, $fasta_file, $annot_outdir, $model_dir, $model_key, $do_keep, $do_verbose, $execs_HR, $decision_HR, $vannot_extra_opts, $FH_HR) = @_;
 
   my $annot_mkey = $model_key . ".vadr";
 
   # Note: --out_stk and --keep are incompatible in v-annotate.pl, so we only use --out_stk
   # which outputs the Stockholm alignment we need for Step 8 block extraction
-  my $cmd = $execs_HR->{"v-annotate.pl"} . " -f --mdir " . $model_dir . " --mkey " . $annot_mkey . " --out_stk " . $fasta_file . " " . $annot_outdir;
+  my $cmd = $execs_HR->{"v-annotate.pl"} . " -f --mdir " . $model_dir . " --mkey " . $annot_mkey . $vannot_extra_opts . " --out_stk " . $fasta_file . " " . $annot_outdir;
   if(! $do_verbose) {
     $cmd .= " > /dev/null";
   }
