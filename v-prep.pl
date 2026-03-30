@@ -4443,12 +4443,22 @@ sub add_alternatives_and_exceptions_to_minfo {
     }
 
     # Create new CDS lines for each alternative
+    # Skip if the alternative coords match the original (no real change)
+    # or match any other existing CDS coords in the minfo
+    my %existing_coords = ();
+    for(my $fi = 0; $fi < $ftr_count; $fi++) {
+      if($ftr_type[$fi] eq "CDS") { $existing_coords{$ftr_coords[$fi]} = 1; }
+    }
     my @new_cds_lines = ();
     foreach my $alt (@alts) {
+      if(exists $existing_coords{$alt->{"new_coords"}}) {
+        next;  # skip: coords already exist in minfo
+      }
       my $new_line = $lines[$cds_line_idx];
       # Replace coords with alternative coords
       $new_line =~ s/coords:"[^"]*"/coords:"$alt->{"new_coords"}"/;
       push(@new_cds_lines, $new_line);
+      $existing_coords{$alt->{"new_coords"}} = 1;  # track newly added too
     }
 
     # Insert new CDS lines after the original
