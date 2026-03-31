@@ -3841,7 +3841,7 @@ sub parse_alt_for_cds_boundary_alerts {
     my $seq_name    = $tok[1];
     my $ftr_type    = $tok[3];
     my $ftr_name    = $tok[4];
-    my $ftr_idx     = $tok[5];
+    my $ftr_idx     = $tok[5] - 1;  # convert from 1-based (.vadr.alt) to 0-based (internal)
     my $alert_code  = $tok[6];
     my $fail        = $tok[7];
     my $seq_coords  = $tok[9];
@@ -3998,6 +3998,18 @@ sub detect_alternative_features {
 
       # Don't add if the new coords are identical to the original
       if($new_coords eq $original_coords) {
+        next;
+      }
+
+      # Don't add if the alternative has a different number of segments
+      # than the original (e.g., original is multi-segment ribosomal
+      # slippage but alternative is single-segment)
+      my $orig_nsegs = scalar(split(/,/, $original_coords));
+      my $new_nsegs  = scalar(split(/,/, $new_coords));
+      if($orig_nsegs != $new_nsegs) {
+        ofile_OutputString($FH_HR->{"log"}, 1,
+          sprintf("# Alt detect: %s %s nseg_orig=%d nseg_new=%d, segment count mismatch, skipping\n",
+                  $ftr_key, $mdl_coords, $orig_nsegs, $new_nsegs));
         next;
       }
 
@@ -4191,7 +4203,7 @@ sub parse_alt_for_exceptions {
     my $seq_name   = $tok[1];
     my $ftr_type   = $tok[3];
     my $ftr_name   = $tok[4];
-    my $ftr_idx    = $tok[5];
+    my $ftr_idx    = $tok[5] - 1;  # convert from 1-based (.vadr.alt) to 0-based (internal)
     my $alert_code = $tok[6];
     my $mdl_coords = $tok[11];
 
@@ -4748,7 +4760,7 @@ sub translate_alternative_cds_proteins {
     next if(scalar(@tok) < 25);
     my $acc        = $tok[1];
     my $ftr_type   = $tok[5];
-    my $ftr_idx    = $tok[8];
+    my $ftr_idx    = $tok[8] - 1;  # convert from 1-based (.vadr.ftr) to 0-based (internal)
     my $n_from     = $tok[11];
     my $n_to       = $tok[12];
     my $n_instp    = $tok[13];
@@ -4773,7 +4785,7 @@ sub translate_alternative_cds_proteins {
     my @tok = split(/\s+/, $line);
     next if(scalar(@tok) < 13);
     my $acc        = $tok[1];
-    my $ftr_idx    = $tok[5];
+    my $ftr_idx    = $tok[5] - 1;  # convert from 1-based (.vadr.alt) to 0-based (internal)
     my $alert_code = $tok[6];
     my $seq_coords = $tok[9];
     # Store: key is "acc:ftr_idx:alert_code"
@@ -5056,7 +5068,7 @@ sub identify_rerun_candidates {
     my @tok = split(/\s+/, $line);
     next if(scalar(@tok) < 13);
     my $acc  = $tok[1];
-    my $fidx = $tok[5];
+    my $fidx = $tok[5] - 1;  # convert from 1-based (.vadr.alt) to 0-based (internal)
     my $code = $tok[6];
     my $fail = $tok[7];
     next if($fail ne "yes");  # only care about fatal alerts
