@@ -104,6 +104,7 @@ opt_Add("--alt-file",   "string",  undef,         $g,    undef, "--no-auto-alt",
 opt_Add("--alt-min-ind", "integer", 2,            $g,    undef, "--no-auto-alt", "min independent observations to add an alternative or exception", "min independent observations to add an alternative or exception as <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--vannot-opts-file", "string", undef,    $g,    undef, undef,          "read extra v-annotate.pl options from file <s>",              "read extra v-annotate.pl options from file <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--alt-max-fract", "real",    0.2,       $g,    undef, "--no-auto-alt", "max fractional length deviation for alternative CDS",         "max fractional length deviation for alternative CDS as <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--nper1grp",     "integer", 5,         $g,    undef, undef,          "number of seqs per group when 1 group",                       "number of seqs per group when 1 group as <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "other expert options";
 #       option       type          default     group  requires incompat      preamble-output                                              help-output           
@@ -138,6 +139,7 @@ my $options_okay =
                 'alt-min-ind=i' => \$GetOptions_H{"--alt-min-ind"},
                 'vannot-opts-file=s' => \$GetOptions_H{"--vannot-opts-file"},
                 'alt-max-fract=f' => \$GetOptions_H{"--alt-max-fract"},
+                'nper1grp=i'   => \$GetOptions_H{"--nper1grp"},
 # other expert options
                 'execname=s'   => \$GetOptions_H{"--execname"});
 
@@ -704,7 +706,15 @@ if(! $do_skip_annotate) {
     %partial_cds_H = get_partial_cds_accns_from_ftr($tier2_ftr_file);
   }
 }
-select_group_centroids_blast(\%candidate_AH, $tier2_fasta_file, $out_root, $centroid_tsv_file, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H, \%decision_H, \%partial_cds_H, $ref_accn, \%ofile_info_HH, \@to_remove_A, $FH_HR);
+# Determine how many sequences to select per group based on number of non-empty groups
+my $n_nonempty_groups = 0;
+foreach my $group (keys %candidate_AH) {
+  if(scalar(@{$candidate_AH{$group}}) > 0) { $n_nonempty_groups++; }
+}
+my $nper1grp = opt_Get("--nper1grp", \%opt_HH);
+my $n_per_group = determine_seqs_per_group($n_nonempty_groups, $nper1grp);
+ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Centroid selection: %d non-empty groups, selecting %d seqs per group\n", $n_nonempty_groups, $n_per_group));
+select_group_centroids_blast(\%candidate_AH, $tier2_fasta_file, $out_root, $centroid_tsv_file, $n_per_group, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H, \%decision_H, \%partial_cds_H, $ref_accn, \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
 write_decision_report(\%decision_H, $decision_tsv_file, \%ofile_info_HH, $FH_HR);
 if($do_keep) {
@@ -1274,7 +1284,7 @@ sub get_partial_cds_accns_from_ftr {
 #              they are the only sequence in the group.
 #################################################################
 sub select_group_centroids_blast {
-  my ($candidate_AHR, $fasta_file, $out_root, $centroid_tsv_file, $do_keep, $do_verbose, $execs_HR, $decision_HR, $partial_cds_HR, $ref_accn, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
+  my ($candidate_AHR, $fasta_file, $out_root, $centroid_tsv_file, $n_per_group, $do_keep, $do_verbose, $execs_HR, $decision_HR, $partial_cds_HR, $ref_accn, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
 
   my %seq_H = ();
   my $cur_acc = undef;
@@ -1374,39 +1384,46 @@ sub select_group_centroids_blast {
       $avg_H{$q} = $sum / scalar(@acc_A);
     }
 
-    my $centroid_acc = undef;
-    my $best = -1.0;
-    foreach my $acc (sort @acc_A) { # alphabetical tie-breaker
-      if($avg_H{$acc} > $best) {
-        $best = $avg_H{$acc};
-        $centroid_acc = $acc;
+    # Sort accessions by average pident (descending), alphabetical tie-breaker
+    my @sorted_accs = sort { $avg_H{$b} <=> $avg_H{$a} || $a cmp $b } @acc_A;
+
+    # Select top N sequences (or all if fewer than N available)
+    my $n_to_select = ($n_per_group < scalar(@sorted_accs)) ? $n_per_group : scalar(@sorted_accs);
+    my %selected_H = ();
+    for(my $i = 0; $i < $n_to_select; $i++) {
+      $selected_H{$sorted_accs[$i]} = 1;
+    }
+    # Also always keep the reference accession
+    if(defined $ref_accn) {
+      foreach my $seq (@seq_A) {
+        if($seq->{"acc"} eq $ref_accn) { $selected_H{$ref_accn} = 1; }
       }
     }
 
+    my $best_avg = $avg_H{$sorted_accs[0]};
     my @new_group_A = ();
     foreach my $seq (@seq_A) {
       my $acc = $seq->{"acc"};
-      my $is_centroid = ($acc eq $centroid_acc) ? 1 : 0;
-      print $ctfh join("\t", $group, $acc, sprintf("%.4f", $avg_H{$acc}), $is_centroid) . "\n";
-      if($is_centroid) {
+      my $is_selected = exists $selected_H{$acc} ? 1 : 0;
+      print $ctfh join("\t", $group, $acc, sprintf("%.4f", $avg_H{$acc}), $is_selected) . "\n";
+      if($is_selected) {
         push(@new_group_A, $seq);
         $decision_HR->{$acc}{"status"} = "kept";
-        $decision_HR->{$acc}{"reason_code"} = "centroid_selected";
-        $decision_HR->{$acc}{"reason_detail"} = sprintf("selected by max average blastn pident %.4f in group", $avg_H{$acc});
-        $decision_HR->{$acc}{"stage_last_seen"} = "selected_for_tier3";
-      }
-      elsif(defined $ref_accn && $acc eq $ref_accn) {
-        # Reference accession is always kept even if not centroid
-        push(@new_group_A, $seq);
-        $decision_HR->{$acc}{"status"} = "kept";
-        $decision_HR->{$acc}{"reason_code"} = "reference_forced";
-        $decision_HR->{$acc}{"reason_detail"} = sprintf("reference accession (non-centroid; average blastn pident %.4f)", $avg_H{$acc});
+        if(defined $ref_accn && $acc eq $ref_accn && ! exists $selected_H{$acc}) {
+          $decision_HR->{$acc}{"reason_code"} = "reference_forced";
+          $decision_HR->{$acc}{"reason_detail"} = sprintf("reference accession (avg blastn pident %.4f)", $avg_H{$acc});
+        }
+        else {
+          $decision_HR->{$acc}{"reason_code"} = "centroid_selected";
+          $decision_HR->{$acc}{"reason_detail"} = sprintf("selected by avg blastn pident %.4f (rank %d of %d in group)",
+                                                           $avg_H{$acc}, 1 + (grep { $avg_H{$_} > $avg_H{$acc} } @sorted_accs), scalar(@sorted_accs));
+        }
         $decision_HR->{$acc}{"stage_last_seen"} = "selected_for_tier3";
       }
       else {
         $decision_HR->{$acc}{"status"} = "removed";
         $decision_HR->{$acc}{"reason_code"} = "centroid_not_selected";
-        $decision_HR->{$acc}{"reason_detail"} = sprintf("non-centroid; average blastn pident %.4f (centroid %.4f)", $avg_H{$acc}, $avg_H{$centroid_acc});
+        $decision_HR->{$acc}{"reason_detail"} = sprintf("not in top %d; avg blastn pident %.4f (best %.4f)", $n_per_group, $avg_H{$acc}, $best_avg);
         $decision_HR->{$acc}{"stage_last_seen"} = "tier3_centroid_filter";
       }
     }
@@ -1424,7 +1441,7 @@ sub select_group_centroids_blast {
   close($ctfh);
 
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "centroid.tsv", $centroid_tsv_file, 1, 1, "per-group centroid selection table (blastn average pident)");
-  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Tier 3 centroid selection (blast): selected 1 sequence in each of %d groups (%d empty groups) and wrote %s\n", $n_groups_with_centroid, $n_groups_empty, $centroid_tsv_file));
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Tier 3 centroid selection (blast): selected up to %d seqs in each of %d groups (%d empty groups) and wrote %s\n", $n_per_group, $n_groups_with_centroid, $n_groups_empty, $centroid_tsv_file));
   return;
 }
 
@@ -5101,4 +5118,34 @@ sub coords_total_length {
     }
   }
   return $total;
+}
+
+#################################################################
+# Subroutine: determine_seqs_per_group()
+# Incept:     EPN, Mon Mar 31 2026
+#
+# Purpose:    Determine how many sequences to select per group
+#             based on the total number of non-empty groups.
+#             Fewer groups -> more sequences per group to ensure
+#             adequate diversity in the final alignment.
+#
+#             Default schedule:
+#               1 group:       $nper1grp (default 5)
+#               2-5 groups:    3
+#               6-10 groups:   2
+#               11+ groups:    1
+#
+# Arguments:
+#   $n_groups: number of non-empty groups
+#   $nper1grp: number of seqs per group when 1 group (--nper1grp)
+#
+# Returns: integer number of sequences to select per group
+#################################################################
+sub determine_seqs_per_group {
+  my ($n_groups, $nper1grp) = @_;
+
+  if($n_groups <= 1)  { return $nper1grp; }
+  if($n_groups <= 5)  { return 3; }
+  if($n_groups <= 10) { return 2; }
+  return 1;
 }
