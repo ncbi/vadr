@@ -103,6 +103,7 @@ opt_Add("--no-auto-alt", "boolean", 0,           $g,    undef, "--alt-file",   "
 opt_Add("--alt-file",   "string",  undef,         $g,    undef, "--no-auto-alt", "read alternative feature definitions from file <s>",           "read alternative feature definitions from file <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--alt-min-ind", "integer", 2,            $g,    undef, "--no-auto-alt", "min independent observations to add an alternative or exception", "min independent observations to add an alternative or exception as <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--vannot-opts-file", "string", undef,    $g,    undef, undef,          "read extra v-annotate.pl options from file <s>",              "read extra v-annotate.pl options from file <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--alt-max-fract", "real",    0.2,       $g,    undef, "--no-auto-alt", "max fractional length deviation for alternative CDS",         "max fractional length deviation for alternative CDS as <x>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "other expert options";
 #       option       type          default     group  requires incompat      preamble-output                                              help-output           
@@ -136,6 +137,7 @@ my $options_okay =
                 'alt-file=s'   => \$GetOptions_H{"--alt-file"},
                 'alt-min-ind=i' => \$GetOptions_H{"--alt-min-ind"},
                 'vannot-opts-file=s' => \$GetOptions_H{"--vannot-opts-file"},
+                'alt-max-fract=f' => \$GetOptions_H{"--alt-max-fract"},
 # other expert options
                 'execname=s'   => \$GetOptions_H{"--execname"});
 
@@ -548,7 +550,8 @@ if($do_auto_alt) {
   if(-e $tier2_alt_file && -e $tier2_ftr_file) {
     # Detect alternative CDS features
     my $alt_groups_HHR = parse_alt_for_cds_boundary_alerts($tier2_alt_file, $FH_HR);
-    my $alt_features_AR = detect_alternative_features($alt_groups_HHR, $min_independent,
+    my $max_fract_diff = opt_Get("--alt-max-fract", \%opt_HH);
+    my $alt_features_AR = detect_alternative_features($alt_groups_HHR, $min_independent, $max_fract_diff,
                                                        \@{$ftr_info_HA{$model_key}}, $model_key, $FH_HR);
 
     # Detect exceptions
@@ -615,7 +618,9 @@ if($do_auto_alt) {
         utl_RunCommand("cp $updated_minfo $tmp_mdir/$model_key.vadr.minfo", 0, 0, $FH_HR);
         # Symlink CM and other model files
         my @model_exts = (".vadr.cm", ".vadr.cm.i1f", ".vadr.cm.i1i", ".vadr.cm.i1m", ".vadr.cm.i1p",
-                          ".vadr.fa", ".vadr.fa.ssi");
+                          ".vadr.fa", ".vadr.fa.ssi",
+                          ".vadr.fa.ndb", ".vadr.fa.nhr", ".vadr.fa.nin", ".vadr.fa.njs",
+                          ".vadr.fa.not", ".vadr.fa.nsq", ".vadr.fa.ntf", ".vadr.fa.nto");
         foreach my $ext (@model_exts) {
           my $src = $model_dir . "/" . $model_key . $ext;
           my $dst = $tmp_mdir . "/" . $model_key . $ext;
@@ -3894,12 +3899,15 @@ sub count_independent_observations {
 #             CDS features to add.
 #
 # Arguments:
-#   $alt_groups_HHR: REF to hash of hash of arrays from
-#                    parse_alt_for_cds_boundary_alerts()
+#   $alt_groups_HHR:  REF to hash of hash of arrays from
+#                     parse_alt_for_cds_boundary_alerts()
 #   $min_independent: minimum number of independent observations
-#   $ftr_info_AHR:   REF to array of feature info hashes
-#   $model_key:      model name/key
-#   $FH_HR:          REF to hash of file handles
+#   $max_fract_diff:  max fractional length deviation allowed
+#                     (e.g., 0.2 means alt CDS must be within
+#                     80%-120% of original CDS length)
+#   $ftr_info_AHR:    REF to array of feature info hashes
+#   $model_key:       model name/key
+#   $FH_HR:           REF to hash of file handles
 #
 # Returns: REF to array of hashrefs, each with keys:
 #          ftr_name, ftr_idx, alert_code, mdl_alt_coords,
@@ -3908,10 +3916,10 @@ sub count_independent_observations {
 #################################################################
 sub detect_alternative_features {
   my $sub_name = "detect_alternative_features";
-  my $nargs_expected = 5;
+  my $nargs_expected = 6;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
 
-  my ($alt_groups_HHR, $min_independent, $ftr_info_AHR, $model_key, $FH_HR) = @_;
+  my ($alt_groups_HHR, $min_independent, $max_fract_diff, $ftr_info_AHR, $model_key, $FH_HR) = @_;
 
   my @alt_features = ();
 
@@ -3974,6 +3982,19 @@ sub detect_alternative_features {
       # Don't add if the new coords are identical to the original
       if($new_coords eq $original_coords) {
         next;
+      }
+
+      # Don't add if the alternative CDS length deviates too much from the original
+      my $orig_len = coords_total_length($original_coords);
+      my $new_len  = coords_total_length($new_coords);
+      if($orig_len > 0 && $new_len > 0) {
+        my $fract_diff = abs($new_len - $orig_len) / $orig_len;
+        if($fract_diff > $max_fract_diff) {
+          ofile_OutputString($FH_HR->{"log"}, 1,
+            sprintf("# Alt detect: %s %s fract_diff=%.3f > max=%.3f (orig_len=%d new_len=%d), skipping\n",
+                    $ftr_key, $mdl_coords, $fract_diff, $max_fract_diff, $orig_len, $new_len));
+          next;
+        }
       }
 
       ofile_OutputString($FH_HR->{"log"}, 1,
@@ -4081,6 +4102,15 @@ sub compute_alternative_cds_coords {
   }
   else {
     return undef;
+  }
+
+  # Validate: for each segment, start <= stop for + strand, start >= stop for - strand
+  foreach my $seg (@segments) {
+    if($seg =~ /^(\d+)\.\.(\d+):([\+\-])$/) {
+      my ($s, $e, $st) = ($1, $2, $3);
+      if($st eq "+" && $s > $e) { return undef; }  # inverted + strand coords
+      if($st eq "-" && $s < $e) { return undef; }  # inverted - strand coords
+    }
   }
 
   return join(",", @segments);
@@ -4501,18 +4531,23 @@ sub add_alternatives_and_exceptions_to_minfo {
           $lines[$gene_line_idx] .= " alternative_ftr_set:\"$gene_set_name\" alternative_ftr_set_subn:\"$cds_set_name.1\"";
         }
 
-        # Create new gene lines for each CDS alternative
+        # Create gene alternatives only for CDS alternatives that were
+        # actually added (not skipped by duplicate-coords check).
+        # The number of added CDS = scalar(@new_cds_lines), and
+        # total CDS in set = 1 (original) + scalar(@new_cds_lines).
+        # Gene subn indices must match: .1 = original, .2..N = alternatives.
         my @new_gene_lines = ();
         my $alt_num = 2;  # .1 is the original, alternatives start at .2
         foreach my $alt (@alts) {
+          # Only create gene alternative if this CDS alt was actually added
+          next if(exists $existing_coords{$alt->{"new_coords"}} &&
+                  ! grep { /coords:"\Q$alt->{"new_coords"}\E"/ } @new_cds_lines);
           my $new_gene_line = $lines[$gene_line_idx];
-          # Replace coords: gene coords should encompass the CDS coords
           my $new_gene_coords = compute_gene_coords_for_alt($ftr_coords[$gene_ftr_idx],
                                                              $alt->{"original_coords"},
                                                              $alt->{"new_coords"},
                                                              $alt->{"alt_type"});
           $new_gene_line =~ s/coords:"[^"]*"/coords:"$new_gene_coords"/;
-          # Update the subn reference
           $new_gene_line =~ s/alternative_ftr_set_subn:"[^"]*"/alternative_ftr_set_subn:"$cds_set_name.$alt_num"/;
           push(@new_gene_lines, $new_gene_line);
           $alt_num++;
@@ -5043,4 +5078,27 @@ sub identify_rerun_candidates {
   }
 
   return @rerun_candidates;
+}
+
+#################################################################
+# Subroutine: coords_total_length()
+# Incept:     EPN, Mon Mar 30 2026
+#
+# Purpose:    Calculate the total nucleotide length of a VADR coords
+#             string by summing the lengths of all segments.
+#
+# Arguments:
+#   $coords: VADR coords string (e.g., "1979..2442:+,2439..2490:+")
+#
+# Returns: total length (integer), or 0 on failure
+#################################################################
+sub coords_total_length {
+  my ($coords) = @_;
+  my $total = 0;
+  foreach my $seg (split(/,/, $coords)) {
+    if($seg =~ /^(\d+)\.\.(\d+):[\+\-]$/) {
+      $total += abs($2 - $1) + 1;
+    }
+  }
+  return $total;
 }
