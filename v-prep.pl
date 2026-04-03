@@ -4495,16 +4495,27 @@ sub add_alternatives_and_exceptions_to_minfo {
   # We build a map of: line_index -> [lines to insert AFTER this line]
   # and lines to modify in-place
   my %insert_after = ();  # line_idx -> [line1, line2, ...]
+  my %used_set_names = (); # track used alternative_ftr_set names for uniqueness
 
   foreach my $ftr_idx (sort { $a <=> $b } keys %alts_by_ftr_idx) {
     my @alts = @{$alts_by_ftr_idx{$ftr_idx}};
     my $cds_line_idx = $ftr_line_idx[$ftr_idx];
 
-    # Generate the alternative_ftr_set name from the gene name or feature name
+    # Generate a unique alternative_ftr_set name from the gene/feature name
     my $gene_name = $ftr_gene[$ftr_idx];
     my $set_base = generate_alt_set_name($gene_name, $alts[0]{"ftr_name"});
     my $cds_set_name = $set_base . "(cds)";
     my $gene_set_name = $set_base . "(gene)";
+    # Ensure uniqueness: if this name is already taken, append .N
+    if(exists $used_set_names{$cds_set_name}) {
+      my $n = 2;
+      while(exists $used_set_names{$set_base . "." . $n . "(cds)"}) { $n++; }
+      $set_base = $set_base . "." . $n;
+      $cds_set_name = $set_base . "(cds)";
+      $gene_set_name = $set_base . "(gene)";
+    }
+    $used_set_names{$cds_set_name} = 1;
+    $used_set_names{$gene_set_name} = 1;
 
     # Add alternative_ftr_set to original CDS line (skip if already present)
     if($lines[$cds_line_idx] !~ /alternative_ftr_set:/) {
