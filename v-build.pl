@@ -1178,6 +1178,26 @@ sub profile_CdsFetchStockholmToFasta {
     my $aligned_sqstring = $msa->get_sqstring_aligned($seq_idx);
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
       if($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") {
+        # Skip non-primary alternative CDS features — their proteins
+        # are handled separately (from v-prep.pl alt.protein.fa).
+        # The primary CDS (first in its alternative_ftr_set group)
+        # is extracted/translated normally for all sequences.
+        if(defined $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set"} &&
+           $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set"} ne "") {
+          my $afset = $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set"};
+          # Check if this is the first feature in its set (primary)
+          my $is_first = 1;
+          for(my $fi = 0; $fi < $ftr_idx; $fi++) {
+            if(defined $ftr_info_AHR->[$fi]{"alternative_ftr_set"} &&
+               $ftr_info_AHR->[$fi]{"alternative_ftr_set"} eq $afset) {
+              $is_first = 0;
+              last;
+            }
+          }
+          if(! $is_first) {
+            next;  # skip non-primary alternative
+          }
+        }
         my $cds_sqstring = "";
         my @seq_sgm_coords_A = ();
         my $total_rf_offset_5p = 0; # cumulative 5' RF offset (nt to trim from 5' end)
