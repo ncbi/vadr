@@ -3480,13 +3480,23 @@ sub concatenate_all_blocks {
         $nc_seqs_H{$nc_msa->get_sqname($i)} = $nc_msa->get_sqstring_aligned($i);
       }
 
-
+      # If column_subset produced a zero-width alignment (e.g., trailing
+      # noncoding region beyond the tier2 alignment), use the expected
+      # block width and fill with gaps
       if($nc_aln_width == 0) { $nc_aln_width = $block_end - $block_start + 1; }
+
+      # Skip blocks with zero width entirely
+      if($nc_aln_width == 0) { next; }
 
       # Write sequence lines in canonical order
       foreach my $name (@seq_names) {
-        my $seq = exists $nc_seqs_H{$name} ? $nc_seqs_H{$name} : '-' x $nc_aln_width;
+        my $seq = (exists $nc_seqs_H{$name} && length($nc_seqs_H{$name}) > 0)
+                  ? $nc_seqs_H{$name} : '-' x $nc_aln_width;
         printf $outfh "%-30s %s\n", $name, $seq;
+      }
+      # Ensure RF and SS_cons match the actual sequence width
+      if(length($nc_rf) == 0 || length($nc_rf) != $nc_aln_width) {
+        $nc_rf = 'x' x $nc_aln_width;
       }
       printf $outfh "#=GC %-24s %s\n", "RF", $nc_rf;
       printf $outfh "#=GC %-24s %s\n", "SS_cons", '.' x $nc_aln_width;
