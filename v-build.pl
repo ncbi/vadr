@@ -1173,31 +1173,60 @@ sub profile_CdsFetchStockholmToFasta {
   my $nftr = scalar(@{$ftr_info_AHR});
   my $nseq = $msa->nseq;
 
+  # Build map of alternative feature sets: for each set name, collect
+  # all member ftr_idx values in order (first = primary)
+  my %alt_set_members = ();  # set_name -> [ftr_idx1, ftr_idx2, ...]
+  for(my $fi = 0; $fi < $nftr; $fi++) {
+    if($ftr_info_AHR->[$fi]{"type"} eq "CDS" &&
+       defined $ftr_info_AHR->[$fi]{"alternative_ftr_set"} &&
+       $ftr_info_AHR->[$fi]{"alternative_ftr_set"} ne "") {
+      my $afset = $ftr_info_AHR->[$fi]{"alternative_ftr_set"};
+      if(! exists $alt_set_members{$afset}) {
+        $alt_set_members{$afset} = [];
+      }
+      push(@{$alt_set_members{$afset}}, $fi);
+    }
+  }
+
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) {
     my $sqname = $msa->get_sqname($seq_idx);
     my $aligned_sqstring = $msa->get_sqstring_aligned($seq_idx);
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
       if($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") {
-        # Skip non-primary alternative CDS features — their proteins
-        # are handled separately (from v-prep.pl alt.protein.fa).
-        # The primary CDS (first in its alternative_ftr_set group)
-        # is extracted/translated normally for all sequences.
+        # For CDS with alternative_ftr_set: skip non-primary members
+        # (the primary handles all alternatives for each sequence).
+        # For the primary: try extracting with primary coords first,
+        # then try each alternative if the primary fails validation.
         if(defined $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set"} &&
            $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set"} ne "") {
           my $afset = $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set"};
-          # Check if this is the first feature in its set (primary)
-          my $is_first = 1;
-          for(my $fi = 0; $fi < $ftr_idx; $fi++) {
-            if(defined $ftr_info_AHR->[$fi]{"alternative_ftr_set"} &&
-               $ftr_info_AHR->[$fi]{"alternative_ftr_set"} eq $afset) {
-              $is_first = 0;
+          # Skip non-primary members
+          if(exists $alt_set_members{$afset} && $alt_set_members{$afset}[0] != $ftr_idx) {
+            next;
+          }
+          # This is the primary — try it and each alternative
+          my @try_ftr_idxs = @{$alt_set_members{$afset}};
+          my $success = 0;
+          foreach my $try_fi (@try_ftr_idxs) {
+            my ($cds_str, $header) = profile_ExtractOneCds($msa, $seq_idx, $sqname, $aligned_sqstring,
+                                                           $try_fi, $ftr_info_AHR,
+                                                           \@sgm_start_AA, \@sgm_stop_AA, \@sgm_strand_AA,
+                                                           $FH_HR);
+            if(defined $cds_str && profile_ValidateCdsForTranslation($cds_str)) {
+              print $out_FH ">" . $header . "\n";
+              print $out_FH seq_SqstringAddNewlines($cds_str, 60);
+              $success = 1;
               last;
             }
           }
-          if(! $is_first) {
-            next;  # skip non-primary alternative
+          if(! $success) {
+            ofile_OutputString($FH_HR->{"log"}, 1,
+              sprintf("# WARNING: profile_CdsFetchStockholmToFasta: no alternative CDS translated for %s in set %s, skipping\n",
+                      $sqname, $afset));
           }
+          next;  # skip the normal extraction below
         }
+        # Non-alternative CDS: extract normally (fail on error)
         my $cds_sqstring = "";
         my @seq_sgm_coords_A = ();
         my $total_rf_offset_5p = 0; # cumulative 5' RF offset (nt to trim from 5' end)
@@ -1426,6 +1455,127 @@ sub profile_CdsFetchStockholmToFasta {
 #          $offset_5p: number of nucleotides to trim from 5' end to get in-frame
 #          $offset_3p: number of nucleotides to trim from 3' end
 #################################################################
+
+#################################################################
+# Subroutine: profile_ExtractOneCds()
+# Incept:     EPN, Fri Apr 04 2026
+#
+# Purpose:    Extract a CDS nucleotide sequence for one sequence
+#             using the coords of a specified feature index.
+#             This is the core extraction logic from
+#             profile_CdsFetchStockholmToFasta(), refactored to
+#             allow trying multiple alternative CDS coords per seq.
+#
+# Returns:    ($cds_string, $header_string) on success
+#             (undef, undef) if the CDS region is all gaps
+#################################################################
+sub profile_ExtractOneCds {
+  my $sub_name = "profile_ExtractOneCds";
+  my ($msa, $seq_idx, $sqname, $aligned_sqstring, $ftr_idx, $ftr_info_AHR,
+      $sgm_start_AAR, $sgm_stop_AAR, $sgm_strand_AAR, $FH_HR) = @_;
+
+  my $cds_sqstring = "";
+  my $total_rf_offset_5p = 0;
+  my $total_rf_offset_3p = 0;
+
+  foreach(my $sgm_idx = 0; $sgm_idx < scalar(@{$sgm_start_AAR->[$ftr_idx]}); $sgm_idx++) {
+    my $rfstart = $sgm_start_AAR->[$ftr_idx][$sgm_idx];
+    my $rfstop  = $sgm_stop_AAR->[$ftr_idx][$sgm_idx];
+    my $astart  = $msa->rfpos_to_aligned_pos($rfstart);
+    my $astop   = $msa->rfpos_to_aligned_pos($rfstop);
+    if($astart > $astop) { utl_Swap(\$astart, \$astop); }
+
+    my ($ua_first, $ua_last) = profile_FirstAndLastUngappedPositionsInAlignedRange($aligned_sqstring, $astart, $astop);
+    if(! defined $ua_first) {
+      return (undef, undef);  # all gaps in this segment
+    }
+
+    my $sgm_sqstring = $msa->get_sqstring_unaligned_and_truncated($seq_idx, $astart, $astop);
+    if($sgm_strand_AAR->[$ftr_idx][$sgm_idx] eq "-") {
+      seq_SqstringReverseComplement(\$sgm_sqstring);
+    }
+
+    my ($rf_offset_5p, $rf_offset_3p) = profile_ComputeRfOffsets($aligned_sqstring, $astart, $astop, $rfstart, $rfstop, $msa, $sgm_strand_AAR->[$ftr_idx][$sgm_idx]);
+    $total_rf_offset_5p += $rf_offset_5p;
+    $total_rf_offset_3p += $rf_offset_3p;
+
+    $cds_sqstring .= $sgm_sqstring;
+  }
+
+  my $cds_len = length($cds_sqstring);
+  if($cds_len == 0 || ($total_rf_offset_5p + $total_rf_offset_3p >= $cds_len)) {
+    return (undef, undef);
+  }
+
+  # Compute sequence coordinates
+  my @final_seq_sgm_coords_A = ();
+  foreach(my $sgm_idx = 0; $sgm_idx < scalar(@{$sgm_start_AAR->[$ftr_idx]}); $sgm_idx++) {
+    my $rfstart = $sgm_start_AAR->[$ftr_idx][$sgm_idx];
+    my $rfstop  = $sgm_stop_AAR->[$ftr_idx][$sgm_idx];
+    my $astart  = $msa->rfpos_to_aligned_pos($rfstart);
+    my $astop   = $msa->rfpos_to_aligned_pos($rfstop);
+    if($astart > $astop) { utl_Swap(\$astart, \$astop); }
+    my ($ua_first, $ua_last) = profile_FirstAndLastUngappedPositionsInAlignedRange($aligned_sqstring, $astart, $astop);
+    if(defined $ua_first && $ua_first <= $ua_last) {
+      my $seg_strand = $sgm_strand_AAR->[$ftr_idx][$sgm_idx];
+      if($seg_strand eq "-") {
+        push(@final_seq_sgm_coords_A, $ua_last . ".." . $ua_first . ":" . $seg_strand);
+      } else {
+        push(@final_seq_sgm_coords_A, $ua_first . ".." . $ua_last . ":" . $seg_strand);
+      }
+    }
+  }
+
+  my $seq_coords_str = join(",", @final_seq_sgm_coords_A);
+  my $ref_coords_str = $ftr_info_AHR->[$ftr_idx]{"coords"};
+
+  # Build header with codon_start if needed
+  my $codon_start = $total_rf_offset_5p + 1;
+  my $cds_header = $sqname . "/" . $seq_coords_str;
+  if($codon_start != 1) {
+    $cds_header .= "/CS" . $codon_start;
+  }
+  $cds_header .= " REFCOORDS=" . $ref_coords_str;
+
+  return ($cds_sqstring, $cds_header);
+}
+
+#################################################################
+# Subroutine: profile_ValidateCdsForTranslation()
+# Incept:     EPN, Fri Apr 04 2026
+#
+# Purpose:    Quick check if a CDS nucleotide sequence is likely
+#             to produce a valid full-length translation:
+#             - Length (minus 3 for stop codon) must be divisible by 3
+#             - No in-frame stop codons before the last codon
+#
+# Arguments:
+#   $cds_seq: CDS nucleotide sequence string
+#
+# Returns:    1 if valid, 0 if not
+#################################################################
+sub profile_ValidateCdsForTranslation {
+  my ($cds_seq) = @_;
+
+  my $len = length($cds_seq);
+  if($len < 6) { return 0; }  # too short
+
+  # Check length divisible by 3
+  if($len % 3 != 0) { return 0; }
+
+  # Check for in-frame stop codons before the last codon
+  my %stop_codons = ("TAA" => 1, "TAG" => 1, "TGA" => 1,
+                     "taa" => 1, "tag" => 1, "tga" => 1);
+  for(my $i = 0; $i < $len - 3; $i += 3) {
+    my $codon = substr($cds_seq, $i, 3);
+    if(exists $stop_codons{$codon}) {
+      return 0;  # premature stop codon
+    }
+  }
+
+  return 1;
+}
+
 sub profile_ComputeRfOffsets {
   my $sub_name = "profile_ComputeRfOffsets";
   my $nargs_expected = 7;
