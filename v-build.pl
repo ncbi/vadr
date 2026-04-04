@@ -1560,17 +1560,38 @@ sub profile_ValidateCdsForTranslation {
   my $len = length($cds_seq);
   if($len < 6) { return 0; }  # too short
 
-  # Check length divisible by 3
-  if($len % 3 != 0) { return 0; }
-
-  # Check for in-frame stop codons before the last codon
+  # Check for in-frame stop codons in frame 1 starting from position 1.
+  # The CDS is valid if the first in-frame stop codon is at the last
+  # codon position (i.e., no premature stops). We don't require
+  # length%3==0 because the sequence may have insertions relative to
+  # the reference; what matters is whether esl-translate can find an
+  # ORF from position 1 to (len - remainder).
   my %stop_codons = ("TAA" => 1, "TAG" => 1, "TGA" => 1,
                      "taa" => 1, "tag" => 1, "tga" => 1);
-  for(my $i = 0; $i < $len - 3; $i += 3) {
+
+  # Find the first in-frame stop codon starting from position 0 (frame 1)
+  my $first_stop_pos = -1;
+  for(my $i = 0; $i <= $len - 3; $i += 3) {
     my $codon = substr($cds_seq, $i, 3);
     if(exists $stop_codons{$codon}) {
-      return 0;  # premature stop codon
+      $first_stop_pos = $i;
+      last;
     }
+  }
+
+  # Valid if: first stop codon is near the end (within last 6 nt to
+  # allow for small length differences) or there is no stop at all
+  # (3' truncated CDS, also acceptable for profile building)
+  if($first_stop_pos == -1) {
+    # No stop codon found — could be 3' truncated, still usable
+    return 1;
+  }
+
+  # The ORF that esl-translate will find runs from position 1 to
+  # first_stop_pos (0-based). This needs to cover most of the CDS.
+  # Reject if the stop is too early (less than 90% of the CDS length)
+  if($first_stop_pos < ($len * 0.9)) {
+    return 0;
   }
 
   return 1;
