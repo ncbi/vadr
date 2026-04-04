@@ -1421,7 +1421,17 @@ sub profile_CdsFetchStockholmToFasta {
         }
         # Add refcoords as a comment so we can reconstruct the final protein header later
         $cds_header .= " REFCOORDS=" . $ref_coords_str;
-        
+
+        # In profile mode, validate that the CDS will translate before
+        # writing. Skip sequences where the CDS has premature stops
+        # (due to frameshifts or boundary differences from the reference).
+        if(! profile_ValidateCdsForTranslation($final_cds)) {
+          ofile_OutputString($FH_HR->{"log"}, 1,
+            sprintf("# WARNING: profile_CdsFetchStockholmToFasta: CDS for %s at %s failed translation validation, skipping\n",
+                    $sqname, $seq_coords_str));
+          next;
+        }
+
         print $out_FH ">" . $cds_header . "\n";
         print $out_FH seq_SqstringAddNewlines($final_cds, 60);
       }
