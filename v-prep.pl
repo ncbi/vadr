@@ -4581,22 +4581,28 @@ sub add_alternatives_and_exceptions_to_minfo {
           $lines[$gene_line_idx] .= " alternative_ftr_set:\"$gene_set_name\" alternative_ftr_set_subn:\"$cds_set_name.1\"";
         }
 
-        # Create gene alternatives only for CDS alternatives that were
-        # actually added (not skipped by duplicate-coords check).
-        # The number of added CDS = scalar(@new_cds_lines), and
-        # total CDS in set = 1 (original) + scalar(@new_cds_lines).
-        # Gene subn indices must match: .1 = original, .2..N = alternatives.
+        # Create gene alternatives matching the CDS alternatives that
+        # were actually added to @new_cds_lines. Extract the new_coords
+        # from each added CDS line to compute the corresponding gene coords.
         my @new_gene_lines = ();
-        my $alt_num = 2;  # .1 is the original, alternatives start at .2
-        foreach my $alt (@alts) {
-          # Only create gene alternative if this CDS alt was actually added
-          next if(exists $existing_coords{$alt->{"new_coords"}} &&
-                  ! grep { /coords:"\Q$alt->{"new_coords"}\E"/ } @new_cds_lines);
+        my $alt_num = 2;  # .1 = original, .2..N = alternatives
+        foreach my $new_cds_line (@new_cds_lines) {
+          # Extract the coords from the new CDS line
+          my ($new_cds_coords) = ($new_cds_line =~ /coords:"([^"]+)"/);
+          next if(! defined $new_cds_coords);
+          # Find the matching alt entry to get alt_type
+          my $alt_type = "alt_stop_early"; # default
+          foreach my $alt (@alts) {
+            if($alt->{"new_coords"} eq $new_cds_coords) {
+              $alt_type = $alt->{"alt_type"};
+              last;
+            }
+          }
           my $new_gene_line = $lines[$gene_line_idx];
           my $new_gene_coords = compute_gene_coords_for_alt($ftr_coords[$gene_ftr_idx],
-                                                             $alt->{"original_coords"},
-                                                             $alt->{"new_coords"},
-                                                             $alt->{"alt_type"});
+                                                             $ftr_coords[$ftr_idx],
+                                                             $new_cds_coords,
+                                                             $alt_type);
           $new_gene_line =~ s/coords:"[^"]*"/coords:"$new_gene_coords"/;
           $new_gene_line =~ s/alternative_ftr_set_subn:"[^"]*"/alternative_ftr_set_subn:"$cds_set_name.$alt_num"/;
           push(@new_gene_lines, $new_gene_line);
