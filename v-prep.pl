@@ -2280,6 +2280,21 @@ sub build_muscle_cds_msa {
     die "ERROR, no anchor rows parsed from $anchor_tsv_file";
   }
 
+  # Sort features by genomic start position so the concatenated CDS MSA
+  # matches the genomic order expected by the stitching code.
+  # Extract the start position from the anchor header (e.g., "AF266288.2:108..1685:+/...")
+  my %fk_start_H = ();
+  foreach my $fk (@fkey_order) {
+    my $h = $anchor_header_H{$fk};
+    if($h =~ /:(\d+)\.\./) {
+      $fk_start_H{$fk} = $1;
+    }
+    else {
+      $fk_start_H{$fk} = 0;
+    }
+  }
+  @fkey_order = sort { $fk_start_H{$a} <=> $fk_start_H{$b} } @fkey_order;
+
   # Build accession order from first feature group
   my @accn_order_A = ();
   my %accn_seen_H = ();
