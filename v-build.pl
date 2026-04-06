@@ -1589,19 +1589,25 @@ sub profile_ValidateCdsForTranslation {
     }
   }
 
-  # Valid if: first stop codon is near the end (within last 6 nt to
-  # allow for small length differences) or there is no stop at all
-  # (3' truncated CDS, also acceptable for profile building)
+  # sqf_EslTranslateCdsToFastaFile expects an ORF at coords=1..($len-3)
+  # if the CDS is not 3' truncated (i.e., ends with a stop codon), or
+  # coords=1..$len if 3' truncated (no stop codon). We must match this
+  # exactly or the translation step will fail.
+  #
+  # Valid cases:
+  # 1. Stop codon at the very last codon position ($len-3): normal CDS
+  # 2. No stop codon at all: 3' truncated, esl-translate extends to end
+  # Invalid: premature stop before the last codon position
+
   if($first_stop_pos == -1) {
-    # No stop codon found — could be 3' truncated, still usable
-    return 1;
+    # No stop codon — 3' truncated. Valid only if len is divisible by 3
+    # (otherwise esl-translate won't produce coords=1..$expected)
+    return ($len % 3 == 0) ? 1 : 0;
   }
 
-  # The ORF that esl-translate will find runs from position 1 to
-  # first_stop_pos (0-based). This needs to cover most of the CDS.
-  # Reject if the stop is too early (less than 90% of the CDS length)
-  if($first_stop_pos < ($len * 0.9)) {
-    return 0;
+  # Stop codon found: it must be at position $len-3 (the last codon)
+  if($first_stop_pos != $len - 3) {
+    return 0;  # premature stop
   }
 
   return 1;
