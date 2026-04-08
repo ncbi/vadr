@@ -4295,6 +4295,7 @@ sub parse_alt_for_exceptions {
     "lowsimic" => "lowsim_exc", "lowsim5c" => "lowsim_exc",
     "lowsim3c" => "lowsim_exc", "lowsim5s" => "lowsim_exc",
     "lowsim3s" => "lowsim_exc",
+    "indfstrn" => "indfstr_exc", "indfstrp" => "indfstr_exc",
   );
 
   my %exc_groups = ();
@@ -4319,10 +4320,10 @@ sub parse_alt_for_exceptions {
 
     my $exc_type = $alert_to_exc{$alert_code};
 
-    # lowsim_exc goes on MODEL line, others go on FEATURE line
+    # lowsim_exc and indfstr_exc go on MODEL line, others on FEATURE line
     my $exc_key;
-    if($exc_type eq "lowsim_exc") {
-      $exc_key = "lowsim_exc:MODEL:-1";
+    if($exc_type eq "lowsim_exc" || $exc_type eq "indfstr_exc") {
+      $exc_key = $exc_type . ":MODEL:-1";
     }
     else {
       $exc_key = $exc_type . ":" . $ftr_name . ":" . $ftr_idx;
@@ -4541,17 +4542,17 @@ sub add_alternatives_and_exceptions_to_minfo {
     my $exc_coords = $exc->{"exc_coords"};
     my $ftr_idx    = $exc->{"ftr_idx"};
 
-    if($exc_type eq "lowsim_exc") {
+    if($exc_type eq "lowsim_exc" || $exc_type eq "indfstr_exc") {
       # Append to MODEL line
       if($model_line_idx >= 0) {
-        # Check if lowsim_exc already exists on the line
-        if($lines[$model_line_idx] =~ /lowsim_exc:"([^"]*)"/) {
+        # Check if this exc_type already exists on the line
+        if($lines[$model_line_idx] =~ /$exc_type:"([^"]*)"/) {
           # Append to existing value
           my $existing = $1;
-          $lines[$model_line_idx] =~ s/lowsim_exc:"[^"]*"/lowsim_exc:"$existing,$exc_coords"/;
+          $lines[$model_line_idx] =~ s/$exc_type:"[^"]*"/$exc_type:"$existing,$exc_coords"/;
         }
         else {
-          $lines[$model_line_idx] .= " lowsim_exc:\"$exc_coords\"";
+          $lines[$model_line_idx] .= " $exc_type:\"$exc_coords\"";
         }
       }
     }
@@ -5164,6 +5165,7 @@ sub identify_rerun_candidates {
     "insertn_exc" => [qw(insertnp insertnn)],
     "deletin_exc" => [qw(deletinp deletinn)],
     "lowsim_exc"  => [qw(lowsimic lowsim5c lowsim3c lowsim5s lowsim3s lowsim5n lowsim3n lowsimin lowsimil lowsim5l lowsim3l)],
+    "indfstr_exc" => [qw(indfstrn indfstrp)],
   );
   my %addressed_exc_H = ();
   foreach my $exc (@{$exceptions_AR}) {
