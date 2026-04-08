@@ -737,7 +737,7 @@ if($n_selected == 0) {
 #---------------------------------------
 # Step 8: CDS translation prep for protein alignment
 #---------------------------------------
-prepare_cds_translation_for_stitching(\%candidate_AH, $stitch_selected_fa_file, $tier2_ant_outdir, $stitch_cds_nt_fa_file, $stitch_cds_orf_fa_file, $stitch_cds_aa_fa_file, $stitch_cds_map_tsv_file, $do_skip_annotate, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H, \%ofile_info_HH, \@to_remove_A, $FH_HR);
+prepare_cds_translation_for_stitching(\%candidate_AH, $stitch_selected_fa_file, $tier2_ant_outdir, $stitch_cds_nt_fa_file, $stitch_cds_orf_fa_file, $stitch_cds_aa_fa_file, $stitch_cds_map_tsv_file, \@{$ftr_info_HA{$model_key}}, $do_skip_annotate, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H, \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
 #---------------------------------------
 # Step 9: Multiple AA alignment with muscle (per CDS feature)
@@ -1658,6 +1658,33 @@ sub write_stitch_scaffold_outputs {
     # CDS from each alternative set for block planning, since the muscle
     # alignment only contains the primary CDS sequence content.
     my %seen_alt_set_H = ();
+    # Pre-compute which CDS features are fully contained within larger
+    # CDS features. The contained CDS are skipped so the block plan
+    # matches the muscle alignment (which only contains the largest CDS
+    # in each overlap group).
+    my %contained_idx_H = ();
+    {
+      my @cds_spans_A = ();
+      for(my $i = 0; $i < scalar(@ftr_A); $i++) {
+        my $t = (defined $ftr_A[$i]{"type"}) ? $ftr_A[$i]{"type"} : "";
+        next if($t ne "CDS");
+        my $c = (defined $ftr_A[$i]{"coords"}) ? $ftr_A[$i]{"coords"} : "";
+        next if($c eq "");
+        my ($s, $e, $st) = parse_coords_bounds($c);
+        next if(! defined $s);
+        my ($lo, $hi) = ($s < $e) ? ($s, $e) : ($e, $s);
+        push(@cds_spans_A, { idx => $i, lo => $lo, hi => $hi, span => $hi - $lo + 1 });
+      }
+      foreach my $a (@cds_spans_A) {
+        foreach my $b (@cds_spans_A) {
+          next if($a->{idx} == $b->{idx});
+          if($b->{lo} <= $a->{lo} && $b->{hi} >= $a->{hi} && $b->{span} > $a->{span}) {
+            $contained_idx_H{$a->{idx}} = 1;
+            last;
+          }
+        }
+      }
+    }
     for(my $i = 0; $i < scalar(@ftr_A); $i++) {
       my $type = (defined $ftr_A[$i]{"type"}) ? $ftr_A[$i]{"type"} : "";
       my $coords = (defined $ftr_A[$i]{"coords"}) ? $ftr_A[$i]{"coords"} : "";
@@ -1670,6 +1697,8 @@ sub write_stitch_scaffold_outputs {
         if(exists $seen_alt_set_H{$afset}) { next; }
         $seen_alt_set_H{$afset} = 1;
       }
+      # Skip CDS that are fully contained within a larger CDS
+      if($type eq "CDS" && exists $contained_idx_H{$i}) { next; }
       my %iv_H = (
         start      => $start,
         end        => $end,
@@ -1783,7 +1812,7 @@ sub parse_coords_bounds {
 # Subroutine : prepare_cds_translation_for_stitching()
 #################################################################
 sub prepare_cds_translation_for_stitching {
-  my ($candidate_AHR, $selected_fa_file, $annot_outdir, $cds_nt_fa_file, $orf_fa_file, $aa_fa_file, $map_tsv_file, $do_skip_annotate, $do_keep, $do_verbose, $execs_HR, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
+  my ($candidate_AHR, $selected_fa_file, $annot_outdir, $cds_nt_fa_file, $orf_fa_file, $aa_fa_file, $map_tsv_file, $ftr_info_AHR, $do_skip_annotate, $do_keep, $do_verbose, $execs_HR, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
 
   if($do_skip_annotate) {
     ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Stitch CDS translation prep: skipped due to --skip-annotate (predicted CDS coords unavailable)\n"));
@@ -1802,6 +1831,47 @@ sub prepare_cds_translation_for_stitching {
     foreach my $seq (@{$candidate_AHR->{$group}}) {
       next if((! defined $seq->{"acc"}) || ($seq->{"acc"} eq ""));
       $is_selected_H{$seq->{"acc"}} = 1;
+    }
+  }
+
+  # Identify CDS features that should be skipped because they are fully
+  # contained within a larger CDS feature in the same overlap group.
+  # When multiple CDS share overlapping genomic regions, the largest CDS
+  # captures the codon-frame constraints for the entire overlap region.
+  # Smaller CDS that are fully contained within a larger one should be
+  # excluded from the muscle alignment to avoid the stitcher pulling
+  # extra nucleotides from concatenated CDS MSA columns.
+  # Their proteins are still added to the BLAST db post-hoc by extracting
+  # from individual sequences.
+  my %skip_ftr_idx_H = ();
+  if(defined $ftr_info_AHR) {
+    my @cds_idxs_A = ();
+    for(my $fi = 0; $fi < scalar(@{$ftr_info_AHR}); $fi++) {
+      my $type = $ftr_info_AHR->[$fi]{"type"} // "";
+      next if($type ne "CDS");
+      my $coords = $ftr_info_AHR->[$fi]{"coords"} // "";
+      next if($coords eq "");
+      my ($start, $end, $strand) = parse_coords_bounds($coords);
+      next if(! defined $start);
+      # Use the genomic span (min..max across all segments) for overlap test
+      my ($lo, $hi) = ($start < $end) ? ($start, $end) : ($end, $start);
+      push(@cds_idxs_A, { ftr_idx => $fi, lo => $lo, hi => $hi, span => $hi - $lo + 1, ftr_idx_1based => $fi + 1 });
+    }
+    # For each CDS, check if it's fully contained within a LARGER CDS
+    foreach my $a (@cds_idxs_A) {
+      foreach my $b (@cds_idxs_A) {
+        next if($a->{ftr_idx} == $b->{ftr_idx});
+        # b strictly contains a if b->lo <= a->lo and b->hi >= a->hi and b->span > a->span
+        if($b->{lo} <= $a->{lo} && $b->{hi} >= $a->{hi} && $b->{span} > $a->{span}) {
+          $skip_ftr_idx_H{$a->{ftr_idx_1based}} = 1;
+          last;
+        }
+      }
+    }
+    if(scalar(keys %skip_ftr_idx_H) > 0) {
+      ofile_OutputString($FH_HR->{"log"}, 1,
+        sprintf("# Stitch CDS prep: skipping %d fully-contained CDS feature(s): ftr_idx=%s\n",
+                scalar(keys %skip_ftr_idx_H), join(",", sort {$a<=>$b} keys %skip_ftr_idx_H)));
     }
   }
 
@@ -1835,6 +1905,8 @@ sub prepare_cds_translation_for_stitching {
     next if($type ne "CDS");
 
     my $ftr_idx = $tok_A[8];
+    # Skip CDS features that are fully contained within larger CDS
+    next if(exists $skip_ftr_idx_H{$ftr_idx});
     my $strand = $tok_A[10];
     my $n_from = $tok_A[11];
     my $n_to = $tok_A[12];
