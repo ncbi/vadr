@@ -800,6 +800,18 @@ my $output_stk_file = $out_root . ".stk";
 annotate_stk_group_subgroup($output_stk_file, $centroid_tsv_file, $group_name, $FH_HR);
 
 #---------------------------------------
+# Step 12c: Update seed minfo MODEL line with NN classification keys
+#---------------------------------------
+# Add group:":FILE:..." and subgroup:":FILE:..." to enable nearest-neighbor
+# classification using the GP/SG annotations in the final.stk
+{
+  my $stk_basename = $output_stk_file;
+  $stk_basename =~ s|^.+/||;  # use relative path (basename only) so the
+                               # minfo can be moved to a different dir along with the stk
+  add_nn_classification_keys_to_minfo($seed_minfo, $stk_basename, $FH_HR);
+}
+
+#---------------------------------------
 # Step 13: Generate updated .minfo file with RNA features
 #---------------------------------------
 if($do_rna_discovery && !$do_skip_annotate && scalar(@rna_regions_A) > 0) {
@@ -3693,6 +3705,55 @@ sub build_ungapped_ss_cons {
 #
 # Returns    : void
 #################################################################
+#################################################################
+# Subroutine: add_nn_classification_keys_to_minfo()
+# Incept:     EPN, Wed Apr  9 2026
+#
+# Purpose:    Add group:":FILE:<stk>" and subgroup:":FILE:<stk>" keys
+#             to the MODEL line of a minfo file. These keys enable
+#             VADR's nearest-neighbor classification using the GP/SG
+#             annotations in the referenced Stockholm alignment.
+#             Modifies the file in place.
+#
+# Arguments:
+#   $minfo_file:   path to .minfo file (modified in place)
+#   $stk_basename: basename of the .stk file with GP/SG annotations
+#                  (the :FILE: value will be the basename for portability)
+#   $FH_HR:        REF to hash of file handles
+#
+# Returns: void
+#################################################################
+sub add_nn_classification_keys_to_minfo {
+  my ($minfo_file, $stk_basename, $FH_HR) = @_;
+
+  open(my $infh, "<", $minfo_file) || ofile_FAIL("ERROR in add_nn_classification_keys_to_minfo, cannot read $minfo_file", 1, $FH_HR);
+  my @lines = <$infh>;
+  close($infh);
+
+  open(my $outfh, ">", $minfo_file) || ofile_FAIL("ERROR in add_nn_classification_keys_to_minfo, cannot write $minfo_file", 1, $FH_HR);
+  foreach my $line (@lines) {
+    if($line =~ /^MODEL\s/) {
+      chomp $line;
+      # Don't add if already present
+      if($line !~ /\sgroup:"/) {
+        $line .= " group:\":FILE:$stk_basename\"";
+      }
+      if($line !~ /\ssubgroup:"/) {
+        $line .= " subgroup:\":FILE:$stk_basename\"";
+      }
+      print $outfh $line . "\n";
+    }
+    else {
+      print $outfh $line;
+    }
+  }
+  close($outfh);
+
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# Added NN classification keys (group/subgroup :FILE:%s) to %s\n", $stk_basename, $minfo_file));
+  return;
+}
+
 sub annotate_stk_group_subgroup {
   my ($stk_file, $centroid_tsv, $group_name, $FH_HR) = @_;
 
