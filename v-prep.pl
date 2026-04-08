@@ -1654,12 +1654,22 @@ sub write_stitch_scaffold_outputs {
     my @ftr_A = @{$ftr_info_HAR->{$ftr_model_name}};
     my @mp_iv_A = ();
     my @cds_iv_A = ();
+    # Track alternative_ftr_set membership: only use the first (primary)
+    # CDS from each alternative set for block planning, since the muscle
+    # alignment only contains the primary CDS sequence content.
+    my %seen_alt_set_H = ();
     for(my $i = 0; $i < scalar(@ftr_A); $i++) {
       my $type = (defined $ftr_A[$i]{"type"}) ? $ftr_A[$i]{"type"} : "";
       my $coords = (defined $ftr_A[$i]{"coords"}) ? $ftr_A[$i]{"coords"} : "";
       next if($coords eq "");
       my ($start, $end, $strand) = parse_coords_bounds($coords);
       next if(! defined $start);
+      # Skip non-primary alternative features (only keep the first in each set)
+      my $afset = (defined $ftr_A[$i]{"alternative_ftr_set"}) ? $ftr_A[$i]{"alternative_ftr_set"} : "";
+      if($afset ne "") {
+        if(exists $seen_alt_set_H{$afset}) { next; }
+        $seen_alt_set_H{$afset} = 1;
+      }
       my %iv_H = (
         start      => $start,
         end        => $end,
