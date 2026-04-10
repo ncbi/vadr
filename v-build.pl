@@ -52,6 +52,7 @@ my $env_vadr_easel_dir    = utl_DirEnvVarValid("VADREASELDIR");
 my %execs_H = (); # hash with paths to all required executables
 $execs_H{"cmbuild"}       = $env_vadr_infernal_dir . "/cmbuild";
 $execs_H{"cmfetch"}       = $env_vadr_infernal_dir . "/cmfetch";
+$execs_H{"cmemit"}        = $env_vadr_infernal_dir . "/cmemit";
 $execs_H{"cmpress"}       = $env_vadr_infernal_dir . "/cmpress";
 $execs_H{"hmmbuild"}      = $env_vadr_hmmer_dir    . "/hmmbuild";
 $execs_H{"hmmpress"}      = $env_vadr_hmmer_dir    . "/hmmpress";
@@ -733,53 +734,49 @@ else {
 ###########################
 # Build the blastn database
 ###########################
-$start_secs = ofile_OutputProgressPrior("Building BLAST nucleotide database ", $progress_w, $log_FH, *STDOUT);
+# In --profile mode, the blastn db is built AFTER the CM (further below): the
+# db sequence is generated from the final CM via 'cmemit -c' so the blastn
+# subject sequence matches the consensus the CM emits at each match state.
+# We also rewrite the RF annotation of the .stk file to match this consensus,
+# so that v-annotate.pl's NN-based classification (which reads RF from the
+# .stk) is consistent with the blastn db sequence.
 my $tmp_blastn_fa_file = $out_root . ".fa.tmp";
 my $blastn_fa_file     = $out_root . ".fa";
 
-if($do_profile) {
-  # Create a nucleotide FASTA file from the first sequence in the input alignment.
-  # (In --profile mode, we do not have a single fetched reference sequence.)
-  my $msa = Bio::Easel::MSA->new({ fileLocation => $stk_file, isDna => 1});
-  my $nt_sqstring = $msa->get_sqstring_unaligned(0);
-  seq_SqstringCapitalize(\$nt_sqstring);
-  seq_SqstringDnaize(\$nt_sqstring);
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fasta", $fa_file, 0, 1, "fasta file (first sequence from alignment) for $mdl_name");
-  printf { $ofile_info_HH{"FH"}{"fasta"} } ">" . $mdl_name . "\n" . seq_SqstringAddNewlines($nt_sqstring, 60);
-  close $ofile_info_HH{"FH"}{"fasta"};
-  undef $msa;
-}
+if(! $do_profile) {
+  $start_secs = ofile_OutputProgressPrior("Building BLAST nucleotide database ", $progress_w, $log_FH, *STDOUT);
 
-sqf_EslReformatRun($execs_H{"esl-reformat"}, "-d -u", $fa_file, $tmp_blastn_fa_file, "fasta", "fasta", \%opt_HH, $FH_HR);
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "blastn-fa",  $blastn_fa_file, 1, 1, "nucleotide blastn db fasta sequence file for $mdl_name");
-my $nt_sqfile    = Bio::Easel::SqFile->new({ fileLocation => $tmp_blastn_fa_file });
-my $tmp_seq_name = $nt_sqfile->fetch_seq_name_given_ssi_number(0);
-my $tmp_sqstring = $nt_sqfile->fetch_seq_to_sqstring($tmp_seq_name);
-printf { $ofile_info_HH{"FH"}{"blastn-fa"} } ">" . $mdl_name . "\n" . seq_SqstringAddNewlines($tmp_sqstring, 60);
-close $ofile_info_HH{"FH"}{"blastn-fa"};
+  sqf_EslReformatRun($execs_H{"esl-reformat"}, "-d -u", $fa_file, $tmp_blastn_fa_file, "fasta", "fasta", \%opt_HH, $FH_HR);
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "blastn-fa",  $blastn_fa_file, 1, 1, "nucleotide blastn db fasta sequence file for $mdl_name");
+  my $nt_sqfile    = Bio::Easel::SqFile->new({ fileLocation => $tmp_blastn_fa_file });
+  my $tmp_seq_name = $nt_sqfile->fetch_seq_name_given_ssi_number(0);
+  my $tmp_sqstring = $nt_sqfile->fetch_seq_to_sqstring($tmp_seq_name);
+  printf { $ofile_info_HH{"FH"}{"blastn-fa"} } ">" . $mdl_name . "\n" . seq_SqstringAddNewlines($tmp_sqstring, 60);
+  close $ofile_info_HH{"FH"}{"blastn-fa"};
 
-# run makeblastdb
-sqf_BlastDbCreate($execs_H{"makeblastdb"}, "nucl", $blastn_fa_file, \%opt_HH, $FH_HR);
-ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nhr", $blastn_fa_file . ".nhr", 1, 1, "BLAST db .nhr file for $mdl_name");
-ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nin", $blastn_fa_file . ".nin", 1, 1, "BLAST db .nin file for $mdl_name");
-ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nsq", $blastn_fa_file . ".nsq", 1, 1, "BLAST db .nsq file for $mdl_name");
-ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-ndb", $blastn_fa_file . ".ndb", 1, 1, "BLAST db .ndb file for $mdl_name");
-ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-not", $blastn_fa_file . ".not", 1, 1, "BLAST db .not file for $mdl_name");
-ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-ntf", $blastn_fa_file . ".ntf", 1, 1, "BLAST db .ntf file for $mdl_name");
-ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nto", $blastn_fa_file . ".nto", 1, 1, "BLAST db .nto file for $mdl_name");
-ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-njs", $blastn_fa_file . ".njs", 1, 1, "BLAST db .njs file for $mdl_name");
+  # run makeblastdb
+  sqf_BlastDbCreate($execs_H{"makeblastdb"}, "nucl", $blastn_fa_file, \%opt_HH, $FH_HR);
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nhr", $blastn_fa_file . ".nhr", 1, 1, "BLAST db .nhr file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nin", $blastn_fa_file . ".nin", 1, 1, "BLAST db .nin file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nsq", $blastn_fa_file . ".nsq", 1, 1, "BLAST db .nsq file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-ndb", $blastn_fa_file . ".ndb", 1, 1, "BLAST db .ndb file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-not", $blastn_fa_file . ".not", 1, 1, "BLAST db .not file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-ntf", $blastn_fa_file . ".ntf", 1, 1, "BLAST db .ntf file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nto", $blastn_fa_file . ".nto", 1, 1, "BLAST db .nto file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-njs", $blastn_fa_file . ".njs", 1, 1, "BLAST db .njs file for $mdl_name");
 
-if(! opt_Get("--keep", \%opt_HH)) { 
-  utl_FileRemoveUsingSystemRm($tmp_blastn_fa_file, "v-build.pl main", \%opt_HH, $FH_HR);
-  if(-e $tmp_blastn_fa_file . ".ssi") { 
-    utl_FileRemoveUsingSystemRm($tmp_blastn_fa_file . ".ssi", "v-build.pl main", \%opt_HH, $FH_HR);
+  if(! opt_Get("--keep", \%opt_HH)) {
+    utl_FileRemoveUsingSystemRm($tmp_blastn_fa_file, "v-build.pl main", \%opt_HH, $FH_HR);
+    if(-e $tmp_blastn_fa_file . ".ssi") {
+      utl_FileRemoveUsingSystemRm($tmp_blastn_fa_file . ".ssi", "v-build.pl main", \%opt_HH, $FH_HR);
+    }
   }
-}
-# index the new file
-my $sfetch_cmd = $execs_H{"esl-sfetch"} . " --index $blastn_fa_file > /dev/null";
-utl_RunCommand($sfetch_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+  # index the new file
+  my $sfetch_cmd = $execs_H{"esl-sfetch"} . " --index $blastn_fa_file > /dev/null";
+  utl_RunCommand($sfetch_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
 
-ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
+  ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
+} # end of 'if(! $do_profile)' block for non-profile blastn db creation
 
 ######################################################################
 # Finish populating @{$ftr_info_HAH{$mdl_name} and create @sgm_info_AH
@@ -1008,6 +1005,100 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "i1f",     $cm_file . ".i1f", 1, 1, "optimized p7 HMM filters (MSV part)");
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "i1p",     $cm_file . ".i1p", 1, 1, "optimized p7 HMM filters (remainder)");
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cmpress", $cmpress_file,     1, 1, "cmpress output file");
+
+  ###############################################################
+  # In --profile mode: build the blastn db from the final CM and
+  # rewrite the RF annotation of the .stk to match the consensus
+  ###############################################################
+  if($do_profile) {
+    $start_secs = ofile_OutputProgressPrior("Building BLAST nucleotide database from CM consensus", $progress_w, $log_FH, *STDOUT);
+
+    # Run cmemit -c to get the consensus sequence emitted by the final CM.
+    # The output sequence has length equal to the number of consensus (match)
+    # columns of the model and characters equal to the most-likely emission
+    # at each match state. This becomes the single subject sequence in the
+    # blastn classification db (named after the model) AND is used to rewrite
+    # the RF annotation of the .stk so that v-annotate.pl's NN-based
+    # classification (which reads RF from the .stk) is consistent with it.
+    my $cmemit_fa_file = $out_root . ".cmemit-c.fa";
+    my $cmemit_cmd     = $execs_H{"cmemit"} . " -c $cm_file > $cmemit_fa_file";
+    utl_RunCommand($cmemit_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+
+    # read the single consensus sequence from the cmemit output
+    my $cmemit_sqfile  = Bio::Easel::SqFile->new({ fileLocation => $cmemit_fa_file });
+    my $cmemit_seqname = $cmemit_sqfile->fetch_seq_name_given_ssi_number(0);
+    my $consensus      = $cmemit_sqfile->fetch_seq_to_sqstring($cmemit_seqname);
+    undef $cmemit_sqfile;
+    seq_SqstringCapitalize(\$consensus);
+    seq_SqstringDnaize(\$consensus);
+    # strip any whitespace/newlines just in case
+    $consensus =~ s/\s+//g;
+    if(length($consensus) != $mdllen) {
+      ofile_FAIL(sprintf("ERROR, --profile: cmemit -c consensus length (%d) does not match model consensus length (%d)",
+                         length($consensus), $mdllen), 1, $FH_HR);
+    }
+
+    # write the blastn db fasta: single sequence named after the model
+    ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "blastn-fa", $blastn_fa_file, 1, 1, "nucleotide blastn db fasta sequence file for $mdl_name");
+    printf { $ofile_info_HH{"FH"}{"blastn-fa"} } ">" . $mdl_name . "\n" . seq_SqstringAddNewlines($consensus, 60);
+    close $ofile_info_HH{"FH"}{"blastn-fa"};
+
+    # makeblastdb on the new file
+    sqf_BlastDbCreate($execs_H{"makeblastdb"}, "nucl", $blastn_fa_file, \%opt_HH, $FH_HR);
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nhr", $blastn_fa_file . ".nhr", 1, 1, "BLAST db .nhr file for $mdl_name");
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nin", $blastn_fa_file . ".nin", 1, 1, "BLAST db .nin file for $mdl_name");
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nsq", $blastn_fa_file . ".nsq", 1, 1, "BLAST db .nsq file for $mdl_name");
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-ndb", $blastn_fa_file . ".ndb", 1, 1, "BLAST db .ndb file for $mdl_name");
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-not", $blastn_fa_file . ".not", 1, 1, "BLAST db .not file for $mdl_name");
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-ntf", $blastn_fa_file . ".ntf", 1, 1, "BLAST db .ntf file for $mdl_name");
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nto", $blastn_fa_file . ".nto", 1, 1, "BLAST db .nto file for $mdl_name");
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-njs", $blastn_fa_file . ".njs", 1, 1, "BLAST db .njs file for $mdl_name");
+
+    # esl-sfetch index
+    my $sfetch_cmd = $execs_H{"esl-sfetch"} . " --index $blastn_fa_file > /dev/null";
+    utl_RunCommand($sfetch_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+
+    # rewrite the RF annotation of the .stk file so that the consensus
+    # characters in RF match the cmemit -c consensus, position-for-position
+    # (non-consensus columns -- gap chars in RF -- are left untouched)
+    my $rf_msa = Bio::Easel::MSA->new({ fileLocation => $stk_file, isDna => 1 });
+    my $old_rf = $rf_msa->get_rf;
+    my @old_rf_A = split(//, $old_rf);
+    my @cons_A   = split(//, $consensus);
+    my $cidx = 0;
+    my $new_rf = "";
+    foreach my $rfchar (@old_rf_A) {
+      if($rfchar =~ /[\-\_\.\~]/) {
+        $new_rf .= $rfchar;
+      }
+      else {
+        if($cidx >= scalar(@cons_A)) {
+          ofile_FAIL("ERROR, --profile: ran out of consensus characters while rewriting RF annotation", 1, $FH_HR);
+        }
+        $new_rf .= $cons_A[$cidx];
+        $cidx++;
+      }
+    }
+    if($cidx != scalar(@cons_A)) {
+      ofile_FAIL(sprintf("ERROR, --profile: RF rewrite consumed %d of %d consensus characters", $cidx, scalar(@cons_A)), 1, $FH_HR);
+    }
+    $rf_msa->set_rf($new_rf);
+    # overwrite the .stk file in place with the updated RF annotation
+    $rf_msa->write_msa($stk_file, "stockholm");
+    undef $rf_msa;
+
+    if(! opt_Get("--keep", \%opt_HH)) {
+      utl_FileRemoveUsingSystemRm($cmemit_fa_file, "v-build.pl main", \%opt_HH, $FH_HR);
+      if(-e $cmemit_fa_file . ".ssi") {
+        utl_FileRemoveUsingSystemRm($cmemit_fa_file . ".ssi", "v-build.pl main", \%opt_HH, $FH_HR);
+      }
+    }
+    else {
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cmemit-c-fa", $cmemit_fa_file, 1, 1, "cmemit -c consensus fasta for $mdl_name");
+    }
+
+    ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  }
 }
 
 ########################
