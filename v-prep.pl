@@ -8,6 +8,7 @@ use warnings;
 use Getopt::Long qw(:config no_auto_abbrev);
 use Time::HiRes qw(gettimeofday);
 use LWP::Simple;
+use Unicode::Normalize qw(NFKC NFKD);
 use Bio::Easel::MSA;
 use Bio::Easel::SqFile;
 
@@ -854,15 +855,41 @@ sub parse_and_filter_metadata {
   my $total_seqs = 0;
   my $kept_len_seqs = 0;
 
+  # For collapsing case/hyphenation/whitespace/diacritic variants of the same
+  # group name into a single group. Two maps:
+  #   %group_canonical: normalized_key -> canonical display name (first orig
+  #                     form seen for that key) -- used as the hash key in
+  #                     $candidate_AHR so variants are merged.
+  #   %group_variants:  normalized_key -> hash of original spellings seen
+  #                     (so we can log which variants were merged).
+  #   %numeral_norms:   numeral-normalized_key -> hash of basic_norm keys
+  #                     (used only to warn about likely roman<->arabic
+  #                     equivalences; we do NOT collapse on this).
+  my %group_canonical = ();
+  my %group_variants  = ();
+  my %numeral_norms   = ();
+
   open(my $tsv_fh, "<", $tsv_file) or die "ERROR: Cannot read $tsv_file: $!";
   my $header = <$tsv_fh>; # Skip header: Accession, Length, CreateDate, Serotype, Genotype, Isolate
 
   while (my $line = <$tsv_fh>) {
     chomp $line;
     my ($acc, $len, $cdate, $serotype, $genotype, $isolate) = split(/\t/, $line);
-    my $group = "Unknown";
-    if    (defined $serotype && $serotype ne "") { $group = $serotype; }
-    elsif (defined $genotype && $genotype ne "") { $group = $genotype; }
+    my $orig_group = "Unknown";
+    if    (defined $serotype && $serotype ne "") { $orig_group = $serotype; }
+    elsif (defined $genotype && $genotype ne "") { $orig_group = $genotype; }
+
+    # Normalize the group name so case/hyphen/space/diacritic variants merge
+    # into a single group. The FIRST original spelling seen for a given
+    # normalized key becomes the canonical display name.
+    my $norm_key    = normalize_group_name($orig_group);
+    my $numeral_key = normalize_group_name_with_numerals($orig_group);
+    if(! exists $group_canonical{$norm_key}) {
+      $group_canonical{$norm_key} = $orig_group;
+    }
+    $group_variants{$norm_key}{$orig_group}++;
+    $numeral_norms{$numeral_key}{$norm_key}++;
+    my $group = $group_canonical{$norm_key};
 
     $decision_HR->{$acc} = {
       accession       => $acc,
@@ -910,7 +937,33 @@ sub parse_and_filter_metadata {
   if ($seed_model_len > 0) {
     ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Retained %d sequences passing length filter (>90%% of seed length %d).\n", $kept_len_seqs, $seed_model_len));
   }
-  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Found %d distinct serotype/genotype groups.\n", scalar(keys %{$candidate_AHR})));
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Found %d distinct serotype/genotype groups (after normalizing case/hyphen/whitespace/diacritic variants).\n", scalar(keys %{$candidate_AHR})));
+
+  # Log any groups where multiple original spellings were collapsed to one
+  # canonical name.
+  foreach my $nk (sort keys %group_variants) {
+    my @variants = sort keys %{$group_variants{$nk}};
+    if(scalar(@variants) > 1) {
+      ofile_OutputString($FH_HR->{"log"}, 1,
+        sprintf("# Merged group name variants into \"%s\": %s\n",
+                $group_canonical{$nk},
+                join(", ", map { "\"$_\"" } @variants)));
+    }
+  }
+
+  # Warn (but do NOT collapse) when two distinct groups look equivalent under
+  # Roman<->Arabic numeral substitution. These are frequently the same group
+  # spelled two ways, but not always (e.g. DENV-1 vs DENV-I are same; type 1
+  # vs type I likely same; but conservatively requires manual review).
+  foreach my $numk (sort keys %numeral_norms) {
+    my @nks = sort keys %{$numeral_norms{$numk}};
+    if(scalar(@nks) > 1) {
+      my @display = map { "\"" . $group_canonical{$_} . "\"" } @nks;
+      ofile_OutputString($FH_HR->{"log"}, 1,
+        sprintf("# WARNING: groups [%s] look equivalent under Roman<->Arabic numeral substitution but are being kept separate. Rename them manually in the metadata TSV if they should be the same group.\n",
+                join(", ", @display)));
+    }
+  }
 
   #---------------------------------------
   # Tier 1 Filter: Chronological Sampling
@@ -5347,4 +5400,129 @@ sub determine_seqs_per_group {
   if($n_groups <= 5)  { return 3; }
   if($n_groups <= 10) { return 2; }
   return 1;
+}
+
+#################################################################
+# Subroutine: normalize_group_name()
+# Incept:     EPN* Sat Apr 11 2026
+#
+# Purpose:    Compute a normalized key for a serotype/genotype group
+#             name so that case, hyphenation, whitespace, and
+#             diacritic variants of the same name collapse to a
+#             single group. Applied transformations:
+#               1. Unicode NFKC (fullwidth -> ASCII, ligatures, etc.)
+#               2. Unicode NFKD + strip combining marks (fold diacritics)
+#               3. Lowercase
+#               4. Replace runs of [-_\s] with a single space
+#               5. Trim leading/trailing whitespace
+#
+#             This is INTENDED to be used as a hash key only. The
+#             original (first-seen) spelling should be preserved
+#             separately for display purposes.
+#
+# Arguments:
+#   $group: original group name string
+#
+# Returns: normalized string (may be "" if input was empty/undef)
+#################################################################
+sub normalize_group_name {
+  my ($group) = @_;
+  return "" unless(defined $group && $group ne "");
+  my $g = NFKC($group);
+  $g = NFKD($g);
+  $g =~ s/\pM//g;
+  $g = lc($g);
+  $g =~ s/[\-_\s]+/ /g;
+  $g =~ s/^\s+//;
+  $g =~ s/\s+$//;
+  return $g;
+}
+
+#################################################################
+# Subroutine: normalize_group_name_with_numerals()
+# Incept:     EPN* Sat Apr 11 2026
+#
+# Purpose:    Like normalize_group_name() but additionally
+#             substitutes any whitespace-separated token that is a
+#             pure Roman numeral (i/v/x/l/c/d/m, case-insensitive)
+#             with the equivalent Arabic integer. Used ONLY to
+#             detect group names that would be equivalent if Roman
+#             numerals were converted, so we can warn about them.
+#             Not used to collapse groups -- collapsing is still
+#             governed by normalize_group_name().
+#
+# Arguments:
+#   $group: original group name string
+#
+# Returns: numeral-normalized string
+#################################################################
+sub normalize_group_name_with_numerals {
+  my ($group) = @_;
+  my $basic = normalize_group_name($group);
+  return $basic if($basic eq "");
+  my @tokens = split(/ /, $basic);
+  foreach my $t (@tokens) {
+    if($t =~ /^[ivxlcdm]+$/) {
+      my $n = _roman_to_arabic($t);
+      $t = defined($n) ? $n : $t;
+    }
+  }
+  return join(" ", @tokens);
+}
+
+#################################################################
+# Subroutine: _roman_to_arabic()
+# Incept:     EPN* Sat Apr 11 2026
+#
+# Purpose:    Convert a lowercase pure-roman-numeral token into its
+#             Arabic integer value. Validates by round-tripping so
+#             that strings like "iiii" or "vx" return undef.
+#
+# Arguments:
+#   $token: lowercase string of [ivxlcdm]
+#
+# Returns: integer, or undef if not a valid Roman numeral
+#################################################################
+sub _roman_to_arabic {
+  my ($token) = @_;
+  return undef unless(defined $token && $token =~ /^[ivxlcdm]+$/);
+  my %rmap = (i=>1, v=>5, x=>10, l=>50, c=>100, d=>500, m=>1000);
+  my @c = split(//, $token);
+  my $n = 0;
+  for(my $i = 0; $i < scalar(@c); $i++) {
+    my $v  = $rmap{$c[$i]};
+    my $nv = ($i+1 < scalar(@c)) ? $rmap{$c[$i+1]} : 0;
+    if($nv > $v) { $n += ($nv - $v); $i++; }
+    else         { $n += $v; }
+  }
+  # Round-trip check: only accept if canonical Roman form equals input
+  return undef if(_arabic_to_roman($n) ne $token);
+  return $n;
+}
+
+#################################################################
+# Subroutine: _arabic_to_roman()
+# Incept:     EPN* Sat Apr 11 2026
+#
+# Purpose:    Convert a positive integer (1..3999) into its
+#             canonical lowercase Roman numeral form. Used only for
+#             round-trip validation in _roman_to_arabic.
+#
+# Arguments:
+#   $n: positive integer
+#
+# Returns: canonical lowercase Roman numeral string, or "" if out
+#          of range
+#################################################################
+sub _arabic_to_roman {
+  my ($n) = @_;
+  return "" unless(defined $n && $n >= 1 && $n <= 3999);
+  my @pairs = ([1000,"m"],[900,"cm"],[500,"d"],[400,"cd"],
+               [100,"c"],[90,"xc"],[50,"l"],[40,"xl"],
+               [10,"x"],[9,"ix"],[5,"v"],[4,"iv"],[1,"i"]);
+  my $r = "";
+  foreach my $p (@pairs) {
+    while($n >= $p->[0]) { $r .= $p->[1]; $n -= $p->[0]; }
+  }
+  return $r;
 }
