@@ -735,10 +735,10 @@ write_decision_summary_report(\%decision_H, $decision_summary_tsv_file, \%ofile_
 if(! $do_skip_annotate) {
   my $overall_centroid_accn = compute_overall_centroid_blast(
     \%candidate_AH, $tier2_fasta_file, $out_root,
-    $do_keep, opt_Get("-v", \%opt_HH), \%execs_H,
+    $seed_model_len, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H,
     \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
-  if($overall_centroid_accn ne $ref_accn) {
+  if($overall_centroid_accn ne "" && $overall_centroid_accn ne $ref_accn) {
     ofile_OutputString($FH_HR->{"log"}, 1,
       sprintf("# Overall centroid %s differs from seed reference %s; remapping feature coords and RF anchor\n",
               $overall_centroid_accn, $ref_accn));
@@ -1584,7 +1584,7 @@ sub select_group_centroids_blast {
 sub compute_overall_centroid_blast {
   my $sub_name = "compute_overall_centroid_blast";
   my ($candidate_AHR, $fasta_file, $out_root,
-      $do_keep, $do_verbose, $execs_HR,
+      $seed_model_len, $do_keep, $do_verbose, $execs_HR,
       $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
 
   # Collect all selected accessions across all groups
@@ -1660,13 +1660,39 @@ sub compute_overall_centroid_blast {
     $avg_H{$q} = $sum / scalar(@all_accs);
   }
 
-  # Pick the best
+  # Pick the best candidate that is at least as long as the seed model.
+  # This prevents a truncated sequence (e.g. missing UTRs) from being
+  # selected as the centroid and shrinking the model.
   my @sorted = sort { $avg_H{$b} <=> $avg_H{$a} || $a cmp $b } @all_accs;
-  my $centroid_accn = $sorted[0];
+  my $centroid_accn = undef;
+  my $n_too_short = 0;
+  foreach my $acc (@sorted) {
+    my $acc_len = (exists $seq_H{$acc}) ? length($seq_H{$acc}) : 0;
+    if($acc_len >= $seed_model_len) {
+      $centroid_accn = $acc;
+      last;
+    }
+    else {
+      $n_too_short++;
+      ofile_OutputString($FH_HR->{"log"}, 1,
+        sprintf("# Overall centroid: skipping %s (len=%d < seed_len=%d, avg pident=%.4f)\n",
+                $acc, $acc_len, $seed_model_len, $avg_H{$acc}));
+    }
+  }
+  if(! defined $centroid_accn) {
+    # No sequence is as long as the seed — fall back to the seed reference
+    # (which is always in the training set)
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# Overall centroid: no candidate >= seed length %d (%d skipped); keeping seed reference as anchor\n",
+              $seed_model_len, $n_too_short));
+    return "";  # caller checks for "" and treats as "no change"
+  }
 
   ofile_OutputString($FH_HR->{"log"}, 1,
-    sprintf("# Overall centroid: %s (avg pident=%.4f across %d selected sequences)\n",
-            $centroid_accn, $avg_H{$centroid_accn}, scalar(@all_accs)));
+    sprintf("# Overall centroid: %s (len=%d, avg pident=%.4f across %d selected sequences%s)\n",
+            $centroid_accn, length($seq_H{$centroid_accn}), $avg_H{$centroid_accn},
+            scalar(@all_accs),
+            $n_too_short > 0 ? sprintf(", skipped %d shorter candidates", $n_too_short) : ""));
 
   # Cleanup
   if(! $do_keep) {
