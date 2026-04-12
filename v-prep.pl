@@ -4529,7 +4529,7 @@ sub detect_exceptions {
       }
     }
 
-    # Apply independence threshold to each merged region
+    # Apply sanity checks and independence threshold to each merged region
     foreach my $region (@merged) {
       my ($rstart, $rstop, $rstrand, $rentries, $rmax_val) = @{$region};
 
@@ -4537,6 +4537,33 @@ sub detect_exceptions {
       my %unique_accs = map { $_->{"acc"} => 1 } @{$rentries};
       my @unique_acc_list = keys %unique_accs;
       my $n_ind = count_independent_observations(\@unique_acc_list);
+
+      # fst_exc sanity checks:
+      #   (a) region must be <= MAX_FST_EXC_LEN (a real biological frameshift
+      #       site spans only tens of nt; a multi-kb span is pathological --
+      #       usually caused by a single 'fsthicft'/'fstlocft' alert whose
+      #       coords run from the shift site to the end of the CDS because
+      #       the frame is never restored).
+      #   (b) independent observations must be >= MIN_FST_EXC_NIND, regardless
+      #       of the global --alt-min-ind setting.
+      my $MAX_FST_EXC_LEN  = 30;
+      my $MIN_FST_EXC_NIND = 2;
+      if($exc_type eq "fst_exc") {
+        my $region_len = $rstop - $rstart + 1;
+        if($region_len > $MAX_FST_EXC_LEN) {
+          ofile_OutputString($FH_HR->{"log"}, 1,
+            sprintf("# Exc detect: fst_exc %s %d..%d:%s region_len=%d > %d nt, skipping (implausibly wide frameshift span, likely from a non-restored-frame alert)\n",
+                    $ftr_name, $rstart, $rstop, $rstrand, $region_len, $MAX_FST_EXC_LEN));
+          next;
+        }
+        if($n_ind < $MIN_FST_EXC_NIND) {
+          ofile_OutputString($FH_HR->{"log"}, 1,
+            sprintf("# Exc detect: fst_exc %s %d..%d:%s n_seqs=%d n_ind=%d < fst_min=%d, skipping\n",
+                    $ftr_name, $rstart, $rstop, $rstrand,
+                    scalar(@unique_acc_list), $n_ind, $MIN_FST_EXC_NIND));
+          next;
+        }
+      }
 
       if($n_ind < $min_independent) {
         ofile_OutputString($FH_HR->{"log"}, 1,
