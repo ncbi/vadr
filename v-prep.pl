@@ -724,6 +724,53 @@ if($do_keep) {
 write_decision_summary_report(\%decision_H, $decision_summary_tsv_file, \%ofile_info_HH, $FH_HR);
 
 #---------------------------------------
+# Step 6b: Overall centroid selection and RF re-anchoring
+#---------------------------------------
+# After per-group centroid selection, find the single sequence across all
+# groups that is most representative (highest avg blastn pident to all other
+# selected sequences). If that centroid differs from the user-supplied seed
+# reference, remap the feature coordinates from seed-reference space to
+# centroid space so that the final alignment's RF (and thus the model's
+# consensus columns) are based on the centroid.
+if(! $do_skip_annotate) {
+  my $overall_centroid_accn = compute_overall_centroid_blast(
+    \%candidate_AH, $tier2_fasta_file, $out_root,
+    $do_keep, opt_Get("-v", \%opt_HH), \%execs_H,
+    \%ofile_info_HH, \@to_remove_A, $FH_HR);
+
+  if($overall_centroid_accn ne $ref_accn) {
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# Overall centroid %s differs from seed reference %s; remapping feature coords and RF anchor\n",
+              $overall_centroid_accn, $ref_accn));
+
+    my $new_model_len = remap_feature_coords_to_centroid(
+      \%ftr_info_HA, $model_key, $tier2_align_stk_file,
+      $ref_accn, $overall_centroid_accn, $FH_HR);
+
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# Remapped feature coords: seed len=%d -> centroid len=%d\n",
+              $seed_model_len, $new_model_len));
+
+    $seed_model_len = $new_model_len;
+    $ref_accn       = $overall_centroid_accn;
+
+    # Write the remapped minfo to a new file so that downstream steps
+    # (generate_updated_minfo, add_nn_classification_keys_to_minfo) which
+    # read from $seed_minfo on disk pick up the centroid-based coords.
+    my $remapped_minfo = $out_root . ".remapped.minfo";
+    write_remapped_minfo($seed_minfo, $remapped_minfo, \%ftr_info_HA,
+                         $model_key, $new_model_len, $FH_HR);
+    $seed_minfo = $remapped_minfo;
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# Wrote remapped minfo to %s\n", $remapped_minfo));
+  }
+  else {
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# Overall centroid is the seed reference %s; no remapping needed\n", $ref_accn));
+  }
+}
+
+#---------------------------------------
 # Step 7: Initial piecewise stitching scaffold outputs
 #---------------------------------------
 my $n_selected = write_stitch_scaffold_outputs(\%candidate_AH, $tier2_fasta_file, \%ftr_info_HA, $model_key, $seed_model_len, $stitch_selected_accn_file, $stitch_selected_fa_file, $stitch_block_plan_file, $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
@@ -1507,6 +1554,333 @@ sub select_group_centroids_blast {
 
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "centroid.tsv", $centroid_tsv_file, 1, 1, "per-group centroid selection table (blastn average pident)");
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Tier 3 centroid selection (blast): selected up to %d seqs in each of %d groups (%d empty groups) and wrote %s\n", $n_per_group, $n_groups_with_centroid, $n_groups_empty, $centroid_tsv_file));
+  return;
+}
+
+#################################################################
+# Subroutine: compute_overall_centroid_blast()
+# Incept:     EPN* Sat Apr 12 2026
+#
+# Purpose:    After per-group centroid selection, compute the single
+#             sequence across ALL groups that is most representative
+#             of the full selected training set (highest average
+#             blastn pident to all other selected sequences, using
+#             full-length sequences). This centroid will become the
+#             anchor for RF definition in the final alignment.
+#
+# Arguments:
+#   $candidate_AHR : REF to hash of arrays of selected seqs per group
+#   $fasta_file    : path to tier-2 FASTA (full-length seqs)
+#   $out_root      : output root for temp files
+#   $do_keep       : 1 to keep intermediate files
+#   $do_verbose    : 1 for verbose
+#   $execs_HR      : REF to hash of executables
+#   $ofile_info_HHR: REF to hash of file info
+#   $to_remove_AR  : REF to array of files to remove
+#   $FH_HR         : REF to hash of file handles
+#
+# Returns: accession of the overall centroid
+#################################################################
+sub compute_overall_centroid_blast {
+  my $sub_name = "compute_overall_centroid_blast";
+  my ($candidate_AHR, $fasta_file, $out_root,
+      $do_keep, $do_verbose, $execs_HR,
+      $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
+
+  # Collect all selected accessions across all groups
+  my @all_accs = ();
+  foreach my $group (sort keys %{$candidate_AHR}) {
+    foreach my $seq (@{$candidate_AHR->{$group}}) {
+      push(@all_accs, $seq->{"acc"});
+    }
+  }
+
+  if(scalar(@all_accs) <= 1) {
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# Overall centroid: only %d selected sequence(s), using %s\n",
+              scalar(@all_accs), $all_accs[0] || "none"));
+    return $all_accs[0] || "";
+  }
+
+  # Read all sequences from the fasta file
+  my %seq_H = ();
+  my $cur_acc = undef;
+  open(my $ffh, "<", $fasta_file) || die "ERROR in $sub_name, unable to read $fasta_file: $!";
+  while(my $line = <$ffh>) {
+    chomp $line;
+    if($line =~ /^>(\S+)/) { $cur_acc = $1; $seq_H{$cur_acc} = "" if(! exists $seq_H{$cur_acc}); }
+    elsif(defined $cur_acc) { $line =~ s/\s+//g; $seq_H{$cur_acc} .= $line; }
+  }
+  close($ffh);
+
+  # Write fasta of selected sequences only
+  my $centroid_all_fa    = $out_root . ".centroid.overall.fa";
+  my $centroid_all_db    = $out_root . ".centroid.overall.blastdb";
+  my $centroid_all_blast = $out_root . ".centroid.overall.blast.tsv";
+
+  my %selected_H = map { $_ => 1 } @all_accs;
+  open(my $cafh, ">", $centroid_all_fa) || die "ERROR in $sub_name, unable to write $centroid_all_fa: $!";
+  foreach my $acc (@all_accs) {
+    if(! exists $seq_H{$acc}) { die "ERROR in $sub_name, sequence $acc not found in $fasta_file"; }
+    print $cafh ">" . $acc . "\n" . $seq_H{$acc} . "\n";
+  }
+  close($cafh);
+
+  # Build blast db and run all-vs-all
+  my $cmd = $execs_HR->{"makeblastdb"} . " -in " . $centroid_all_fa . " -dbtype nucl -out " . $centroid_all_db;
+  if(! $do_verbose) { $cmd .= " > /dev/null 2>&1"; }
+  utl_RunCommand($cmd, $do_verbose, 0, $FH_HR);
+
+  $cmd = $execs_HR->{"blastn"} . " -query " . $centroid_all_fa . " -db " . $centroid_all_db .
+         " -task blastn -outfmt \"6 qseqid sseqid pident\" -max_target_seqs 10000 -max_hsps 1 > " . $centroid_all_blast;
+  utl_RunCommand($cmd, $do_verbose, 0, $FH_HR);
+
+  # Parse blast results
+  my %pid_HH = ();
+  open(my $bfh, "<", $centroid_all_blast) || die "ERROR in $sub_name, unable to read $centroid_all_blast: $!";
+  while(my $line = <$bfh>) {
+    chomp $line;
+    next if($line eq "");
+    my ($q, $s, $pident) = split(/\t/, $line);
+    next if(! defined $q || ! defined $s || ! defined $pident);
+    next if(! exists $selected_H{$q} || ! exists $selected_H{$s});
+    if((! exists $pid_HH{$q}{$s}) || ($pident > $pid_HH{$q}{$s})) {
+      $pid_HH{$q}{$s} = $pident;
+    }
+  }
+  close($bfh);
+
+  # Compute average pident per sequence
+  my %avg_H = ();
+  foreach my $q (@all_accs) {
+    my $sum = 0.0;
+    foreach my $s (@all_accs) {
+      $sum += (exists $pid_HH{$q}{$s}) ? $pid_HH{$q}{$s} : 0.0;
+    }
+    $avg_H{$q} = $sum / scalar(@all_accs);
+  }
+
+  # Pick the best
+  my @sorted = sort { $avg_H{$b} <=> $avg_H{$a} || $a cmp $b } @all_accs;
+  my $centroid_accn = $sorted[0];
+
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# Overall centroid: %s (avg pident=%.4f across %d selected sequences)\n",
+            $centroid_accn, $avg_H{$centroid_accn}, scalar(@all_accs)));
+
+  # Cleanup
+  if(! $do_keep) {
+    push(@{$to_remove_AR}, $centroid_all_fa, $centroid_all_blast);
+    foreach my $ext ("nhr", "nin", "nsq", "nsi", "nsd", "not", "ntf", "nto", "ndb", "nos", "njs") {
+      my $f = $centroid_all_db . "." . $ext;
+      if(-e $f) { push(@{$to_remove_AR}, $f); }
+    }
+  }
+
+  return $centroid_accn;
+}
+
+#################################################################
+# Subroutine: remap_feature_coords_to_centroid()
+# Incept:     EPN* Sat Apr 12 2026
+#
+# Purpose:    Given the tier-2 v-annotate alignment (all seqs aligned
+#             to the seed model), remap every feature coordinate in
+#             %ftr_info_HA from seed-reference space to centroid-
+#             sequence space. The tier-2 alignment has RF positions
+#             corresponding to seed model positions; the centroid's
+#             aligned sequence tells us which seed RF positions map
+#             to which centroid sequence positions.
+#
+#             Also returns the centroid's ungapped length (= new
+#             model length).
+#
+# Arguments:
+#   $ftr_info_HAR       : REF to %ftr_info_HA (modified in place)
+#   $model_key          : model key in ftr_info_HA
+#   $tier2_stk_file     : path to tier-2 alignment .stk
+#   $seed_accn          : seed reference accession
+#   $centroid_accn      : overall centroid accession
+#   $FH_HR              : REF to hash of file handles
+#
+# Returns: new model length (centroid ungapped length)
+#################################################################
+sub remap_feature_coords_to_centroid {
+  my $sub_name = "remap_feature_coords_to_centroid";
+  my ($ftr_info_HAR, $model_key, $tier2_stk_file,
+      $seed_accn, $centroid_accn, $FH_HR) = @_;
+
+  # Load the tier-2 alignment
+  my $msa = Bio::Easel::MSA->new({ fileLocation => $tier2_stk_file, isDna => 1 });
+  my $rf = $msa->get_rf();
+
+  # Find the centroid sequence in the alignment
+  my $centroid_idx = -1;
+  for(my $i = 0; $i < $msa->nseq(); $i++) {
+    if($msa->get_sqname($i) eq $centroid_accn) {
+      $centroid_idx = $i;
+      last;
+    }
+  }
+  if($centroid_idx == -1) {
+    ofile_FAIL("ERROR in $sub_name, centroid $centroid_accn not found in tier-2 alignment $tier2_stk_file", 1, $FH_HR);
+  }
+  my $centroid_aln = $msa->get_sqstring_aligned($centroid_idx);
+
+  # Build seed_rf_pos -> centroid_seq_pos mapping.
+  # Walk alignment columns; for each RF (non-gap) column, record
+  # the centroid's sequence position (or -1 if it has a gap there).
+  my @rf_chars     = split(//, $rf);
+  my @centroid_chars = split(//, $centroid_aln);
+  my $alen = scalar(@rf_chars);
+  if(scalar(@centroid_chars) != $alen) {
+    ofile_FAIL("ERROR in $sub_name, RF length ($alen) != centroid alignment length (" . scalar(@centroid_chars) . ")", 1, $FH_HR);
+  }
+
+  my @seed2centroid = (); # seed2centroid[$rfpos] = centroid seq pos (1-based), or 0 if gap
+  my $rfpos = 0;
+  my $centroid_pos = 0;
+  for(my $i = 0; $i < $alen; $i++) {
+    my $rf_is_cons     = ($rf_chars[$i]     !~ /[\-_.~]/) ? 1 : 0;
+    my $cent_is_nongap = ($centroid_chars[$i] !~ /[\-_.~]/) ? 1 : 0;
+    if($cent_is_nongap) { $centroid_pos++; }
+    if($rf_is_cons) {
+      $rfpos++;
+      $seed2centroid[$rfpos] = $cent_is_nongap ? $centroid_pos : 0;
+    }
+  }
+  my $centroid_len = $centroid_pos; # total ungapped length
+
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# Centroid RF remap: seed RF positions=%d, centroid ungapped len=%d\n",
+            $rfpos, $centroid_len));
+
+  # Now remap every feature's coords in ftr_info_HA
+  my $ftr_model_key = undef;
+  if(exists $ftr_info_HAR->{$model_key}) {
+    $ftr_model_key = $model_key;
+  }
+  else {
+    my @keys = sort keys %{$ftr_info_HAR};
+    $ftr_model_key = $keys[0] if(scalar(@keys) > 0);
+  }
+  if(! defined $ftr_model_key || ! exists $ftr_info_HAR->{$ftr_model_key}) {
+    ofile_FAIL("ERROR in $sub_name, cannot find features for model key $model_key in ftr_info_HA", 1, $FH_HR);
+  }
+
+  my @ftr_A = @{$ftr_info_HAR->{$ftr_model_key}};
+  for(my $i = 0; $i < scalar(@ftr_A); $i++) {
+    my $old_coords = $ftr_A[$i]{"coords"};
+    next if(! defined $old_coords || $old_coords eq "");
+
+    # Parse and remap each segment of the coords string
+    my @new_segments = ();
+    foreach my $seg (split(/,/, $old_coords)) {
+      if($seg =~ /^(\d+)\.\.(\d+):([\+\-])$/) {
+        my ($start, $end, $strand) = ($1, $2, $3);
+
+        # Check that centroid has non-gap at both boundaries
+        if($start > scalar(@seed2centroid) - 1 || $end > scalar(@seed2centroid) - 1) {
+          ofile_FAIL(sprintf("ERROR in $sub_name, feature %d coords %s exceed seed RF length %d",
+                             $i, $old_coords, $rfpos), 1, $FH_HR);
+        }
+        my $new_start = $seed2centroid[$start];
+        my $new_end   = $seed2centroid[$end];
+
+        if($new_start == 0) {
+          ofile_FAIL(sprintf("ERROR in $sub_name, feature %d (%s) 5' boundary at seed RF pos %d maps to a gap in centroid %s (deletion at feature boundary)",
+                             $i, $ftr_A[$i]{"type"} || "", $start, $centroid_accn), 1, $FH_HR);
+        }
+        if($new_end == 0) {
+          ofile_FAIL(sprintf("ERROR in $sub_name, feature %d (%s) 3' boundary at seed RF pos %d maps to a gap in centroid %s (deletion at feature boundary)",
+                             $i, $ftr_A[$i]{"type"} || "", $end, $centroid_accn), 1, $FH_HR);
+        }
+
+        push(@new_segments, $new_start . ".." . $new_end . ":" . $strand);
+      }
+      else {
+        # Pass through unchanged (shouldn't happen with well-formed coords)
+        push(@new_segments, $seg);
+      }
+    }
+
+    my $new_coords = join(",", @new_segments);
+    if($new_coords ne $old_coords) {
+      ofile_OutputString($FH_HR->{"log"}, 1,
+        sprintf("# Centroid RF remap: feature %d %s coords %s -> %s\n",
+                $i, $ftr_A[$i]{"type"} || "", $old_coords, $new_coords));
+    }
+    $ftr_info_HAR->{$ftr_model_key}[$i]{"coords"} = $new_coords;
+  }
+
+  undef $msa;
+  return $centroid_len;
+}
+
+#################################################################
+# Subroutine: write_remapped_minfo()
+# Incept:     EPN* Sat Apr 12 2026
+#
+# Purpose:    Write a new .minfo file that reflects the remapped
+#             feature coords (from centroid-based remapping) and
+#             updated model length. Reads the original seed minfo,
+#             replaces MODEL length and FEATURE coords lines with
+#             the remapped values from %ftr_info_HA.
+#
+# Arguments:
+#   $seed_minfo_file : path to original seed minfo
+#   $out_minfo_file  : path to output remapped minfo
+#   $ftr_info_HAR    : REF to %ftr_info_HA with remapped coords
+#   $model_key       : model key
+#   $new_model_len   : new model length (centroid ungapped length)
+#   $FH_HR           : REF to hash of file handles
+#
+# Returns: void
+#################################################################
+sub write_remapped_minfo {
+  my $sub_name = "write_remapped_minfo";
+  my ($seed_minfo_file, $out_minfo_file, $ftr_info_HAR,
+      $model_key, $new_model_len, $FH_HR) = @_;
+
+  # Find the model key used in ftr_info_HA
+  my $ftr_model_key = undef;
+  if(exists $ftr_info_HAR->{$model_key}) {
+    $ftr_model_key = $model_key;
+  }
+  else {
+    my @keys = sort keys %{$ftr_info_HAR};
+    $ftr_model_key = $keys[0] if(scalar(@keys) > 0);
+  }
+
+  open(my $ifh, "<", $seed_minfo_file) || die "ERROR in $sub_name, unable to read $seed_minfo_file: $!";
+  open(my $ofh, ">", $out_minfo_file)  || die "ERROR in $sub_name, unable to write $out_minfo_file: $!";
+
+  my $ftr_idx = 0;
+  while(my $line = <$ifh>) {
+    chomp $line;
+    if($line =~ /^MODEL\s/) {
+      # Update the length field
+      $line =~ s/length:"\d+"/length:"$new_model_len"/;
+      print $ofh $line . "\n";
+    }
+    elsif($line =~ /^FEATURE\s/) {
+      # Replace the coords field with the remapped value
+      if(defined $ftr_model_key && $ftr_idx < scalar(@{$ftr_info_HAR->{$ftr_model_key}})) {
+        my $new_coords = $ftr_info_HAR->{$ftr_model_key}[$ftr_idx]{"coords"};
+        if(defined $new_coords && $new_coords ne "") {
+          $line =~ s/coords:"[^"]*"/coords:"$new_coords"/;
+        }
+        $ftr_idx++;
+      }
+      print $ofh $line . "\n";
+    }
+    else {
+      print $ofh $line . "\n";
+    }
+  }
+  close($ifh);
+  close($ofh);
+
   return;
 }
 
@@ -3625,21 +3999,34 @@ sub concatenate_all_blocks {
       # Extract noncoding region from tier2 via Bio::Easel::MSA column_subset
       # Map RF positions block_start..block_end to alignment columns using rf2a_map
       # rf2a_map returns 1-based apos; column_subset uses 0-based [0..alen-1]
-      my @useme_A = (0) x $tier2_msa->alen();
-      my $first_acol = $rf2a_map_A[$block_start];  # 1-based
-      my $last_acol  = $rf2a_map_A[$block_end];    # 1-based
-      for(my $a = $first_acol; $a <= $last_acol; $a++) {
-        $useme_A[$a - 1] = 1;  # convert to 0-based
-      }
-      my $nc_msa = $tier2_msa->clone_msa();
-      $nc_msa->column_subset(\@useme_A);
-      my $nc_aln_width = $nc_msa->alen();
-      my $nc_rf = $nc_msa->has_rf() ? $nc_msa->get_rf() : 'x' x $nc_aln_width;
+      #
+      # After centroid-based RF re-anchoring, the block plan may reference RF
+      # positions beyond the tier-2 alignment's RF range (since tier-2 was
+      # aligned to the original seed model). Clamp to the available range and
+      # fill any overflow with gap columns.
+      my $rf2a_max = scalar(@rf2a_map_A) - 1; # max valid RF index
+      my $clamped_start = ($block_start <= $rf2a_max) ? $block_start : undef;
+      my $clamped_end   = ($block_end   <= $rf2a_max) ? $block_end   : ($rf2a_max > 0 ? $rf2a_max : undef);
 
-      # Build name->sequence hash for lookup
+      my $nc_aln_width = 0;
+      my $nc_rf = "";
       my %nc_seqs_H = ();
-      for(my $i = 0; $i < $nc_msa->nseq(); $i++) {
-        $nc_seqs_H{$nc_msa->get_sqname($i)} = $nc_msa->get_sqstring_aligned($i);
+
+      if(defined $clamped_start && defined $clamped_end &&
+         defined $rf2a_map_A[$clamped_start] && defined $rf2a_map_A[$clamped_end]) {
+        my @useme_A = (0) x $tier2_msa->alen();
+        my $first_acol = $rf2a_map_A[$clamped_start];  # 1-based
+        my $last_acol  = $rf2a_map_A[$clamped_end];    # 1-based
+        for(my $a = $first_acol; $a <= $last_acol; $a++) {
+          $useme_A[$a - 1] = 1;  # convert to 0-based
+        }
+        my $nc_msa = $tier2_msa->clone_msa();
+        $nc_msa->column_subset(\@useme_A);
+        $nc_aln_width = $nc_msa->alen();
+        $nc_rf = $nc_msa->has_rf() ? $nc_msa->get_rf() : 'x' x $nc_aln_width;
+        for(my $i = 0; $i < $nc_msa->nseq(); $i++) {
+          $nc_seqs_H{$nc_msa->get_sqname($i)} = $nc_msa->get_sqstring_aligned($i);
+        }
       }
 
       # If column_subset produced a zero-width alignment (e.g., trailing
