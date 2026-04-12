@@ -4786,11 +4786,16 @@ sub parse_alt_for_exceptions {
 
   my ($alt_file, $FH_HR) = @_;
 
-  # Map alert codes to exception types
+  # Map alert codes to exception types.
+  # Only HIGH/UNKNOWN-confidence frame-RESTORED frameshift alerts map to
+  # fst_exc. Excluded:
+  #   *ft (frame-not-restored): coords span shift site to CDS end,
+  #        producing pathologically wide regions.
+  #   fstlocfi (low-confidence, frame-restored): non-fatal by default,
+  #            so no exception is needed.
   my %alert_to_exc = (
-    "fsthicft" => "fst_exc", "fsthicfi" => "fst_exc",
-    "fstukcft" => "fst_exc", "fstukcfi" => "fst_exc",
-    "fstlocft" => "fst_exc", "fstlocfi" => "fst_exc",
+    "fsthicfi" => "fst_exc",
+    "fstukcfi" => "fst_exc",
     "insertnp" => "insertn_exc", "insertnn" => "insertn_exc",
     "deletinp" => "deletin_exc", "deletinn" => "deletin_exc",
     "lowsimic" => "lowsim_exc", "lowsim5c" => "lowsim_exc",
@@ -4882,7 +4887,7 @@ sub detect_exceptions {
     my ($exc_type, $ftr_name, $ftr_idx) = split(/:/, $exc_key);
 
     # Collect all regions and their accessions/values across all mdl_coords
-    # for this exception type + feature, then merge overlapping regions
+    # for this exception type + feature.
     my @all_regions = (); # array of [start, stop, strand, \@entries, max_value]
 
     foreach my $mdl_coords (sort keys %{$exc_groups_HHR->{$exc_key}}) {
@@ -4896,27 +4901,37 @@ sub detect_exceptions {
       }
     }
 
-    # Merge overlapping regions (same strand)
-    @all_regions = sort { $a->[0] <=> $b->[0] } @all_regions;
+    # For fst_exc: do NOT merge overlapping regions. Each individual observed
+    # frameshift region becomes its own exception. Merging would inflate the
+    # exception span beyond what the data supports (e.g. merging a..c and
+    # b..d into a..d would allow any frameshift in a..d, even though only
+    # two smaller frameshifts were actually observed).
+    # For all other exception types: merge overlapping regions as before.
     my @merged = ();
-    foreach my $region (@all_regions) {
-      my ($rstart, $rstop, $rstrand, $rentries, $rmax_val) = @{$region};
-      if(scalar(@merged) > 0 &&
-         $merged[$#merged][2] eq $rstrand &&
-         $rstart <= $merged[$#merged][1] + 1) {
-        # Overlapping or adjacent: extend and merge
-        if($rstop > $merged[$#merged][1]) {
-          $merged[$#merged][1] = $rstop;
+    @all_regions = sort { $a->[0] <=> $b->[0] } @all_regions;
+    if($exc_type eq "fst_exc") {
+      @merged = @all_regions; # no merging
+    }
+    else {
+      foreach my $region (@all_regions) {
+        my ($rstart, $rstop, $rstrand, $rentries, $rmax_val) = @{$region};
+        if(scalar(@merged) > 0 &&
+           $merged[$#merged][2] eq $rstrand &&
+           $rstart <= $merged[$#merged][1] + 1) {
+          # Overlapping or adjacent: extend and merge
+          if($rstop > $merged[$#merged][1]) {
+            $merged[$#merged][1] = $rstop;
+          }
+          push(@{$merged[$#merged][3]}, @{$rentries});
+          if($rmax_val > $merged[$#merged][4]) { $merged[$#merged][4] = $rmax_val; }
         }
-        push(@{$merged[$#merged][3]}, @{$rentries});
-        if($rmax_val > $merged[$#merged][4]) { $merged[$#merged][4] = $rmax_val; }
-      }
-      else {
-        push(@merged, [$rstart, $rstop, $rstrand, [@{$rentries}], $rmax_val]);
+        else {
+          push(@merged, [$rstart, $rstop, $rstrand, [@{$rentries}], $rmax_val]);
+        }
       }
     }
 
-    # Apply sanity checks and independence threshold to each merged region
+    # Apply independence threshold to each region
     foreach my $region (@merged) {
       my ($rstart, $rstop, $rstrand, $rentries, $rmax_val) = @{$region};
 
@@ -4925,31 +4940,15 @@ sub detect_exceptions {
       my @unique_acc_list = keys %unique_accs;
       my $n_ind = count_independent_observations(\@unique_acc_list);
 
-      # fst_exc sanity checks:
-      #   (a) region must be <= MAX_FST_EXC_LEN (a real biological frameshift
-      #       site spans only tens of nt; a multi-kb span is pathological --
-      #       usually caused by a single 'fsthicft'/'fstlocft' alert whose
-      #       coords run from the shift site to the end of the CDS because
-      #       the frame is never restored).
-      #   (b) independent observations must be >= MIN_FST_EXC_NIND, regardless
-      #       of the global --alt-min-ind setting.
-      my $MAX_FST_EXC_LEN  = 30;
+      # fst_exc: require minimum 2 independent observations regardless
+      # of global --alt-min-ind setting.
       my $MIN_FST_EXC_NIND = 2;
-      if($exc_type eq "fst_exc") {
-        my $region_len = $rstop - $rstart + 1;
-        if($region_len > $MAX_FST_EXC_LEN) {
-          ofile_OutputString($FH_HR->{"log"}, 1,
-            sprintf("# Exc detect: fst_exc %s %d..%d:%s region_len=%d > %d nt, skipping (implausibly wide frameshift span, likely from a non-restored-frame alert)\n",
-                    $ftr_name, $rstart, $rstop, $rstrand, $region_len, $MAX_FST_EXC_LEN));
-          next;
-        }
-        if($n_ind < $MIN_FST_EXC_NIND) {
-          ofile_OutputString($FH_HR->{"log"}, 1,
-            sprintf("# Exc detect: fst_exc %s %d..%d:%s n_seqs=%d n_ind=%d < fst_min=%d, skipping\n",
-                    $ftr_name, $rstart, $rstop, $rstrand,
-                    scalar(@unique_acc_list), $n_ind, $MIN_FST_EXC_NIND));
-          next;
-        }
+      if($exc_type eq "fst_exc" && $n_ind < $MIN_FST_EXC_NIND) {
+        ofile_OutputString($FH_HR->{"log"}, 1,
+          sprintf("# Exc detect: fst_exc %s %d..%d:%s n_seqs=%d n_ind=%d < fst_min=%d, skipping\n",
+                  $ftr_name, $rstart, $rstop, $rstrand,
+                  scalar(@unique_acc_list), $n_ind, $MIN_FST_EXC_NIND));
+        next;
       }
 
       if($n_ind < $min_independent) {
