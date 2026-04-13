@@ -732,41 +732,33 @@ write_decision_summary_report(\%decision_H, $decision_summary_tsv_file, \%ofile_
 # reference, remap the feature coordinates from seed-reference space to
 # centroid space so that the final alignment's RF (and thus the model's
 # consensus columns) are based on the centroid.
+# Compute overall centroid and update $ref_accn so the CDS MSA anchor
+# uses the centroid. Feature coord remapping and minfo update happen
+# AFTER stitching (Step 12c below), because the stitching and its
+# noncoding block extraction use the tier-2 alignment which is in
+# seed-reference RF space. Remapping coords before stitching would
+# cause a coord-system mismatch (centroid-space block plan vs
+# seed-space tier-2 alignment).
+my $overall_centroid_accn = "";
 if(! $do_skip_annotate) {
-  my $overall_centroid_accn = compute_overall_centroid_blast(
+  $overall_centroid_accn = compute_overall_centroid_blast(
     \%candidate_AH, $tier2_fasta_file, $out_root,
     $seed_model_len, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H,
     \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
   if($overall_centroid_accn ne "" && $overall_centroid_accn ne $ref_accn) {
     ofile_OutputString($FH_HR->{"log"}, 1,
-      sprintf("# Overall centroid %s differs from seed reference %s; remapping feature coords and RF anchor\n",
+      sprintf("# Overall centroid %s differs from seed reference %s; using centroid as CDS MSA anchor\n",
               $overall_centroid_accn, $ref_accn));
-
-    my $new_model_len = remap_feature_coords_to_centroid(
-      \%ftr_info_HA, $model_key, $tier2_align_stk_file,
-      $ref_accn, $overall_centroid_accn, $FH_HR);
-
-    ofile_OutputString($FH_HR->{"log"}, 1,
-      sprintf("# Remapped feature coords: seed len=%d -> centroid len=%d\n",
-              $seed_model_len, $new_model_len));
-
-    $seed_model_len = $new_model_len;
-    $ref_accn       = $overall_centroid_accn;
-
-    # Write the remapped minfo to a new file so that downstream steps
-    # (generate_updated_minfo, add_nn_classification_keys_to_minfo) which
-    # read from $seed_minfo on disk pick up the centroid-based coords.
-    my $remapped_minfo = $out_root . ".remapped.minfo";
-    write_remapped_minfo($seed_minfo, $remapped_minfo, \%ftr_info_HA,
-                         $model_key, $new_model_len, $FH_HR);
-    $seed_minfo = $remapped_minfo;
-    ofile_OutputString($FH_HR->{"log"}, 1,
-      sprintf("# Wrote remapped minfo to %s\n", $remapped_minfo));
+    # Update $ref_accn so downstream CDS MSA anchor uses the centroid.
+    # Do NOT remap coords or change $seed_model_len yet — stitching
+    # needs seed-space coords.
+    $ref_accn = $overall_centroid_accn;
   }
   else {
     ofile_OutputString($FH_HR->{"log"}, 1,
-      sprintf("# Overall centroid is the seed reference %s; no remapping needed\n", $ref_accn));
+      sprintf("# Overall centroid is the seed reference %s; no anchor change needed\n",
+              ($overall_centroid_accn eq "") ? "(none >= seed length)" : $ref_accn));
   }
 }
 
@@ -857,6 +849,45 @@ annotate_stk_group_subgroup($output_stk_file, $centroid_tsv_file, $group_name, $
   $stk_basename =~ s|^.+/||;  # use relative path (basename only) so the
                                # minfo can be moved to a different dir along with the stk
   add_nn_classification_keys_to_minfo($seed_minfo, $stk_basename, $FH_HR);
+}
+
+#---------------------------------------
+# Step 12d: Verify final alignment sequence integrity
+#---------------------------------------
+# Sanity check: every sequence in the final .stk, when degapped, must
+# exactly match the corresponding sequence from the tier-2 fasta. This
+# catches corruption that could be introduced by the stitching step
+# (e.g., coordinate-space mismatches between coding and noncoding blocks).
+if(! $do_skip_annotate) {
+  verify_stk_sequence_integrity($output_stk_file, $tier2_fasta_file, $FH_HR);
+}
+
+#---------------------------------------
+# Step 12e: Centroid-based feature coord remapping (deferred from Step 6b)
+#---------------------------------------
+# Now that stitching is complete (it used seed-space coords consistently),
+# remap feature coords from seed-reference space to centroid space for
+# the output minfo. This ensures v-build.pl --profile gets coords that
+# match the centroid-anchored RF in the final .stk.
+if(! $do_skip_annotate && $overall_centroid_accn ne "" && $overall_centroid_accn ne $model_key) {
+  # $ref_accn was already set to centroid in Step 6b
+  my $new_model_len = remap_feature_coords_to_centroid(
+    \%ftr_info_HA, $model_key, $tier2_align_stk_file,
+    $model_key, $overall_centroid_accn, $FH_HR);
+  # note: pass $model_key (original seed accn) as seed_accn, not $ref_accn
+  # (which was already changed to centroid)
+
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# Deferred remapping: seed len=%d -> centroid len=%d\n",
+            $seed_model_len, $new_model_len));
+
+  my $remapped_minfo = $out_root . ".remapped.minfo";
+  write_remapped_minfo($seed_minfo, $remapped_minfo, \%ftr_info_HA,
+                       $model_key, $new_model_len, $FH_HR);
+  $seed_minfo     = $remapped_minfo;
+  $seed_model_len = $new_model_len;
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# Wrote remapped minfo to %s\n", $remapped_minfo));
 }
 
 #---------------------------------------
@@ -1863,6 +1894,89 @@ sub remap_feature_coords_to_centroid {
 #
 # Returns: void
 #################################################################
+#################################################################
+# Subroutine: verify_stk_sequence_integrity()
+# Incept:     EPN* Sun Apr 13 2026
+#
+# Purpose:    Verify that every sequence in the final stitched .stk
+#             file, when degapped, exactly matches the corresponding
+#             sequence from the tier-2 fasta. This catches nucleotide
+#             corruption introduced during stitching (e.g., coord-
+#             space mismatches between coding and noncoding blocks).
+#
+# Arguments:
+#   $stk_file    : path to final stitched Stockholm alignment
+#   $fasta_file  : path to tier-2 fasta (raw sequences)
+#   $FH_HR       : REF to hash of file handles
+#
+# Returns: void (dies with error if mismatch found)
+#################################################################
+sub verify_stk_sequence_integrity {
+  my $sub_name = "verify_stk_sequence_integrity";
+  my ($stk_file, $fasta_file, $FH_HR) = @_;
+
+  # Read tier-2 fasta sequences into hash
+  my %fa_seq_H = ();
+  my $cur_acc = undef;
+  open(my $ffh, "<", $fasta_file) || ofile_FAIL("ERROR in $sub_name, unable to read $fasta_file", 1, $FH_HR);
+  while(my $line = <$ffh>) {
+    chomp $line;
+    if($line =~ /^>(\S+)/) { $cur_acc = $1; $fa_seq_H{$cur_acc} = ""; }
+    elsif(defined $cur_acc) { $line =~ s/\s+//g; $fa_seq_H{$cur_acc} .= uc($line); }
+  }
+  close($ffh);
+
+  # Read stk and compare each degapped sequence
+  my $msa = Bio::Easel::MSA->new({ fileLocation => $stk_file, isDna => 1 });
+  my $n_checked = 0;
+  my $n_mismatches = 0;
+  for(my $i = 0; $i < $msa->nseq(); $i++) {
+    my $name = $msa->get_sqname($i);
+    my $stk_seq = uc($msa->get_sqstring_unaligned($i));
+    $stk_seq =~ s/U/T/g;  # normalize RNA to DNA
+
+    if(! exists $fa_seq_H{$name}) {
+      ofile_OutputString($FH_HR->{"log"}, 1,
+        sprintf("# WARNING: verify_stk_sequence_integrity: %s in stk but not in tier-2 fasta, skipping check\n", $name));
+      next;
+    }
+
+    my $fa_seq = $fa_seq_H{$name};
+    $fa_seq =~ s/U/T/g;
+    $n_checked++;
+
+    if($stk_seq ne $fa_seq) {
+      $n_mismatches++;
+      # Find first mismatch position for diagnostics
+      my $mismatch_pos = -1;
+      my $min_len = length($stk_seq) < length($fa_seq) ? length($stk_seq) : length($fa_seq);
+      for(my $j = 0; $j < $min_len; $j++) {
+        if(substr($stk_seq, $j, 1) ne substr($fa_seq, $j, 1)) {
+          $mismatch_pos = $j + 1;  # 1-based
+          last;
+        }
+      }
+      if($mismatch_pos == -1 && length($stk_seq) != length($fa_seq)) {
+        $mismatch_pos = $min_len + 1;  # length difference
+      }
+      ofile_FAIL(sprintf("ERROR in $sub_name, sequence %s in final .stk does not match tier-2 fasta.\n" .
+                         "  stk degapped len=%d, fasta len=%d, first mismatch at position %d\n" .
+                         "  stk context: ...%s...\n" .
+                         "  fa  context: ...%s...\n" .
+                         "This indicates nucleotide corruption during the stitching step.",
+                         $name, length($stk_seq), length($fa_seq), $mismatch_pos,
+                         ($mismatch_pos > 0 ? substr($stk_seq, ($mismatch_pos > 5 ? $mismatch_pos - 6 : 0), 11) : ""),
+                         ($mismatch_pos > 0 ? substr($fa_seq,  ($mismatch_pos > 5 ? $mismatch_pos - 6 : 0), 11) : "")),
+                 1, $FH_HR);
+    }
+  }
+  undef $msa;
+
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# Sequence integrity check: verified %d sequences in final .stk match tier-2 fasta\n", $n_checked));
+  return;
+}
+
 sub write_remapped_minfo {
   my $sub_name = "write_remapped_minfo";
   my ($seed_minfo_file, $out_minfo_file, $ftr_info_HAR,
