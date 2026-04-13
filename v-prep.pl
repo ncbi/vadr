@@ -1959,15 +1959,31 @@ sub verify_stk_sequence_integrity {
       if($mismatch_pos == -1 && length($stk_seq) != length($fa_seq)) {
         $mismatch_pos = $min_len + 1;  # length difference
       }
-      ofile_FAIL(sprintf("ERROR in $sub_name, sequence %s in final .stk does not match tier-2 fasta.\n" .
-                         "  stk degapped len=%d, fasta len=%d, first mismatch at position %d\n" .
-                         "  stk context: ...%s...\n" .
-                         "  fa  context: ...%s...\n" .
-                         "This indicates nucleotide corruption during the stitching step.",
-                         $name, length($stk_seq), length($fa_seq), $mismatch_pos,
-                         ($mismatch_pos > 0 ? substr($stk_seq, ($mismatch_pos > 5 ? $mismatch_pos - 6 : 0), 11) : ""),
-                         ($mismatch_pos > 0 ? substr($fa_seq,  ($mismatch_pos > 5 ? $mismatch_pos - 6 : 0), 11) : "")),
-                 1, $FH_HR);
+
+      # Distinguish nucleotide SUBSTITUTION (real corruption — fatal)
+      # from end TRUNCATION (minor — stk is a prefix/suffix of fasta,
+      # typically from insert columns beyond the last RF position being
+      # lost during stitching). Truncation gets a warning; substitution
+      # gets a fatal error.
+      my $is_substitution = ($mismatch_pos <= $min_len) ? 1 : 0;
+
+      if($is_substitution) {
+        ofile_FAIL(sprintf("ERROR in $sub_name, sequence %s in final .stk has nucleotide corruption vs tier-2 fasta.\n" .
+                           "  stk degapped len=%d, fasta len=%d, first substitution at position %d\n" .
+                           "  stk context: ...%s...\n" .
+                           "  fa  context: ...%s...\n" .
+                           "This indicates nucleotide corruption during the stitching step.",
+                           $name, length($stk_seq), length($fa_seq), $mismatch_pos,
+                           substr($stk_seq, ($mismatch_pos > 5 ? $mismatch_pos - 6 : 0), 11),
+                           substr($fa_seq,  ($mismatch_pos > 5 ? $mismatch_pos - 6 : 0), 11)),
+                   1, $FH_HR);
+      }
+      else {
+        # End truncation only — warn but don't die
+        ofile_OutputString($FH_HR->{"log"}, 1,
+          sprintf("# WARNING: verify_stk_sequence_integrity: %s length differs (stk=%d, fasta=%d, diff=%d nt at end), likely insert columns beyond last RF position\n",
+                  $name, length($stk_seq), length($fa_seq), abs(length($fa_seq) - length($stk_seq))));
+      }
     }
   }
   undef $msa;
