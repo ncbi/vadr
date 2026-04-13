@@ -4031,6 +4031,15 @@ sub concatenate_all_blocks {
         if($c ne '-' && $c ne '.') { $consumed++; }
         $col_cursor++;
       }
+      # Extend past any trailing insert columns (anchor gaps) so that
+      # other sequences' inserted nucleotides at the block boundary are
+      # not lost. Stop at the next anchor non-gap column (which belongs
+      # to the next block) or at the end of the alignment.
+      while($col_cursor < $total_anchor_len) {
+        my $c = substr($anchor_cds_seq, $col_cursor, 1);
+        if($c ne '-' && $c ne '.') { last; }  # next non-gap = next block's territory
+        $col_cursor++;
+      }
       push @cds_col_ranges_A, [$start_col, $col_cursor - 1];
     }
   }
