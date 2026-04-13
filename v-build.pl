@@ -1303,7 +1303,7 @@ sub profile_CdsFetchStockholmToFasta {
                                                            $try_fi, $ftr_info_AHR,
                                                            \@sgm_start_AA, \@sgm_stop_AA, \@sgm_strand_AA,
                                                            $FH_HR);
-            if(defined $cds_str && profile_ValidateCdsForTranslation($cds_str)) {
+            if(defined $cds_str && profile_ValidateCdsIsComplete($cds_str)) {
               print $out_FH ">" . $header . "\n";
               print $out_FH seq_SqstringAddNewlines($cds_str, 60);
               $success = 1;
@@ -1513,12 +1513,14 @@ sub profile_CdsFetchStockholmToFasta {
         # Add refcoords as a comment so we can reconstruct the final protein header later
         $cds_header .= " REFCOORDS=" . $ref_coords_str;
 
-        # In profile mode, validate that the CDS will translate before
-        # writing. Skip sequences where the CDS has premature stops
-        # (due to frameshifts or boundary differences from the reference).
-        if(! profile_ValidateCdsForTranslation($final_cds)) {
+        # In profile mode, only include sequences whose CDS is complete
+        # (ends with a stop codon and has no premature in-frame stops).
+        # Sequences with truncated CDS (no stop codon — typically CDS-only
+        # GenBank submissions) or frameshifts are skipped; only complete
+        # proteins are needed in the protein BLAST db.
+        if(! profile_ValidateCdsIsComplete($final_cds)) {
           ofile_OutputString($FH_HR->{"log"}, 1,
-            sprintf("# WARNING: profile_CdsFetchStockholmToFasta: CDS for %s at %s failed translation validation, skipping\n",
+            sprintf("# WARNING: profile_CdsFetchStockholmToFasta: CDS for %s at %s is incomplete or invalid, skipping (only complete CDS are included in protein db)\n",
                     $sqname, $seq_coords_str));
           next;
         }
@@ -1642,63 +1644,51 @@ sub profile_ExtractOneCds {
 }
 
 #################################################################
-# Subroutine: profile_ValidateCdsForTranslation()
-# Incept:     EPN, Fri Apr 04 2026
+# Subroutine: profile_ValidateCdsIsComplete()
+# Incept:     EPN* Sun Apr 13 2026
 #
-# Purpose:    Quick check if a CDS nucleotide sequence is likely
-#             to produce a valid full-length translation:
-#             - Length (minus 3 for stop codon) must be divisible by 3
-#             - No in-frame stop codons before the last codon
+# Purpose:    Check if a CDS nucleotide sequence extracted from a
+#             profile alignment is complete and suitable for
+#             inclusion in the protein BLAST db:
+#             - Must end with a stop codon (TAA/TAG/TGA)
+#             - No in-frame stop codons before the terminal one
+#             - Length minus 3 (stop) must be divisible by 3
+#
+#             Sequences that fail (truncated CDS, frameshifts,
+#             premature stops) are excluded from the protein db
+#             but remain in the nucleotide alignment.
 #
 # Arguments:
 #   $cds_seq: CDS nucleotide sequence string
 #
-# Returns:    1 if valid, 0 if not
+# Returns:    1 if complete and valid, 0 if not
 #################################################################
-sub profile_ValidateCdsForTranslation {
+sub profile_ValidateCdsIsComplete {
   my ($cds_seq) = @_;
 
   my $len = length($cds_seq);
-  if($len < 6) { return 0; }  # too short
+  if($len < 6) { return 0; }
 
-  # Check for in-frame stop codons in frame 1 starting from position 1.
-  # The CDS is valid if the first in-frame stop codon is at the last
-  # codon position (i.e., no premature stops). We don't require
-  # length%3==0 because the sequence may have insertions relative to
-  # the reference; what matters is whether esl-translate can find an
-  # ORF from position 1 to (len - remainder).
   my %stop_codons = ("TAA" => 1, "TAG" => 1, "TGA" => 1,
                      "taa" => 1, "tag" => 1, "tga" => 1);
 
-  # Find the first in-frame stop codon starting from position 0 (frame 1)
-  my $first_stop_pos = -1;
-  for(my $i = 0; $i <= $len - 3; $i += 3) {
+  # Last codon must be a stop
+  my $last_codon = substr($cds_seq, $len - 3, 3);
+  if(! exists $stop_codons{$last_codon}) {
+    return 0;  # no terminal stop — truncated/incomplete CDS
+  }
+
+  # Length minus stop must be divisible by 3
+  if(($len - 3) % 3 != 0) {
+    return 0;
+  }
+
+  # No premature in-frame stops before the terminal one
+  for(my $i = 0; $i < $len - 3; $i += 3) {
     my $codon = substr($cds_seq, $i, 3);
     if(exists $stop_codons{$codon}) {
-      $first_stop_pos = $i;
-      last;
+      return 0;  # premature stop
     }
-  }
-
-  # sqf_EslTranslateCdsToFastaFile expects an ORF at coords=1..($len-3)
-  # if the CDS is not 3' truncated (i.e., ends with a stop codon), or
-  # coords=1..$len if 3' truncated (no stop codon). We must match this
-  # exactly or the translation step will fail.
-  #
-  # Valid cases:
-  # 1. Stop codon at the very last codon position ($len-3): normal CDS
-  # 2. No stop codon at all: 3' truncated, esl-translate extends to end
-  # Invalid: premature stop before the last codon position
-
-  if($first_stop_pos == -1) {
-    # No stop codon — 3' truncated. Valid only if len is divisible by 3
-    # (otherwise esl-translate won't produce coords=1..$expected)
-    return ($len % 3 == 0) ? 1 : 0;
-  }
-
-  # Stop codon found: it must be at position $len-3 (the last codon)
-  if($first_stop_pos != $len - 3) {
-    return 0;  # premature stop
   }
 
   return 1;
