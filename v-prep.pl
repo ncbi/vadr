@@ -1372,11 +1372,18 @@ sub run_vannotate_filter_fails {
   }
 
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Tier 2 v-annotate filter: kept %d removed %d (removed all accessions in .vadr.fail.list)\n", $nkept, $nremoved));
-  
-  # Return path to alignment file for later use in Step 10 RNA refinement
-  # v-annotate creates: <outdir>/<outdir>.vadr.<modelkey>.align.stk
-  my $align_stk_file = $annot_outdir . "/" . $annot_outdir_tail . ".vadr." . $model_key . ".align.stk";
-  return $align_stk_file;
+
+  # Return path to alignment file for later use in Step 10 RNA refinement.
+  # v-annotate names the file <outdir>/<outdir>.vadr.<mdl_name>.align.stk where
+  # <mdl_name> is the MODEL name from the minfo file (the seed accession), which
+  # is not always equal to $model_key (the --mdir basename). Glob for the file
+  # rather than reconstructing the path from $model_key.
+  my $align_stk_glob = $annot_outdir . "/" . $annot_outdir_tail . ".vadr.*.align.stk";
+  my @align_stk_matches = glob($align_stk_glob);
+  if(scalar(@align_stk_matches) != 1) {
+    ofile_FAIL(sprintf("ERROR in run_vannotate_filter_fails: expected exactly one match for %s, found %d", $align_stk_glob, scalar(@align_stk_matches)), 1, $FH_HR);
+  }
+  return $align_stk_matches[0];
 }
 
 #################################################################
@@ -3585,8 +3592,7 @@ sub extract_and_align_rna_regions {
   my ($rna_regions_AR, $tier2_align_stk, $rna_struct_dir, $out_root, $do_keep, $do_verbose, $execs_HR, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
 
   if(! -e $tier2_align_stk) {
-    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA alignment: WARNING - tier2 alignment not found, skipping RNA refinement\n"));
-    return;
+    ofile_FAIL(sprintf("ERROR in extract_and_align_rna_regions: tier2 alignment not found at %s (expected output from v-annotate in run_vannotate_filter_fails)", $tier2_align_stk), 1, $FH_HR);
   }
 
   my $nrna = scalar(@{$rna_regions_AR});
