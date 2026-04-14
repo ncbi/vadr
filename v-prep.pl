@@ -4513,22 +4513,42 @@ sub generate_updated_minfo {
     close($rnafh);
   }
 
+  # Extract the MODEL name from the seed minfo's MODEL line. This is the
+  # actual model name (e.g. the --refaccn, or the auto-detected reference
+  # accession), which is NOT always equal to $model_key (which is the
+  # --mdir basename). RNA misc_structure FEATURE lines must use the same
+  # name as the MODEL line or vdr_ModelInfoFileParse will reject the minfo.
+  my $mdl_name = undef;
+  foreach my $line (@seed_lines) {
+    if($line =~ /^MODEL\s+(\S+)/) {
+      $mdl_name = $1;
+      last;
+    }
+  }
+  if(! defined $mdl_name) {
+    $mdl_name = $model_key;
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# WARNING: generate_updated_minfo: no MODEL line found in %s, using model_key=%s for RNA FEATURE lines\n",
+              $seed_minfo_file, $model_key));
+  }
+
   # Write updated .minfo file
   open(my $outfh, ">", $out_minfo_file) || die "ERROR unable to write .minfo $out_minfo_file: $!";
-  
+
   # Copy seed lines and insert RNA features after gene/CDS features
   foreach my $line (@seed_lines) {
     print $outfh $line . "\n";
   }
-  
-  # Add RNA features as misc_structure
+
+  # Add RNA features as misc_structure (using the MODEL name from the seed
+  # minfo, not $model_key, so the feature name matches the model name)
   foreach my $rna (@rna_features) {
     my $coords = $rna->{"start"} . ".." . $rna->{"end"} . ":" . $rna->{"strand"};
     my $feature_line = sprintf("FEATURE %s type:\"misc_structure\" coords:\"%s\" parent_idx_str:\"GBNULL\" note:\"%s\"",
-                               $model_key, $coords, $rna->{"note"});
+                               $mdl_name, $coords, $rna->{"note"});
     print $outfh $feature_line . "\n";
   }
-  
+
   close($outfh);
 
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "updated.minfo", $out_minfo_file, 1, 1, "updated model info file with RNA features");
