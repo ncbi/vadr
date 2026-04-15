@@ -106,6 +106,7 @@ opt_Add("--alt-min-ind", "integer", 2,            $g,    undef, "--no-auto-alt",
 opt_Add("--vannot-opts-file", "string", undef,    $g,    undef, undef,          "read extra v-annotate.pl options from file <s>",              "read extra v-annotate.pl options from file <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--alt-max-fract", "real",    0.2,       $g,    undef, "--no-auto-alt", "max fractional length deviation for alternative CDS",         "max fractional length deviation for alternative CDS as <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--nper1grp",     "integer", 5,         $g,    undef, undef,          "number of seqs per group when 1 group",                       "number of seqs per group when 1 group as <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--npergrp",      "integer", undef,     $g,    undef, undef,          "override per-group seq count from determine_seqs_per_group",  "override determine_seqs_per_group default and use <n> seqs per group regardless of group count", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "overhang extension options";
 #       option                         type    default  group  requires                incompat             preamble-output                                                              help-output
@@ -151,6 +152,7 @@ my $options_okay =
                 'vannot-opts-file=s' => \$GetOptions_H{"--vannot-opts-file"},
                 'alt-max-fract=f' => \$GetOptions_H{"--alt-max-fract"},
                 'nper1grp=i'   => \$GetOptions_H{"--nper1grp"},
+                'npergrp=i'    => \$GetOptions_H{"--npergrp"},
 # overhang extension options
                 'no-overhang-ext'          => \$GetOptions_H{"--no-overhang-ext"},
                 'overhang-anchor-len=i'    => \$GetOptions_H{"--overhang-anchor-len"},
@@ -731,8 +733,12 @@ foreach my $group (keys %candidate_AH) {
   if(scalar(@{$candidate_AH{$group}}) > 0) { $n_nonempty_groups++; }
 }
 my $nper1grp = opt_Get("--nper1grp", \%opt_HH);
-my $n_per_group = determine_seqs_per_group($n_nonempty_groups, $nper1grp);
-ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Centroid selection: %d non-empty groups, selecting %d seqs per group\n", $n_nonempty_groups, $n_per_group));
+my $n_per_group = opt_IsUsed("--npergrp", \%opt_HH)
+                  ? opt_Get("--npergrp", \%opt_HH)
+                  : determine_seqs_per_group($n_nonempty_groups, $nper1grp);
+ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Centroid selection: %d non-empty groups, selecting %d seqs per group%s\n",
+                                                $n_nonempty_groups, $n_per_group,
+                                                opt_IsUsed("--npergrp", \%opt_HH) ? " [--npergrp override]" : ""));
 select_group_centroids_blast(\%candidate_AH, $tier2_fasta_file, $out_root, $centroid_tsv_file, $n_per_group, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H, \%decision_H, \%partial_cds_H, $ref_accn, \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
 write_decision_report(\%decision_H, $decision_tsv_file, \%ofile_info_HH, $FH_HR);
