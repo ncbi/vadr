@@ -107,9 +107,19 @@ opt_Add("--vannot-opts-file", "string", undef,    $g,    undef, undef,          
 opt_Add("--alt-max-fract", "real",    0.2,       $g,    undef, "--no-auto-alt", "max fractional length deviation for alternative CDS",         "max fractional length deviation for alternative CDS as <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--nper1grp",     "integer", 5,         $g,    undef, undef,          "number of seqs per group when 1 group",                       "number of seqs per group when 1 group as <n>", \%opt_HH, \@opt_order_A);
 
+$opt_group_desc_H{++$g} = "overhang extension options";
+#       option                         type    default  group  requires                incompat             preamble-output                                                              help-output
+opt_Add("--no-overhang-ext",         "boolean", 0,       $g,    undef,                  undef,              "disable phase-2 RF overhang extension",                                     "disable phase-2 RF overhang extension at 5' and 3' ends of training alignment", \%opt_HH, \@opt_order_A);
+opt_Add("--overhang-anchor-len",     "integer", 50,      $g,    undef,                  "--no-overhang-ext", "anchor length (number of RF columns) for overhang extension",                "anchor length (number of RF columns) for overhang extension as <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--overhang-min-coverage",   "real",    0.6,     $g,    undef,                  "--no-overhang-ext", "minimum coverage fraction to INCLUDE an overhang column",                    "minimum coverage (n_nongap/n_active) to INCLUDE an overhang column as <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--overhang-min-conservation","real",   0.8,     $g,    undef,                  "--no-overhang-ext", "minimum conservation fraction to INCLUDE an overhang column",                "minimum conservation (majority-base freq among n_nongap) to INCLUDE an overhang column as <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--overhang-stop-lookahead", "integer", 3,       $g,    undef,                  "--no-overhang-ext", "stop extension when no INCLUDE seen in last M columns",                      "stop extension when no INCLUDE seen in last <n> columns", \%opt_HH, \@opt_order_A);
+opt_Add("--overhang-min-active",     "integer", 5,       $g,    undef,                  "--no-overhang-ext", "minimum active sequences to classify an overhang column",                    "minimum n_active sequences to classify an overhang column as <n> (else SKIP)", \%opt_HH, \@opt_order_A);
+
 $opt_group_desc_H{++$g} = "other expert options";
-#       option       type          default     group  requires incompat      preamble-output                                              help-output           
+#       option       type          default     group  requires incompat      preamble-output                                              help-output
 opt_Add("--execname",   "string",  undef,         $g,    undef, undef,       "define executable name of this script as <s>",              "define executable name of this script as <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--mxsize",     "integer", 16000,         $g,    undef, undef,       "set max allowed memory (Mb) for cmalign in centroid realignment step", "set max allowed memory for cmalign to <n> Mb (divided by 4 internally, matching v-annotate.pl convention)", \%opt_HH, \@opt_order_A);
 
 my %GetOptions_H = ();
 my $options_okay = 
@@ -142,7 +152,8 @@ my $options_okay =
                 'alt-max-fract=f' => \$GetOptions_H{"--alt-max-fract"},
                 'nper1grp=i'   => \$GetOptions_H{"--nper1grp"},
 # other expert options
-                'execname=s'   => \$GetOptions_H{"--execname"});
+                'execname=s'   => \$GetOptions_H{"--execname"},
+                'mxsize=i'     => \$GetOptions_H{"--mxsize"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); 
 my $execname_opt  = $GetOptions_H{"--execname"};
@@ -876,6 +887,7 @@ if(! $do_skip_annotate && $overall_centroid_accn ne "" && $overall_centroid_accn
   my $new_model_len = realign_to_centroid_rf(
     $output_stk_file, $overall_centroid_accn, $realign_work_root,
     \%ftr_info_HA, $model_key,
+    opt_Get("--mxsize", \%opt_HH),
     \%execs_H, $do_keep, opt_Get("-v", \%opt_HH),
     \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
@@ -1796,6 +1808,7 @@ sub realign_to_centroid_rf {
   my $sub_name = "realign_to_centroid_rf";
   my ($stk_file, $centroid_accn, $work_root,
       $ftr_info_HAR, $model_key,
+      $mxsize,
       $execs_HR, $do_keep, $do_verbose,
       $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
 
@@ -1927,14 +1940,30 @@ sub realign_to_centroid_rf {
   utl_RunCommand($cmd, $do_verbose, 0, $FH_HR);
 
   # Step F: cmalign training seqs to the centroid-anchored CM.
-  # Use a generous --mxsize because HMM-banded DP matrices for larger
-  # viral genomes (~11kb+ like TBEV) exceed the default 1024 MB limit.
-  # 16384 MB (16 GB) accommodates all viral-genome-sized models in practice.
-  my $realigned_stk = $work_root . ".realigned.stk";
-  $cmd = $execs_HR->{"cmalign"} . " --mxsize 16384 --outformat pfam " . $tmp_cm . " " . $train_fa . " > " . $realigned_stk;
+  # Use the same cmalign options as v-annotate.pl so the alignment
+  # semantics are consistent: --sub --notrunc -g --fixedtau
+  # --flanktoins 0.1 --flankselfins 0.8. --mxsize is divided by 4
+  # because empirically cmalign can require as much as 4x the memory
+  # it thinks it does (see v-annotate.pl line 4266 comment).
+  my $realigned_stk  = $work_root . ".realigned.stk";
+  my $cmalign_stdout = $work_root . ".cmalign.out";
+  my $cmalign_mxsize = sprintf("%.2f", $mxsize / 4.0);
+  $cmd = $execs_HR->{"cmalign"}
+       . " --outformat pfam"
+       . " --dnaout --verbose --cpu 1"
+       . " -o " . $realigned_stk
+       . " --tau 1E-3 --fixedtau"
+       . " --sub --notrunc"
+       . " -g"
+       . " --flanktoins 0.1 --flankselfins 0.8"
+       . " --mxsize " . $cmalign_mxsize
+       . " " . $tmp_cm . " " . $train_fa
+       . " > " . $cmalign_stdout;
   ofile_OutputString($FH_HR->{"log"}, 1,
-    sprintf("# Centroid realignment: running cmalign to realign %d sequences against centroid-anchored CM\n", $nseq));
+    sprintf("# Centroid realignment: running cmalign (mxsize=%s Mb) to realign %d sequences against centroid-anchored CM\n",
+            $cmalign_mxsize, $nseq));
   utl_RunCommand($cmd, $do_verbose, 0, $FH_HR);
+  if(! $do_keep) { push(@{$to_remove_AR}, $cmalign_stdout); }
 
   # Step G: re-add #=GS lines (WT/GP/SG) from stitched .stk to realigned .stk
   reannotate_gs_lines($stk_file, $realigned_stk, $FH_HR);
