@@ -151,6 +151,13 @@ my $options_okay =
                 'vannot-opts-file=s' => \$GetOptions_H{"--vannot-opts-file"},
                 'alt-max-fract=f' => \$GetOptions_H{"--alt-max-fract"},
                 'nper1grp=i'   => \$GetOptions_H{"--nper1grp"},
+# overhang extension options
+                'no-overhang-ext'          => \$GetOptions_H{"--no-overhang-ext"},
+                'overhang-anchor-len=i'    => \$GetOptions_H{"--overhang-anchor-len"},
+                'overhang-min-coverage=f'  => \$GetOptions_H{"--overhang-min-coverage"},
+                'overhang-min-conservation=f' => \$GetOptions_H{"--overhang-min-conservation"},
+                'overhang-stop-lookahead=i' => \$GetOptions_H{"--overhang-stop-lookahead"},
+                'overhang-min-active=i'    => \$GetOptions_H{"--overhang-min-active"},
 # other expert options
                 'execname=s'   => \$GetOptions_H{"--execname"},
                 'mxsize=i'     => \$GetOptions_H{"--mxsize"});
@@ -905,6 +912,51 @@ if(! $do_skip_annotate && $overall_centroid_accn ne "" && $overall_centroid_accn
   $seed_model_len = $new_model_len;
   ofile_OutputString($FH_HR->{"log"}, 1,
     sprintf("# Wrote remapped minfo to %s\n", $remapped_minfo));
+}
+
+#---------------------------------------
+# Step 12f: Phase-2 RF overhang extension
+#---------------------------------------
+# Extend the RF at the 5' and 3' ends using conserved nucleotides from
+# training-sequence overhangs that currently fall outside the RF. For
+# each end: muscle-align (anchor + overhang) per seq, classify overhang
+# columns by coverage + conservation, trim to the interval bounded by
+# the outermost INCLUDE columns, and splice those columns into the stk.
+# Then cmbuild --hand and cmalign all training seqs to produce a proper
+# realignment at the new RF positions.
+if(! $do_skip_annotate && ! opt_Get("--no-overhang-ext", \%opt_HH)) {
+  my $overhang_work_root = $out_root . ".overhang_ext";
+  my ($n_5p, $n_3p) = extend_rf_with_overhangs(
+    $output_stk_file, $overhang_work_root,
+    \%ftr_info_HA, $model_key,
+    opt_Get("--overhang-anchor-len",      \%opt_HH),
+    opt_Get("--overhang-min-coverage",    \%opt_HH),
+    opt_Get("--overhang-min-conservation",\%opt_HH),
+    opt_Get("--overhang-stop-lookahead",  \%opt_HH),
+    opt_Get("--overhang-min-active",      \%opt_HH),
+    \%execs_H, $do_keep, opt_Get("-v", \%opt_HH),
+    \%ofile_info_HH, \@to_remove_A, $FH_HR);
+
+  if($n_5p > 0 || $n_3p > 0) {
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# Overhang extension: 3' added %d RF columns, 5' added %d RF columns\n",
+              $n_3p, $n_5p));
+
+    # Re-verify integrity (may truncate-warn on seqs whose overhang
+    # extended past the last INCLUDE column).
+    verify_stk_sequence_integrity($output_stk_file, $tier2_fasta_file, $FH_HR);
+
+    # Update model length and rewrite minfo with shifted coords.
+    my $new_len = $seed_model_len + $n_5p + $n_3p;
+    my $overhang_minfo = $out_root . ".overhang.minfo";
+    write_remapped_minfo($seed_minfo, $overhang_minfo, \%ftr_info_HA,
+                         $model_key, $new_len, $FH_HR);
+    $seed_minfo     = $overhang_minfo;
+    $seed_model_len = $new_len;
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# Overhang extension: model length %d -> %d; wrote updated minfo to %s\n",
+              $new_len - $n_5p - $n_3p, $new_len, $overhang_minfo));
+  }
 }
 
 #---------------------------------------
@@ -2031,6 +2083,590 @@ sub reannotate_gs_lines {
   }
   close($ofh);
   return;
+}
+
+#################################################################
+# Subroutine: extend_rf_with_overhangs()
+# Incept:     EPN* Wed Apr 15 2026
+#
+# Purpose:    Phase-2 RF extension at 5' and 3' ends of the training
+#             alignment. For each end:
+#               1. Extract per-sequence (anchor + overhang) subseqs,
+#                  where anchor = last/first A RF columns and
+#                  overhang = nucleotides past the outermost RF column.
+#               2. muscle-align the anchor+overhang subseqs.
+#               3. Classify each overhang column as INCLUDE,
+#                  INCLUDE-MAYBE, or SKIP based on coverage and
+#                  conservation among active sequences.
+#               4. Trim to [first INCLUDE .. last INCLUDE] column range.
+#             Splice the kept cols into the stk (replacing the existing
+#             insert cols outside the outermost RF col at that end),
+#             cmbuild --hand on the extended stk, and cmalign every
+#             training seq against the new CM to produce a proper
+#             realignment at the newly added RF positions.
+#
+#             Feature coords in $ftr_info_HAR are shifted by the 5'
+#             extension count (3' extension does not affect coords).
+#
+# Arguments:
+#   $stk_file        : path to realigned .stk (replaced in place on extension)
+#   $work_root       : prefix for temp files
+#   $ftr_info_HAR    : REF to %ftr_info_HA (feature coords updated in place)
+#   $model_key       : model key in ftr_info_HA
+#   $anchor_len      : anchor length (RF cols) for muscle context
+#   $min_cov         : min coverage threshold for INCLUDE (n_nongap/n_active)
+#   $min_cons        : min conservation threshold for INCLUDE
+#   $lookahead       : stop walk if no INCLUDE seen in last $lookahead cols
+#   $min_active      : min n_active to classify col (else SKIP)
+#   $execs_HR        : REF to executables hash (muscle, cmbuild, cmalign)
+#   $do_keep         : 1 to retain intermediate files
+#   $do_verbose      : 1 to log cmd invocations
+#   $ofile_info_HHR  : REF to output file info hash
+#   $to_remove_AR    : REF to array of files to cleanup
+#   $FH_HR           : REF to hash of file handles
+#
+# Returns: ($n_added_5p, $n_added_3p) number of new RF cols at each end
+#################################################################
+sub extend_rf_with_overhangs {
+  my $sub_name = "extend_rf_with_overhangs";
+  my ($stk_file, $work_root, $ftr_info_HAR, $model_key,
+      $anchor_len, $min_cov, $min_cons, $lookahead, $min_active,
+      $execs_HR, $do_keep, $do_verbose,
+      $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
+
+  if(! exists $execs_HR->{"muscle"}) {
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# Overhang extension: skipped, muscle executable not available\n"));
+    return (0, 0);
+  }
+
+  # Load current alignment
+  my $msa = Bio::Easel::MSA->new({ fileLocation => $stk_file, isDna => 1 });
+  my $alen = $msa->alen();
+  my $nseq = $msa->nseq();
+  my $rf = $msa->get_rf();
+  my @rf_chars = split(//, $rf);
+  if(scalar(@rf_chars) != $alen) {
+    ofile_FAIL("ERROR in $sub_name, RF length != alen", 1, $FH_HR);
+  }
+
+  my @names   = ();
+  my @aligned = ();
+  for(my $i = 0; $i < $nseq; $i++) {
+    push(@names,   $msa->get_sqname($i));
+    push(@aligned, $msa->get_sqstring_aligned($i));
+  }
+  undef $msa;
+
+  # Locate outermost RF columns
+  my $first_rf_col = -1;
+  my $last_rf_col  = -1;
+  for(my $c = 0; $c < $alen; $c++) {
+    if($rf_chars[$c] !~ /[\-_.~]/) {
+      $first_rf_col = $c if($first_rf_col == -1);
+      $last_rf_col  = $c;
+    }
+  }
+  if($first_rf_col == -1) {
+    ofile_FAIL("ERROR in $sub_name, no RF columns in $stk_file", 1, $FH_HR);
+  }
+
+  # Compute extension for each end
+  my $plan_5p = compute_overhang_extension_plan(
+    \@names, \@aligned, \@rf_chars, $first_rf_col, $last_rf_col,
+    "5p", $anchor_len, $min_cov, $min_cons, $lookahead, $min_active,
+    $execs_HR, $work_root . ".overhang.5p", $do_keep, $do_verbose,
+    $to_remove_AR, $FH_HR);
+
+  my $plan_3p = compute_overhang_extension_plan(
+    \@names, \@aligned, \@rf_chars, $first_rf_col, $last_rf_col,
+    "3p", $anchor_len, $min_cov, $min_cons, $lookahead, $min_active,
+    $execs_HR, $work_root . ".overhang.3p", $do_keep, $do_verbose,
+    $to_remove_AR, $FH_HR);
+
+  my $n_5p = scalar(@{$plan_5p->{"rf_chars"}});
+  my $n_3p = scalar(@{$plan_3p->{"rf_chars"}});
+
+  my $n_new_5p = 0; foreach my $r (@{$plan_5p->{"rf_chars"}}) { $n_new_5p++ if($r !~ /[\-_.~]/); }
+  my $n_new_3p = 0; foreach my $r (@{$plan_3p->{"rf_chars"}}) { $n_new_3p++ if($r !~ /[\-_.~]/); }
+
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# Overhang extension: 5' %d cols (%d new RF), 3' %d cols (%d new RF)\n",
+            $n_5p, $n_new_5p, $n_3p, $n_new_3p));
+
+  if($n_5p == 0 && $n_3p == 0) {
+    return (0, 0);
+  }
+
+  # Build extended stk: strip existing insert cols outside outermost RF
+  # cols at the end(s) being extended; prepend/append the new cols.
+  my $kept_start = ($n_5p > 0) ? $first_rf_col : 0;
+  my $kept_end   = ($n_3p > 0) ? $last_rf_col  : $alen - 1;
+
+  my $extended_stk = $work_root . ".overhang.extended.stk";
+  open(my $efh, ">", $extended_stk) || ofile_FAIL("ERROR in $sub_name, cannot write $extended_stk", 1, $FH_HR);
+  print $efh "# STOCKHOLM 1.0\n\n";
+
+  # Determine name field width for alignment
+  my $name_width = 0;
+  foreach my $n (@names) {
+    $name_width = length($n) if(length($n) > $name_width);
+  }
+  my $rf_label = "#=GC RF";
+  $name_width = length($rf_label) if(length($rf_label) > $name_width);
+
+  for(my $i = 0; $i < $nseq; $i++) {
+    my $kept_middle = substr($aligned[$i], $kept_start, $kept_end - $kept_start + 1);
+    my $left  = ($n_5p > 0) ? $plan_5p->{"seq_chars"}[$i] : "";
+    my $right = ($n_3p > 0) ? $plan_3p->{"seq_chars"}[$i] : "";
+    my $full  = $left . $kept_middle . $right;
+    printf $efh "%-${name_width}s  %s\n", $names[$i], $full;
+  }
+  my $left_rf  = ($n_5p > 0) ? join("", @{$plan_5p->{"rf_chars"}}) : "";
+  my $right_rf = ($n_3p > 0) ? join("", @{$plan_3p->{"rf_chars"}}) : "";
+  my $middle_rf = join("", @rf_chars[$kept_start .. $kept_end]);
+  my $full_rf   = $left_rf . $middle_rf . $right_rf;
+  printf $efh "%-${name_width}s  %s\n", $rf_label, $full_rf;
+  print  $efh "//\n";
+  close($efh);
+
+  # cmbuild --hand on extended .stk
+  my $tmp_cm      = $work_root . ".overhang.cm";
+  my $cmbuild_out = $work_root . ".overhang.cmbuild.out";
+  foreach my $f ($tmp_cm, $tmp_cm . ".i1f", $tmp_cm . ".i1i", $tmp_cm . ".i1m", $tmp_cm . ".i1p") {
+    if(-e $f) { unlink $f; }
+  }
+  my $cmd = $execs_HR->{"cmbuild"} . " --hand -F " . $tmp_cm . " " . $extended_stk . " > " . $cmbuild_out;
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# Overhang extension: running cmbuild --hand on extended .stk (output to %s)\n", $cmbuild_out));
+  utl_RunCommand($cmd, $do_verbose, 0, $FH_HR);
+
+  # Write unaligned training fasta from current alignment
+  my $train_fa = $work_root . ".overhang.train.fa";
+  open(my $fafh, ">", $train_fa) || ofile_FAIL("ERROR in $sub_name, cannot write $train_fa", 1, $FH_HR);
+  for(my $i = 0; $i < $nseq; $i++) {
+    my $seq = $aligned[$i];
+    $seq =~ s/[\-_.~]//g;
+    print $fafh ">" . $names[$i] . "\n" . $seq . "\n";
+  }
+  close($fafh);
+
+  # cmalign training seqs to new CM
+  my $realigned_stk = $work_root . ".overhang.realigned.stk";
+  $cmd = $execs_HR->{"cmalign"} . " --outformat pfam " . $tmp_cm . " " . $train_fa . " > " . $realigned_stk;
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# Overhang extension: running cmalign to realign %d sequences against extended CM\n", $nseq));
+  utl_RunCommand($cmd, $do_verbose, 0, $FH_HR);
+
+  # Re-add GS lines from original stk
+  reannotate_gs_lines($stk_file, $realigned_stk, $FH_HR);
+
+  # Replace stk in place
+  utl_RunCommand("mv " . $realigned_stk . " " . $stk_file, 0, 0, $FH_HR);
+
+  # Shift feature coords by 5' extension amount
+  if($n_new_5p > 0) {
+    my $ftr_model_key = undef;
+    if(exists $ftr_info_HAR->{$model_key}) { $ftr_model_key = $model_key; }
+    else {
+      my @keys = sort keys %{$ftr_info_HAR};
+      $ftr_model_key = $keys[0] if(scalar(@keys) > 0);
+    }
+    if(defined $ftr_model_key && exists $ftr_info_HAR->{$ftr_model_key}) {
+      my $ftr_AR = $ftr_info_HAR->{$ftr_model_key};
+      for(my $i = 0; $i < scalar(@{$ftr_AR}); $i++) {
+        my $old_coords = $ftr_AR->[$i]{"coords"};
+        next if(! defined $old_coords || $old_coords eq "");
+        my @new_segs = ();
+        foreach my $seg (split(/,/, $old_coords)) {
+          if($seg =~ /^(\d+)\.\.(\d+):([\+\-])$/) {
+            my ($s, $e, $str) = ($1, $2, $3);
+            push(@new_segs, ($s + $n_new_5p) . ".." . ($e + $n_new_5p) . ":" . $str);
+          }
+          else {
+            push(@new_segs, $seg);
+          }
+        }
+        my $new_coords = join(",", @new_segs);
+        if($new_coords ne $old_coords) {
+          ofile_OutputString($FH_HR->{"log"}, 1,
+            sprintf("# Overhang extension: feature %d coords %s -> %s (5' shift +%d)\n",
+                    $i, $old_coords, $new_coords, $n_new_5p));
+        }
+        $ftr_AR->[$i]{"coords"} = $new_coords;
+      }
+    }
+  }
+
+  if(! $do_keep) {
+    push(@{$to_remove_AR}, $extended_stk, $tmp_cm, $cmbuild_out, $train_fa);
+  }
+
+  return ($n_new_5p, $n_new_3p);
+}
+
+#################################################################
+# Subroutine: compute_overhang_extension_plan()
+# Incept:     EPN* Wed Apr 15 2026
+#
+# Purpose:    Compute the overhang extension plan for one end (5p or 3p).
+#             Extracts anchor+overhang subseqs, runs muscle, classifies
+#             cols, trims to [first INCLUDE, last INCLUDE], and builds
+#             the per-seq char arrays and RF char array for that end.
+#
+# Arguments:
+#   $names_AR     : REF to array of seq names
+#   $aligned_AR   : REF to array of aligned sqstrings (in original stk)
+#   $rf_chars_AR  : REF to array of RF chars (original stk)
+#   $first_rf_col : 0-based col index of first RF position
+#   $last_rf_col  : 0-based col index of last RF position
+#   $end          : "5p" or "3p"
+#   $anchor_len   : anchor length in RF positions
+#   $min_cov      : coverage threshold
+#   $min_cons     : conservation threshold
+#   $lookahead    : stop walk if no INCLUDE in last $lookahead cols
+#   $min_active   : min n_active to classify (else SKIP)
+#   $execs_HR     : REF to execs hash
+#   $work_root    : prefix for temp files (includes end tag)
+#   $do_keep      : keep intermediates
+#   $do_verbose   : verbose flag
+#   $to_remove_AR : cleanup list
+#   $FH_HR        : file handles
+#
+# Returns: hashref { rf_chars => [rf_char,...], seq_chars => [seq0_str, seq1_str, ...] }
+#          Each seq_chars[i] has length == scalar(@{rf_chars}).
+#          Empty arrays if no extension possible.
+#################################################################
+sub compute_overhang_extension_plan {
+  my $sub_name = "compute_overhang_extension_plan";
+  my ($names_AR, $aligned_AR, $rf_chars_AR, $first_rf_col, $last_rf_col,
+      $end, $anchor_len, $min_cov, $min_cons, $lookahead, $min_active,
+      $execs_HR, $work_root, $do_keep, $do_verbose, $to_remove_AR, $FH_HR) = @_;
+
+  my $nseq = scalar(@{$names_AR});
+  my $alen = scalar(@{$rf_chars_AR});
+  my $empty_plan = { "rf_chars" => [], "seq_chars" => [ ("") x $nseq ] };
+
+  # Extract anchor_nt and overhang_nt per sequence
+  my @anchor_nt_A   = ();
+  my @overhang_nt_A = ();
+  my $any_overhang  = 0;
+  for(my $i = 0; $i < $nseq; $i++) {
+    my @chars = split(//, $aligned_AR->[$i]);
+    my @rf_positions_nt = (); # [col] => nt for RF cols where seq is non-gap
+    my @overhang_nt     = ();
+
+    if($end eq "3p") {
+      # overhang: cols > last_rf_col, non-gap chars in order
+      # anchor:   last $anchor_len non-gap chars from cols <= last_rf_col where RF is non-gap
+      for(my $c = 0; $c <= $last_rf_col; $c++) {
+        next if($rf_chars_AR->[$c] =~ /[\-_.~]/);
+        next if($chars[$c] =~ /[\-_.~]/);
+        push(@rf_positions_nt, $chars[$c]);
+      }
+      for(my $c = $last_rf_col + 1; $c < $alen; $c++) {
+        next if($chars[$c] =~ /[\-_.~]/);
+        push(@overhang_nt, $chars[$c]);
+      }
+      my $n_rf = scalar(@rf_positions_nt);
+      my $take = ($n_rf >= $anchor_len) ? $anchor_len : $n_rf;
+      my @anchor = @rf_positions_nt[($n_rf - $take) .. ($n_rf - 1)];
+      push(@anchor_nt_A,   join("", @anchor));
+      push(@overhang_nt_A, join("", @overhang_nt));
+    }
+    else { # 5p
+      for(my $c = $first_rf_col; $c < $alen; $c++) {
+        next if($rf_chars_AR->[$c] =~ /[\-_.~]/);
+        next if($chars[$c] =~ /[\-_.~]/);
+        push(@rf_positions_nt, $chars[$c]);
+      }
+      for(my $c = 0; $c < $first_rf_col; $c++) {
+        next if($chars[$c] =~ /[\-_.~]/);
+        push(@overhang_nt, $chars[$c]);
+      }
+      my $n_rf = scalar(@rf_positions_nt);
+      my $take = ($n_rf >= $anchor_len) ? $anchor_len : $n_rf;
+      my @anchor = @rf_positions_nt[0 .. ($take - 1)];
+      push(@anchor_nt_A,   join("", @anchor));
+      push(@overhang_nt_A, join("", @overhang_nt));
+    }
+    $any_overhang = 1 if(length($overhang_nt_A[-1]) > 0);
+  }
+
+  if(! $any_overhang) {
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# Overhang extension (%s): no sequence has any overhang nucleotides; skipping\n", $end));
+    return $empty_plan;
+  }
+
+  # Build muscle input: anchor+overhang (3p) or overhang+anchor (5p)
+  # Skip seqs with empty anchor (can't contribute context)
+  my $muscle_in  = $work_root . ".in.fa";
+  my $muscle_out = $work_root . ".out.afa";
+  open(my $mfh, ">", $muscle_in) || ofile_FAIL("ERROR in $sub_name, cannot write $muscle_in", 1, $FH_HR);
+  my @included_idx = ();
+  my @anchor_aa_len = (); # length of anchor portion per included seq
+  for(my $i = 0; $i < $nseq; $i++) {
+    my $anchor_s = $anchor_nt_A[$i];
+    my $over_s   = $overhang_nt_A[$i];
+    next if(length($anchor_s) == 0);
+    my $payload = ($end eq "3p") ? ($anchor_s . $over_s) : ($over_s . $anchor_s);
+    print $mfh ">seq" . scalar(@included_idx) . "\n" . $payload . "\n";
+    push(@included_idx,   $i);
+    push(@anchor_aa_len,  length($anchor_s));
+  }
+  close($mfh);
+
+  my $n_included = scalar(@included_idx);
+  if($n_included < $min_active) {
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# Overhang extension (%s): only %d seqs with non-empty anchor (min_active=%d); skipping\n",
+              $end, $n_included, $min_active));
+    return $empty_plan;
+  }
+
+  # Run muscle
+  if($n_included == 1) {
+    # No alignment needed; single sequence
+    open(my $sfh, "<", $muscle_in) || ofile_FAIL("ERROR in $sub_name, cannot read $muscle_in", 1, $FH_HR);
+    open(my $ofh, ">", $muscle_out) || ofile_FAIL("ERROR in $sub_name, cannot write $muscle_out", 1, $FH_HR);
+    while(my $l = <$sfh>) { print $ofh $l; }
+    close($sfh); close($ofh);
+  }
+  else {
+    my $cmd = $execs_HR->{"muscle"} . " -in " . $muscle_in . " -out " . $muscle_out;
+    utl_RunCommand($cmd, $do_verbose, 0, $FH_HR);
+  }
+
+  # Parse muscle output (aligned fasta)
+  my @mnames = ();
+  my @mseqs  = ();
+  my $curn = undef;
+  my $curs = "";
+  open(my $afh, "<", $muscle_out) || ofile_FAIL("ERROR in $sub_name, cannot read $muscle_out", 1, $FH_HR);
+  while(my $l = <$afh>) {
+    chomp $l;
+    if($l =~ /^>(\S+)/) {
+      if(defined $curn) { push(@mnames, $curn); push(@mseqs, $curs); }
+      $curn = $1; $curs = "";
+    }
+    elsif(defined $curn) {
+      $l =~ s/\s+//g;
+      $curs .= $l;
+    }
+  }
+  if(defined $curn) { push(@mnames, $curn); push(@mseqs, $curs); }
+  close($afh);
+
+  # Map muscle "seqN" back to included_idx order
+  my %mname_to_mi = ();
+  for(my $mi = 0; $mi < scalar(@mnames); $mi++) { $mname_to_mi{$mnames[$mi]} = $mi; }
+  my @mseq_by_incl = ();
+  for(my $k = 0; $k < $n_included; $k++) {
+    my $name = "seq" . $k;
+    if(! exists $mname_to_mi{$name}) {
+      ofile_FAIL("ERROR in $sub_name, muscle output missing $name", 1, $FH_HR);
+    }
+    push(@mseq_by_incl, $mseqs[$mname_to_mi{$name}]);
+  }
+
+  my $malen = length($mseq_by_incl[0]);
+  foreach my $s (@mseq_by_incl) {
+    if(length($s) != $malen) {
+      ofile_FAIL("ERROR in $sub_name, muscle output has inconsistent lengths", 1, $FH_HR);
+    }
+  }
+
+  # Identify anchor column range per included seq.
+  # For 3p: anchor is the FIRST anchor_aa_len[k] non-gap chars, so
+  #   anchor_end_col[k] = muscle col index of the anchor_aa_len[k]-th non-gap char.
+  # For 5p: anchor is the LAST anchor_aa_len[k] non-gap chars, so
+  #   anchor_start_col[k] = muscle col index of (total_nongap - anchor_aa_len[k] + 1)-th non-gap char.
+  my @anchor_end_col_A   = (); # 3p: last col of anchor per seq
+  my @anchor_start_col_A = (); # 5p: first col of anchor per seq
+  for(my $k = 0; $k < $n_included; $k++) {
+    my @c = split(//, $mseq_by_incl[$k]);
+    my $ng = 0;
+    my $alen_k = $anchor_aa_len[$k];
+
+    if($end eq "3p") {
+      my $end_col = -1;
+      for(my $j = 0; $j < $malen; $j++) {
+        if($c[$j] !~ /[\-_.~]/) {
+          $ng++;
+          if($ng == $alen_k) { $end_col = $j; last; }
+        }
+      }
+      push(@anchor_end_col_A, $end_col);
+    }
+    else {
+      # count total non-gap to find index of first anchor char
+      my $tot_ng = 0;
+      for(my $j = 0; $j < $malen; $j++) { $tot_ng++ if($c[$j] !~ /[\-_.~]/); }
+      my $target_idx = $tot_ng - $alen_k + 1; # 1-based index of first anchor char
+      my $start_col = -1;
+      $ng = 0;
+      for(my $j = 0; $j < $malen; $j++) {
+        if($c[$j] !~ /[\-_.~]/) {
+          $ng++;
+          if($ng == $target_idx) { $start_col = $j; last; }
+        }
+      }
+      push(@anchor_start_col_A, $start_col);
+    }
+  }
+
+  # Define overhang column range in muscle alignment
+  my @overhang_cols = ();
+  if($end eq "3p") {
+    my $max_anchor_end = -1;
+    foreach my $v (@anchor_end_col_A) { $max_anchor_end = $v if($v > $max_anchor_end); }
+    for(my $j = $max_anchor_end + 1; $j < $malen; $j++) { push(@overhang_cols, $j); }
+  }
+  else {
+    my $min_anchor_start = $malen;
+    foreach my $v (@anchor_start_col_A) { $min_anchor_start = $v if($v < $min_anchor_start); }
+    for(my $j = 0; $j < $min_anchor_start; $j++) { push(@overhang_cols, $j); }
+  }
+
+  my $n_over_cols = scalar(@overhang_cols);
+  if($n_over_cols == 0) {
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# Overhang extension (%s): no overhang columns in muscle alignment; skipping\n", $end));
+    return $empty_plan;
+  }
+
+  # Determine per-seq char at each overhang col (in walk order) and
+  # per-seq first/last non-gap overhang col (for n_active).
+  # Walk order: 3p = left-to-right, 5p = right-to-left.
+  my @walk_cols = ($end eq "3p") ? @overhang_cols : reverse(@overhang_cols);
+
+  # Build overhang char matrix [k][walk_idx] = char
+  my @over_chars = (); # over_chars[k] = ref to array of chars in walk order
+  for(my $k = 0; $k < $n_included; $k++) {
+    my @c = split(//, $mseq_by_incl[$k]);
+    my @row = ();
+    foreach my $j (@walk_cols) { push(@row, $c[$j]); }
+    push(@over_chars, \@row);
+  }
+
+  # Determine each seq's "furthest-in-walk" non-gap overhang index
+  my @furthest_walk_idx = (); # -1 if none
+  for(my $k = 0; $k < $n_included; $k++) {
+    my $last = -1;
+    for(my $w = 0; $w < scalar(@walk_cols); $w++) {
+      if($over_chars[$k][$w] !~ /[\-_.~]/) { $last = $w; }
+    }
+    push(@furthest_walk_idx, $last);
+  }
+
+  # Classify each walk-col
+  my @cls = (); # "INCLUDE" | "MAYBE" | "SKIP"
+  my $last_incl_walk_idx = -1;
+  my $first_incl_walk_idx = -1;
+  my $cols_since_last_incl = 0;
+  my $stopped_walk_idx = scalar(@walk_cols) - 1;
+
+  for(my $w = 0; $w < scalar(@walk_cols); $w++) {
+    # n_active: seqs with furthest_walk_idx[k] >= w
+    my $n_active = 0;
+    my $n_nongap = 0;
+    my %base_ct = ("A"=>0,"C"=>0,"G"=>0,"T"=>0,"U"=>0);
+    for(my $k = 0; $k < $n_included; $k++) {
+      if($furthest_walk_idx[$k] >= $w) { $n_active++; }
+      my $ch = uc($over_chars[$k][$w]);
+      if($ch !~ /[\-_.~]/) {
+        $n_nongap++;
+        if(exists $base_ct{$ch}) { $base_ct{$ch}++; }
+      }
+    }
+    my $label;
+    if($n_active < $min_active || $n_active == 0) {
+      $label = "SKIP";
+    }
+    else {
+      my $cov = $n_nongap / $n_active;
+      my $max_b = 0;
+      if($n_nongap > 0) {
+        my $max_ct = 0;
+        foreach my $b (keys %base_ct) { $max_ct = $base_ct{$b} if($base_ct{$b} > $max_ct); }
+        $max_b = $max_ct / $n_nongap;
+      }
+      if($cov >= $min_cov && $max_b >= $min_cons) { $label = "INCLUDE"; }
+      elsif($cov >= $min_cov)                     { $label = "MAYBE"; }
+      else                                        { $label = "SKIP"; }
+    }
+    push(@cls, $label);
+    if($label eq "INCLUDE") {
+      $first_incl_walk_idx = $w if($first_incl_walk_idx == -1);
+      $last_incl_walk_idx  = $w;
+      $cols_since_last_incl = 0;
+    }
+    else {
+      $cols_since_last_incl++;
+      if($cols_since_last_incl >= $lookahead) {
+        $stopped_walk_idx = $w;
+        last;
+      }
+    }
+  }
+
+  if($first_incl_walk_idx == -1) {
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# Overhang extension (%s): no INCLUDE columns found; no extension\n", $end));
+    return $empty_plan;
+  }
+
+  # Kept walk range: [first_incl_walk_idx .. last_incl_walk_idx]
+  # Build RF chars and per-seq char strings in walk order.
+  my @rf_walk = ();
+  my @seq_walk = (); # seq_walk[k] for k in included, char string
+  for(my $k = 0; $k < $n_included; $k++) { push(@seq_walk, ""); }
+
+  for(my $w = $first_incl_walk_idx; $w <= $last_incl_walk_idx; $w++) {
+    my $lbl = $cls[$w];
+    my $rfc = ($lbl eq "INCLUDE" || $lbl eq "MAYBE") ? "x" : ".";
+    push(@rf_walk, $rfc);
+    for(my $k = 0; $k < $n_included; $k++) {
+      my $ch = $over_chars[$k][$w];
+      # Normalize: any gap char -> '-'
+      if($ch =~ /[\-_.~]/) { $ch = "-"; }
+      $seq_walk[$k] .= $ch;
+    }
+  }
+
+  # Reorder from walk order to alignment order (5'→3' in the final stk)
+  my @rf_final = ($end eq "3p") ? @rf_walk : reverse(@rf_walk);
+  my @seq_final_incl = ();
+  for(my $k = 0; $k < $n_included; $k++) {
+    my $s = ($end eq "3p") ? $seq_walk[$k] : scalar(reverse($seq_walk[$k]));
+    push(@seq_final_incl, $s);
+  }
+
+  # Build final per-seq char array covering all $nseq seqs (non-included = all gaps)
+  my $n_cols = scalar(@rf_final);
+  my @seq_final = ();
+  for(my $i = 0; $i < $nseq; $i++) { push(@seq_final, "-" x $n_cols); }
+  for(my $k = 0; $k < $n_included; $k++) {
+    $seq_final[$included_idx[$k]] = $seq_final_incl[$k];
+  }
+
+  # Log summary
+  my $n_incl = 0; my $n_maybe = 0; my $n_skip = 0;
+  for(my $w = $first_incl_walk_idx; $w <= $last_incl_walk_idx; $w++) {
+    if   ($cls[$w] eq "INCLUDE") { $n_incl++; }
+    elsif($cls[$w] eq "MAYBE")   { $n_maybe++; }
+    else                         { $n_skip++; }
+  }
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# Overhang extension (%s): n_included_seqs=%d walked=%d kept=%d (INCLUDE=%d MAYBE=%d SKIP=%d)\n",
+            $end, $n_included, $stopped_walk_idx + 1, $n_cols, $n_incl, $n_maybe, $n_skip));
+
+  if(! $do_keep) {
+    push(@{$to_remove_AR}, $muscle_in, $muscle_out);
+  }
+
+  return { "rf_chars" => \@rf_final, "seq_chars" => \@seq_final };
 }
 
 #################################################################
