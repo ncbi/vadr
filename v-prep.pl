@@ -863,23 +863,28 @@ if(! $do_skip_annotate) {
 }
 
 #---------------------------------------
-# Step 12e: Centroid-based feature coord remapping (deferred from Step 6b)
+# Step 12e: Centroid-based RF realignment (deferred from Step 6b)
 #---------------------------------------
-# Now that stitching is complete (it used seed-space coords consistently),
-# remap feature coords from seed-reference space to centroid space for
-# the output minfo. This ensures v-build.pl --profile gets coords that
-# match the centroid-anchored RF in the final .stk.
+# Rewrite the stitched .stk's RF so non-gap columns correspond to the
+# centroid's residues (instead of the seed's), rebuild a CM from that
+# RF, and cmalign every training sequence against the new CM. This
+# produces a true realignment at the centroid's RF positions (not just
+# a relabeling of the old alignment columns) and makes the final .stk's
+# RF length agree with the centroid-based length written to the minfo.
 if(! $do_skip_annotate && $overall_centroid_accn ne "" && $overall_centroid_accn ne $model_key) {
-  # $ref_accn was already set to centroid in Step 6b
-  my $new_model_len = remap_feature_coords_to_centroid(
-    \%ftr_info_HA, $model_key, $tier2_align_stk_file,
-    $model_key, $overall_centroid_accn, $FH_HR);
-  # note: pass $model_key (original seed accn) as seed_accn, not $ref_accn
-  # (which was already changed to centroid)
+  my $realign_work_root = $out_root . ".centroid_realign";
+  my $new_model_len = realign_to_centroid_rf(
+    $output_stk_file, $overall_centroid_accn, $realign_work_root,
+    \%ftr_info_HA, $model_key,
+    \%execs_H, $do_keep, opt_Get("-v", \%opt_HH),
+    \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
   ofile_OutputString($FH_HR->{"log"}, 1,
-    sprintf("# Deferred remapping: seed len=%d -> centroid len=%d\n",
+    sprintf("# Centroid realignment: seed len=%d -> centroid len=%d\n",
             $seed_model_len, $new_model_len));
+
+  # Re-verify that realigned sequences still degap to tier-2 fasta
+  verify_stk_sequence_integrity($output_stk_file, $tier2_fasta_file, $FH_HR);
 
   my $remapped_minfo = $out_root . ".remapped.minfo";
   write_remapped_minfo($seed_minfo, $remapped_minfo, \%ftr_info_HA,
@@ -1745,81 +1750,105 @@ sub compute_overall_centroid_blast {
 }
 
 #################################################################
-# Subroutine: remap_feature_coords_to_centroid()
-# Incept:     EPN* Sat Apr 12 2026
+# Subroutine: realign_to_centroid_rf()
+# Incept:     EPN* Wed Apr 15 2026
 #
-# Purpose:    Given the tier-2 v-annotate alignment (all seqs aligned
-#             to the seed model), remap every feature coordinate in
-#             %ftr_info_HA from seed-reference space to centroid-
-#             sequence space. The tier-2 alignment has RF positions
-#             corresponding to seed model positions; the centroid's
-#             aligned sequence tells us which seed RF positions map
-#             to which centroid sequence positions.
+# Purpose:    Replace the stitched alignment's seed-anchored RF with
+#             a centroid-anchored RF and cmalign every training
+#             sequence against a CM built from that new RF. This
+#             produces a genuine realignment at the centroid's match
+#             columns (not just a relabeling of old alignment columns,
+#             which would leave residues that were in seed-insert
+#             bags essentially unaligned at their new RF positions).
 #
-#             Also returns the centroid's ungapped length (= new
-#             model length).
+#             Workflow:
+#               1. Load stitched .stk, find centroid row.
+#               2. Build new RF ('x' where centroid has a nucleotide,
+#                  '.' elsewhere) and a seed-RF -> centroid-RF column
+#                  mapping in one pass over the columns.
+#               3. Remap feature coords in %ftr_info_HA using the map.
+#               4. Write a temporary .stk with the rewritten RF.
+#               5. cmbuild --hand on the rewritten .stk to produce a
+#                  centroid-anchored CM.
+#               6. Write training sequences to an unaligned FASTA.
+#               7. cmalign --outformat pfam the training sequences
+#                  against the new CM.
+#               8. Re-add the original #=GS lines (WT, GP, SG) to the
+#                  realigned .stk.
+#               9. Overwrite the stitched .stk with the realigned one.
 #
 # Arguments:
-#   $ftr_info_HAR       : REF to %ftr_info_HA (modified in place)
-#   $model_key          : model key in ftr_info_HA
-#   $tier2_stk_file     : path to tier-2 alignment .stk
-#   $seed_accn          : seed reference accession
-#   $centroid_accn      : overall centroid accession
-#   $FH_HR              : REF to hash of file handles
+#   $stk_file       : stitched .stk path (replaced in place with realignment)
+#   $centroid_accn  : accession of overall centroid (must be in the .stk)
+#   $work_root      : prefix for temporary files
+#   $ftr_info_HAR   : REF to %ftr_info_HA (feature coords remapped in place)
+#   $model_key      : model key in ftr_info_HA
+#   $execs_HR       : REF to hash of executables
+#   $do_keep        : 1 to keep intermediate files
+#   $do_verbose     : 1 for verbose cmd logging
+#   $ofile_info_HHR : REF to hash of file info
+#   $to_remove_AR   : REF to array of files to remove at exit
+#   $FH_HR          : REF to hash of file handles
 #
 # Returns: new model length (centroid ungapped length)
 #################################################################
-sub remap_feature_coords_to_centroid {
-  my $sub_name = "remap_feature_coords_to_centroid";
-  my ($ftr_info_HAR, $model_key, $tier2_stk_file,
-      $seed_accn, $centroid_accn, $FH_HR) = @_;
+sub realign_to_centroid_rf {
+  my $sub_name = "realign_to_centroid_rf";
+  my ($stk_file, $centroid_accn, $work_root,
+      $ftr_info_HAR, $model_key,
+      $execs_HR, $do_keep, $do_verbose,
+      $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
 
-  # Load the tier-2 alignment
-  my $msa = Bio::Easel::MSA->new({ fileLocation => $tier2_stk_file, isDna => 1 });
-  my $rf = $msa->get_rf();
+  # Step A: load stitched alignment, locate centroid, extract aligned strings
+  my $msa = Bio::Easel::MSA->new({ fileLocation => $stk_file, isDna => 1 });
+  my $alen = $msa->alen();
+  my $old_rf = $msa->get_rf();
+  my @old_rf_chars = split(//, $old_rf);
+  if(scalar(@old_rf_chars) != $alen) {
+    ofile_FAIL("ERROR in $sub_name, old RF length (" . scalar(@old_rf_chars) . ") != alen ($alen)", 1, $FH_HR);
+  }
 
-  # Find the centroid sequence in the alignment
   my $centroid_idx = -1;
   for(my $i = 0; $i < $msa->nseq(); $i++) {
-    if($msa->get_sqname($i) eq $centroid_accn) {
-      $centroid_idx = $i;
-      last;
-    }
+    if($msa->get_sqname($i) eq $centroid_accn) { $centroid_idx = $i; last; }
   }
   if($centroid_idx == -1) {
-    ofile_FAIL("ERROR in $sub_name, centroid $centroid_accn not found in tier-2 alignment $tier2_stk_file", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, centroid $centroid_accn not found in $stk_file", 1, $FH_HR);
   }
   my $centroid_aln = $msa->get_sqstring_aligned($centroid_idx);
-
-  # Build seed_rf_pos -> centroid_seq_pos mapping.
-  # Walk alignment columns; for each RF (non-gap) column, record
-  # the centroid's sequence position (or -1 if it has a gap there).
-  my @rf_chars     = split(//, $rf);
   my @centroid_chars = split(//, $centroid_aln);
-  my $alen = scalar(@rf_chars);
   if(scalar(@centroid_chars) != $alen) {
-    ofile_FAIL("ERROR in $sub_name, RF length ($alen) != centroid alignment length (" . scalar(@centroid_chars) . ")", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, centroid aligned length (" . scalar(@centroid_chars) . ") != alen ($alen)", 1, $FH_HR);
   }
 
-  my @seed2centroid = (); # seed2centroid[$rfpos] = centroid seq pos (1-based), or 0 if gap
-  my $rfpos = 0;
-  my $centroid_pos = 0;
+  # Step B: build new RF and seed_rf -> centroid_rf column map in one pass
+  my @new_rf_chars   = ();
+  my @seed2centroid  = (); # seed2centroid[old_rfpos] = new_rfpos (1-based), or 0 if centroid has a gap at that column
+  my $old_rfpos      = 0;
+  my $new_rfpos      = 0;
   for(my $i = 0; $i < $alen; $i++) {
-    my $rf_is_cons     = ($rf_chars[$i]     !~ /[\-_.~]/) ? 1 : 0;
+    my $old_is_cons    = ($old_rf_chars[$i]   !~ /[\-_.~]/) ? 1 : 0;
     my $cent_is_nongap = ($centroid_chars[$i] !~ /[\-_.~]/) ? 1 : 0;
-    if($cent_is_nongap) { $centroid_pos++; }
-    if($rf_is_cons) {
-      $rfpos++;
-      $seed2centroid[$rfpos] = $cent_is_nongap ? $centroid_pos : 0;
+    if($cent_is_nongap) {
+      $new_rfpos++;
+      push(@new_rf_chars, "x");
+    }
+    else {
+      push(@new_rf_chars, ".");
+    }
+    if($old_is_cons) {
+      $old_rfpos++;
+      $seed2centroid[$old_rfpos] = $cent_is_nongap ? $new_rfpos : 0;
     }
   }
-  my $centroid_len = $centroid_pos; # total ungapped length
+  my $new_model_len = $new_rfpos;
+  my $new_rf = join("", @new_rf_chars);
 
   ofile_OutputString($FH_HR->{"log"}, 1,
-    sprintf("# Centroid RF remap: seed RF positions=%d, centroid ungapped len=%d\n",
-            $rfpos, $centroid_len));
+    sprintf("# Centroid realignment: alen=%d, seed RF len=%d, centroid RF len=%d\n",
+            $alen, $old_rfpos, $new_model_len));
 
-  # Now remap every feature's coords in ftr_info_HA
+  # Step C: remap feature coords in ftr_info_HA using seed2centroid
   my $ftr_model_key = undef;
   if(exists $ftr_info_HAR->{$model_key}) {
     $ftr_model_key = $model_key;
@@ -1832,53 +1861,144 @@ sub remap_feature_coords_to_centroid {
     ofile_FAIL("ERROR in $sub_name, cannot find features for model key $model_key in ftr_info_HA", 1, $FH_HR);
   }
 
-  my @ftr_A = @{$ftr_info_HAR->{$ftr_model_key}};
-  for(my $i = 0; $i < scalar(@ftr_A); $i++) {
-    my $old_coords = $ftr_A[$i]{"coords"};
+  my $ftr_AR = $ftr_info_HAR->{$ftr_model_key};
+  for(my $i = 0; $i < scalar(@{$ftr_AR}); $i++) {
+    my $old_coords = $ftr_AR->[$i]{"coords"};
     next if(! defined $old_coords || $old_coords eq "");
 
-    # Parse and remap each segment of the coords string
     my @new_segments = ();
     foreach my $seg (split(/,/, $old_coords)) {
       if($seg =~ /^(\d+)\.\.(\d+):([\+\-])$/) {
         my ($start, $end, $strand) = ($1, $2, $3);
-
-        # Check that centroid has non-gap at both boundaries
-        if($start > scalar(@seed2centroid) - 1 || $end > scalar(@seed2centroid) - 1) {
+        if($start > $old_rfpos || $end > $old_rfpos) {
           ofile_FAIL(sprintf("ERROR in $sub_name, feature %d coords %s exceed seed RF length %d",
-                             $i, $old_coords, $rfpos), 1, $FH_HR);
+                             $i, $old_coords, $old_rfpos), 1, $FH_HR);
         }
         my $new_start = $seed2centroid[$start];
         my $new_end   = $seed2centroid[$end];
-
         if($new_start == 0) {
-          ofile_FAIL(sprintf("ERROR in $sub_name, feature %d (%s) 5' boundary at seed RF pos %d maps to a gap in centroid %s (deletion at feature boundary)",
-                             $i, $ftr_A[$i]{"type"} || "", $start, $centroid_accn), 1, $FH_HR);
+          ofile_FAIL(sprintf("ERROR in $sub_name, feature %d (%s) 5' boundary at seed RF pos %d maps to a gap in centroid %s",
+                             $i, $ftr_AR->[$i]{"type"} || "", $start, $centroid_accn), 1, $FH_HR);
         }
         if($new_end == 0) {
-          ofile_FAIL(sprintf("ERROR in $sub_name, feature %d (%s) 3' boundary at seed RF pos %d maps to a gap in centroid %s (deletion at feature boundary)",
-                             $i, $ftr_A[$i]{"type"} || "", $end, $centroid_accn), 1, $FH_HR);
+          ofile_FAIL(sprintf("ERROR in $sub_name, feature %d (%s) 3' boundary at seed RF pos %d maps to a gap in centroid %s",
+                             $i, $ftr_AR->[$i]{"type"} || "", $end, $centroid_accn), 1, $FH_HR);
         }
-
         push(@new_segments, $new_start . ".." . $new_end . ":" . $strand);
       }
       else {
-        # Pass through unchanged (shouldn't happen with well-formed coords)
         push(@new_segments, $seg);
       }
     }
-
     my $new_coords = join(",", @new_segments);
     if($new_coords ne $old_coords) {
       ofile_OutputString($FH_HR->{"log"}, 1,
-        sprintf("# Centroid RF remap: feature %d %s coords %s -> %s\n",
-                $i, $ftr_A[$i]{"type"} || "", $old_coords, $new_coords));
+        sprintf("# Centroid realignment: feature %d %s coords %s -> %s\n",
+                $i, $ftr_AR->[$i]{"type"} || "", $old_coords, $new_coords));
     }
-    $ftr_info_HAR->{$ftr_model_key}[$i]{"coords"} = $new_coords;
+    $ftr_AR->[$i]{"coords"} = $new_coords;
   }
 
+  # Step D: write rewritten-RF .stk and unaligned training FASTA
+  my $rewritten_stk = $work_root . ".rewritten_rf.stk";
+  $msa->set_rf($new_rf);
+  $msa->write_msa($rewritten_stk, "stockholm");
+
+  my $train_fa = $work_root . ".train.fa";
+  open(my $fafh, ">", $train_fa) || ofile_FAIL("ERROR in $sub_name, cannot write $train_fa", 1, $FH_HR);
+  my $nseq = $msa->nseq();
+  for(my $i = 0; $i < $nseq; $i++) {
+    my $name = $msa->get_sqname($i);
+    my $seq  = $msa->get_sqstring_unaligned($i);
+    print $fafh ">" . $name . "\n" . $seq . "\n";
+  }
+  close($fafh);
   undef $msa;
-  return $centroid_len;
+
+  # Step E: cmbuild --hand on rewritten .stk to produce centroid-anchored CM
+  my $tmp_cm        = $work_root . ".cm";
+  my $cmbuild_out   = $work_root . ".cmbuild.out";
+  foreach my $f ($tmp_cm, $tmp_cm . ".i1f", $tmp_cm . ".i1i", $tmp_cm . ".i1m", $tmp_cm . ".i1p") {
+    if(-e $f) { unlink $f; }
+  }
+  my $cmd = $execs_HR->{"cmbuild"} . " --hand -F " . $tmp_cm . " " . $rewritten_stk . " > " . $cmbuild_out;
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# Centroid realignment: running cmbuild --hand on rewritten-RF .stk (output to %s)\n", $cmbuild_out));
+  utl_RunCommand($cmd, $do_verbose, 0, $FH_HR);
+
+  # Step F: cmalign training seqs to the centroid-anchored CM
+  my $realigned_stk = $work_root . ".realigned.stk";
+  $cmd = $execs_HR->{"cmalign"} . " --outformat pfam " . $tmp_cm . " " . $train_fa . " > " . $realigned_stk;
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# Centroid realignment: running cmalign to realign %d sequences against centroid-anchored CM\n", $nseq));
+  utl_RunCommand($cmd, $do_verbose, 0, $FH_HR);
+
+  # Step G: re-add #=GS lines (WT/GP/SG) from stitched .stk to realigned .stk
+  reannotate_gs_lines($stk_file, $realigned_stk, $FH_HR);
+
+  # Step H: replace stitched .stk with realigned .stk
+  utl_RunCommand("mv " . $realigned_stk . " " . $stk_file, 0, 0, $FH_HR);
+
+  # Cleanup
+  if(! $do_keep) {
+    push(@{$to_remove_AR}, $rewritten_stk, $tmp_cm, $cmbuild_out, $train_fa);
+  }
+
+  return $new_model_len;
+}
+
+#################################################################
+# Subroutine: reannotate_gs_lines()
+# Incept:     EPN* Wed Apr 15 2026
+#
+# Purpose:    Copy all #=GS lines from $src_stk into $dst_stk,
+#             inserting them immediately after the last #=GF line
+#             (or after the "# STOCKHOLM" header if no #=GF lines).
+#             Preserves per-sequence WT/GP/SG annotations across a
+#             cmalign that drops them.
+#
+# Arguments:
+#   $src_stk : path to source .stk (read-only)
+#   $dst_stk : path to destination .stk (rewritten in place)
+#   $FH_HR   : REF to hash of file handles
+#
+# Returns: void
+#################################################################
+sub reannotate_gs_lines {
+  my $sub_name = "reannotate_gs_lines";
+  my ($src_stk, $dst_stk, $FH_HR) = @_;
+
+  open(my $sfh, "<", $src_stk) || ofile_FAIL("ERROR in $sub_name, unable to read $src_stk", 1, $FH_HR);
+  my @gs_lines = ();
+  while(my $line = <$sfh>) {
+    if($line =~ /^#=GS\s/) { push(@gs_lines, $line); }
+  }
+  close($sfh);
+  return if(scalar(@gs_lines) == 0);
+
+  open(my $dfh, "<", $dst_stk) || ofile_FAIL("ERROR in $sub_name, unable to read $dst_stk", 1, $FH_HR);
+  my @dst_lines = <$dfh>;
+  close($dfh);
+
+  my $insert_after = -1;
+  for(my $i = 0; $i < scalar(@dst_lines); $i++) {
+    if($dst_lines[$i] =~ /^#=GF/) { $insert_after = $i; }
+  }
+  if($insert_after == -1) {
+    for(my $i = 0; $i < scalar(@dst_lines); $i++) {
+      if($dst_lines[$i] =~ /^# STOCKHOLM/) { $insert_after = $i; last; }
+    }
+  }
+
+  open(my $ofh, ">", $dst_stk) || ofile_FAIL("ERROR in $sub_name, unable to write $dst_stk", 1, $FH_HR);
+  for(my $i = 0; $i < scalar(@dst_lines); $i++) {
+    print $ofh $dst_lines[$i];
+    if($i == $insert_after) {
+      foreach my $gs (@gs_lines) { print $ofh $gs; }
+    }
+  }
+  close($ofh);
+  return;
 }
 
 #################################################################
