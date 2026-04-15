@@ -1926,9 +1926,12 @@ sub realign_to_centroid_rf {
     sprintf("# Centroid realignment: running cmbuild --hand on rewritten-RF .stk (output to %s)\n", $cmbuild_out));
   utl_RunCommand($cmd, $do_verbose, 0, $FH_HR);
 
-  # Step F: cmalign training seqs to the centroid-anchored CM
+  # Step F: cmalign training seqs to the centroid-anchored CM.
+  # Use a generous --mxsize because HMM-banded DP matrices for larger
+  # viral genomes (~11kb+ like TBEV) exceed the default 1024 MB limit.
+  # 16384 MB (16 GB) accommodates all viral-genome-sized models in practice.
   my $realigned_stk = $work_root . ".realigned.stk";
-  $cmd = $execs_HR->{"cmalign"} . " --outformat pfam " . $tmp_cm . " " . $train_fa . " > " . $realigned_stk;
+  $cmd = $execs_HR->{"cmalign"} . " --mxsize 16384 --outformat pfam " . $tmp_cm . " " . $train_fa . " > " . $realigned_stk;
   ofile_OutputString($FH_HR->{"log"}, 1,
     sprintf("# Centroid realignment: running cmalign to realign %d sequences against centroid-anchored CM\n", $nseq));
   utl_RunCommand($cmd, $do_verbose, 0, $FH_HR);
