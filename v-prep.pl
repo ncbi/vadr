@@ -1490,7 +1490,10 @@ sub get_partial_cds_accns_from_ftr {
     my $type = $tok_A[5];
     my $trc  = $tok_A[14];
     next if($type ne "CDS");
-    if($trc ne "no") {
+    # The 'trc' column in the .ftr file is "-" when the CDS is not
+    # truncated, or a numeric coordinate (e.g., "7172") when it is.
+    # Any non-"-" value means the CDS is partial/truncated.
+    if($trc ne "-" && $trc ne "no") {
       $partial_H{$acc} = 1;
     }
   }
