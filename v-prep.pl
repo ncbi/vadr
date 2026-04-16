@@ -516,6 +516,9 @@ my %decision_H = ();
 my $max_per_group = opt_Get("--xpergroup", \%opt_HH);
 parse_and_filter_metadata($meta_tsv, $seed_model_len, $max_per_group, \%candidate_AH, \%decision_H, $ref_accn, $FH_HR);
 
+my $groups_audit_file = $out_root . ".groups_audit.tsv";
+write_groups_audit(\%decision_H, $groups_audit_file, \%ofile_info_HH, $FH_HR);
+
 # Verify reference accession was found in metadata
 if(! exists $decision_H{$ref_accn}) {
   ofile_FAIL("ERROR, reference accession $ref_accn not found in metadata TSV $meta_tsv.\n" .
@@ -1243,6 +1246,82 @@ sub parse_and_filter_metadata {
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Tier 1 Filter: Selected %d total sequences (max %d per group) for tier 2 processing.\n", $total_selected, $max_per_group));
 
   return;
+}
+
+#################################################################
+# Subroutine : write_groups_audit()
+# Incept     : EPN* Thu Apr 16 2026
+#
+# Purpose    : Write a TSV auditing the canonical groups produced by
+#              parse_and_filter_metadata(). For each canonical group
+#              surviving tier-1 filtering (status=="kept"), records
+#              the number of sequences, the list of distinct
+#              original serotype/genotype spellings merged into that
+#              canonical group, the variant count, and up to five
+#              example accessions. Rows are sorted by n_seqs
+#              descending, breaking ties alphabetically.
+#
+#              Purpose is manual review: the user can scan this to
+#              spot misannotations (e.g. a group whose variants mix
+#              two viruses), groups that should have been merged but
+#              weren't caught by built-in normalization, or small
+#              outlier groups. The pipeline does not act on the
+#              contents of this file.
+#
+# Arguments  :
+#   $decision_HR    : ref to hash keyed by accession, each entry must
+#                     have: group_key, serotype, genotype, status
+#   $audit_file     : path to write the TSV
+#   $ofile_info_HHR : output file info hash (for register/filelist)
+#   $FH_HR          : output file handles ("log", ...)
+#
+# Returns    : number of distinct canonical groups written
+#################################################################
+sub write_groups_audit {
+  my ($decision_HR, $audit_file, $ofile_info_HHR, $FH_HR) = @_;
+
+  my %grp_H = ();  # canonical => { n_seqs, variants => {orig=>1}, accns => [] }
+  foreach my $acc (sort keys %{$decision_HR}) {
+    my $d = $decision_HR->{$acc};
+    next if(! defined $d->{status} || $d->{status} ne "kept");
+    my $gk = $d->{group_key};
+    next if(! defined $gk || $gk eq "");
+
+    # Reproduce the original spelling the same way parse_and_filter_metadata
+    # chose it: first-non-empty of serotype, genotype, else "Unknown".
+    my $orig = "Unknown";
+    if    (defined $d->{serotype} && $d->{serotype} ne "") { $orig = $d->{serotype}; }
+    elsif (defined $d->{genotype} && $d->{genotype} ne "") { $orig = $d->{genotype}; }
+
+    $grp_H{$gk}{n_seqs}++;
+    $grp_H{$gk}{variants}{$orig}++;
+    push @{$grp_H{$gk}{accns}}, $acc;
+  }
+
+  my @sorted = sort { $grp_H{$b}{n_seqs} <=> $grp_H{$a}{n_seqs} || $a cmp $b } keys %grp_H;
+
+  open(my $fh, ">", $audit_file) or ofile_FAIL("ERROR: unable to write $audit_file: $!", 1, $FH_HR);
+  print $fh "#canonical_group\tn_seqs\tvariants\tn_variants\texample_accns\n";
+  my $max_ex = 5;
+  foreach my $gk (@sorted) {
+    my @variants = sort keys %{$grp_H{$gk}{variants}};
+    my @accns    = @{$grp_H{$gk}{accns}};
+    my $n_ex = (scalar(@accns) < $max_ex) ? scalar(@accns) : $max_ex;
+    my @examples = @accns[0 .. ($n_ex - 1)];
+    printf $fh "%s\t%d\t%s\t%d\t%s\n",
+      $gk,
+      $grp_H{$gk}{n_seqs},
+      join(",", @variants),
+      scalar(@variants),
+      join(",", @examples);
+  }
+  close($fh);
+
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "groups.audit", $audit_file, 1, 1,
+    "per-canonical-group audit of surviving tier-1 sequences and merged spelling variants");
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# Wrote groups audit (%d canonical groups) to %s\n", scalar(@sorted), $audit_file));
+  return scalar(@sorted);
 }
 
 #################################################################
