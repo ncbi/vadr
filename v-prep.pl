@@ -107,6 +107,8 @@ opt_Add("--vannot-opts-file", "string", undef,    $g,    undef, undef,          
 opt_Add("--alt-max-fract", "real",    0.2,       $g,    undef, "--no-auto-alt", "max fractional length deviation for alternative CDS",         "max fractional length deviation for alternative CDS as <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--nper1grp",     "integer", 5,         $g,    undef, undef,          "number of seqs per group when 1 group",                       "number of seqs per group when 1 group as <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--npergrp",      "integer", undef,     $g,    undef, undef,          "override per-group seq count from determine_seqs_per_group",  "override determine_seqs_per_group default and use <n> seqs per group regardless of group count", \%opt_HH, \@opt_order_A);
+opt_Add("--no-collapse-numerals", "boolean", 0, $g,    undef, undef,          "disable Roman<->Arabic numeral collapsing in group_key normalization", "disable Roman<->Arabic numeral collapsing in group_key normalization (warn only, do not collapse)", \%opt_HH, \@opt_order_A);
+opt_Add("--no-strip-descriptors", "boolean", 0, $g,    undef, undef,          "disable descriptor-word stripping/token-sort in group_key normalization", "disable descriptor-word stripping (lineage,genotype,...) and alphabetical token sort in group_key normalization", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "overhang extension options";
 #       option                         type    default  group  requires                incompat             preamble-output                                                              help-output
@@ -153,6 +155,8 @@ my $options_okay =
                 'alt-max-fract=f' => \$GetOptions_H{"--alt-max-fract"},
                 'nper1grp=i'   => \$GetOptions_H{"--nper1grp"},
                 'npergrp=i'    => \$GetOptions_H{"--npergrp"},
+                'no-collapse-numerals' => \$GetOptions_H{"--no-collapse-numerals"},
+                'no-strip-descriptors' => \$GetOptions_H{"--no-strip-descriptors"},
 # overhang extension options
                 'no-overhang-ext'          => \$GetOptions_H{"--no-overhang-ext"},
                 'overhang-anchor-len=i'    => \$GetOptions_H{"--overhang-anchor-len"},
@@ -1033,15 +1037,26 @@ sub parse_and_filter_metadata {
     elsif (defined $genotype && $genotype ne "") { $orig_group = $genotype; }
 
     # Normalize the group name so case/hyphen/space/diacritic variants merge
-    # into a single group. The FIRST original spelling seen for a given
-    # normalized key becomes the canonical display name.
-    my $norm_key    = normalize_group_name($orig_group);
-    my $numeral_key = normalize_group_name_with_numerals($orig_group);
+    # into a single group. By default we also collapse Roman<->Arabic
+    # numerals and strip non-informative descriptor words (lineage,
+    # genotype, subtype, serotype, type, clade, G-prefix) before
+    # alphabetically sorting tokens. Opt out of either with
+    # --no-collapse-numerals or --no-strip-descriptors. The FIRST
+    # original spelling seen for a given normalized key becomes the
+    # canonical display name.
+    my $do_collapse = (! opt_Get("--no-collapse-numerals", \%opt_HH));
+    my $do_strip    = (! opt_Get("--no-strip-descriptors", \%opt_HH));
+    my $norm_key    = normalize_group_name_expanded($orig_group, $do_collapse, $do_strip);
     if(! exists $group_canonical{$norm_key}) {
       $group_canonical{$norm_key} = $orig_group;
     }
     $group_variants{$norm_key}{$orig_group}++;
-    $numeral_norms{$numeral_key}{$norm_key}++;
+    # When numeral-collapsing is disabled (user opted out), still compute
+    # the numeral-normalized key so we can WARN about likely equivalents.
+    if(! $do_collapse) {
+      my $numeral_key = normalize_group_name_with_numerals($orig_group);
+      $numeral_norms{$numeral_key}{$norm_key}++;
+    }
     my $group = $group_canonical{$norm_key};
 
     $decision_HR->{$acc} = {
@@ -1090,7 +1105,15 @@ sub parse_and_filter_metadata {
   if ($seed_model_len > 0) {
     ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Retained %d sequences passing length filter (>90%% of seed length %d).\n", $kept_len_seqs, $seed_model_len));
   }
-  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Found %d distinct serotype/genotype groups (after normalizing case/hyphen/whitespace/diacritic variants).\n", scalar(keys %{$candidate_AHR})));
+  {
+    my $do_collapse_log = (! opt_Get("--no-collapse-numerals", \%opt_HH));
+    my $do_strip_log    = (! opt_Get("--no-strip-descriptors", \%opt_HH));
+    my @norms = ("case/hyphen/whitespace/diacritic variants");
+    if($do_collapse_log) { push(@norms, "Roman<->Arabic numeral equivalents"); }
+    if($do_strip_log)    { push(@norms, "descriptor words (lineage,genotype,...) and token-order"); }
+    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Found %d distinct serotype/genotype groups (after normalizing %s).\n",
+                                                   scalar(keys %{$candidate_AHR}), join(", ", @norms)));
+  }
 
   # Log any groups where multiple original spellings were collapsed to one
   # canonical name.
@@ -6912,6 +6935,123 @@ sub normalize_group_name_with_numerals {
     }
   }
   return join(" ", @tokens);
+}
+
+#################################################################
+# Subroutine: normalize_group_name_expanded()
+# Incept:     EPN* Thu Apr 16 2026
+#
+# Purpose:    Compute an aggressively normalized key for a group
+#             name that collapses many equivalent spellings. Builds
+#             on normalize_group_name() (case/hyphen/whitespace/
+#             diacritic folding) and optionally adds:
+#
+#               (a) Roman<->Arabic numeral collapsing: a token that
+#                   is a valid Roman numeral (i, ii, iii, iv, v...)
+#                   is replaced by its Arabic integer.
+#
+#               (b) Descriptor-word stripping: drops uninformative
+#                   tokens: lineage, genotype, subtype, serotype,
+#                   type, clade. Also strips a leading "g" from
+#                   tokens of the form "g1", "gii", etc. (the "G"
+#                   prefix often prepended to a genotype label),
+#                   and drops a standalone "g" token. Additionally
+#                   replaces punctuation (anything other than
+#                   [a-z0-9\s]) with whitespace so that tokens like
+#                   "european (western)" or "gii/asian" tokenize
+#                   cleanly.
+#
+#               (c) Digit+Roman splitting: tokens matching
+#                   ^(\d+)([ivxlcdm]+)$ are split into two tokens
+#                   so that "1I" becomes ["1","i"]. This is
+#                   deliberately narrow: tokens like "1a" (letter
+#                   not a Roman letter) or "denv1" (letters first)
+#                   are left intact, preserving 1A vs A1 ordering.
+#
+#               (d) Token alphabetical sort: after the above
+#                   transforms, surviving tokens are sorted
+#                   alphabetically and rejoined, so word-order
+#                   variants ("I - South American" vs
+#                   "South American I") collapse.
+#
+#             If stripping descriptors removes every token, the
+#             un-stripped token list is used as a fallback so the
+#             result is never empty when the input was non-empty.
+#
+# Arguments:
+#   $group:           original group name string
+#   $do_collapse:     if 1, apply (a)
+#   $do_strip:        if 1, apply (b), (c), (d); if 0, result
+#                     is the basic normalization with (a) optionally
+#                     applied (no tokenization / no sort)
+#
+# Returns: normalized string (may be "" if input was empty/undef)
+#################################################################
+sub normalize_group_name_expanded {
+  my ($group, $do_collapse, $do_strip) = @_;
+  my $basic = normalize_group_name($group);
+  return $basic if($basic eq "");
+
+  # Without --strip-descriptors we do not tokenize/sort; just
+  # apply numeral collapsing in-place if requested.
+  if(! $do_strip) {
+    if($do_collapse) {
+      my @tokens = split(/ /, $basic);
+      foreach my $t (@tokens) {
+        if($t =~ /^[ivxlcdm]+$/) {
+          my $n = _roman_to_arabic($t);
+          $t = defined($n) ? $n : $t;
+        }
+      }
+      return join(" ", @tokens);
+    }
+    return $basic;
+  }
+
+  # --strip-descriptors path: punctuation -> space, tokenize,
+  # transform, (optionally) numeral-collapse, descriptor-drop, sort.
+  my $g = $basic;
+  $g =~ s/[^a-z0-9\s]/ /g;
+  $g =~ s/\s+/ /g;
+  $g =~ s/^\s+//;
+  $g =~ s/\s+$//;
+  return $basic if($g eq "");
+
+  my @tokens = split(/ /, $g);
+  my @expanded = ();
+  foreach my $t (@tokens) {
+    # Strip leading "g" prefix on tokens like "g1", "gi", "gii", "giii"
+    if($t =~ /^g(\d+)$/)            { $t = $1; }
+    elsif($t =~ /^g([ivxlcdm]+)$/)  { $t = $1; }
+    # Split digit-prefix + roman-only suffix: "1ii" -> "1","ii"
+    if($t =~ /^(\d+)([ivxlcdm]+)$/) { push(@expanded, $1, $2); }
+    else                            { push(@expanded, $t); }
+  }
+  @tokens = @expanded;
+
+  # Numeral collapse
+  if($do_collapse) {
+    foreach my $t (@tokens) {
+      if($t =~ /^[ivxlcdm]+$/) {
+        my $n = _roman_to_arabic($t);
+        $t = defined($n) ? $n : $t;
+      }
+    }
+  }
+
+  # Remember the pre-strip token list so we can fall back if
+  # descriptor-stripping erases everything.
+  my @pre_strip = @tokens;
+
+  # Drop descriptor words and standalone "g"
+  my %drop = map { $_ => 1 } qw(lineage genotype subtype serotype type clade g);
+  my @kept = grep { $_ ne "" && ! $drop{$_} } @tokens;
+
+  if(scalar(@kept) == 0) { @kept = grep { $_ ne "" } @pre_strip; }
+
+  @kept = sort @kept;
+  my $result = join(" ", @kept);
+  return ($result eq "") ? $basic : $result;
 }
 
 #################################################################
