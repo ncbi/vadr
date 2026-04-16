@@ -2765,11 +2765,24 @@ sub verify_stk_sequence_integrity {
       }
 
       # Distinguish nucleotide SUBSTITUTION (real corruption — fatal)
-      # from end TRUNCATION (minor — stk is a prefix/suffix of fasta,
-      # typically from insert columns beyond the last RF position being
-      # lost during stitching). Truncation gets a warning; substitution
-      # gets a fatal error.
-      my $is_substitution = ($mismatch_pos <= $min_len) ? 1 : 0;
+      # from end TRUNCATION (minor — stk is either a prefix [3' truncation]
+      # or a suffix [5' truncation] of the fasta, typically from insert
+      # columns outside the RF boundaries being lost during stitching).
+      # Truncation gets a warning; substitution gets a fatal error.
+      my $is_substitution = 1;
+      my $trunc_end = "";  # "5'" or "3'"
+      if(length($stk_seq) <= length($fa_seq)) {
+        # Check 3' truncation: stk is a prefix of fa
+        if(substr($fa_seq, 0, length($stk_seq)) eq $stk_seq) {
+          $is_substitution = 0;
+          $trunc_end = "3'";
+        }
+        # Check 5' truncation: stk is a suffix of fa
+        elsif(substr($fa_seq, length($fa_seq) - length($stk_seq)) eq $stk_seq) {
+          $is_substitution = 0;
+          $trunc_end = "5'";
+        }
+      }
 
       if($is_substitution) {
         ofile_FAIL(sprintf("ERROR in $sub_name, sequence %s in final .stk has nucleotide corruption vs tier-2 fasta.\n" .
@@ -2785,8 +2798,8 @@ sub verify_stk_sequence_integrity {
       else {
         # End truncation only — warn but don't die
         ofile_OutputString($FH_HR->{"log"}, 1,
-          sprintf("# WARNING: verify_stk_sequence_integrity: %s length differs (stk=%d, fasta=%d, diff=%d nt at end), likely insert columns beyond last RF position\n",
-                  $name, length($stk_seq), length($fa_seq), abs(length($fa_seq) - length($stk_seq))));
+          sprintf("# WARNING: verify_stk_sequence_integrity: %s length differs (stk=%d, fasta=%d, diff=%d nt at %s end), likely insert columns outside RF boundaries\n",
+                  $name, length($stk_seq), length($fa_seq), abs(length($fa_seq) - length($stk_seq)), $trunc_end));
       }
     }
   }
