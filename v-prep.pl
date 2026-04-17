@@ -4963,23 +4963,22 @@ sub concatenate_all_blocks {
   }
   my $cds_blk_idx = 0;  # index into @cds_col_ranges_A, incremented per coding block
 
-  # Identify indices of the first and last noncoding blocks (if any). For the
-  # FIRST noncoding block we want to include any tier-2 insert columns BEFORE
-  # rf2a_map[block_start] (i.e., 5' overhang columns). For the LAST noncoding
-  # block we want insert columns AFTER rf2a_map[block_end] (3' overhang). Any
-  # overhang nucleotides in the tier-2 alignment live in these out-of-bounds
-  # insert columns; preserving them in the stitched .stk as insert columns
-  # (RF = ".") lets phase-2 overhang extension evaluate them for promotion
-  # to new RF positions. Without this preservation, overhang signal is lost
-  # before phase-2 ever runs.
-  my $first_nc_idx = -1;
-  my $last_nc_idx  = -1;
-  for(my $bi = 0; $bi < scalar(@{$blocks_AR}); $bi++) {
-    if($blocks_AR->[$bi]{"type"} eq "noncoding") {
-      if($first_nc_idx == -1) { $first_nc_idx = $bi; }
-      $last_nc_idx = $bi;
-    }
-  }
+  # Identify the outermost noncoding blocks, but ONLY if they are also the
+  # outermost blocks in the plan. For a noncoding block at plan index 0 we
+  # want to include tier-2 insert columns BEFORE rf2a_map[block_start] (i.e.,
+  # 5' overhang columns); for a noncoding block at the last plan index we
+  # want insert columns AFTER rf2a_map[block_end] (3' overhang). Preserving
+  # these as insert columns (RF = ".") in the stitched .stk lets phase-2
+  # overhang extension evaluate them for promotion to new RF positions.
+  #
+  # IMPORTANT: if the outermost block is an RNA block (not noncoding), do
+  # NOT extend an interior noncoding block past rf2a_map[block_end] — doing
+  # so would sweep across the tier-2 columns the RNA block is about to emit
+  # and duplicate that block's RF positions in the stitched alignment (see
+  # hav13 PK-HAV: 55 RF positions were double-counted pre-fix *EPN*).
+  my $nblocks = scalar(@{$blocks_AR});
+  my $first_nc_idx = ($nblocks > 0 && $blocks_AR->[0]{"type"}           eq "noncoding") ? 0           : -1;
+  my $last_nc_idx  = ($nblocks > 0 && $blocks_AR->[$nblocks-1]{"type"}  eq "noncoding") ? $nblocks-1  : -1;
 
   # Open output file and write header
   open(my $outfh, ">", $out_stk_file) || die "ERROR unable to write $out_stk_file: $!";
@@ -5120,13 +5119,15 @@ sub concatenate_all_blocks {
         my $first_acol = $rf2a_map_A[$clamped_start];  # 1-based
         my $last_acol  = $rf2a_map_A[$clamped_end];    # 1-based
 
-        # For the FIRST noncoding block, extend left boundary to alignment
-        # column 1 to preserve tier-2 insert columns BEFORE the first RF
-        # position (5' overhang nucleotides) as insert columns in the
-        # stitched .stk. For the LAST noncoding block, extend right
-        # boundary to the final alignment column (3' overhang). Without
-        # this, stitching would silently drop these out-of-RF-range
-        # nucleotides and phase-2 overhang extension would see no signal.
+        # If this noncoding block is at the very start of the plan, extend
+        # its left boundary to alignment column 1 to preserve tier-2 insert
+        # columns BEFORE the first RF position (5' overhang nucleotides)
+        # as insert columns in the stitched .stk. If it is at the very end
+        # of the plan, extend its right boundary to the final alignment
+        # column (3' overhang). first_nc_idx / last_nc_idx are only set
+        # when the outermost block is itself noncoding; when an RNA block
+        # sits at an edge, no extension is applied here (extending would
+        # sweep across and duplicate that RNA block's RF positions).
         if($bi == $first_nc_idx) { $first_acol = 1; }
         if($bi == $last_nc_idx)  { $last_acol  = $tier2_msa->alen(); }
 
