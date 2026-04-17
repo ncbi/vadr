@@ -4963,29 +4963,22 @@ sub concatenate_all_blocks {
   }
   my $cds_blk_idx = 0;  # index into @cds_col_ranges_A, incremented per coding block
 
-  # Identify the outermost noncoding blocks, but ONLY if they are also the
-  # outermost blocks in the plan. For a noncoding block at plan index 0 we
-  # want to include tier-2 insert columns BEFORE rf2a_map[block_start] (i.e.,
-  # 5' overhang columns); for a noncoding block at the last plan index we
-  # want insert columns AFTER rf2a_map[block_end] (3' overhang). Preserving
-  # these as insert columns (RF = ".") in the stitched .stk lets phase-2
-  # overhang extension evaluate them for promotion to new RF positions.
-  #
-  # IMPORTANT: if the outermost block is an RNA block (not noncoding), do
-  # NOT extend an interior noncoding block past rf2a_map[block_end] — doing
-  # so would sweep across the tier-2 columns the RNA block is about to emit
-  # and duplicate that block's RF positions in the stitched alignment (see
-  # hav13 PK-HAV: 55 RF positions were double-counted pre-fix *EPN*).
-  my $nblocks = scalar(@{$blocks_AR});
-  my $first_nc_idx = ($nblocks > 0 && $blocks_AR->[0]{"type"}           eq "noncoding") ? 0           : -1;
-  my $last_nc_idx  = ($nblocks > 0 && $blocks_AR->[$nblocks-1]{"type"}  eq "noncoding") ? $nblocks-1  : -1;
-
   # Open output file and write header
   open(my $outfh, ">", $out_stk_file) || die "ERROR unable to write $out_stk_file: $!";
   print $outfh "# STOCKHOLM 1.0\n";
 
-  for(my $bi = 0; $bi < scalar(@{$blocks_AR}); $bi++) {
-    my $block = $blocks_AR->[$bi];
+  # 5' overhang pseudo-block: tier-2 alignment columns before the first seed
+  # RF position (insert columns outside the RF range). Preserving them as
+  # insert columns (RF='.') in the stitched .stk lets phase-2 overhang
+  # extension evaluate any 5' overhang nucleotides for promotion to RF
+  # positions. This is written regardless of what the first real block is,
+  # so RNA / noncoding / coding at the 5' edge all get the same treatment.
+  if(scalar(@rf2a_map_A) > 1 && defined $rf2a_map_A[1] && $rf2a_map_A[1] > 1) {
+    write_overhang_pseudo_block($outfh, $tier2_msa, 1, $rf2a_map_A[1] - 1,
+                                \@seq_names, "5'", $FH_HR);
+  }
+
+  foreach my $block (@{$blocks_AR}) {
     my $type        = $block->{"type"};
     my $block_start = $block->{"start"};
     my $block_end   = $block->{"end"};
@@ -5119,18 +5112,6 @@ sub concatenate_all_blocks {
         my $first_acol = $rf2a_map_A[$clamped_start];  # 1-based
         my $last_acol  = $rf2a_map_A[$clamped_end];    # 1-based
 
-        # If this noncoding block is at the very start of the plan, extend
-        # its left boundary to alignment column 1 to preserve tier-2 insert
-        # columns BEFORE the first RF position (5' overhang nucleotides)
-        # as insert columns in the stitched .stk. If it is at the very end
-        # of the plan, extend its right boundary to the final alignment
-        # column (3' overhang). first_nc_idx / last_nc_idx are only set
-        # when the outermost block is itself noncoding; when an RNA block
-        # sits at an edge, no extension is applied here (extending would
-        # sweep across and duplicate that RNA block's RF positions).
-        if($bi == $first_nc_idx) { $first_acol = 1; }
-        if($bi == $last_nc_idx)  { $last_acol  = $tier2_msa->alen(); }
-
         for(my $a = $first_acol; $a <= $last_acol; $a++) {
           $useme_A[$a - 1] = 1;  # convert to 0-based
         }
@@ -5170,6 +5151,20 @@ sub concatenate_all_blocks {
     }
   }
 
+  # 3' overhang pseudo-block: tier-2 alignment columns after the last seed
+  # RF position (insert columns outside the RF range). See 5' pseudo-block
+  # comment above for rationale. Written regardless of what the last real
+  # block is, so RNA / noncoding / coding at the 3' edge all get the same
+  # treatment — no more silent overhang loss when an RNA block sits at a
+  # genome edge (e.g., HAV PK-HAV at 3').
+  my $last_rf_idx = scalar(@rf2a_map_A) - 1;
+  if($last_rf_idx >= 1 && defined $rf2a_map_A[$last_rf_idx] &&
+     $rf2a_map_A[$last_rf_idx] < $tier2_msa->alen()) {
+    write_overhang_pseudo_block($outfh, $tier2_msa,
+                                $rf2a_map_A[$last_rf_idx] + 1, $tier2_msa->alen(),
+                                \@seq_names, "3'", $FH_HR);
+  }
+
   # Write footer
   print $outfh "//\n";
   close($outfh);
@@ -5177,6 +5172,67 @@ sub concatenate_all_blocks {
 
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: wrote interleaved Stockholm with RF and SS_cons to %s\n", $out_stk_file));
 
+  return;
+}
+
+
+#################################################################
+# Subroutine : write_overhang_pseudo_block()
+# Incept     : EPN* Fri Apr 17 2026
+#
+# Purpose    : Write a pseudo-block of tier-2 alignment columns to the
+#              stitched .stk. These columns fall BEFORE the first seed
+#              RF position (5' overhang) or AFTER the last seed RF
+#              position (3' overhang) — i.e., they are insert columns
+#              outside the RF range by construction. Writing them as
+#              pure-insert columns (RF='.', SS_cons='.') in the stitched
+#              .stk lets phase-2 overhang extension evaluate them for
+#              promotion to new RF positions, regardless of whether the
+#              first/last real block in the plan is noncoding, RNA, or
+#              coding.
+#
+# Arguments  :
+#   $outfh        : open file handle for the stitched .stk
+#   $tier2_msa    : Bio::Easel::MSA object for the tier-2 alignment
+#   $first_acol   : 1-based first tier-2 alignment column to include
+#   $last_acol    : 1-based last tier-2 alignment column to include
+#   $seq_names_AR : ref to array of sequence names in canonical order
+#   $label        : "5'" or "3'" for the log message
+#   $FH_HR        : ref to hash of file handles (for log)
+#
+# Returns    : nothing (writes one Stockholm block to $outfh and a line
+#              to the log)
+#################################################################
+sub write_overhang_pseudo_block {
+  my ($outfh, $tier2_msa, $first_acol, $last_acol, $seq_names_AR, $label, $FH_HR) = @_;
+
+  my $width = $last_acol - $first_acol + 1;
+  if($width <= 0) { return; }
+
+  my @useme_A = (0) x $tier2_msa->alen();
+  for(my $a = $first_acol; $a <= $last_acol; $a++) {
+    $useme_A[$a - 1] = 1;  # convert to 0-based
+  }
+  my $pseudo_msa = $tier2_msa->clone_msa();
+  $pseudo_msa->column_subset(\@useme_A);
+
+  my %pseudo_seqs_H = ();
+  for(my $i = 0; $i < $pseudo_msa->nseq(); $i++) {
+    $pseudo_seqs_H{$pseudo_msa->get_sqname($i)} = $pseudo_msa->get_sqstring_aligned($i);
+  }
+
+  foreach my $name (@{$seq_names_AR}) {
+    my $seq = (exists $pseudo_seqs_H{$name} && length($pseudo_seqs_H{$name}) > 0)
+              ? $pseudo_seqs_H{$name} : '-' x $width;
+    printf $outfh "%-30s %s\n", $name, $seq;
+  }
+  printf $outfh "#=GC %-24s %s\n", "RF",      '.' x $width;
+  printf $outfh "#=GC %-24s %s\n", "SS_cons", '.' x $width;
+  print  $outfh "\n";
+
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# Final stitching: added %s overhang pseudo-block (%d columns, tier-2 cols %d..%d)\n",
+            $label, $width, $first_acol, $last_acol));
   return;
 }
 
