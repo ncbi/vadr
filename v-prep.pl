@@ -683,6 +683,13 @@ if($do_auto_alt) {
         foreach my $ext (@model_exts) {
           my $src = $model_dir . "/" . $model_key . $ext;
           my $dst = $tmp_mdir . "/" . $model_key . $ext;
+          # Resolve src to an absolute path so the symlink still works
+          # when v-annotate.pl (or any consumer) runs from a different cwd.
+          # Without this, callers had to pass --mdir as an absolute path.
+          if($src !~ m|^/|) {
+            require Cwd;
+            $src = Cwd::abs_path($src) || $src;
+          }
           if(-e $src && ! -e $dst) { utl_RunCommand("ln -s $src $dst", 0, 0, $FH_HR); }
         }
         # Copy protein.fa into temp mdir and rebuild BLAST db
