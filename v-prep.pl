@@ -109,6 +109,7 @@ opt_Add("--nper1grp",     "integer", 5,         $g,    undef, undef,          "n
 opt_Add("--npergrp",      "integer", undef,     $g,    undef, undef,          "override per-group seq count from determine_seqs_per_group",  "override determine_seqs_per_group default and use <n> seqs per group regardless of group count", \%opt_HH, \@opt_order_A);
 opt_Add("--no-collapse-numerals", "boolean", 0, $g,    undef, undef,          "disable Roman<->Arabic numeral collapsing in group_key normalization", "disable Roman<->Arabic numeral collapsing in group_key normalization (warn only, do not collapse)", \%opt_HH, \@opt_order_A);
 opt_Add("--no-strip-descriptors", "boolean", 0, $g,    undef, undef,          "disable descriptor-word stripping/token-sort in group_key normalization", "disable descriptor-word stripping (lineage,genotype,...) and alphabetical token sort in group_key normalization", \%opt_HH, \@opt_order_A);
+opt_Add("--group-aliases", "string",  undef,  $g,    undef, undef,          "apply user-supplied group-name alias file <s>", "apply user-supplied group-name alias file <s> AFTER built-in normalization; 2-column TSV: target<TAB>source, where source is the post-normalization canonical as it appears in .vadr.groups_audit.tsv", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "overhang extension options";
 #       option                         type    default  group  requires                incompat             preamble-output                                                              help-output
@@ -157,6 +158,7 @@ my $options_okay =
                 'npergrp=i'    => \$GetOptions_H{"--npergrp"},
                 'no-collapse-numerals' => \$GetOptions_H{"--no-collapse-numerals"},
                 'no-strip-descriptors' => \$GetOptions_H{"--no-strip-descriptors"},
+                'group-aliases=s' => \$GetOptions_H{"--group-aliases"},
 # overhang extension options
                 'no-overhang-ext'          => \$GetOptions_H{"--no-overhang-ext"},
                 'overhang-anchor-len=i'    => \$GetOptions_H{"--overhang-anchor-len"},
@@ -255,6 +257,12 @@ if(opt_Get("--xambig", \%opt_HH) < 0) {
 }
 if(opt_Get("--xpergroup", \%opt_HH) < 1) {
   die "ERROR, --xpergroup must be >= 1";
+}
+
+if(opt_IsUsed("--group-aliases", \%opt_HH)) {
+  my $alias_file = opt_Get("--group-aliases", \%opt_HH);
+  if(! -e $alias_file) { die "ERROR, --group-aliases file does not exist: $alias_file"; }
+  if(! -r $alias_file) { die "ERROR, --group-aliases file is not readable: $alias_file"; }
 }
 
 # RNA discovery validation
@@ -514,10 +522,31 @@ else {
 my %candidate_AH = ();
 my %decision_H = ();
 my $max_per_group = opt_Get("--xpergroup", \%opt_HH);
-parse_and_filter_metadata($meta_tsv, $seed_model_len, $max_per_group, \%candidate_AH, \%decision_H, $ref_accn, $FH_HR);
+
+# Read user-supplied group-name alias file (if any). Returns a hash
+# keyed by source canonical (as produced by the built-in normalizer)
+# mapping to the final target canonical after chain resolution.
+my %group_alias_H  = ();
+my %alias_source_used_H = ();
+if(opt_IsUsed("--group-aliases", \%opt_HH)) {
+  read_group_aliases(opt_Get("--group-aliases", \%opt_HH), \%group_alias_H, $FH_HR);
+}
+
+parse_and_filter_metadata($meta_tsv, $seed_model_len, $max_per_group, \%candidate_AH, \%decision_H, $ref_accn, \%group_alias_H, \%alias_source_used_H, $FH_HR);
+
+# Warn about alias-file source keys that never matched any sequence's
+# post-normalization canonical (non-fatal).
+if(opt_IsUsed("--group-aliases", \%opt_HH)) {
+  my @unused = sort grep { ! $alias_source_used_H{$_} } keys %group_alias_H;
+  foreach my $src (@unused) {
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# WARNING: --group-aliases source \"%s\" (->\"%s\") did not match any sequence's post-normalization canonical.\n",
+              $src, $group_alias_H{$src}));
+  }
+}
 
 my $groups_audit_file = $out_root . ".groups_audit.tsv";
-write_groups_audit(\%decision_H, $groups_audit_file, \%ofile_info_HH, $FH_HR);
+write_groups_audit(\%decision_H, $groups_audit_file, \%group_alias_H, \%alias_source_used_H, \%ofile_info_HH, $FH_HR);
 
 # Verify reference accession was found in metadata
 if(! exists $decision_H{$ref_accn}) {
@@ -1026,7 +1055,7 @@ exit(0);
 # Returns    : void
 #################################################################
 sub parse_and_filter_metadata {
-  my ($tsv_file, $seed_model_len, $max_per_group, $candidate_AHR, $decision_HR, $ref_accn, $FH_HR) = @_;
+  my ($tsv_file, $seed_model_len, $max_per_group, $candidate_AHR, $decision_HR, $ref_accn, $alias_HR, $alias_used_HR, $FH_HR) = @_;
 
   my $total_seqs = 0;
   my $kept_len_seqs = 0;
@@ -1078,9 +1107,20 @@ sub parse_and_filter_metadata {
     }
     my $group = $group_canonical{$norm_key};
 
+    # Apply user-supplied group-name aliases (after built-in normalization).
+    # $alias_HR is source_canonical -> final_target (chains already resolved
+    # and cycles already detected in read_group_aliases()), so a single
+    # lookup suffices. Remember the pre-alias canonical for audit.
+    my $group_pre_alias = $group;
+    if(defined $alias_HR && exists $alias_HR->{$group}) {
+      $alias_used_HR->{$group} = 1 if(defined $alias_used_HR);
+      $group = $alias_HR->{$group};
+    }
+
     $decision_HR->{$acc} = {
       accession       => $acc,
       group_key       => $group,
+      group_key_preAlias => $group_pre_alias,
       serotype        => (defined $serotype) ? $serotype : "",
       genotype        => (defined $genotype) ? $genotype : "",
       isolate         => (defined $isolate)  ? $isolate  : "",
@@ -1130,6 +1170,7 @@ sub parse_and_filter_metadata {
     my @norms = ("case/hyphen/whitespace/diacritic variants");
     if($do_collapse_log) { push(@norms, "Roman<->Arabic numeral equivalents"); }
     if($do_strip_log)    { push(@norms, "descriptor words (lineage,genotype,...) and token-order"); }
+    if(defined $alias_HR && scalar(keys %{$alias_HR}) > 0) { push(@norms, "user-supplied aliases"); }
     ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Found %d distinct serotype/genotype groups (after normalizing %s).\n",
                                                    scalar(keys %{$candidate_AHR}), join(", ", @norms)));
   }
@@ -1284,19 +1325,35 @@ sub parse_and_filter_metadata {
 #              outlier groups. The pipeline does not act on the
 #              contents of this file.
 #
+#              When --group-aliases is in effect, the canonical_group
+#              column reflects the POST-alias target, the variants
+#              column naturally contains all raw spellings rolled up
+#              via both built-in normalization and user aliases, and
+#              an aliased_from column lists the pre-alias built-in
+#              canonicals merged into each target (empty "-" if no
+#              alias applied to this target).
+#
 # Arguments  :
 #   $decision_HR    : ref to hash keyed by accession, each entry must
 #                     have: group_key, serotype, genotype, status
+#                     and group_key_preAlias (pre-alias canonical)
 #   $audit_file     : path to write the TSV
+#   $alias_HR       : ref to source->target alias map (may be empty)
+#   $alias_used_HR  : ref to set of alias sources that matched at least
+#                     one sequence (used to suppress noise in output)
 #   $ofile_info_HHR : output file info hash (for register/filelist)
 #   $FH_HR          : output file handles ("log", ...)
 #
 # Returns    : number of distinct canonical groups written
 #################################################################
 sub write_groups_audit {
-  my ($decision_HR, $audit_file, $ofile_info_HHR, $FH_HR) = @_;
+  my ($decision_HR, $audit_file, $alias_HR, $alias_used_HR, $ofile_info_HHR, $FH_HR) = @_;
 
-  my %grp_H = ();  # canonical => { n_seqs, variants => {orig=>1}, accns => [] }
+  my $have_aliases = (defined $alias_HR && scalar(keys %{$alias_HR}) > 0) ? 1 : 0;
+
+  my %grp_H = ();  # canonical => { n_seqs, variants => {orig=>1},
+                   #                aliased_from => {pre_alias_canonical=>1},
+                   #                accns => [] }
   foreach my $acc (sort keys %{$decision_HR}) {
     my $d = $decision_HR->{$acc};
     next if(! defined $d->{status} || $d->{status} ne "kept");
@@ -1312,24 +1369,53 @@ sub write_groups_audit {
     $grp_H{$gk}{n_seqs}++;
     $grp_H{$gk}{variants}{$orig}++;
     push @{$grp_H{$gk}{accns}}, $acc;
+
+    # Track pre-alias canonicals rolled into this target (only if they
+    # actually differ from the target, i.e. an alias fired).
+    if($have_aliases) {
+      my $pre = $d->{group_key_preAlias};
+      if(defined $pre && $pre ne $gk) {
+        $grp_H{$gk}{aliased_from}{$pre}++;
+      }
+    }
   }
 
   my @sorted = sort { $grp_H{$b}{n_seqs} <=> $grp_H{$a}{n_seqs} || $a cmp $b } keys %grp_H;
 
   open(my $fh, ">", $audit_file) or ofile_FAIL("ERROR: unable to write $audit_file: $!", 1, $FH_HR);
-  print $fh "#canonical_group\tn_seqs\tvariants\tn_variants\texample_accns\n";
+  if($have_aliases) {
+    print $fh "#canonical_group\tn_seqs\tvariants\tn_variants\taliased_from\texample_accns\n";
+  }
+  else {
+    print $fh "#canonical_group\tn_seqs\tvariants\tn_variants\texample_accns\n";
+  }
   my $max_ex = 5;
   foreach my $gk (@sorted) {
     my @variants = sort keys %{$grp_H{$gk}{variants}};
     my @accns    = @{$grp_H{$gk}{accns}};
     my $n_ex = (scalar(@accns) < $max_ex) ? scalar(@accns) : $max_ex;
     my @examples = @accns[0 .. ($n_ex - 1)];
-    printf $fh "%s\t%d\t%s\t%d\t%s\n",
-      $gk,
-      $grp_H{$gk}{n_seqs},
-      join(",", @variants),
-      scalar(@variants),
-      join(",", @examples);
+    if($have_aliases) {
+      my @aliased_from = (defined $grp_H{$gk}{aliased_from})
+                        ? sort keys %{$grp_H{$gk}{aliased_from}}
+                        : ();
+      my $af_str = (scalar(@aliased_from) > 0) ? join(",", @aliased_from) : "-";
+      printf $fh "%s\t%d\t%s\t%d\t%s\t%s\n",
+        $gk,
+        $grp_H{$gk}{n_seqs},
+        join(",", @variants),
+        scalar(@variants),
+        $af_str,
+        join(",", @examples);
+    }
+    else {
+      printf $fh "%s\t%d\t%s\t%d\t%s\n",
+        $gk,
+        $grp_H{$gk}{n_seqs},
+        join(",", @variants),
+        scalar(@variants),
+        join(",", @examples);
+    }
   }
   close($fh);
 
@@ -1338,6 +1424,126 @@ sub write_groups_audit {
   ofile_OutputString($FH_HR->{"log"}, 1,
     sprintf("# Wrote groups audit (%d canonical groups) to %s\n", scalar(@sorted), $audit_file));
   return scalar(@sorted);
+}
+
+#################################################################
+# Subroutine : read_group_aliases()
+# Incept     : EPN* Mon Apr 20 2026
+#
+# Purpose    : Parse a user-supplied group-name alias file and build
+#              a resolved source->target map, applied AFTER built-in
+#              group-key normalization in parse_and_filter_metadata().
+#
+#              File format (see v-prep.pl --group-aliases):
+#                - 2-column TSV: target<TAB>source
+#                - target is the desired canonical group name
+#                - source is the post-normalization canonical as it
+#                  appears in .vadr.groups_audit.tsv (case-sensitive)
+#                - '#' starts a comment (to end of line)
+#                - blank lines ignored
+#                - leading/trailing whitespace per column is trimmed,
+#                  interior whitespace preserved
+#
+#              Chains are resolved to fixpoint (A->B, B->C yields A->C
+#              in the returned map), so at application time a single
+#              hash lookup is sufficient.
+#
+#              Circular aliases (A->B->A, or self-loop A->A-via-chain)
+#              are fatal: the subroutine dies with a diagnostic listing
+#              the offending cycle. A target equal to its own source
+#              on the same line (A<TAB>A) is silently dropped (no-op).
+#
+# Arguments  :
+#   $alias_file : path to alias TSV
+#   $alias_HR   : ref to hash to populate with resolved source->target
+#                 (caller pre-initializes to empty hash)
+#   $FH_HR      : output file handles ("log", ...)
+#
+# Returns    : number of distinct source->target mappings loaded
+#################################################################
+sub read_group_aliases {
+  my ($alias_file, $alias_HR, $FH_HR) = @_;
+
+  # Raw map: source -> { target => $target, lineno => $lineno }
+  # We keep line numbers so error messages can point to offending lines.
+  my %raw_H = ();
+  my $lineno = 0;
+  my $n_loaded = 0;
+
+  open(my $fh, "<", $alias_file) or ofile_FAIL("ERROR: unable to read --group-aliases file $alias_file: $!", 1, $FH_HR);
+  while(my $line = <$fh>) {
+    $lineno++;
+    chomp $line;
+    # Strip comments (# to end of line).
+    $line =~ s/\#.*$//;
+    # Skip blank.
+    next if($line =~ /^\s*$/);
+    my @f = split(/\t/, $line, -1);
+    if(scalar(@f) < 2) {
+      ofile_FAIL(sprintf("ERROR: --group-aliases file $alias_file line %d: expected 2 tab-separated columns (target<TAB>source), got: %s", $lineno, $line), 1, $FH_HR);
+    }
+    if(scalar(@f) > 2) {
+      ofile_FAIL(sprintf("ERROR: --group-aliases file $alias_file line %d: more than 2 tab-separated columns; tabs are column separators and cannot appear inside a name: %s", $lineno, $line), 1, $FH_HR);
+    }
+    my ($target, $source) = @f;
+    # Trim leading/trailing whitespace from each column; interior preserved.
+    $target =~ s/^\s+//; $target =~ s/\s+$//;
+    $source =~ s/^\s+//; $source =~ s/\s+$//;
+    if($target eq "" || $source eq "") {
+      ofile_FAIL(sprintf("ERROR: --group-aliases file $alias_file line %d: empty target or source after trim: %s", $lineno, $line), 1, $FH_HR);
+    }
+    if($target eq $source) {
+      # No-op self-mapping; skip silently.
+      next;
+    }
+    if(exists $raw_H{$source}) {
+      my $prev = $raw_H{$source}{target};
+      my $pln  = $raw_H{$source}{lineno};
+      if($prev ne $target) {
+        ofile_FAIL(sprintf("ERROR: --group-aliases file $alias_file line %d: source \"%s\" is mapped to \"%s\" on line %d and \"%s\" on line %d; each source may have at most one target.",
+                           $lineno, $source, $prev, $pln, $target, $lineno), 1, $FH_HR);
+      }
+      # Duplicate identical mapping — ignore.
+      next;
+    }
+    $raw_H{$source} = { target => $target, lineno => $lineno };
+    $n_loaded++;
+  }
+  close($fh);
+
+  # Resolve chains to fixpoint, detecting cycles.
+  foreach my $src (keys %raw_H) {
+    my %visited = ($src => 1);
+    my @path    = ($src);
+    my $cur     = $raw_H{$src}{target};
+    while(exists $raw_H{$cur}) {
+      if(exists $visited{$cur}) {
+        # Cycle: $cur reappears in the chain starting at $src.
+        push(@path, $cur);
+        my @lines = ();
+        for(my $i = 0; $i < scalar(@path) - 1; $i++) {
+          my $s = $path[$i];
+          if(exists $raw_H{$s}) {
+            push(@lines, sprintf("line %d: \"%s\" -> \"%s\"",
+                                 $raw_H{$s}{lineno}, $s, $raw_H{$s}{target}));
+          }
+        }
+        ofile_FAIL(sprintf("ERROR: --group-aliases file $alias_file contains a circular alias chain: %s\nOffending entries:\n  %s",
+                           join(" -> ", map { "\"$_\"" } @path),
+                           join("\n  ", @lines)), 1, $FH_HR);
+      }
+      $visited{$cur} = 1;
+      push(@path, $cur);
+      $cur = $raw_H{$cur}{target};
+    }
+    # $cur is now the terminal target (not a source in raw_H).
+    $alias_HR->{$src} = $cur;
+  }
+
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# Loaded %d group-name aliases from %s\n", $n_loaded, $alias_file));
+
+  return $n_loaded;
 }
 
 #################################################################
