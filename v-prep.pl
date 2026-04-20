@@ -7145,7 +7145,12 @@ sub normalize_group_name_with_numerals {
 #                   transforms, surviving tokens are sorted
 #                   alphabetically and rejoined, so word-order
 #                   variants ("I - South American" vs
-#                   "South American I") collapse.
+#                   "South American I") collapse. EXCEPTION: labels
+#                   detected as composite serotype-genotype (e.g.,
+#                   "1IV" meaning serotype 1, genotype IV) skip the
+#                   sort so permuted composites (1IV vs 4I) remain
+#                   distinct canonicals. See
+#                   _is_composite_serotype_genotype().
 #
 #             If stripping descriptors removes every token, the
 #             un-stripped token list is used as a fallback so the
@@ -7202,6 +7207,12 @@ sub normalize_group_name_expanded {
   }
   @tokens = @expanded;
 
+  # Detect composite <serotype,genotype> labels (e.g., 1IV meaning
+  # serotype 1, genotype IV). Must run BEFORE numeral collapse because
+  # collapse converts "iv" to "4" and would make a Roman genotype
+  # indistinguishable from a serotype digit.
+  my $is_composite = _is_composite_serotype_genotype(\@tokens);
+
   # Numeral collapse
   if($do_collapse) {
     foreach my $t (@tokens) {
@@ -7222,9 +7233,54 @@ sub normalize_group_name_expanded {
 
   if(scalar(@kept) == 0) { @kept = grep { $_ ne "" } @pre_strip; }
 
-  @kept = sort @kept;
+  # Composite serotype-genotype labels skip alphabetical sort so that
+  # 1IV (serotype 1, genotype IV) and 4I (serotype 4, genotype I) do
+  # not collapse to the same canonical.
+  @kept = sort @kept unless($is_composite);
   my $result = join(" ", @kept);
   return ($result eq "") ? $basic : $result;
+}
+
+#################################################################
+# Subroutine: _is_composite_serotype_genotype()
+# Incept:     EPN* Mon Apr 20 2026
+#
+# Purpose:    Detect a composite serotype-genotype label where the
+#             two tokens encode positional information: a single-digit
+#             serotype (1..9, matching DENV/WNV/JEV/etc.) and a short
+#             Roman-numeral genotype (1..3 Roman letters that parse to
+#             a valid Roman numeral). Accepts both orderings:
+#             <digit>+<roman> (e.g., "1iv" split to ["1","iv"]) and
+#             <roman>+<digit> (e.g., ["iv","1"], rare but possible).
+#
+#             The check is made after descriptor-stripping so that
+#             labels like "1_IV genotype" (tokens ["1","iv","genotype"])
+#             are recognized once "genotype" is dropped. Composites
+#             must have exactly two non-descriptor tokens.
+#
+#             This must be called BEFORE Roman->Arabic numeral
+#             collapsing, because after collapse "iv" becomes "4" and
+#             looks identical to a serotype digit.
+#
+# Arguments:
+#   $tokens_AR: ref to array of tokens (post-split, pre-collapse)
+#
+# Returns: 1 if composite, 0 otherwise
+#################################################################
+sub _is_composite_serotype_genotype {
+  my ($tokens_AR) = @_;
+  my %drop = map { $_ => 1 } qw(lineage genotype subtype serotype type clade g);
+  my @kept = grep { $_ ne "" && ! $drop{$_} } @$tokens_AR;
+  return 0 if(scalar(@kept) != 2);
+  my ($a, $b) = @kept;
+  my $is_digit = sub { defined($_[0]) && $_[0] =~ /^[1-9]$/ };
+  my $is_roman = sub {
+    return 0 unless(defined($_[0]) && $_[0] =~ /^[ivxlcdm]{1,3}$/);
+    return defined(_roman_to_arabic($_[0])) ? 1 : 0;
+  };
+  return 1 if($is_digit->($a) && $is_roman->($b));
+  return 1 if($is_roman->($a) && $is_digit->($b));
+  return 0;
 }
 
 #################################################################
