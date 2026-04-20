@@ -961,7 +961,7 @@ if(! $do_skip_annotate && ! opt_Get("--no-overhang-ext", \%opt_HH)) {
 
     # Update model length and rewrite minfo with shifted coords.
     my $new_len = $seed_model_len + $n_5p + $n_3p;
-    my $overhang_minfo = $out_root . ".overhang.minfo";
+    my $overhang_minfo = $out_root . ".overhang_ext.minfo";
     write_remapped_minfo($seed_minfo, $overhang_minfo, \%ftr_info_HA,
                          $model_key, $new_len, $FH_HR);
     $seed_minfo     = $overhang_minfo;
@@ -979,6 +979,22 @@ if($do_rna_discovery && !$do_skip_annotate && scalar(@rna_regions_A) > 0) {
   my $updated_minfo_file = $out_root . ".minfo";
   generate_updated_minfo($seed_minfo, $rna_annotation_file, \@rna_regions_A,
                          $updated_minfo_file, $model_key, \%execs_H, \%ofile_info_HH, $FH_HR);
+}
+
+#---------------------------------------
+# Step 14: Ensure canonical <out_root>.minfo exists
+#---------------------------------------
+# v-build.pl --profile consumes <out_root>.minfo. Step 13 writes it only
+# when RNA features exist; otherwise the final minfo lives under an
+# intermediate name (.remapped.minfo or .overhang_ext.minfo). Copy the
+# current $seed_minfo to the canonical path if Step 13 didn't.
+{
+  my $canonical_minfo = $out_root . ".minfo";
+  if((! -e $canonical_minfo) && ($seed_minfo ne $canonical_minfo) && (-e $seed_minfo)) {
+    utl_RunCommand("cp " . $seed_minfo . " " . $canonical_minfo, 0, 0, $FH_HR);
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# Wrote canonical minfo to %s (copied from %s)\n", $canonical_minfo, $seed_minfo));
+  }
 }
 
 if(! $do_keep) {
@@ -2261,6 +2277,15 @@ sub extend_rf_with_overhangs {
     ofile_FAIL("ERROR in $sub_name, RF length != alen", 1, $FH_HR);
   }
 
+  # Preserve SS_cons from the input stk so cmbuild --hand has consensus
+  # structure to work with. If the input lacks SS_cons, use all-dot.
+  my $has_ss_cons = $msa->has_ss_cons();
+  my $ss_cons     = $has_ss_cons ? $msa->get_ss_cons() : ("." x $alen);
+  my @ss_chars    = split(//, $ss_cons);
+  if(scalar(@ss_chars) != $alen) {
+    ofile_FAIL("ERROR in $sub_name, SS_cons length != alen", 1, $FH_HR);
+  }
+
   my @names   = ();
   my @aligned = ();
   for(my $i = 0; $i < $nseq; $i++) {
@@ -2286,13 +2311,13 @@ sub extend_rf_with_overhangs {
   my $plan_5p = compute_overhang_extension_plan(
     \@names, \@aligned, \@rf_chars, $first_rf_col, $last_rf_col,
     "5p", $anchor_len, $min_cov, $min_cons, $lookahead, $min_active,
-    $execs_HR, $work_root . ".overhang.5p", $do_keep, $do_verbose,
+    $execs_HR, $work_root . ".5p", $do_keep, $do_verbose,
     $to_remove_AR, $FH_HR);
 
   my $plan_3p = compute_overhang_extension_plan(
     \@names, \@aligned, \@rf_chars, $first_rf_col, $last_rf_col,
     "3p", $anchor_len, $min_cov, $min_cons, $lookahead, $min_active,
-    $execs_HR, $work_root . ".overhang.3p", $do_keep, $do_verbose,
+    $execs_HR, $work_root . ".3p", $do_keep, $do_verbose,
     $to_remove_AR, $FH_HR);
 
   my $n_5p = scalar(@{$plan_5p->{"rf_chars"}});
@@ -2314,7 +2339,7 @@ sub extend_rf_with_overhangs {
   my $kept_start = ($n_5p > 0) ? $first_rf_col : 0;
   my $kept_end   = ($n_3p > 0) ? $last_rf_col  : $alen - 1;
 
-  my $extended_stk = $work_root . ".overhang.extended.stk";
+  my $extended_stk = $work_root . ".stk";
   open(my $efh, ">", $extended_stk) || ofile_FAIL("ERROR in $sub_name, cannot write $extended_stk", 1, $FH_HR);
   print $efh "# STOCKHOLM 1.0\n\n";
 
@@ -2324,7 +2349,9 @@ sub extend_rf_with_overhangs {
     $name_width = length($n) if(length($n) > $name_width);
   }
   my $rf_label = "#=GC RF";
+  my $ss_label = "#=GC SS_cons";
   $name_width = length($rf_label) if(length($rf_label) > $name_width);
+  $name_width = length($ss_label) if(length($ss_label) > $name_width);
 
   for(my $i = 0; $i < $nseq; $i++) {
     my $kept_middle = substr($aligned[$i], $kept_start, $kept_end - $kept_start + 1);
@@ -2338,12 +2365,22 @@ sub extend_rf_with_overhangs {
   my $middle_rf = join("", @rf_chars[$kept_start .. $kept_end]);
   my $full_rf   = $left_rf . $middle_rf . $right_rf;
   printf $efh "%-${name_width}s  %s\n", $rf_label, $full_rf;
+
+  # Write SS_cons: slice the middle the same way, pad new flanking cols
+  # with '.' (unpaired). New RF cols added by phase-2 have no structure
+  # annotation by design — bracket pairs dropped from outside the kept
+  # range were outside the original RF range where SS_cons should be '.'.
+  my $left_ss  = ($n_5p > 0) ? ("." x scalar(@{$plan_5p->{"rf_chars"}})) : "";
+  my $right_ss = ($n_3p > 0) ? ("." x scalar(@{$plan_3p->{"rf_chars"}})) : "";
+  my $middle_ss = join("", @ss_chars[$kept_start .. $kept_end]);
+  my $full_ss   = $left_ss . $middle_ss . $right_ss;
+  printf $efh "%-${name_width}s  %s\n", $ss_label, $full_ss;
   print  $efh "//\n";
   close($efh);
 
   # cmbuild --hand on extended .stk
-  my $tmp_cm      = $work_root . ".overhang.cm";
-  my $cmbuild_out = $work_root . ".overhang.cmbuild.out";
+  my $tmp_cm      = $work_root . ".cm";
+  my $cmbuild_out = $work_root . ".cmbuild.out";
   foreach my $f ($tmp_cm, $tmp_cm . ".i1f", $tmp_cm . ".i1i", $tmp_cm . ".i1m", $tmp_cm . ".i1p") {
     if(-e $f) { unlink $f; }
   }
@@ -2353,7 +2390,7 @@ sub extend_rf_with_overhangs {
   utl_RunCommand($cmd, $do_verbose, 0, $FH_HR);
 
   # Write unaligned training fasta from current alignment
-  my $train_fa = $work_root . ".overhang.train.fa";
+  my $train_fa = $work_root . ".train.fa";
   open(my $fafh, ">", $train_fa) || ofile_FAIL("ERROR in $sub_name, cannot write $train_fa", 1, $FH_HR);
   for(my $i = 0; $i < $nseq; $i++) {
     my $seq = $aligned[$i];
@@ -2363,7 +2400,7 @@ sub extend_rf_with_overhangs {
   close($fafh);
 
   # cmalign training seqs to new CM
-  my $realigned_stk = $work_root . ".overhang.realigned.stk";
+  my $realigned_stk = $work_root . ".realigned.stk";
   $cmd = $execs_HR->{"cmalign"} . " --outformat pfam " . $tmp_cm . " " . $train_fa . " > " . $realigned_stk;
   ofile_OutputString($FH_HR->{"log"}, 1,
     sprintf("# Overhang extension: running cmalign to realign %d sequences against extended CM\n", $nseq));
