@@ -29,8 +29,11 @@ if (!$taxid || !$outprefix) {
 my $base_esearch = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi";
 my $base_esummary = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi";
 
-# Avoid patent sequences, synthetic constructs, and general environmental samples
-my $query = "txid$taxid\[Organism\] NOT (gbdiv_syn\[prop\] OR gbdiv_pat\[prop\] OR env_sample\[prop\])";
+# Avoid patent sequences, synthetic constructs, environmental samples, and
+# UNVERIFIED GenBank submissions (whose DEFINITION lines are prefixed with
+# "UNVERIFIED:"). UNVERIFIED entries contain inferred annotation rather than
+# curator-verified data and should not be used as training/test data.
+my $query = "txid$taxid\[Organism\] NOT (gbdiv_syn\[prop\] OR gbdiv_pat\[prop\] OR env_sample\[prop\] OR UNVERIFIED\[Title\])";
 
 my $api_params = "";
 if ($api_key) { $api_params .= "&api_key=$api_key"; }
@@ -71,7 +74,7 @@ my $retmax   = 500;
 my $out_tsv  = "$outprefix.tsv";
 
 open(my $out_fh, ">", $out_tsv) or die "ERROR: Cannot open $out_tsv for writing: $!";
-print $out_fh "Accession\tLength\tCreateDate\tSerotype\tGenotype\tIsolate\n";
+print $out_fh "Accession\tLength\tCreateDate\tSerotype\tGenotype\tIsolate\tTitle\n";
 
 # If user provided an API key, we can afford a higher rate limit. Without one, sleep more.
 my $sleep_time = ($api_key) ? 0.35 : 1.0; 
@@ -100,10 +103,14 @@ while ($retstart < $count) {
         my $cdate    = ($doc =~ /<CreateDate>([^<]+)<\/CreateDate>/) ? $1 : "";
         my $subtype  = ($doc =~ /<SubType>([^<]+)<\/SubType>/) ? $1 : "";
         my $subname  = ($doc =~ /<SubName>([^<]+)<\/SubName>/) ? $1 : "";
+        my $title    = ($doc =~ /<Title>([^<]*)<\/Title>/) ? $1 : "";
 
         # Clean HTML entities if any
         $subtype = defined(&decode_entities) ? decode_entities($subtype) : $subtype;
         $subname = defined(&decode_entities) ? decode_entities($subname) : $subname;
+        $title   = defined(&decode_entities) ? decode_entities($title)   : $title;
+        # Strip TSV-breaking whitespace from title
+        $title =~ s/[\t\r\n]+/ /g;
 
         my $serotype = "";
         my $genotype = "";
@@ -127,7 +134,7 @@ while ($retstart < $count) {
         }
 
         if ($acc) {
-            print $out_fh "$acc\t$slen\t$cdate\t$serotype\t$genotype\t$isolate\n";
+            print $out_fh "$acc\t$slen\t$cdate\t$serotype\t$genotype\t$isolate\t$title\n";
         }
     }
 

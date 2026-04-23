@@ -1105,11 +1105,14 @@ sub parse_and_filter_metadata {
   my %numeral_norms   = ();
 
   open(my $tsv_fh, "<", $tsv_file) or die "ERROR: Cannot read $tsv_file: $!";
-  my $header = <$tsv_fh>; # Skip header: Accession, Length, CreateDate, Serotype, Genotype, Isolate
+  my $header = <$tsv_fh>; # Header: Accession, Length, CreateDate, Serotype, Genotype, Isolate[, Title]
 
   while (my $line = <$tsv_fh>) {
     chomp $line;
-    my ($acc, $len, $cdate, $serotype, $genotype, $isolate) = split(/\t/, $line);
+    # Title column was added 2026-04-23 (EPN); TSVs written before then lack it.
+    # split with limit=-1 preserves trailing empty fields; treat missing col as "".
+    my ($acc, $len, $cdate, $serotype, $genotype, $isolate, $title) = split(/\t/, $line, -1);
+    if(! defined $title) { $title = ""; }
     my $orig_group = "Unknown";
     if    (defined $serotype && $serotype ne "") { $orig_group = $serotype; }
     elsif (defined $genotype && $genotype ne "") { $orig_group = $genotype; }
@@ -1165,7 +1168,20 @@ sub parse_and_filter_metadata {
     };
 
     $total_seqs++;
-    
+
+    # Belt-and-suspenders check for UNVERIFIED GenBank submissions whose
+    # DEFINITION lines are prefixed with "UNVERIFIED:". The Entrez query
+    # in fetch-seqs-given-taxid.pl already excludes them, but anything that
+    # slips through (syntax mistakes, pre-filter TSVs, --meta input) must
+    # be caught here. Skip the reference accession unconditionally.
+    if ($acc ne $ref_accn && $title =~ /^\s*UNVERIFIED[\s:]/i) {
+      $decision_HR->{$acc}{"status"} = "removed";
+      $decision_HR->{$acc}{"reason_code"} = "unverified_or_synthetic_or_patent";
+      $decision_HR->{$acc}{"reason_detail"} = "title starts with UNVERIFIED: $title";
+      $decision_HR->{$acc}{"stage_last_seen"} = "tier1_unverified_filter";
+      next;
+    }
+
     # Length check: Keep sequences >90% of the seed model's length
     # Reference accession is always kept regardless of length
     if ($seed_model_len > 0 && $len < ($seed_model_len * 0.90) && $acc ne $ref_accn) {
