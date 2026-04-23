@@ -56,6 +56,7 @@ $execs_H{"makeblastdb"}   = $env_vadr_blast_dir    . "/makeblastdb";
 $execs_H{"cmscan"}        = $env_vadr_infernal_dir . "/cmscan";
 $execs_H{"cmalign"}       = $env_vadr_infernal_dir . "/cmalign";
 $execs_H{"cmbuild"}       = $env_vadr_infernal_dir . "/cmbuild";
+$execs_H{"cmfetch"}       = $env_vadr_infernal_dir . "/cmfetch";
 $execs_H{"esl-reformat"}  = $env_vadr_easel_dir    . "/esl-reformat";
 $execs_H{"v-build.pl"}    = $env_vadr_scripts_dir  . "/v-build.pl";
 $execs_H{"v-annotate.pl"} = $env_vadr_scripts_dir  . "/v-annotate.pl";
@@ -4778,13 +4779,12 @@ sub run_rna_sstruct_generation {
 
     my $cmd;
     if((defined $rfam_dir) && ($rfam_dir ne "")) {
-      # Using Rfam.cm - use cmfetch to get specific model
-      my $cmfetch_exec = $rfam_dir . "/cmfetch";
-      if(! -e $cmfetch_exec) {
-        $cmfetch_exec = "cmfetch"; # Fall back to PATH
-      }
+      # Using Rfam.cm - use cmfetch from the same Infernal dir as cmalign.
+      # We must NOT fall back to bare "cmfetch" from PATH: a newer Infernal
+      # in PATH (e.g. a dev build) can emit a CM format tag the installed
+      # cmalign doesn't recognize ("INFERNAL1/b" vs 1.1.5 cmalign).
       my $rfam_cm = $rfam_dir . "/Rfam.cm";
-      $cmd = "$cmfetch_exec $rfam_cm $rna_acc | " . $execs_HR->{"cmalign"} . 
+      $cmd = $execs_HR->{"cmfetch"} . " $rfam_cm $rna_acc | " . $execs_HR->{"cmalign"} .
              " --outformat pfam -g --tfile " . $cmalign_tfile . " - " . $subseq_fa . " > " . $cmalign_stk;
     }
     else {
@@ -5849,7 +5849,9 @@ sub generate_updated_minfo {
       
       # Get Rfam model description
       my $rfam_cm = $ENV{'VADRMODELDIR'} ? $ENV{'VADRMODELDIR'} . "/rfam/Rfam.cm" : "/net/intdev/oblast01/dnaorg/virseqannot/code/vadr-install-1.7/rfam/Rfam.cm";
-      my $desc_cmd = "cmfetch " . $rfam_cm . " " . $accession . " 2>/dev/null | grep '^DESC' | awk '{for(i=2;i<=NF;i++) printf \"%s \", \$i; print \"\"}'";
+      # Use the Infernal-dir cmfetch (not bare PATH) — a dev build in PATH
+      # can emit a newer CM format the installed tools don't recognize.
+      my $desc_cmd = $execs_HR->{"cmfetch"} . " " . $rfam_cm . " " . $accession . " 2>/dev/null | grep '^DESC' | awk '{for(i=2;i<=NF;i++) printf \"%s \", \$i; print \"\"}'";
       my $description = `$desc_cmd`;
       chomp $description;
       $description =~ s/\s+$//;  # trim trailing whitespace
@@ -5995,6 +5997,9 @@ sub parse_alt_for_cds_boundary_alerts {
 
     my @tok = split(/\s+/, $line);
     next if(scalar(@tok) < 13);
+    # Skip non-feature alerts (ftr col = "-") — e.g. dupregin, discontn,
+    # indfstrn that aren't tied to a specific feature index.
+    next if($tok[5] eq "-");
 
     my $seq_name    = $tok[1];
     my $ftr_type    = $tok[3];
@@ -6363,6 +6368,8 @@ sub parse_alt_for_exceptions {
 
     my @tok = split(/\s+/, $line);
     next if(scalar(@tok) < 13);
+    # Skip non-feature alerts (ftr col = "-").
+    next if($tok[5] eq "-");
 
     my $seq_name   = $tok[1];
     my $ftr_type   = $tok[3];
@@ -6986,6 +6993,8 @@ sub translate_alternative_cds_proteins {
     next if($line =~ /^\#/ || $line =~ /^\s*$/);
     my @tok = split(/\s+/, $line);
     next if(scalar(@tok) < 13);
+    # Skip non-feature alerts (ftr col = "-").
+    next if($tok[5] eq "-");
     my $acc        = $tok[1];
     my $ftr_idx    = $tok[5] - 1;  # convert from 1-based (.vadr.alt) to 0-based (internal)
     my $alert_code = $tok[6];
@@ -7270,6 +7279,8 @@ sub identify_rerun_candidates {
     next if($line =~ /^\#/ || $line =~ /^\s*$/);
     my @tok = split(/\s+/, $line);
     next if(scalar(@tok) < 13);
+    # Skip non-feature alerts (ftr col = "-").
+    next if($tok[5] eq "-");
     my $acc  = $tok[1];
     my $fidx = $tok[5] - 1;  # convert from 1-based (.vadr.alt) to 0-based (internal)
     my $code = $tok[6];
