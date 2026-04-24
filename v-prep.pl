@@ -111,6 +111,8 @@ opt_Add("--npergrp",      "integer", undef,     $g,    undef, undef,          "o
 opt_Add("--no-collapse-numerals", "boolean", 0, $g,    undef, undef,          "disable Roman<->Arabic numeral collapsing in group_key normalization", "disable Roman<->Arabic numeral collapsing in group_key normalization (warn only, do not collapse)", \%opt_HH, \@opt_order_A);
 opt_Add("--no-strip-descriptors", "boolean", 0, $g,    undef, undef,          "disable descriptor-word stripping/token-sort in group_key normalization", "disable descriptor-word stripping (lineage,genotype,...) and alphabetical token sort in group_key normalization", \%opt_HH, \@opt_order_A);
 opt_Add("--group-aliases", "string",  undef,  $g,    undef, undef,          "apply user-supplied group-name alias file <s>", "apply user-supplied group-name alias file <s> AFTER built-in normalization; 2-column TSV: target<TAB>source, where source is the post-normalization canonical as it appears in .vadr.groups_audit.tsv", \%opt_HH, \@opt_order_A);
+opt_Add("--holdout-frac",  "real",    0,      $g,    undef, undef,          "fraction [0,1) of fetched sequences to hold out as test set (0 = disabled)", "fraction [0,1) of fetched sequences to hold out as test set as <x>; 0 = no holdout (default); split is done before tier-1 filtering", \%opt_HH, \@opt_order_A);
+opt_Add("--holdout-seed",  "integer", 42,     $g,    undef, undef,          "random seed for --holdout-frac shuffle",                                        "random seed for --holdout-frac shuffle as <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "overhang extension options";
 #       option                         type    default  group  requires                incompat             preamble-output                                                              help-output
@@ -160,6 +162,8 @@ my $options_okay =
                 'no-collapse-numerals' => \$GetOptions_H{"--no-collapse-numerals"},
                 'no-strip-descriptors' => \$GetOptions_H{"--no-strip-descriptors"},
                 'group-aliases=s' => \$GetOptions_H{"--group-aliases"},
+                'holdout-frac=f'  => \$GetOptions_H{"--holdout-frac"},
+                'holdout-seed=i'  => \$GetOptions_H{"--holdout-seed"},
 # overhang extension options
                 'no-overhang-ext'          => \$GetOptions_H{"--no-overhang-ext"},
                 'overhang-anchor-len=i'    => \$GetOptions_H{"--overhang-anchor-len"},
@@ -264,6 +268,13 @@ if(opt_IsUsed("--group-aliases", \%opt_HH)) {
   my $alias_file = opt_Get("--group-aliases", \%opt_HH);
   if(! -e $alias_file) { die "ERROR, --group-aliases file does not exist: $alias_file"; }
   if(! -r $alias_file) { die "ERROR, --group-aliases file is not readable: $alias_file"; }
+}
+
+{
+  my $hfrac = opt_Get("--holdout-frac", \%opt_HH);
+  if($hfrac < 0 || $hfrac >= 1) {
+    die "ERROR, --holdout-frac must be in range [0,1), got: $hfrac";
+  }
 }
 
 # RNA discovery validation
@@ -520,6 +531,36 @@ else {
   close($pre_fh);
 }
 
+#---------------------------------------
+# Holdout split (before any tier-1 filtering)
+#---------------------------------------
+my $holdout_frac = opt_Get("--holdout-frac", \%opt_HH);
+my $do_holdout   = ($holdout_frac > 0);
+my %holdout_accn_H = ();  # accessions reserved as held-out test set
+
+if($do_holdout) {
+  my $holdout_seed     = opt_Get("--holdout-seed", \%opt_HH);
+  my $holdout_tsv_file = $out_root . ".holdout.tsv";
+  my $train_meta_tsv   = $out_root . ".train.metadata.tsv";  # temp training-only metadata
+
+  perform_holdout_split($meta_tsv, $holdout_frac, $holdout_seed, $ref_accn,
+                        $holdout_tsv_file, $train_meta_tsv, \%holdout_accn_H,
+                        $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
+
+  $meta_tsv = $train_meta_tsv;  # tier-1 pipeline operates only on training split
+
+  # Fetch FASTA for held-out sequences
+  my $holdout_accn_list = $out_root . ".holdout.accn.list";
+  my $holdout_fa_file   = $out_root . ".holdout.fa";
+  open(my $hofh, ">", $holdout_accn_list) or die "ERROR: unable to write $holdout_accn_list: $!";
+  foreach my $acc (sort keys %holdout_accn_H) { print $hofh "$acc\n"; }
+  close($hofh);
+  if(! $do_keep) { push(@to_remove_A, $holdout_accn_list); }
+
+  fetch_fasta_from_accession_list($holdout_accn_list, $holdout_fa_file, 1, "holdout.fa",
+                                  \%ofile_info_HH, \@to_remove_A, \%opt_HH, $FH_HR);
+}
+
 my %candidate_AH = ();
 my %decision_H = ();
 my $max_per_group = opt_Get("--xpergroup", \%opt_HH);
@@ -584,7 +625,7 @@ my $stitch_cds_msa_nt_fa_file = $out_root . ".cds.msa.nt.afa";
 my $rna_annotation_file       = $out_root . ".rna_annotation.tsv";
 
 write_accession_list_from_candidates(\%candidate_AH, $tier1_accn_file, $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
-fetch_fasta_from_accession_list($tier1_accn_file, $tier2_fasta_file, $do_keep, \%ofile_info_HH, \@to_remove_A, \%opt_HH, $FH_HR);
+fetch_fasta_from_accession_list($tier1_accn_file, $tier2_fasta_file, $do_keep, "tier2.fa", \%ofile_info_HH, \@to_remove_A, \%opt_HH, $FH_HR);
 apply_ambiguity_filter_to_candidates(\%candidate_AH, $tier2_fasta_file, $max_ambig_nt, \%decision_H, $ref_accn, $FH_HR);
 
 my $tier2_align_stk_file = undef;
@@ -1593,6 +1634,105 @@ sub read_group_aliases {
 }
 
 #################################################################
+# Subroutine : perform_holdout_split()
+# Incept     : EPN* Fri Apr 25 2026
+#
+# Purpose    : Randomly split the raw metadata TSV into a held-out
+#              test set and a training set, BEFORE any tier-1
+#              filtering.  The split is deterministic given
+#              --holdout-seed.  If the reference accession falls
+#              in the holdout draw it is forced into training.
+#              Writes <out_root>.holdout.tsv (held-out metadata)
+#              and a temporary training-only metadata TSV that
+#              replaces $meta_tsv for all downstream processing.
+#
+# Arguments:
+#   $meta_tsv        : path to the full (unfilterd) metadata TSV
+#   $frac            : fraction [0,1) to hold out
+#   $seed            : integer random seed
+#   $ref_accn        : reference accession (never goes to holdout)
+#   $holdout_tsv     : output path for holdout metadata TSV
+#   $train_tsv       : output path for training-only metadata TSV
+#   $holdout_accn_HR : hash ref; populated with holdout accessions
+#   $do_keep         : if 0, $train_tsv is queued for deletion
+#   $ofile_info_HHR  : ofile info hash ref
+#   $to_remove_AR    : array ref of files to delete at cleanup
+#   $FH_HR           : file handle hash ref
+#################################################################
+sub perform_holdout_split {
+  my ($meta_tsv, $frac, $seed, $ref_accn, $holdout_tsv, $train_tsv,
+      $holdout_accn_HR, $do_keep, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
+
+  # Read all data lines
+  open(my $ifh, "<", $meta_tsv) or die "ERROR: Cannot read $meta_tsv: $!";
+  my $header = <$ifh>;
+  my @all_lines = ();
+  while(my $line = <$ifh>) {
+    chomp $line;
+    next if($line eq "");
+    push @all_lines, $line;
+  }
+  close($ifh);
+
+  my $n_total = scalar(@all_lines);
+
+  # Deterministic Fisher-Yates shuffle
+  srand($seed);
+  for(my $i = $n_total - 1; $i > 0; $i--) {
+    my $j = int(rand($i + 1));
+    @all_lines[$i, $j] = @all_lines[$j, $i];
+  }
+
+  # Compute split: last $n_holdout lines are the holdout draw
+  my $n_holdout = int($n_total * $frac + 0.5);
+  if($n_holdout >= $n_total) { $n_holdout = $n_total - 1; }
+  if($n_holdout < 0)         { $n_holdout = 0; }
+
+  my @train_lines   = ($n_holdout < $n_total) ? @all_lines[0 .. ($n_total - $n_holdout - 1)] : ();
+  my @holdout_lines = ($n_holdout > 0)        ? @all_lines[($n_total - $n_holdout) .. ($n_total - 1)] : ();
+
+  # Collect holdout accessions
+  foreach my $line (@holdout_lines) {
+    my ($acc) = split(/\t/, $line);
+    $holdout_accn_HR->{$acc} = 1;
+  }
+
+  # Force reference accession into training if it landed in holdout
+  if(defined $ref_accn && exists $holdout_accn_HR->{$ref_accn}) {
+    my @new_holdout = ();
+    foreach my $line (@holdout_lines) {
+      my ($acc) = split(/\t/, $line);
+      if($acc eq $ref_accn) { push @train_lines, $line; }
+      else                  { push @new_holdout,  $line; }
+    }
+    @holdout_lines = @new_holdout;
+    delete $holdout_accn_HR->{$ref_accn};
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# Holdout: reference accession %s was in holdout draw; forced to training set.\n", $ref_accn));
+    $n_holdout = scalar(@holdout_lines);
+  }
+
+  # Write holdout TSV (permanent output)
+  open(my $hofh, ">", $holdout_tsv) or die "ERROR: unable to write $holdout_tsv: $!";
+  print $hofh $header;
+  foreach my $line (@holdout_lines) { print $hofh $line . "\n"; }
+  close($hofh);
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "holdout.tsv", $holdout_tsv, 1, 1, "metadata TSV for held-out test sequences");
+
+  # Write training TSV (temp: deleted at cleanup unless --keep)
+  open(my $tofh, ">", $train_tsv) or die "ERROR: unable to write $train_tsv: $!";
+  print $tofh $header;
+  foreach my $line (@train_lines) { print $tofh $line . "\n"; }
+  close($tofh);
+  if(! $do_keep) { push(@{$to_remove_AR}, $train_tsv); }
+
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# Holdout: %d sequences reserved as test set (seed %d, fraction %.4f), %d remain for training.\n",
+            $n_holdout, $seed, $frac, scalar(@train_lines)));
+  return;
+}
+
+#################################################################
 # Subroutine : write_accession_list_from_candidates()
 # Incept     : Copilot Mon Mar 09 2026
 #
@@ -1627,7 +1767,7 @@ sub write_accession_list_from_candidates {
 #              of accessions (batched).
 #################################################################
 sub fetch_fasta_from_accession_list {
-  my ($accn_file, $fasta_out_file, $do_keep, $ofile_info_HHR, $to_remove_AR, $opt_HHR, $FH_HR) = @_;
+  my ($accn_file, $fasta_out_file, $do_keep, $ofile_key, $ofile_info_HHR, $to_remove_AR, $opt_HHR, $FH_HR) = @_;
 
   my @acc_A = ();
   open(my $ifh, "<", $accn_file) or die "ERROR: unable to read $accn_file: $!";
@@ -1665,9 +1805,9 @@ sub fetch_fasta_from_accession_list {
   }
   close($ofh);
 
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "tier2.fa", $fasta_out_file, $do_keep, $do_keep, "FASTA sequences downloaded for tier-2 candidates");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $fasta_out_file, $do_keep, $do_keep, "FASTA sequences fetched from NCBI efetch");
   if(! $do_keep) { push(@{$to_remove_AR}, $fasta_out_file); }
-  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Tier 2 fetch: downloaded FASTA for %d accessions in %d batches to %s\n", scalar(@acc_A), $nfetched_batches, $fasta_out_file));
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# FASTA fetch: downloaded %d accessions in %d batches to %s\n", scalar(@acc_A), $nfetched_batches, $fasta_out_file));
   return;
 }
 
