@@ -2345,15 +2345,23 @@ sub check_and_add_cds_splice_sites {
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") { 
       $nsgm = scalar(@{$sgm_start_AA[$ftr_idx]});
-      if($nsgm > 1) { 
+      if($nsgm > 1) {
+        # this function is authoritative for canon_splice_sites on multi-segment CDSs:
+        # clear any stale qualifier inherited via --minfoin so we only re-set it below
+        # when the splice sites actually validate
+        delete $ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"};
         $canon_5p = 1; # will set to 0 below if any 5' splice site for any intron is not GT
         $canon_3p = 1; # will set to 0 below if any 3' splice site for any intron is not AG
+        my $nintron_checked = 0; # number of introns whose splice sites we actually inspected;
+                                 # if 0 (e.g., joined-coord ribosomal-slippage CDSs whose
+                                 # intersegment gap is below --intlen) do not set
+                                 # canon_splice_sites:"1" vacuously
 
         # NOTE: as currently implemented, if there are more than one
         # introns, splice sites have to be canonical in all for
         # canon_splice_sites:"1" to get set, else we won't set it
 
-        foreach(my $sgm_idx = 0; $sgm_idx < ($nsgm-1); $sgm_idx++) { 
+        foreach(my $sgm_idx = 0; $sgm_idx < ($nsgm-1); $sgm_idx++) {
           $next_sgm_idx = $sgm_idx+1;
           # determine if the intron is >= 40 nt
           $strand = $sgm_strand_AA[$ftr_idx][$sgm_idx];
@@ -2361,8 +2369,9 @@ sub check_and_add_cds_splice_sites {
             ofile_FAIL(sprintf("ERROR in $sub_name, with --fss, all adjacent CDS segments must be on the same strand, but CDS with coordinates %s violates this", $ftr_info_AHR->[$ftr_idx]{"coords"}), 1, $FH_HR);
           }
           my $intron_length = vdr_FeatureLengthBetweenAdjacentSegments($ftr_info_AHR, $sgm_info_AHR, $ftr_idx, $sgm_idx, $FH_HR);
-          
-          if($intron_length >= $min_intron_length) { 
+
+          if($intron_length >= $min_intron_length) {
+            $nintron_checked++;
             # check 5' splice site
             $rfstart = ($strand eq "+") ? $sgm_stop_AA[$ftr_idx][$sgm_idx] + 1 : $sgm_stop_AA[$ftr_idx][$sgm_idx] - 1;
             $rfstop  = ($strand eq "+") ? $sgm_stop_AA[$ftr_idx][$sgm_idx] + 2 : $sgm_stop_AA[$ftr_idx][$sgm_idx] - 2;
@@ -2424,7 +2433,7 @@ sub check_and_add_cds_splice_sites {
             }
           } # end of if($intron_length >= $min_intron_length)
         } # end of for($sgm_idx...
-        if($canon_5p && $canon_3p) { 
+        if($nintron_checked > 0 && $canon_5p && $canon_3p) {
           # set canon_splice_sites="1"
           $ftr_info_AHR->[$ftr_idx]{"canon_splice_sites"} = 1;
         }
