@@ -633,24 +633,41 @@ for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) {
 }
 
 # remove any qualifier key/value pairs with keys not in %qual_H, unless --qall used
-for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) {
-  my $ftype = $ftr_info_HAH{$mdl_name}[$ftr_idx]{"type"};
-  foreach my $qual (sort keys %{$ftr_info_HAH{$mdl_name}[$ftr_idx]}) {
-    # we skip this qualifier and remove it from ftr_info_HAH
-    # if all three of A1, A2, A3 OR B is satisfied
-    # (A1) it's not a default qualifier        AND
-    # (A2) (it's not listed in --qadd OR
-    #       (--qftradd is used AND $ftype is not listed in --qftradd)) AND
-    # (A3) --qall not used
-    # OR
-    # (B) it is listed in --qskip string
-    if(((! defined $qdf_H{$qual})         && # (A1)
-        ((! defined $qadd_H{$qual}) ||
-         ((opt_IsUsed("--qftradd", \%opt_HH)) &&
-          (! defined $qftr_add_H{$ftype})))   && # (A2)
-        (! opt_Get("--qall", \%opt_HH)))     # (A3)
-       || (defined $qskip_H{$qual})) {       # (B)
-      delete $ftr_info_HAH{$mdl_name}[$ftr_idx]{$qual};
+# In --profile mode, the input minfo (--minfoin) is the contract: it was produced
+# by upstream processing (e.g. v-prep) which may have added qualifiers like
+# fst_exc/lowsim_exc/deletin_exc that v-build does not authoritatively re-derive.
+# Pass all such qualifiers through unchanged. Qualifiers that v-build authoritatively
+# re-derives (currently only 'canon_splice_sites') are handled in their own logic
+# (e.g. check_and_add_cds_splice_sites deletes any stale value and re-sets it).
+if(! $do_profile) {
+  for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) {
+    my $ftype = $ftr_info_HAH{$mdl_name}[$ftr_idx]{"type"};
+    foreach my $qual (sort keys %{$ftr_info_HAH{$mdl_name}[$ftr_idx]}) {
+      # we skip this qualifier and remove it from ftr_info_HAH
+      # if all three of A1, A2, A3 OR B is satisfied
+      # (A1) it's not a default qualifier        AND
+      # (A2) (it's not listed in --qadd OR
+      #       (--qftradd is used AND $ftype is not listed in --qftradd)) AND
+      # (A3) --qall not used
+      # OR
+      # (B) it is listed in --qskip string
+      if(((! defined $qdf_H{$qual})         && # (A1)
+          ((! defined $qadd_H{$qual}) ||
+           ((opt_IsUsed("--qftradd", \%opt_HH)) &&
+            (! defined $qftr_add_H{$ftype})))   && # (A2)
+          (! opt_Get("--qall", \%opt_HH)))     # (A3)
+         || (defined $qskip_H{$qual})) {       # (B)
+        delete $ftr_info_HAH{$mdl_name}[$ftr_idx]{$qual};
+      }
+    }
+  }
+}
+else { # $do_profile: --qskip still honored (user-requested removal)
+  for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) {
+    foreach my $qual (sort keys %{$ftr_info_HAH{$mdl_name}[$ftr_idx]}) {
+      if(defined $qskip_H{$qual}) {
+        delete $ftr_info_HAH{$mdl_name}[$ftr_idx]{$qual};
+      }
     }
   }
 }
@@ -1127,7 +1144,7 @@ if(opt_IsUsed("--group", \%opt_HH)) {
 }
 elsif($do_profile) {
   # preserve group/subgroup from --minfoin unless overridden on cmdline
-  if((defined $minfoin_mdl_info_H{"group"}) && (! opt_IsUsed("--group", \%opt_HH))) {
+  if(defined $minfoin_mdl_info_H{"group"}) {
     $mdl_info_AH[0]{"group"} = $minfoin_mdl_info_H{"group"};
     if(defined $minfoin_mdl_info_H{"subgroup"}) {
       $mdl_info_AH[0]{"subgroup"} = $minfoin_mdl_info_H{"subgroup"};
@@ -1136,6 +1153,25 @@ elsif($do_profile) {
   # preserve transl_table from --minfoin if present and not overridden
   if((defined $minfoin_mdl_info_H{"transl_table"}) && (! opt_IsUsed("--ttbl", \%opt_HH))) {
     $mdl_info_AH[0]{"transl_table"} = $minfoin_mdl_info_H{"transl_table"};
+  }
+}
+if($do_profile) {
+  # preserve any other model-level qualifiers from --minfoin (e.g. lowsim_exc,
+  # other v-prep-added keys); skip the small set v-build authoritatively re-derives.
+  # Runs unconditionally in profile mode so that --group on cmdline does not
+  # block pass-through of unrelated keys.
+  my %mdl_rederived_H = ("name"     => 1,
+                         "length"   => 1,
+                         "cmfile"   => 1,
+                         "blastdb"  => 1,
+                         "group"    => 1,
+                         "subgroup" => 1,
+                         "transl_table" => 1);
+  foreach my $mkey (sort keys %minfoin_mdl_info_H) {
+    if((! defined $mdl_rederived_H{$mkey}) &&
+       (! defined $mdl_info_AH[0]{$mkey})) {
+      $mdl_info_AH[0]{$mkey} = $minfoin_mdl_info_H{$mkey};
+    }
   }
 }
 my $modelinfo_file  = $out_root . ".minfo";
