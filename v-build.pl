@@ -560,9 +560,9 @@ my %qadd_H     = (); # qualifiers to add
 my %qskip_H    = (); # qualifiers to skip
 my %qftr_add_H = (); # if --qftradd, subset of features to add qualifiers in --qadd option for
 process_add_and_skip_options("type,coords,location,product,gene,exception,parent_idx_str,5p_trunc,3p_trunc,alternative_ftr_set,alternative_ftr_set_subn", "--qadd", "--qskip", "--qftradd", \%qdf_H, \%qadd_H, \%qskip_H, \%qftr_add_H, \%opt_HH, $FH_HR);
-# we only need ribosomal_slippage above so we can get the exception:ribosomal slippage 
-# qualifier, if we switch to parsing feature tables instead of GenBank files, then
-# "ribosomal_slippage" should be removed from the list.
+# 'ribosomal_slippage' is intentionally absent from the default qualifier list:
+# it is converted to 'exception:"ribosomal slippage"' below (before the qualifier
+# filter), so callers see only the canonical 'exception' form in the minfo.
 
 # remove all features types we don't want
 my $ftr_idx;
@@ -603,57 +603,54 @@ for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) {
   }
 }
 
-# remove any qualifier key/value pairs with keys not in %qual_H, unless --qall used
-for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
-  my $ftype = $ftr_info_HAH{$mdl_name}[$ftr_idx]{"type"};
-  foreach my $qual (sort keys %{$ftr_info_HAH{$mdl_name}[$ftr_idx]}) { 
-    # we skip this qualifier and remove it from ftr_info_HAH
-    # if all three of A1, A2, A3 OR B is satisfied
-    # (A1) it's not a default qualifier        AND
-    # (A2) (it's not listed in --qadd OR 
-    #       (--qftradd is used AND $ftype is not listed in --qftradd)) AND
-    # (A3) --qall not used
-    # OR 
-    # (B) it is listed in --qskip string 
-    if(((! defined $qdf_H{$qual})         && # (A1)
-        ((! defined $qadd_H{$qual}) || 
-         ((opt_IsUsed("--qftradd", \%opt_HH)) && 
-          (! defined $qftr_add_H{$ftype})))   && # (A2)
-        (! opt_Get("--qall", \%opt_HH)))     # (A3)
-       || (defined $qskip_H{$qual})) {       # (B)
-      delete $ftr_info_HAH{$mdl_name}[$ftr_idx]{$qual};
+# Promote 'ribosomal_slippage' qualifiers to 'exception:"ribosomal slippage"'.
+# Run this BEFORE the qualifier filter (below) so ribosomal_slippage is still
+# present, and run it for both the --gb and feature-table parsing paths:
+#   * GenBank format includes /ribosomal_slippage but not /exception, so the
+#     conversion is required.
+#   * NCBI's feature-table format normally includes both, in which case the
+#     conversion is a no-op for the exception value, and the duplicate
+#     ribosomal_slippage key is dropped by the filter below.
+#   * Custom feature tables that include only /ribosomal_slippage (without
+#     /exception) are also handled correctly here.
+# Only 'exception:ribosomal slippage' qualifier/values are desired in the
+# output minfo; the bare 'ribosomal_slippage' is dropped unless preserved
+# explicitly via --qall or --qadd ribosomal_slippage.
+for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) {
+  if((defined $ftr_info_HAH{$mdl_name}[$ftr_idx]) &&
+     (defined $ftr_info_HAH{$mdl_name}[$ftr_idx]{"ribosomal_slippage"})) {
+    my $exc_existing = $ftr_info_HAH{$mdl_name}[$ftr_idx]{"exception"};
+    if((defined $exc_existing) && ($exc_existing =~ m/(?:^|:GBSEP:)ribosomal slippage(?::GBSEP:|$)/)) {
+      ; # already present (e.g., NCBI FT carries both qualifiers); no-op
+    }
+    elsif(defined $exc_existing) {
+      $ftr_info_HAH{$mdl_name}[$ftr_idx]{"exception"} = $exc_existing . ":GBSEP:" . "ribosomal slippage";
+    }
+    else {
+      $ftr_info_HAH{$mdl_name}[$ftr_idx]{"exception"} = "ribosomal slippage";
     }
   }
 }
 
-if(opt_Get("--gb", \%opt_HH)) { 
-  # Deal with special case: we purposefully added 'ribosomal_slippage' qualifiers if they 
-  # existed just so we could now add 'exception' qualifiers with 'ribosomal slippage' values
-  # at this stage. This is ONLY to get around problem that GenBank format includes 'ribosomal_slippage'
-  # qualifiers but not 'exception' qualifiers with 'ribosomal slippage' values, but 
-  # only 'exception:ribosomal slippage' qualifier/values are desired in the 
-  # output feature table. If we switch to parsing Entrez feature tables as input then
-  # the need for this should go away because 'exception:ribosomal slippage' is in that
-  # feature table file (along with the unwanted 'ribosomal_slippage' qualifier which
-  # we can just ignore). 
-  # 
-  # If ribosomal_slippage qualifier exists: create a new "exception" 
-  # qualifier with value of "ribosomal slippage"
-  # 
-  for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
-    if((defined $ftr_info_HAH{$mdl_name}[$ftr_idx]) && 
-       (defined $ftr_info_HAH{$mdl_name}[$ftr_idx]{"ribosomal_slippage"})) {
-      if(defined $ftr_info_HAH{$mdl_name}[$ftr_idx]{"exception"}) { 
-        $ftr_info_HAH{$mdl_name}[$ftr_idx]{"exception"} .= ":GBSEP:" . "ribosomal slippage";
-      }
-      else { 
-        $ftr_info_HAH{$mdl_name}[$ftr_idx]{"exception"} = "ribosomal slippage";
-      }
-      # now remove the "ribosomal_slippage" qualifier UNLESS --qall used or $qadd_H{"ribosomal_slippage"} exists
-      if((! opt_Get("--qall", \%opt_HH)) &&
-         (! defined $qadd_H{"ribosomal_slippage"})) { 
-        delete $ftr_info_HAH{$mdl_name}[$ftr_idx]{"ribosomal_slippage"};
-      }
+# remove any qualifier key/value pairs with keys not in %qual_H, unless --qall used
+for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) {
+  my $ftype = $ftr_info_HAH{$mdl_name}[$ftr_idx]{"type"};
+  foreach my $qual (sort keys %{$ftr_info_HAH{$mdl_name}[$ftr_idx]}) {
+    # we skip this qualifier and remove it from ftr_info_HAH
+    # if all three of A1, A2, A3 OR B is satisfied
+    # (A1) it's not a default qualifier        AND
+    # (A2) (it's not listed in --qadd OR
+    #       (--qftradd is used AND $ftype is not listed in --qftradd)) AND
+    # (A3) --qall not used
+    # OR
+    # (B) it is listed in --qskip string
+    if(((! defined $qdf_H{$qual})         && # (A1)
+        ((! defined $qadd_H{$qual}) ||
+         ((opt_IsUsed("--qftradd", \%opt_HH)) &&
+          (! defined $qftr_add_H{$ftype})))   && # (A2)
+        (! opt_Get("--qall", \%opt_HH)))     # (A3)
+       || (defined $qskip_H{$qual})) {       # (B)
+      delete $ftr_info_HAH{$mdl_name}[$ftr_idx]{$qual};
     }
   }
 }
