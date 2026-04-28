@@ -111,6 +111,9 @@ opt_Add("--npergrp",      "integer", undef,     $g,    undef, undef,          "o
 opt_Add("--no-collapse-numerals", "boolean", 0, $g,    undef, undef,          "disable Roman<->Arabic numeral collapsing in group_key normalization", "disable Roman<->Arabic numeral collapsing in group_key normalization (warn only, do not collapse)", \%opt_HH, \@opt_order_A);
 opt_Add("--no-strip-descriptors", "boolean", 0, $g,    undef, undef,          "disable descriptor-word stripping/token-sort in group_key normalization", "disable descriptor-word stripping (lineage,genotype,...) and alphabetical token sort in group_key normalization", \%opt_HH, \@opt_order_A);
 opt_Add("--group-aliases", "string",  undef,  $g,    undef, undef,          "apply user-supplied group-name alias file <s>", "apply user-supplied group-name alias file <s> AFTER built-in normalization; 2-column TSV: target<TAB>source, where source is the post-normalization canonical as it appears in .vadr.groups_audit.tsv", \%opt_HH, \@opt_order_A);
+opt_Add("--seed-group",       "string",  undef, $g,   "--seed-accn", "--no-group-prefilter", "explicit canonical group label for seed accession is <s>",                       "explicit canonical group label for seed accession is <s> (overrides auto-derivation from metadata; required when seed metadata gives canonical group \"Unknown\"); value is matched against canonical_group column of .vadr.groups_audit.tsv after built-in normalization", \%opt_HH, \@opt_order_A);
+opt_Add("--no-group-prefilter", "boolean", 0,   $g,   "--seed-accn", "--seed-group",         "disable pre-filter of candidate pool by seed's canonical group",                "disable pre-filter of candidate pool by seed's canonical group (default ON when --seed-accn provided); when disabled, pool is unfiltered and may contain mixed lineages, leading to chimeric training sets", \%opt_HH, \@opt_order_A);
+opt_Add("--min-group-pool",   "integer", 5,     $g,   "--seed-accn", "--no-group-prefilter", "min seqs in seed's canonical group required after pre-filter as <n>",            "min seqs in seed's canonical group required after pre-filter as <n>; abort before expensive seed CM build if fewer than <n> candidates remain", \%opt_HH, \@opt_order_A);
 opt_Add("--holdout-frac",  "real",    0,      $g,    undef, undef,          "fraction [0,1) of fetched sequences to hold out as test set (0 = disabled)", "fraction [0,1) of fetched sequences to hold out as test set as <x>; 0 = no holdout (default); split is done before tier-1 filtering", \%opt_HH, \@opt_order_A);
 opt_Add("--holdout-seed",  "integer", 42,     $g,    undef, undef,          "random seed for --holdout-frac shuffle",                                        "random seed for --holdout-frac shuffle as <n>", \%opt_HH, \@opt_order_A);
 
@@ -164,6 +167,9 @@ my $options_okay =
                 'no-collapse-numerals' => \$GetOptions_H{"--no-collapse-numerals"},
                 'no-strip-descriptors' => \$GetOptions_H{"--no-strip-descriptors"},
                 'group-aliases=s' => \$GetOptions_H{"--group-aliases"},
+                'seed-group=s'        => \$GetOptions_H{"--seed-group"},
+                'no-group-prefilter'  => \$GetOptions_H{"--no-group-prefilter"},
+                'min-group-pool=i'    => \$GetOptions_H{"--min-group-pool"},
                 'holdout-frac=f'  => \$GetOptions_H{"--holdout-frac"},
                 'holdout-seed=i'  => \$GetOptions_H{"--holdout-seed"},
 # overhang extension options
@@ -379,7 +385,83 @@ ofile_OutputBanner($log_FH, $pkgname, $version, $releasedate, $synopsis, $date, 
 opt_OutputPreamble($log_FH, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 #---------------------------------------
-# Step 1: Optional seed bootstrap via v-build.pl
+# Step 1: Acquire metadata TSV if needed
+#
+# Issue 12: this step (and the candidate-pool pre-filter that follows
+# it) is intentionally hoisted ahead of the seed-bootstrap v-build.pl
+# call so that the cheap fail-fast checks (ambiguous seed group,
+# post-filter pool too small) complete in ~30s before any expensive
+# CM-building work begins.
+#---------------------------------------
+if(opt_IsUsed("--taxid", \%opt_HH)) {
+  my $fetch_script = $env_vadr_scripts_dir . "/miniscripts/fetch-seqs-given-taxid.pl";
+  if(! -e $fetch_script) {
+    die "ERROR, expected fetch script does not exist: $fetch_script";
+  }
+
+  my $fetch_out_prefix = $out_root . ".metadata";
+  my $taxid = opt_Get("--taxid", \%opt_HH);
+  $cmd = "$^X $fetch_script --taxid $taxid --out $fetch_out_prefix";
+  if(opt_IsUsed("--api_key", \%opt_HH)) {
+    $cmd .= " --api_key " . opt_Get("--api_key", \%opt_HH);
+  }
+  if(! opt_Get("-v", \%opt_HH)) {
+    $cmd .= " --quiet";
+  }
+  utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+  $meta_tsv = $fetch_out_prefix . ".tsv";
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "metadata.tsv", $meta_tsv, 1, 1, "sequence metadata fetched from NCBI for taxid");
+}
+
+if((! defined $meta_tsv) || (! -e $meta_tsv)) {
+  die "ERROR, metadata TSV is undefined or does not exist: " . ((defined $meta_tsv) ? $meta_tsv : "[undef]");
+}
+
+#---------------------------------------
+# Step 1.5: Pre-filter candidate pool by seed canonical group (Issue 12)
+#
+# When --seed-accn is given (and --no-group-prefilter is NOT given),
+# determine the seed's canonical_group from its metadata-TSV row,
+# then drop all sequences whose canonical_group does not match the
+# seed's. This prevents the seed CM (built from a single-lineage
+# RefSeq) from later being trained on a chimeric mix of lineages
+# under the same taxid. Two cheap fail-fast checks fire here:
+#
+#   (a) seed canonical group is "Unknown" / ambiguous -> die unless
+#       user supplied --seed-group <label>
+#   (b) post-filter pool size < --min-group-pool (default 5) -> die
+#
+# Both complete before the expensive seed CM build.
+#
+# Limitation (documented in --no-group-prefilter help and below):
+# the canonicalization is metadata-string based. Submitter mislabels
+# (sequence is really lineage 2 but /serotype="1") will mis-route
+# that sequence to the wrong seed. A similarity-based pre-filter
+# (early-blastn each candidate against the seed) is the natural
+# follow-up if mislabel rates are significant in practice.
+#---------------------------------------
+my $do_group_prefilter = ($do_seed_bootstrap && (! opt_Get("--no-group-prefilter", \%opt_HH)));
+my $seed_canonical_group = undef;
+if($do_group_prefilter) {
+  my $seed_accn_for_filter = opt_Get("--seed-accn", \%opt_HH);
+  my $min_group_pool = opt_Get("--min-group-pool", \%opt_HH);
+  if($min_group_pool < 1) {
+    die "ERROR, --min-group-pool must be >= 1, got: $min_group_pool";
+  }
+  my $seed_group_user = opt_IsUsed("--seed-group", \%opt_HH) ? opt_Get("--seed-group", \%opt_HH) : undef;
+  my $prefiltered_tsv = $out_root . ".prefilter.metadata.tsv";
+
+  $seed_canonical_group =
+    prefilter_metadata_by_seed_group($meta_tsv, $prefiltered_tsv,
+                                     $seed_accn_for_filter,
+                                     $seed_group_user,
+                                     $min_group_pool,
+                                     \%ofile_info_HH, $FH_HR);
+  $meta_tsv = $prefiltered_tsv;
+}
+
+#---------------------------------------
+# Step 2: Optional seed bootstrap via v-build.pl
 #---------------------------------------
 if($do_seed_bootstrap) {
   my @seed_opt_A = ();
@@ -416,33 +498,6 @@ if($do_seed_bootstrap) {
 
 if(! -e $seed_minfo) {
   die "ERROR: expected seed model .minfo file $seed_minfo does not exist (derived from model directory and model key; use --mkey to override)";
-}
-
-#---------------------------------------
-# Step 2: Acquire metadata TSV if needed
-#---------------------------------------
-if(opt_IsUsed("--taxid", \%opt_HH)) {
-  my $fetch_script = $env_vadr_scripts_dir . "/miniscripts/fetch-seqs-given-taxid.pl";
-  if(! -e $fetch_script) {
-    die "ERROR, expected fetch script does not exist: $fetch_script";
-  }
-
-  my $fetch_out_prefix = $out_root . ".metadata";
-  my $taxid = opt_Get("--taxid", \%opt_HH);
-  $cmd = "$^X $fetch_script --taxid $taxid --out $fetch_out_prefix";
-  if(opt_IsUsed("--api_key", \%opt_HH)) {
-    $cmd .= " --api_key " . opt_Get("--api_key", \%opt_HH);
-  }
-  if(! opt_Get("-v", \%opt_HH)) {
-    $cmd .= " --quiet";
-  }
-  utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
-  $meta_tsv = $fetch_out_prefix . ".tsv";
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "metadata.tsv", $meta_tsv, 1, 1, "sequence metadata fetched from NCBI for taxid");
-}
-
-if((! defined $meta_tsv) || (! -e $meta_tsv)) {
-  die "ERROR, metadata TSV is undefined or does not exist: " . ((defined $meta_tsv) ? $meta_tsv : "[undef]");
 }
 
 #---------------------------------------
@@ -1125,6 +1180,207 @@ $total_seconds += ofile_SecondsSinceEpoch();
 ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
 exit(0);
 
+
+#################################################################
+# Subroutine : prefilter_metadata_by_seed_group()
+# Incept     : EPN* Tue Apr 28 2026
+#
+# Purpose    : Pre-filter the candidate-pool metadata TSV to keep
+#              only sequences whose canonical group matches the
+#              seed accession's canonical group. Implements Issue 12:
+#              prevents chimeric training sets when one taxid spans
+#              multiple lineages (e.g., WNV taxid 11082 covers
+#              lineages 1, 1a, 2, JEV-group, etc.) and the seed
+#              RefSeq is from a minority lineage.
+#
+#              Reuses the existing canonicalization function
+#              normalize_group_name_expanded() (no changes); this
+#              subroutine just hoists it earlier in the pipeline
+#              and applies it as a filter, not an annotation.
+#
+#              Two fail-fast checks (both <30s total):
+#                (a) seed canonical group is "Unknown" or the seed
+#                    is absent from the metadata TSV -> die with a
+#                    diagnostic listing top canonical labels for the
+#                    taxid; user must rerun with --seed-group <label>
+#                (b) post-filter pool size < $min_pool -> die with
+#                    a diagnostic suggesting --seed-group might be
+#                    miscategorized or the lineage is just sparse
+#
+#              When --seed-group is provided, the user-supplied label
+#              is run through the same normalize_group_name_expanded()
+#              transform and the post-filter pool keeps any record
+#              whose (post-normalization) canonical key matches.
+#              Validates that the user label corresponds to at least
+#              one record in the pool (else dies with a list of valid
+#              labels).
+#
+#              The seed accession itself is unconditionally retained
+#              in the output TSV regardless of whether its own
+#              canonical group matches (covers the case where seed
+#              metadata is sparse and we are relying on --seed-group).
+#
+#              Records whose serotype/genotype fields normalize to
+#              "Unknown" but where the user has explicitly named a
+#              --seed-group are NOT auto-assigned to that group;
+#              they remain canonical "Unknown" and are dropped. Use
+#              --group-aliases if you need to merge a known label
+#              into an Unknown variant.
+#
+# Arguments  :
+#   $in_tsv         : path to input metadata TSV
+#   $out_tsv        : path to write pre-filtered metadata TSV
+#   $seed_accn      : seed reference accession (versioned or not;
+#                     resolved against TSV by version-suffix match)
+#   $seed_group_user: user-supplied --seed-group <label> (may be undef);
+#                     when defined, overrides auto-derivation from the
+#                     seed's TSV row
+#   $min_pool       : --min-group-pool threshold; die if surviving
+#                     pool < $min_pool (seed itself counts toward pool)
+#   $ofile_info_HHR : output file info hash (for register/filelist)
+#   $FH_HR          : output file handles ("log", ...)
+#
+# Returns    : the canonical-group display label that was used for
+#              filtering (string).
+#################################################################
+sub prefilter_metadata_by_seed_group {
+  my ($in_tsv, $out_tsv, $seed_accn, $seed_group_user, $min_pool, $ofile_info_HHR, $FH_HR) = @_;
+
+  my $do_collapse = (! opt_Get("--no-collapse-numerals", \%opt_HH));
+  my $do_strip    = (! opt_Get("--no-strip-descriptors", \%opt_HH));
+
+  # Pass 1: scan every TSV row, compute canonical group, count per
+  # canonical, and resolve the seed's row (with version-suffix tolerance).
+  open(my $in1, "<", $in_tsv) or ofile_FAIL("ERROR, unable to read metadata TSV $in_tsv: $!", 1, $FH_HR);
+  my $hdr1 = <$in1>;
+  my $resolved_seed_accn = $seed_accn;  # may be upgraded to versioned form
+  my $seed_row_canonical = undef;       # canonical group key for seed (post-normalize, display)
+  my %canon_count_H = ();               # display-canonical -> n_seqs
+  my %canon_norm_H  = ();               # display-canonical -> norm_key
+  my %first_display_for_norm_H = ();    # norm_key -> first-seen display canonical
+  my %seed_row_H = ();                  # store seed's row fields
+  my $seed_found = 0;
+  while(my $line = <$in1>) {
+    chomp $line;
+    my ($acc, $len, $cdate, $serotype, $genotype, $isolate, $title) = split(/\t/, $line, -1);
+    next if(! defined $acc || $acc eq "");
+    my $orig_group = "Unknown";
+    if    (defined $serotype && $serotype ne "") { $orig_group = $serotype; }
+    elsif (defined $genotype && $genotype ne "") { $orig_group = $genotype; }
+    my $norm_key = normalize_group_name_expanded($orig_group, $do_collapse, $do_strip);
+    if(! exists $first_display_for_norm_H{$norm_key}) {
+      $first_display_for_norm_H{$norm_key} = $orig_group;
+    }
+    my $display = $first_display_for_norm_H{$norm_key};
+    $canon_count_H{$display}++;
+    $canon_norm_H{$display} = $norm_key;
+
+    # Resolve seed accn: accept exact match or versioned match (NC_001563 vs NC_001563.2).
+    if(! $seed_found) {
+      if($acc eq $seed_accn || $acc =~ /^\Q$seed_accn\E\.\d+$/) {
+        $resolved_seed_accn = $acc;
+        $seed_row_canonical = $display;
+        %seed_row_H = (line => $line, acc => $acc, serotype => $serotype // "",
+                       genotype => $genotype // "", isolate => $isolate // "",
+                       title => $title // "", orig_group => $orig_group);
+        $seed_found = 1;
+      }
+    }
+  }
+  close($in1);
+
+  if(! $seed_found) {
+    ofile_FAIL(sprintf("ERROR, seed accession %s (or any versioned form) not found in metadata TSV %s.\nThe seed must be present in the taxid pool to derive its canonical group.\nIf the taxid fetch did not return the seed, add it manually to the metadata TSV and rerun with --meta.",
+                       $seed_accn, $in_tsv), 1, $FH_HR);
+  }
+
+  # Top canonical labels for diagnostic output (top 5 by n_seqs).
+  my @sorted_canon = sort {$canon_count_H{$b} <=> $canon_count_H{$a} || $a cmp $b} keys %canon_count_H;
+  my @top5 = (scalar(@sorted_canon) >= 5) ? @sorted_canon[0..4] : @sorted_canon;
+  my $top5_str = join(", ", map { sprintf("\"%s\" (%d)", $_, $canon_count_H{$_}) } @top5);
+
+  # Decide which canonical group to filter on.
+  my $chosen_display = undef;  # display label for log output
+  my $chosen_norm    = undef;  # norm_key for record matching
+
+  if(defined $seed_group_user) {
+    # User-supplied; normalize and validate.
+    my $user_norm = normalize_group_name_expanded($seed_group_user, $do_collapse, $do_strip);
+    if(! exists $first_display_for_norm_H{$user_norm}) {
+      ofile_FAIL(sprintf("ERROR, --seed-group \"%s\" (normalized to \"%s\") does not match any canonical group in metadata TSV %s.\nValid canonical labels (top 5 by count): %s.\nFull list available in <out_root>.vadr.groups_audit.tsv after a previous run, or by reviewing the TSV's serotype/genotype columns directly.",
+                         $seed_group_user, $user_norm, $in_tsv, $top5_str), 1, $FH_HR);
+    }
+    $chosen_norm    = $user_norm;
+    $chosen_display = $first_display_for_norm_H{$user_norm};
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# Pre-filter: --seed-group \"%s\" -> canonical \"%s\" (norm_key \"%s\")\n",
+              $seed_group_user, $chosen_display, $chosen_norm));
+  }
+  else {
+    # Auto-derive from seed's TSV row.
+    if($seed_row_canonical eq "Unknown") {
+      ofile_FAIL(sprintf("ERROR, cannot automatically determine canonical group for seed accession %s.\nThe metadata fields parsed (serotype=\"%s\", genotype=\"%s\") did not match any single canonical group label.\nPlease rerun with explicit:\n  --seed-group \"<label>\"\nCommon canonical labels for this taxid (top 5 by count): %s.\nFull canonical-group inventory: rerun with --no-group-prefilter to produce <out_root>.vadr.groups_audit.tsv, then re-invoke with the chosen label.",
+                         $resolved_seed_accn, $seed_row_H{serotype}, $seed_row_H{genotype}, $top5_str), 1, $FH_HR);
+    }
+    $chosen_display = $seed_row_canonical;
+    $chosen_norm    = $canon_norm_H{$seed_row_canonical};
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# Pre-filter: seed %s metadata serotype=\"%s\" genotype=\"%s\" -> canonical \"%s\" (norm_key \"%s\")\n",
+              $resolved_seed_accn, $seed_row_H{serotype}, $seed_row_H{genotype}, $chosen_display, $chosen_norm));
+  }
+
+  # Pass 2: write filtered TSV, retaining the seed unconditionally and
+  # any record whose norm_key matches $chosen_norm.
+  open(my $in2, "<", $in_tsv) or ofile_FAIL("ERROR, unable to read metadata TSV $in_tsv: $!", 1, $FH_HR);
+  my $hdr2 = <$in2>;
+  open(my $out_fh, ">", $out_tsv) or ofile_FAIL("ERROR, unable to write pre-filtered metadata TSV $out_tsv: $!", 1, $FH_HR);
+  print $out_fh $hdr2;
+  my $n_kept = 0;
+  my $n_dropped = 0;
+  my $seed_kept_via_match = 0;
+  my $seed_kept_via_override = 0;
+  while(my $line = <$in2>) {
+    chomp $line;
+    my ($acc, $len, $cdate, $serotype, $genotype, $isolate, $title) = split(/\t/, $line, -1);
+    next if(! defined $acc || $acc eq "");
+    my $orig_group = "Unknown";
+    if    (defined $serotype && $serotype ne "") { $orig_group = $serotype; }
+    elsif (defined $genotype && $genotype ne "") { $orig_group = $genotype; }
+    my $nk = normalize_group_name_expanded($orig_group, $do_collapse, $do_strip);
+    my $is_seed = ($acc eq $resolved_seed_accn) ? 1 : 0;
+    my $matches = ($nk eq $chosen_norm) ? 1 : 0;
+    if($matches || $is_seed) {
+      print $out_fh $line . "\n";
+      $n_kept++;
+      if($is_seed && ! $matches) { $seed_kept_via_override = 1; }
+      if($is_seed &&   $matches) { $seed_kept_via_match    = 1; }
+    }
+    else {
+      $n_dropped++;
+    }
+  }
+  close($in2);
+  close($out_fh);
+
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "prefilter.metadata.tsv", $out_tsv, 1, 1,
+    "metadata TSV pre-filtered to seed canonical group (Issue 12)");
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# Pre-filter: kept %d sequences (canonical \"%s\"), dropped %d off-group sequences (input %d total).\n",
+            $n_kept, $chosen_display, $n_dropped, $n_kept + $n_dropped));
+  if($seed_kept_via_override && ! $seed_kept_via_match) {
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# Pre-filter: seed %s did NOT match canonical \"%s\" on its own metadata; retained anyway as the explicit reference accession.\n",
+              $resolved_seed_accn, $chosen_display));
+  }
+
+  # Fail-fast: post-filter pool too small.
+  if($n_kept < $min_pool) {
+    ofile_FAIL(sprintf("ERROR, only %d sequences in metadata TSV have canonical group \"%s\" (matching seed %s).\nThis is below the minimum --min-group-pool=%d required to build a useful profile model.\nEither the seed group is miscategorized in metadata (try --seed-group <other>) or this taxid has too few candidates for this lineage.\nAborting before expensive seed CM build.\nDiagnostic: top 5 canonical groups for this taxid: %s.",
+                       $n_kept, $chosen_display, $resolved_seed_accn, $min_pool, $top5_str), 1, $FH_HR);
+  }
+
+  return $chosen_display;
+}
 
 #################################################################
 # Subroutine : parse_and_filter_metadata()
