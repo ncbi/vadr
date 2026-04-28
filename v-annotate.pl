@@ -1304,8 +1304,12 @@ if((! $do_clsonly) && (! opt_Get("--ignore_nnclass", \%opt_HH))) {
       ofile_FAIL("ERROR, based on the model info file, for model " . $mdl_info_AH[$mdl_idx]{"name"} . " group and subgroup will be read from different alignment files, this is not supported", 1, $FH_HR);
     }
 
-    if(defined $aln_file_grp) { 
-      my $class_aln_file = $model_dir . "/" . $aln_file_grp;
+    if(defined $aln_file_grp) {
+      # if :FILE: value is an absolute path (starts with '/'), use it as-is;
+      # otherwise resolve relative to $model_dir. This lets v-build.pl --abspath-stk
+      # write absolute paths into the minfo for cases where the seed .stk lives
+      # outside the model directory.
+      my $class_aln_file = ($aln_file_grp =~ m|^/|) ? $aln_file_grp : ($model_dir . "/" . $aln_file_grp);
       vdr_ModelInfoSetClassificationAlignmentFile(\%{$mdl_info_AH[$mdl_idx]}, $class_aln_file, $FH_HR);
       %{$mdl_alninfo_AHH[$mdl_idx]} = ();
       validate_and_copy_classification_alignment_file(\%{$mdl_info_AH[$mdl_idx]}, \%{$mdl_alninfo_AHH[$mdl_idx]}, $out_root, \%opt_HH, \%ofile_info_HH);

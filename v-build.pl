@@ -98,6 +98,8 @@ opt_Add("-v",           "boolean", 0,          $g,    undef, undef,       "be ve
 opt_Add("--profile",    "boolean", 0,          $g,  "--stk,--minfoin", "--infa,--inft,--gb,--ingb,--addminfo,--onlyurl", "build a model from an input multi-sequence alignment (--stk) and model info (--minfoin)", "build a model from an input multi-sequence alignment (--stk) and model info (--minfoin)", \%opt_HH, \@opt_order_A);
 opt_Add("--stk",        "string",  undef,      $g,    undef, undef,       "read stockholm alignment from <s> (single-seq unless --profile)", "read stockholm alignment from <s> (single-seq unless --profile)", \%opt_HH, \@opt_order_A);
 opt_Add("--minfoin",    "string",  undef,      $g, "--profile", undef,   "read model info file from <s> (for --profile mode)",           "read model info file from <s> (for --profile mode)", \%opt_HH, \@opt_order_A);
+opt_Add("--copy-stk",   "boolean", 0,          $g, "--profile", "--abspath-stk", "in --profile mode, copy seed .stk into output dir (default: symlink)", "in --profile mode, copy seed .stk into output dir instead of symlinking it", \%opt_HH, \@opt_order_A);
+opt_Add("--abspath-stk","boolean", 0,          $g, "--profile", "--copy-stk",    "in --profile mode, write absolute :FILE: path to minfo (no symlink/copy)", "in --profile mode, rewrite :FILE: minfo references to absolute paths instead of placing the seed .stk in --mdir", \%opt_HH, \@opt_order_A);
 opt_Add("--infa",       "string",  undef,      $g,    undef, undef,       "read single sequence fasta file from <s>, don't fetch it",    "read single sequence fasta file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
 opt_Add("--inft",       "string",  undef,      $g, "--inft", "--gb",      "read feature table file from <s>, don't fetch it",            "read feature table file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
 opt_Add("--ftfetch1",   "boolean", 0,          $g,    undef, "--inft,--gb,--ftfetch2", "fetch feature table with efetch -format ft",      "fetch feature table with efetch -format ft", \%opt_HH, \@opt_order_A);
@@ -173,6 +175,8 @@ my $options_okay =
         'profile'      => \$GetOptions_H{"--profile"},
                 'stk=s'        => \$GetOptions_H{"--stk"},
         'minfoin=s'    => \$GetOptions_H{"--minfoin"},
+                'copy-stk'     => \$GetOptions_H{"--copy-stk"},
+                'abspath-stk'  => \$GetOptions_H{"--abspath-stk"},
                 'infa=s'       => \$GetOptions_H{"--infa"},
                 'inft=s'       => \$GetOptions_H{"--inft"},
                 'ftfetch1'     => \$GetOptions_H{"--ftfetch1"},
@@ -1175,6 +1179,21 @@ if($do_profile) {
   }
 }
 my $modelinfo_file  = $out_root . ".minfo";
+
+# In --profile mode, the input minfo's :FILE: references (e.g. group/subgroup
+# pointing to the seed .stk file) are basenames, expected to live in --mdir
+# at v-annotate time. By default, symlink the input .stk into $dir using its
+# basename so the minfo's relative reference resolves and $dir is portable.
+# --copy-stk forces a copy (survives deletion of the v-prep output dir).
+# --abspath-stk rewrites :FILE: values to absolute paths in the output minfo
+#               (no symlink/copy placed in $dir).
+if($do_profile) {
+  profile_place_seed_stk_in_mdir($dir, $in_stk_file, \@mdl_info_AH,
+                                 opt_Get("--copy-stk", \%opt_HH),
+                                 opt_Get("--abspath-stk", \%opt_HH),
+                                 \%ofile_info_HH, \%opt_HH, $FH_HR);
+}
+
 vdr_ModelInfoFileWrite($modelinfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
 ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "modelinfo", $modelinfo_file, 1, 1, "VADR 'model info' format file for $mdl_name");
 
@@ -2078,6 +2097,153 @@ sub profile_FirstAndLastUngappedPositionsInAlignedRange {
   }
 
   return ($ua_first, $ua_last);
+}
+
+#################################################################
+# Subroutine: profile_place_seed_stk_in_mdir()
+# Incept:     EPN*, Tue Apr 28 2026
+#
+# Purpose:    For --profile mode, ensure the seed .stk file referenced
+#             via :FILE: keys (group/subgroup) in the output minfo is
+#             reachable from the model directory $dir. By default this
+#             places a symlink to the absolute path of $in_stk_file at
+#             $dir/<basename>, where <basename> is the basename used in
+#             the :FILE: value. This makes $dir self-contained and
+#             portable: a v-annotate run with --mdir <copied $dir>
+#             resolves the relative :FILE: reference correctly.
+#
+#             Behavior is controlled by two booleans:
+#               $do_copy: copy the file instead of symlinking (survives
+#                         deletion of the v-prep output directory).
+#               $do_abspath: skip the file placement and instead rewrite
+#                            the :FILE: values in $mdl_info_AHR to point
+#                            to absolute paths. v-annotate.pl detects an
+#                            absolute :FILE: value (leading '/') and uses
+#                            it directly without prepending --mdir.
+#
+#             $do_copy and $do_abspath are mutually exclusive (enforced
+#             by opt_Add incompat).
+#
+#             If a symlink target already exists at $dir/<basename> with
+#             the wrong target, it is replaced. If symlink() fails (e.g.
+#             unsupported filesystem) and $do_copy is not set, falls
+#             back to a copy with a warning.
+#
+# Arguments:
+#  $dir:           output model directory ($dir from caller)
+#  $in_stk_file:   path to the seed .stk file (the v-build --stk arg)
+#  $mdl_info_AHR:  REF to array of hashes with model info; :FILE: values
+#                  in this hash are inspected (and possibly rewritten if
+#                  $do_abspath is set)
+#  $do_copy:       1 to copy instead of symlink, 0 otherwise
+#  $do_abspath:    1 to rewrite :FILE: to absolute path (no symlink/copy),
+#                  0 otherwise
+#  $ofile_info_HHR: REF to ofile_info hash (for log handle)
+#  $opt_HHR:       REF to opt_HH (for verbose flag)
+#  $FH_HR:         REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies:       If $in_stk_file is missing, or its basename does not match
+#             any :FILE: basename in the minfo (indicates inconsistent
+#             inputs: the user passed a --stk that is not the file
+#             referenced by --minfoin's group/subgroup keys).
+#
+#################################################################
+sub profile_place_seed_stk_in_mdir {
+  my $sub_name = "profile_place_seed_stk_in_mdir";
+  my $nargs_expected = 8;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+
+  my ($dir, $in_stk_file, $mdl_info_AHR, $do_copy, $do_abspath, $ofile_info_HHR, $opt_HHR, $FH_HR) = @_;
+
+  # Collect :FILE: basenames from group/subgroup keys across all models
+  my %file_basenames_H = ();
+  for(my $i = 0; $i < scalar(@{$mdl_info_AHR}); $i++) {
+    foreach my $key ("group", "subgroup") {
+      if(defined $mdl_info_AHR->[$i]{$key}) {
+        my $bname = vdr_ModelInfoCheckForFileKey($mdl_info_AHR->[$i]{$key});
+        if(defined $bname) {
+          $file_basenames_H{$bname} = $i; # store one model index for rewrite
+        }
+      }
+    }
+  }
+
+  if(scalar(keys %file_basenames_H) == 0) {
+    return; # nothing to do; no :FILE: refs in minfo
+  }
+
+  if(! defined $in_stk_file) {
+    ofile_FAIL("ERROR in $sub_name, --profile minfo has :FILE: refs but --stk was not provided", 1, $FH_HR);
+  }
+  if(! -e $in_stk_file) {
+    ofile_FAIL("ERROR in $sub_name, seed .stk file $in_stk_file does not exist", 1, $FH_HR);
+  }
+
+  my $abs_in_stk = Cwd::abs_path($in_stk_file);
+  if(! defined $abs_in_stk) {
+    ofile_FAIL("ERROR in $sub_name, unable to resolve absolute path for $in_stk_file", 1, $FH_HR);
+  }
+  my $in_stk_basename = $in_stk_file;
+  $in_stk_basename =~ s|^.*/||;
+
+  if($do_abspath) {
+    # Rewrite :FILE: values in @mdl_info_AH to point to abs path of $in_stk_file.
+    # All :FILE: basenames must equal basename($in_stk_file); otherwise the user's
+    # inputs are inconsistent and we cannot decide which file each :FILE: ref
+    # was meant to point to.
+    foreach my $bname (sort keys %file_basenames_H) {
+      if($bname ne $in_stk_basename) {
+        ofile_FAIL("ERROR in $sub_name, --abspath-stk: minfo :FILE: basename '$bname' does not match basename of --stk '$in_stk_basename'", 1, $FH_HR);
+      }
+    }
+    for(my $i = 0; $i < scalar(@{$mdl_info_AHR}); $i++) {
+      foreach my $key ("group", "subgroup") {
+        if(defined $mdl_info_AHR->[$i]{$key}) {
+          my $bname = vdr_ModelInfoCheckForFileKey($mdl_info_AHR->[$i]{$key});
+          if(defined $bname) {
+            $mdl_info_AHR->[$i]{$key} = ":FILE:" . $abs_in_stk;
+          }
+        }
+      }
+    }
+    ofile_OutputString($ofile_info_HHR->{"FH"}{"log"}, 1,
+      sprintf("# --abspath-stk: rewrote :FILE: values in minfo to absolute path %s\n", $abs_in_stk));
+    return;
+  }
+
+  # Default / --copy-stk: place file in $dir under each :FILE: basename
+  foreach my $bname (sort keys %file_basenames_H) {
+    if($bname ne $in_stk_basename) {
+      ofile_FAIL("ERROR in $sub_name, minfo :FILE: basename '$bname' does not match basename of --stk '$in_stk_basename'; cannot place seed .stk in --mdir. Use --abspath-stk, or pass a --stk whose basename matches.", 1, $FH_HR);
+    }
+    my $dest = $dir . "/" . $bname;
+    # Only place if not already present (v-build creates $out_root.stk at $dir/$dir_tail.vadr.stk,
+    # which is a different basename, so no collision in normal usage).
+    if(-e $dest || -l $dest) {
+      unlink $dest;
+    }
+    my $placed_ok = 0;
+    if(! $do_copy) {
+      if(symlink($abs_in_stk, $dest)) {
+        $placed_ok = 1;
+        ofile_OutputString($ofile_info_HHR->{"FH"}{"log"}, 1,
+          sprintf("# Symlinked seed .stk into model dir: %s -> %s\n", $dest, $abs_in_stk));
+      }
+      else {
+        ofile_OutputString($ofile_info_HHR->{"FH"}{"log"}, 1,
+          sprintf("# WARNING, symlink %s -> %s failed (%s); falling back to copy\n", $dest, $abs_in_stk, $!));
+      }
+    }
+    if(! $placed_ok) {
+      utl_RunCommand("cp $abs_in_stk $dest", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+      ofile_OutputString($ofile_info_HHR->{"FH"}{"log"}, 1,
+        sprintf("# Copied seed .stk into model dir: %s -> %s\n", $abs_in_stk, $dest));
+    }
+  }
+
+  return;
 }
 
 #################################################################
