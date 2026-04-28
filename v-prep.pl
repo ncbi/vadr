@@ -127,6 +127,8 @@ $opt_group_desc_H{++$g} = "other expert options";
 #       option       type          default     group  requires incompat      preamble-output                                              help-output
 opt_Add("--execname",   "string",  undef,         $g,    undef, undef,       "define executable name of this script as <s>",              "define executable name of this script as <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--mxsize",     "integer", 16000,         $g,    undef, undef,       "set max allowed memory (Mb) for cmalign in centroid realignment step", "set max allowed memory for cmalign to <n> Mb (divided by 4 internally, matching v-annotate.pl convention)", \%opt_HH, \@opt_order_A);
+opt_Add("--split",      "boolean", 0,             $g,    undef, undef,       "split internal v-annotate input into chunks, run each chunk separately", "split internal v-annotate input into chunks, run each chunk separately (passed through to v-annotate.pl)", \%opt_HH, \@opt_order_A);
+opt_Add("--cpu",        "integer", 1,             $g,    undef, undef,       "parallelize internal v-annotate across <n> CPU workers (requires --split if <n> > 1)", "parallelize internal v-annotate across <n> CPU workers (requires --split if <n> > 1); also sets cmalign --cpu in centroid realignment", \%opt_HH, \@opt_order_A);
 
 my %GetOptions_H = ();
 my $options_okay = 
@@ -173,7 +175,9 @@ my $options_okay =
                 'overhang-min-active=i'    => \$GetOptions_H{"--overhang-min-active"},
 # other expert options
                 'execname=s'   => \$GetOptions_H{"--execname"},
-                'mxsize=i'     => \$GetOptions_H{"--mxsize"});
+                'mxsize=i'     => \$GetOptions_H{"--mxsize"},
+                'split'        => \$GetOptions_H{"--split"},
+                'cpu=i'        => \$GetOptions_H{"--cpu"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); 
 my $execname_opt  = $GetOptions_H{"--execname"};
@@ -198,6 +202,11 @@ opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
 
 # validate options (check for conflicts)
 opt_ValidateSet(\%opt_HH, \@opt_order_A);
+
+# --cpu N>1 requires --split (mirrors v-annotate.pl); --cpu 1 alone is a no-op so allow it
+if(opt_IsUsed("--cpu", \%opt_HH) && (opt_Get("--cpu", \%opt_HH) > 1) && (! opt_IsUsed("--split", \%opt_HH))) {
+  die "ERROR, --cpu <n> with <n> > 1 requires --split (these are passed through to the internal v-annotate.pl invocations)";
+}
 
 # check that number of command line args is correct
 if(scalar(@ARGV) != 1) {
@@ -464,6 +473,15 @@ if(opt_IsUsed("--vannot-opts-file", \%opt_HH)) {
   }
   close($vofh);
   ofile_OutputString(*STDOUT, 1, sprintf("# Extra v-annotate.pl options:%s\n", $vannot_extra_opts));
+}
+# Pass --split / --cpu through to internal v-annotate.pl invocations.
+# Both internal calls (run_vannotate_filter_fails Tier 2 and the auto-alt-detect
+# pass2 re-run) pick this up via $vannot_extra_opts.
+if(opt_IsUsed("--split", \%opt_HH)) {
+  $vannot_extra_opts .= " --split";
+}
+if(opt_IsUsed("--cpu", \%opt_HH)) {
+  $vannot_extra_opts .= " --cpu " . opt_Get("--cpu", \%opt_HH);
 }
 
 #---------------------------------------
@@ -2473,9 +2491,10 @@ sub realign_to_centroid_rf {
   my $realigned_stk  = $work_root . ".realigned.stk";
   my $cmalign_stdout = $work_root . ".cmalign.out";
   my $cmalign_mxsize = sprintf("%.2f", $mxsize / 4.0);
+  my $cmalign_ncpu = opt_Get("--cpu", \%opt_HH);
   $cmd = $execs_HR->{"cmalign"}
        . " --outformat pfam"
-       . " --dnaout --verbose --cpu 1"
+       . " --dnaout --verbose --cpu " . $cmalign_ncpu
        . " -o " . $realigned_stk
        . " --tau 1E-3 --fixedtau"
        . " --sub --notrunc"
