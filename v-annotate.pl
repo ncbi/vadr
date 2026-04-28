@@ -969,6 +969,33 @@ my $opt_xsub_used  = opt_IsUsed("--xsub", \%opt_HH);
 my $model_key      = opt_Get("--mkey", \%opt_HH); # special case, default value is set in option definition
 
 my $model_dir        = ($opt_mdir_used)  ? opt_Get("--mdir",     \%opt_HH) : $env_vadr_model_dir;
+
+# If --mdir is used and --mkey is not, infer --mkey from the single
+# *.minfo file in --mdir, if there is exactly one. This avoids the
+# foot-gun of falling back to the 'calici' default for an --mdir that
+# does not contain calici.minfo.
+if($opt_mdir_used && (! $opt_mkey_used)) {
+  my @minfo_files_A = glob("\Q$model_dir\E/*.minfo");
+  if(scalar(@minfo_files_A) == 1) {
+    my $only_minfo = $minfo_files_A[0];
+    my $only_minfo_basename = $only_minfo;
+    $only_minfo_basename =~ s|^.*/||;
+    if($only_minfo_basename =~ /^(.+)\.minfo$/) {
+      $model_key = $1;
+    }
+    else {
+      ofile_FAIL("ERROR, unable to derive --mkey from .minfo file $only_minfo in --mdir $model_dir; specify --mkey explicitly", 1, $FH_HR);
+    }
+  }
+  elsif(scalar(@minfo_files_A) == 0) {
+    ofile_FAIL("ERROR, no .minfo file in --mdir $model_dir; specify --mkey explicitly or check --mdir path", 1, $FH_HR);
+  }
+  else {
+    my @basenames_A = map { my $b = $_; $b =~ s|^.*/||; $b } @minfo_files_A;
+    ofile_FAIL("ERROR, multiple .minfo files in --mdir $model_dir (" . join(", ", @basenames_A) . "); specify --mkey explicitly to disambiguate", 1, $FH_HR);
+  }
+}
+
 my $model_list       = ($opt_mlist_used) ? opt_Get("--mlist",    \%opt_HH) : undef;
 my $replace_list     = ($opt_rlist_used) ? opt_Get("--r_list",   \%opt_HH) : undef;
 my $r_blastn_db_file = ($opt_rfile_used) ? opt_Get("--r_file",   \%opt_HH) : undef;
