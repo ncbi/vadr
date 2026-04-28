@@ -510,7 +510,17 @@ my @reqd_ftr_keys = ();
 
 vdr_ModelInfoFileParse($seed_minfo, \@reqd_mdl_keys, \@reqd_ftr_keys, \@mdl_info_A, \%ftr_info_HA, $FH_HR);
 my $seed_model_len = $mdl_info_A[0]{"length"};
-my $ref_accn = opt_IsUsed("--refaccn", \%opt_HH) ? opt_Get("--refaccn", \%opt_HH) : $model_key; # reference accession (default: model key, e.g. "NC_006232")
+# reference accession resolution:
+#   - explicit --refaccn always wins
+#   - --seed-accn mode: default is the seed accession (--mdir is just an
+#     arbitrary output directory name in this mode, so $model_key
+#     derived from the directory basename is NOT a valid accession)
+#   - non-seed-bootstrap mode: legacy behavior (default = $model_key,
+#     because $model_dir is conventionally named after the accession,
+#     e.g. NC_006232/)
+my $ref_accn = opt_IsUsed("--refaccn", \%opt_HH) ? opt_Get("--refaccn", \%opt_HH) :
+               $do_seed_bootstrap                ? opt_Get("--seed-accn", \%opt_HH) :
+                                                   $model_key;
 ofile_OutputString(*STDOUT, 1, sprintf("# Read seed model length: %d\n", $seed_model_len));
 ofile_OutputString(*STDOUT, 1, sprintf("# Reference accession: %s\n", $ref_accn));
 
