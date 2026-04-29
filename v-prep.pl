@@ -545,14 +545,10 @@ if($is_multi_seed) {
 # pipelines can train on it independently — matches sibling's
 # manual POC pattern (vb-wnv-combo-v2/, 78.6% on WNV holdout).
 #
-# Phase A.5 (blastn-vs-metadata reconciliation) is DEFERRED.
-# See briefs/2026-04-29_issue9_multi_seed_impl.md Phase A.5
-# for the design. Without reconciliation, GenBank metadata-
-# mislabels can poison per-seed pools at the edges; for the
-# initial Issue 9 cut, sparse-metadata viruses use the
-# --no-group-prefilter escape hatch and specific-metadata
-# viruses get clean per-serotype partitioning via Phase A
-# alone.
+# Phase A.5 (blastn-vs-metadata reconciliation) follows Phase A
+# when both --seed-accn is multi-seed AND --no-group-prefilter is
+# NOT set. See reconcile_pools_by_blastn_against_seeds() and the
+# briefs/2026-04-29_issue9_phase_A5_blastn_reconciliation.md brief.
 #---------------------------------------
 my @per_seed_filtered_tsv_A = ();
 if($is_multi_seed) {
@@ -580,6 +576,38 @@ if($is_multi_seed) {
     foreach my $sa (@seed_accn_A) {
       push(@per_seed_filtered_tsv_A, $meta_tsv);
     }
+  }
+
+  #---------------------------------------
+  # Issue 9 Phase A.5: blastn-vs-metadata reconciliation
+  #
+  # For every non-seed candidate that survived Phase A's per-seed
+  # metadata prefilter, blastn-align it against all N seeds and
+  # drop candidates whose blastn-best-seed disagrees with the seed
+  # whose pool the metadata routed them into. Protects per-seed
+  # CMs from GenBank metadata mislabels (a chimeric-training
+  # vulnerability that pure metadata partitioning cannot catch).
+  # See reconcile_pools_by_blastn_against_seeds() for the
+  # algorithm and the design brief at
+  # briefs/2026-04-29_issue9_phase_A5_blastn_reconciliation.md.
+  #
+  # --no-group-prefilter is the global escape hatch: if it skipped
+  # Phase A, it also skips Phase A.5 (the per-seed TSVs all point
+  # at the unfiltered $meta_tsv and there's no metadata claim to
+  # reconcile against).
+  #---------------------------------------
+  if(! opt_Get("--no-group-prefilter", \%opt_HH)) {
+    my $min_group_pool = opt_Get("--min-group-pool", \%opt_HH);
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# Multi-seed Phase A.5: starting blastn-vs-metadata reconciliation across %d seeds\n",
+              scalar(@seed_accn_A)));
+    reconcile_pools_by_blastn_against_seeds(
+      $out_root, \@seed_accn_A, \@seed_group_A, \@per_seed_filtered_tsv_A,
+      $min_group_pool, \%execs_H, \%opt_HH, \%ofile_info_HH, $FH_HR);
+  }
+  else {
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      "# Multi-seed Phase A.5: skipped due to --no-group-prefilter (no metadata claim to reconcile against).\n");
   }
 
   #---------------------------------------
@@ -1870,6 +1898,373 @@ sub merge_multiseed_outputs {
   ofile_OutputString($FH_HR->{"log"}, 1,
     sprintf("# Multi-seed Phase C: merged %d seeds into %s (combined.{cm,minfo,protein.fa} + per-seed .stk symlinks)\n",
             scalar(@$per_seed_outputs_AR), $unified_mdir));
+}
+
+#################################################################
+# Subroutine : reconcile_pools_by_blastn_against_seeds()
+# Incept     : EPN*, Wed Apr 29 2026
+#
+# Purpose    : Multi-seed Phase A.5 — blastn-vs-metadata
+#              reconciliation. After Phase A's per-seed metadata
+#              prefilter has partitioned the candidate pool into N
+#              per-seed TSVs (one per --seed-accn entry), every
+#              non-seed candidate is blastn-aligned against the N
+#              seed sequences. Candidates whose blastn-best seed
+#              accession does not match the seed whose pool the
+#              metadata prefilter routed them into are dropped
+#              (and logged) before Phase B reads the per-seed
+#              TSVs to build per-seed CMs. This protects per-seed
+#              CMs from GenBank submitter mislabels in the
+#              serotype/genotype field — a sneaky chimeric-
+#              training failure mode that Issue 12's metadata-only
+#              prefilter cannot catch.
+#
+# Algorithm  : (per Issue 9 Phase A.5 brief, EPN approved 2026-04-29)
+#              1. Read per-seed prefiltered TSVs; build
+#                 claimed_H{accn} = seed_index for every non-seed
+#                 candidate. Seeds (by either input or versioned
+#                 form) are excluded from the candidate query.
+#              2. efetch the seed accessions, makeblastdb the seed
+#                 fasta as a nucl db.
+#              3. efetch the candidate accessions and blastn them
+#                 against the seed db with -outfmt 6, -max_hsps 1,
+#                 -evalue 1e-10, -max_target_seqs N.
+#              4. For each candidate take the top-2 (by bitscore)
+#                 distinct seed-subjects:
+#                  - top-1 seed == claimed seed                -> kept
+#                  - top-1 seed != claimed seed,
+#                    (top1 - top2) / top1 >= 5%                -> dropped_mismatch
+#                  - top-1 seed != claimed seed,
+#                    (top1 - top2) / top1  < 5%                -> dropped_near_tie
+#                  - no hits at e-value 1e-10                  -> dropped_no_hit
+#              5. Write reconciliation report TSV:
+#                   accn  claimed_seed  blastn_best_seed
+#                   top1_bitscore  top2_seed  top2_bitscore
+#                   decision
+#              6. Rewrite each per-seed TSV in place, dropping
+#                 dropped candidates so Phase B's per-seed
+#                 pipeline never sees them.
+#              7. Re-check --min-group-pool per seed AFTER
+#                 reconciliation. If a seed's pool fell below
+#                 threshold due to mismatches, ofile_FAIL with
+#                 a per-seed diagnostic naming the pre/post
+#                 counts so the user can decide whether to
+#                 lower --min-group-pool, fix metadata, or
+#                 drop that seed.
+#
+# Arguments  :
+#   $out_root                    : run output root (e.g.
+#                                  "<dir>/<dir_tail>.vadr"); used
+#                                  to derive intermediate file paths
+#                                  and the reconciliation report path.
+#   $seed_accn_AR                : ref to array of seed accessions
+#                                  (input form, may be unversioned).
+#   $seed_group_AR               : ref to array of seed canonical
+#                                  group labels (parallel to
+#                                  $seed_accn_AR), for diagnostics.
+#   $per_seed_filtered_tsv_AR    : ref to array of per-seed
+#                                  prefiltered metadata TSV paths
+#                                  (parallel to $seed_accn_AR);
+#                                  these are rewritten in place.
+#   $min_pool                    : --min-group-pool value (per-seed
+#                                  threshold).
+#   $execs_HR                    : ref to executable hash; uses
+#                                  makeblastdb and blastn.
+#   $opt_HHR                     : ref to options hash.
+#   $ofile_info_HHR              : ref to ofile info hash.
+#   $FH_HR                       : ref to filehandle hash.
+#
+# Returns    : void (dies via ofile_FAIL on any post-reconciliation
+#              pool-size violation).
+#################################################################
+sub reconcile_pools_by_blastn_against_seeds {
+  my ($out_root, $seed_accn_AR, $seed_group_AR, $per_seed_filtered_tsv_AR,
+      $min_pool, $execs_HR, $opt_HHR, $ofile_info_HHR, $FH_HR) = @_;
+
+  my $do_keep    = opt_Get("--keep", $opt_HHR);
+  my $do_verbose = opt_Get("-v",     $opt_HHR);
+  my $n_seeds    = scalar(@$seed_accn_AR);
+  my @local_to_remove_A = (); # cleanup list scoped to this subroutine
+
+  # Step 1: build claimed_H{accn} = seed_index from per-seed TSVs.
+  # Per-seed prefiltered TSV format (Issue 12 prefilter_metadata_by_seed_group):
+  #   header line, then accn<TAB>len<TAB>cdate<TAB>serotype<TAB>genotype<TAB>isolate<TAB>title.
+  # The seed row itself is retained in its own pool (Issue 12 unconditional
+  # seed-keep), so we filter seed accessions (by either input form e.g.
+  # "NC_001477" or versioned form e.g. "NC_001477.1") out of the candidate
+  # query — no point blasting a seed against the seed db.
+  my %is_seed_accn_H = ();
+  foreach my $sa (@$seed_accn_AR) { $is_seed_accn_H{$sa} = 1; }
+
+  my %claimed_H = ();
+  for(my $i = 0; $i < $n_seeds; $i++) {
+    my $tsv = $per_seed_filtered_tsv_AR->[$i];
+    open(my $fh, "<", $tsv) or ofile_FAIL("ERROR, multi-seed Phase A.5: unable to read per-seed prefiltered TSV $tsv: $!", 1, $FH_HR);
+    my $hdr = <$fh>;
+    while(my $line = <$fh>) {
+      next if($line =~ /^\s*$/);
+      chomp(my $stripped = $line);
+      my ($acc) = split(/\t/, $stripped, 2);
+      next if(! defined $acc || $acc eq "");
+      my $is_seed_row = 0;
+      foreach my $sa (@$seed_accn_AR) {
+        if($acc eq $sa || $acc =~ /^\Q$sa\E\.\d+$/) { $is_seed_row = 1; last; }
+      }
+      if($is_seed_row) {
+        $is_seed_accn_H{$acc} = 1;
+        next;
+      }
+      if(exists $claimed_H{$acc} && $claimed_H{$acc} != $i) {
+        # Defensive: norm_keys are pairwise distinct so a candidate
+        # should appear in at most one seed's pool. If it does appear
+        # in multiple, the later-read seed wins; warn so it's auditable.
+        ofile_OutputString($FH_HR->{"log"}, 1,
+          sprintf("# Multi-seed Phase A.5: WARNING accn %s appears in seed %s pool AND seed %s pool; using latter.\n",
+                  $acc, $seed_accn_AR->[$claimed_H{$acc}], $seed_accn_AR->[$i]));
+      }
+      $claimed_H{$acc} = $i;
+    }
+    close($fh);
+  }
+
+  my $n_candidates = scalar(keys %claimed_H);
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# Multi-seed Phase A.5: %d non-seed candidates to reconcile against %d seeds via blastn\n",
+            $n_candidates, $n_seeds));
+
+  # Step 2: write seed accn list, fetch seed fasta, makeblastdb.
+  my $seed_accn_list = $out_root . ".seed_reconciliation.seed_accn.list";
+  open(my $sfh, ">", $seed_accn_list) or ofile_FAIL("ERROR, multi-seed Phase A.5: unable to write $seed_accn_list: $!", 1, $FH_HR);
+  foreach my $sa (@$seed_accn_AR) { print $sfh $sa . "\n"; }
+  close($sfh);
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "seed_reconciliation.seed_accn.list",
+    $seed_accn_list, $do_keep, $do_keep, "Phase A.5: seed accession list (blastn db source)");
+  if(! $do_keep) { push(@local_to_remove_A, $seed_accn_list); }
+
+  my $seed_fa = $out_root . ".seed_reconciliation.seeds.fa";
+  fetch_fasta_from_accession_list($seed_accn_list, $seed_fa,
+    $do_keep, "seed_reconciliation.seeds.fa",
+    $ofile_info_HHR, \@local_to_remove_A, $opt_HHR, $FH_HR);
+
+  # Parse seed fasta headers to map versioned-acc -> seed_index.
+  my %seed_acc_to_idx_H  = ();   # versioned   -> seed_index
+  my %seed_base_to_idx_H = ();   # unversioned -> seed_index
+  open(my $sffh, "<", $seed_fa) or ofile_FAIL("ERROR, multi-seed Phase A.5: unable to read $seed_fa: $!", 1, $FH_HR);
+  while(my $line = <$sffh>) {
+    if($line =~ /^>(\S+)/) {
+      my $hdr_acc = $1;
+      my $base = $hdr_acc;
+      $base =~ s/\.\d+$//;
+      for(my $i = 0; $i < $n_seeds; $i++) {
+        my $sa = $seed_accn_AR->[$i];
+        if($hdr_acc eq $sa || $base eq $sa) {
+          $seed_acc_to_idx_H{$hdr_acc} = $i;
+          $seed_base_to_idx_H{$base}   = $i;
+          $is_seed_accn_H{$hdr_acc}    = 1;
+          last;
+        }
+      }
+    }
+  }
+  close($sffh);
+
+  if(scalar(keys %seed_base_to_idx_H) != $n_seeds) {
+    ofile_FAIL(sprintf("ERROR, multi-seed Phase A.5: efetch returned %d distinct seed sequences but %d were requested.\nSeeds requested: %s\nSeed fasta: %s",
+                       scalar(keys %seed_base_to_idx_H), $n_seeds,
+                       join(", ", @$seed_accn_AR), $seed_fa),
+               1, $FH_HR);
+  }
+
+  my $seed_db = $out_root . ".seed_reconciliation.seeds.db";
+  my $cmd = $execs_HR->{"makeblastdb"} . " -in " . $seed_fa . " -dbtype nucl -out " . $seed_db;
+  if(! $do_verbose) { $cmd .= " > /dev/null 2>&1"; }
+  utl_RunCommand($cmd, $do_verbose, 0, $FH_HR);
+  if(! $do_keep) {
+    foreach my $ext ("nhr", "nin", "nsq", "nsi", "nsd", "not", "ntf", "nto", "ndb", "nos") {
+      push(@local_to_remove_A, $seed_db . "." . $ext);
+    }
+  }
+
+  # Step 3: write candidate accn list (seeds excluded), fetch candidate fasta.
+  my $cand_accn_list = $out_root . ".seed_reconciliation.candidate.accn.list";
+  open(my $cfh, ">", $cand_accn_list) or ofile_FAIL("ERROR, multi-seed Phase A.5: unable to write $cand_accn_list: $!", 1, $FH_HR);
+  my $n_cand_written = 0;
+  foreach my $acc (sort keys %claimed_H) {
+    next if(exists $is_seed_accn_H{$acc});
+    print $cfh $acc . "\n";
+    $n_cand_written++;
+  }
+  close($cfh);
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "seed_reconciliation.candidate.accn.list",
+    $cand_accn_list, $do_keep, $do_keep, "Phase A.5: candidate accession list (blastn query source)");
+  if(! $do_keep) { push(@local_to_remove_A, $cand_accn_list); }
+
+  if($n_cand_written == 0) {
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      "# Multi-seed Phase A.5: no non-seed candidates to reconcile; phase is a no-op.\n");
+    foreach my $f (@local_to_remove_A) { if(-e $f) { unlink $f; } }
+    return;
+  }
+
+  my $cand_fa = $out_root . ".seed_reconciliation.candidates.fa";
+  fetch_fasta_from_accession_list($cand_accn_list, $cand_fa,
+    $do_keep, "seed_reconciliation.candidates.fa",
+    $ofile_info_HHR, \@local_to_remove_A, $opt_HHR, $FH_HR);
+
+  # Step 4: blastn candidates against seeds. Use -max_hsps 1 so each
+  # (query, subject) pair contributes a single bitscore. -max_target_seqs
+  # = N covers the case where every seed scores above the e-value cutoff.
+  my $blast_out = $out_root . ".seed_reconciliation.blastn.tsv";
+  $cmd = $execs_HR->{"blastn"} . " -query " . $cand_fa . " -db " . $seed_db .
+         " -task blastn -outfmt \"6 qseqid sseqid bitscore\"" .
+         " -max_target_seqs " . $n_seeds .
+         " -max_hsps 1 -evalue 1e-10 > " . $blast_out;
+  utl_RunCommand($cmd, $do_verbose, 0, $FH_HR);
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "seed_reconciliation.blastn.tsv",
+    $blast_out, $do_keep, $do_keep, "Phase A.5: raw blastn output (qseqid/sseqid/bitscore)");
+  if(! $do_keep) { push(@local_to_remove_A, $blast_out); }
+
+  # Step 5: parse blastn output, gather top hits per query (one entry
+  # per distinct seed-subject, sorted defensively by bitscore desc later).
+  my %hits_HA = ();
+  open(my $bfh, "<", $blast_out) or ofile_FAIL("ERROR, multi-seed Phase A.5: unable to read $blast_out: $!", 1, $FH_HR);
+  while(my $line = <$bfh>) {
+    chomp $line;
+    next if($line eq "");
+    my ($q, $s, $bits) = split(/\t/, $line);
+    next if(! defined $q || ! defined $s || ! defined $bits);
+    my $sidx;
+    if(exists $seed_acc_to_idx_H{$s}) { $sidx = $seed_acc_to_idx_H{$s}; }
+    else {
+      my $sbase = $s; $sbase =~ s/\.\d+$//;
+      if(exists $seed_base_to_idx_H{$sbase}) { $sidx = $seed_base_to_idx_H{$sbase}; }
+    }
+    next if(! defined $sidx);
+    $hits_HA{$q} //= [];
+    my $already = 0;
+    foreach my $entry (@{$hits_HA{$q}}) {
+      if($entry->{seed_idx} == $sidx) { $already = 1; last; }
+    }
+    next if($already);
+    push(@{$hits_HA{$q}}, { seed_idx => $sidx, bitscore => $bits + 0.0 });
+  }
+  close($bfh);
+
+  # Step 6: per-query reconciliation; write report TSV.
+  my $recon_tsv = $out_root . ".seed_reconciliation.tsv";
+  open(my $rfh, ">", $recon_tsv) or ofile_FAIL("ERROR, multi-seed Phase A.5: unable to write $recon_tsv: $!", 1, $FH_HR);
+  print $rfh join("\t",
+    "accn", "claimed_seed", "blastn_best_seed",
+    "top1_bitscore", "top2_seed", "top2_bitscore", "decision") . "\n";
+
+  my %drop_set_H = ();
+  my %decision_count_H = (kept => 0, dropped_mismatch => 0,
+                          dropped_near_tie => 0, dropped_no_hit => 0);
+
+  foreach my $acc (sort keys %claimed_H) {
+    next if(exists $is_seed_accn_H{$acc});
+    my $claimed_idx  = $claimed_H{$acc};
+    my $claimed_seed = $seed_accn_AR->[$claimed_idx];
+    my $hits_AR = $hits_HA{$acc} // [];
+    my @sorted = sort { $b->{bitscore} <=> $a->{bitscore} } @$hits_AR;
+
+    my ($top1_seed, $top1_bits, $top2_seed, $top2_bits) = ("-", "-", "-", "-");
+    my $decision;
+    if(scalar(@sorted) == 0) {
+      $decision = "dropped_no_hit";
+      $drop_set_H{$acc} = 1;
+    }
+    else {
+      $top1_seed = $seed_accn_AR->[$sorted[0]->{seed_idx}];
+      $top1_bits = sprintf("%.1f", $sorted[0]->{bitscore});
+      if(scalar(@sorted) >= 2) {
+        $top2_seed = $seed_accn_AR->[$sorted[1]->{seed_idx}];
+        $top2_bits = sprintf("%.1f", $sorted[1]->{bitscore});
+      }
+      if($sorted[0]->{seed_idx} == $claimed_idx) {
+        $decision = "kept";
+      }
+      else {
+        my $is_near_tie = 0;
+        if(scalar(@sorted) >= 2 && $sorted[0]->{bitscore} > 0) {
+          my $delta = $sorted[0]->{bitscore} - $sorted[1]->{bitscore};
+          if(($delta / $sorted[0]->{bitscore}) < 0.05) { $is_near_tie = 1; }
+        }
+        $decision = $is_near_tie ? "dropped_near_tie" : "dropped_mismatch";
+        $drop_set_H{$acc} = 1;
+      }
+    }
+    $decision_count_H{$decision}++;
+    print $rfh join("\t",
+      $acc, $claimed_seed, $top1_seed, $top1_bits,
+      $top2_seed, $top2_bits, $decision) . "\n";
+  }
+  close($rfh);
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "seed_reconciliation.tsv",
+    $recon_tsv, 1, 1, "Phase A.5: blastn-vs-metadata reconciliation report");
+
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# Multi-seed Phase A.5: kept=%d dropped_mismatch=%d dropped_near_tie=%d dropped_no_hit=%d (of %d candidates)\n",
+            $decision_count_H{kept}, $decision_count_H{dropped_mismatch},
+            $decision_count_H{dropped_near_tie}, $decision_count_H{dropped_no_hit},
+            $n_cand_written));
+
+  # Step 7: rewrite each per-seed TSV in place; track per-seed pool counts.
+  my @per_seed_pre_count_A  = ();
+  my @per_seed_post_count_A = ();
+  for(my $i = 0; $i < $n_seeds; $i++) {
+    my $tsv = $per_seed_filtered_tsv_AR->[$i];
+    my $tmp = $tsv . ".reconciled.tmp";
+    open(my $in,  "<", $tsv) or ofile_FAIL("ERROR, multi-seed Phase A.5: unable to read $tsv: $!",  1, $FH_HR);
+    open(my $out, ">", $tmp) or ofile_FAIL("ERROR, multi-seed Phase A.5: unable to write $tmp: $!", 1, $FH_HR);
+    my $hdr = <$in>;
+    print $out $hdr;
+    my ($pre, $post) = (0, 0);
+    while(my $line = <$in>) {
+      next if($line =~ /^\s*$/);
+      $pre++;
+      chomp(my $stripped = $line);
+      my ($acc) = split(/\t/, $stripped, 2);
+      if(defined $acc && exists $drop_set_H{$acc}) {
+        # dropped — do not emit
+      }
+      else {
+        print $out $line;
+        $post++;
+      }
+    }
+    close($in);
+    close($out);
+    rename($tmp, $tsv) or ofile_FAIL("ERROR, multi-seed Phase A.5: unable to rename $tmp -> $tsv: $!", 1, $FH_HR);
+    push(@per_seed_pre_count_A,  $pre);
+    push(@per_seed_post_count_A, $post);
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# Multi-seed Phase A.5: seed %d (%s, group=\"%s\"): %d -> %d after reconciliation (%d dropped)\n",
+              $i + 1, $seed_accn_AR->[$i], $seed_group_AR->[$i],
+              $pre, $post, $pre - $post));
+  }
+
+  # Step 8: post-reconciliation pool-size check (per seed). This is a
+  # different code path from Issue 12's pre-reconciliation check inside
+  # prefilter_metadata_by_seed_group(); it catches the "many candidates
+  # got reassigned to a different seed by blastn" failure mode.
+  for(my $i = 0; $i < $n_seeds; $i++) {
+    if($per_seed_post_count_A[$i] < $min_pool) {
+      my $n_dropped_for_seed = $per_seed_pre_count_A[$i] - $per_seed_post_count_A[$i];
+      ofile_FAIL(sprintf(
+        "ERROR, seed %s's pool is %d after blastn reconciliation, below --min-group-pool=%d (pre-reconciliation pool was %d, with %d metadata-vs-blastn mismatches dropped). Either lower --min-group-pool, fix the upstream metadata, or remove this seed from --seed-accn.",
+        $seed_accn_AR->[$i], $per_seed_post_count_A[$i], $min_pool,
+        $per_seed_pre_count_A[$i], $n_dropped_for_seed),
+        1, $FH_HR);
+    }
+  }
+
+  # Cleanup intermediate files when --keep is not in effect.
+  if(! $do_keep) {
+    foreach my $f (@local_to_remove_A) { if(-e $f) { unlink $f; } }
+  }
+
+  return;
 }
 
 sub prefilter_metadata_by_seed_group {
