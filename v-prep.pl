@@ -510,6 +510,16 @@ my @reqd_ftr_keys = ();
 
 vdr_ModelInfoFileParse($seed_minfo, \@reqd_mdl_keys, \@reqd_ftr_keys, \@mdl_info_A, \%ftr_info_HA, $FH_HR);
 my $seed_model_len = $mdl_info_A[0]{"length"};
+# Resolve the canonical key used in %ftr_info_HA by reading the seed
+# minfo MODEL line. $model_key (derived from --mdir basename, e.g.
+# "NC_001477-seed") often differs from the minfo's MODEL key (e.g.
+# "NC_001477"). All %ftr_info_HA accesses MUST use $minfo_model_key —
+# using $model_key autovivifies an empty array under the wrong key and
+# silently zeros out the feature loop in callers like
+# write_stitch_scaffold_outputs (which produces an empty block plan
+# with no coding rows). $model_key remains the right name for model
+# file paths on disk.
+my $minfo_model_key = minfo_parse_model_key($seed_minfo, $FH_HR);
 # reference accession resolution:
 #   - explicit --refaccn always wins
 #   - --seed-accn mode: default is the seed accession (--mdir is just an
@@ -736,7 +746,7 @@ if($do_auto_alt) {
     my $alt_groups_HHR = parse_alt_for_cds_boundary_alerts($tier2_alt_file, $FH_HR);
     my $max_fract_diff = opt_Get("--alt-max-fract", \%opt_HH);
     my $alt_features_AR = detect_alternative_features($alt_groups_HHR, $min_independent, $max_fract_diff,
-                                                       \@{$ftr_info_HA{$model_key}}, $model_key, $FH_HR);
+                                                       \@{$ftr_info_HA{$minfo_model_key}}, $minfo_model_key, $FH_HR);
 
     # Detect exceptions
     my $exc_groups_HHR = parse_alt_for_exceptions($tier2_alt_file, $FH_HR);
@@ -962,7 +972,7 @@ if(! $do_skip_annotate) {
 #---------------------------------------
 # Step 7: Initial piecewise stitching scaffold outputs
 #---------------------------------------
-my $n_selected = write_stitch_scaffold_outputs(\%candidate_AH, $tier2_fasta_file, \%ftr_info_HA, $model_key, $seed_model_len, $stitch_selected_accn_file, $stitch_selected_fa_file, $stitch_block_plan_file, $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
+my $n_selected = write_stitch_scaffold_outputs(\%candidate_AH, $tier2_fasta_file, \%ftr_info_HA, $minfo_model_key, $seed_model_len, $stitch_selected_accn_file, $stitch_selected_fa_file, $stitch_block_plan_file, $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
 if($n_selected == 0) {
   ofile_OutputString($FH_HR->{"log"}, 1, "#\n# Zero sequences passed all filters. Cannot build profile alignment.\n");
@@ -974,7 +984,7 @@ if($n_selected == 0) {
 #---------------------------------------
 # Step 8: CDS translation prep for protein alignment
 #---------------------------------------
-prepare_cds_translation_for_stitching(\%candidate_AH, $stitch_selected_fa_file, $tier2_ant_outdir, $stitch_cds_nt_fa_file, $stitch_cds_orf_fa_file, $stitch_cds_aa_fa_file, $stitch_cds_map_tsv_file, \@{$ftr_info_HA{$model_key}}, $do_skip_annotate, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H, \%ofile_info_HH, \@to_remove_A, $FH_HR);
+prepare_cds_translation_for_stitching(\%candidate_AH, $stitch_selected_fa_file, $tier2_ant_outdir, $stitch_cds_nt_fa_file, $stitch_cds_orf_fa_file, $stitch_cds_aa_fa_file, $stitch_cds_map_tsv_file, \@{$ftr_info_HA{$minfo_model_key}}, $do_skip_annotate, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H, \%ofile_info_HH, \@to_remove_A, $FH_HR);
 
 #---------------------------------------
 # Step 9: Multiple AA alignment with muscle (per CDS feature)
@@ -1072,7 +1082,7 @@ if(! $do_skip_annotate && $overall_centroid_accn ne "" && $overall_centroid_accn
   my $realign_work_root = $out_root . ".centroid_realign";
   my $new_model_len = realign_to_centroid_rf(
     $output_stk_file, $overall_centroid_accn, $realign_work_root,
-    \%ftr_info_HA, $model_key,
+    \%ftr_info_HA, $minfo_model_key,
     opt_Get("--mxsize", \%opt_HH),
     \%execs_H, $do_keep, opt_Get("-v", \%opt_HH),
     \%ofile_info_HH, \@to_remove_A, $FH_HR);
@@ -1102,7 +1112,7 @@ if(! $do_skip_annotate && ! opt_Get("--no-overhang-ext", \%opt_HH)) {
   my $overhang_work_root = $out_root . ".overhang_ext";
   my ($n_5p, $n_3p) = extend_rf_with_overhangs(
     $output_stk_file, $overhang_work_root,
-    \%ftr_info_HA, $model_key,
+    \%ftr_info_HA, $minfo_model_key,
     opt_Get("--overhang-anchor-len",      \%opt_HH),
     opt_Get("--overhang-min-coverage",    \%opt_HH),
     opt_Get("--overhang-min-conservation",\%opt_HH),
@@ -1136,12 +1146,10 @@ if(! $do_skip_annotate && ! opt_Get("--no-overhang-ext", \%opt_HH)) {
 # RF positions, so this must run even in the seed-case (centroid == seed)
 # because cmalign can place gaps in any sequence at match states.
 if(! $do_skip_annotate) {
-  # Resolve the canonical model key by reading the MODEL line from the
-  # seed minfo file. $model_key (derived from --mdir directory name) may
-  # not match (e.g. "KY989511-seed" vs the minfo's "KY989511"), and
-  # earlier code paths can autovivify %ftr_info_HA under the wrong key.
-  my $minfo_model_key = minfo_parse_model_key($seed_minfo, $FH_HR);
-
+  # $minfo_model_key was resolved once at the top of main from the seed
+  # minfo's MODEL line. The auto-alt branch above may rewrite $seed_minfo
+  # to point at the .alt.minfo, but that file's MODEL line is identical
+  # so the canonical key is unchanged.
   my ($new_model_len, $ref_native_len) = remap_feature_coords_to_final_stk(
     $output_stk_file, $seed_accn_versioned, \%ftr_info_HA, $minfo_model_key, $FH_HR);
 
