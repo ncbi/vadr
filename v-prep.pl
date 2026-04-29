@@ -488,12 +488,131 @@ if($do_group_prefilter) {
 }
 
 #---------------------------------------
+# Steps 2..14: per-seed pipeline (Issue 9 commit 1 — extracted into a function)
+#
+# This was the inline Steps 2..14 mainline block; it has been moved into
+# run_single_seed_pipeline() to enable multi-seed mode (Issue 9 Phase B).
+# In single-seed mode (the only mode for now) the function is invoked
+# exactly once. Behavior is byte-equivalent to the pre-extraction code.
+#---------------------------------------
+my ($final_seed_minfo, $final_seed_model_len, $final_ref_accn) =
+    run_single_seed_pipeline({
+      opt_HHR              => \%opt_HH,
+      execs_HR             => \%execs_H,
+      ofile_info_HHR       => \%ofile_info_HH,
+      FH_HR                => $FH_HR,
+      env_vadr_scripts_dir => $env_vadr_scripts_dir,
+      env_vadr_rfam_dir    => $env_vadr_rfam_dir,
+      dir                  => $dir,
+      dir_tail             => $dir_tail,
+      model_dir            => $model_dir,
+      model_key            => $model_key,
+      seed_minfo           => $seed_minfo,
+      do_seed_bootstrap    => $do_seed_bootstrap,
+      do_skip_annotate     => $do_skip_annotate,
+      do_rna_discovery     => $do_rna_discovery,
+      rna_cm_file          => $rna_cm_file,
+      out_root             => $out_root,
+      meta_tsv             => $meta_tsv,
+      seed_canonical_group => $seed_canonical_group,
+      group_name           => $group_name,
+    });
+$seed_minfo = $final_seed_minfo;
+# $final_seed_model_len and $final_ref_accn captured for forward-compat
+# with Issue 9 multi-seed Phase C merge; unused in single-seed mode.
+
+
+ofile_OutputString(\*STDOUT, 1, sprintf("All done.\n"));
+
+$total_seconds += ofile_SecondsSinceEpoch();
+ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
+exit(0);
+
+
+
+#################################################################
+# Subroutine : run_single_seed_pipeline()
+# Incept     : EPN* Wed Apr 29 2026
+#
+# Purpose    : Run the per-seed v-prep pipeline (Steps 2..14):
+#              optional v-build seed bootstrap, RNA discovery,
+#              tier-1 metadata filtering, holdout split, tier-2
+#              v-annotate filtering, tier-3 centroid selection,
+#              CDS MSA construction, RNA region refinement,
+#              stitched final alignment, centroid/overhang RF
+#              realignment, and minfo finalization.
+#
+#              Single-seed mode invokes this once. Multi-seed
+#              mode (Issue 9) invokes it once per seed.
+#
+#              This sub was extracted from the prior inline
+#              Steps 2..14 mainline block as Issue 9 commit 1.
+#              Single-seed behavior is byte-equivalent to the
+#              pre-extraction code: only outer-scope-lexical
+#              references (%opt_HH, %execs_H, %ofile_info_HH)
+#              were rebound to passed-in refs.
+#
+# Arguments:
+#   $args_HR : hashref with named args:
+#       opt_HHR              : \%opt_HH
+#       execs_HR             : \%execs_H
+#       ofile_info_HHR       : \%ofile_info_HH (mutated)
+#       FH_HR                : log file-handle hashref
+#       env_vadr_scripts_dir : VADRSCRIPTSDIR
+#       env_vadr_rfam_dir    : VADRRFAMDIR
+#       dir                  : output directory
+#       dir_tail             : output directory basename
+#       model_dir            : --mdir value
+#       model_key            : derived model key
+#       seed_minfo           : initial seed .minfo path
+#       do_seed_bootstrap    : 1 iff --seed-accn supplied
+#       do_skip_annotate     : --skip-annotate boolean
+#       do_rna_discovery     : (! --skip-rna)
+#       rna_cm_file          : RNA CM file path or undef
+#       out_root             : output file path prefix
+#       meta_tsv             : metadata TSV path
+#       seed_canonical_group : prefilter return value or undef
+#       group_name           : --group value
+#
+# Returns:    ($final_seed_minfo, $final_seed_model_len, $final_ref_accn)
+#             — the post-Step-14 values, captured for forward-compat
+#             with multi-seed Phase C merge.
+#
+# Dies:       on any unrecoverable error from a sub-step.
+#
+#################################################################
+sub run_single_seed_pipeline {
+  my ($args_HR) = @_;
+
+  my $opt_HHR              = $args_HR->{opt_HHR};
+  my $execs_HR             = $args_HR->{execs_HR};
+  my $ofile_info_HHR       = $args_HR->{ofile_info_HHR};
+  my $FH_HR                = $args_HR->{FH_HR};
+  my $env_vadr_scripts_dir = $args_HR->{env_vadr_scripts_dir};
+  my $env_vadr_rfam_dir    = $args_HR->{env_vadr_rfam_dir};
+  my $dir                  = $args_HR->{dir};
+  my $dir_tail             = $args_HR->{dir_tail};
+  my $model_dir            = $args_HR->{model_dir};
+  my $model_key            = $args_HR->{model_key};
+  my $seed_minfo           = $args_HR->{seed_minfo};
+  my $do_seed_bootstrap    = $args_HR->{do_seed_bootstrap};
+  my $do_skip_annotate     = $args_HR->{do_skip_annotate};
+  my $do_rna_discovery     = $args_HR->{do_rna_discovery};
+  my $rna_cm_file          = $args_HR->{rna_cm_file};
+  my $out_root             = $args_HR->{out_root};
+  my $meta_tsv             = $args_HR->{meta_tsv};
+  my $seed_canonical_group = $args_HR->{seed_canonical_group};
+  my $group_name           = $args_HR->{group_name};
+
+  my $cmd; # scratch command string (was outer-scope `my $cmd` pre-extraction)
+
+#---------------------------------------
 # Step 2: Optional seed bootstrap via v-build.pl
 #---------------------------------------
 if($do_seed_bootstrap) {
   my @seed_opt_A = ();
-  if(opt_IsUsed("--seed-build-opts-file", \%opt_HH)) {
-    my $seed_opts_file = opt_Get("--seed-build-opts-file", \%opt_HH);
+  if(opt_IsUsed("--seed-build-opts-file", $opt_HHR)) {
+    my $seed_opts_file = opt_Get("--seed-build-opts-file", $opt_HHR);
     open(my $sbfh, "<", $seed_opts_file) || die "ERROR, unable to read --seed-build-opts-file $seed_opts_file: $!";
     while(my $line = <$sbfh>) {
       chomp $line;
@@ -505,22 +624,22 @@ if($do_seed_bootstrap) {
     }
     close($sbfh);
   }
-  elsif(opt_IsUsed("--seed-build-opts", \%opt_HH)) {
-    my $seed_opt_str = opt_Get("--seed-build-opts", \%opt_HH);
+  elsif(opt_IsUsed("--seed-build-opts", $opt_HHR)) {
+    my $seed_opt_str = opt_Get("--seed-build-opts", $opt_HHR);
     push(@seed_opt_A, split(/\s+/, $seed_opt_str));
   }
 
-  if(opt_Get("-f", \%opt_HH)) {
+  if(opt_Get("-f", $opt_HHR)) {
     push(@seed_opt_A, "-f");
   }
-  if(opt_Get("-v", \%opt_HH)) {
+  if(opt_Get("-v", $opt_HHR)) {
     push(@seed_opt_A, "-v");
   }
 
-  my $seed_accn = opt_Get("--seed-accn", \%opt_HH);
+  my $seed_accn = opt_Get("--seed-accn", $opt_HHR);
   my $seed_opt_str = join(" ", @seed_opt_A);
-  $cmd = $execs_H{"v-build.pl"} . " " . (($seed_opt_str ne "") ? ($seed_opt_str . " ") : "") . $seed_accn . " " . $model_dir;
-  utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+  $cmd = $execs_HR->{"v-build.pl"} . " " . (($seed_opt_str ne "") ? ($seed_opt_str . " ") : "") . $seed_accn . " " . $model_dir;
+  utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 }
 
 if(! -e $seed_minfo) {
@@ -555,16 +674,16 @@ my $minfo_model_key = minfo_parse_model_key($seed_minfo, $FH_HR);
 #   - non-seed-bootstrap mode: legacy behavior (default = $model_key,
 #     because $model_dir is conventionally named after the accession,
 #     e.g. NC_006232/)
-my $ref_accn = opt_IsUsed("--refaccn", \%opt_HH) ? opt_Get("--refaccn", \%opt_HH) :
-               $do_seed_bootstrap                ? opt_Get("--seed-accn", \%opt_HH) :
+my $ref_accn = opt_IsUsed("--refaccn", $opt_HHR) ? opt_Get("--refaccn", $opt_HHR) :
+               $do_seed_bootstrap                ? opt_Get("--seed-accn", $opt_HHR) :
                                                    $model_key;
 ofile_OutputString(*STDOUT, 1, sprintf("# Read seed model length: %d\n", $seed_model_len));
 ofile_OutputString(*STDOUT, 1, sprintf("# Reference accession: %s\n", $ref_accn));
 
 # Read extra v-annotate.pl options from file, if provided
 my $vannot_extra_opts = "";
-if(opt_IsUsed("--vannot-opts-file", \%opt_HH)) {
-  my $vannot_opts_file = opt_Get("--vannot-opts-file", \%opt_HH);
+if(opt_IsUsed("--vannot-opts-file", $opt_HHR)) {
+  my $vannot_opts_file = opt_Get("--vannot-opts-file", $opt_HHR);
   open(my $vofh, "<", $vannot_opts_file) || ofile_FAIL("ERROR, unable to open --vannot-opts-file $vannot_opts_file", 1, $FH_HR);
   while(my $voline = <$vofh>) {
     chomp $voline;
@@ -579,11 +698,11 @@ if(opt_IsUsed("--vannot-opts-file", \%opt_HH)) {
 # Pass --split / --cpu through to internal v-annotate.pl invocations.
 # Both internal calls (run_vannotate_filter_fails Tier 2 and the auto-alt-detect
 # pass2 re-run) pick this up via $vannot_extra_opts.
-if(opt_IsUsed("--split", \%opt_HH)) {
+if(opt_IsUsed("--split", $opt_HHR)) {
   $vannot_extra_opts .= " --split";
 }
-if(opt_IsUsed("--cpu", \%opt_HH)) {
-  $vannot_extra_opts .= " --cpu " . opt_Get("--cpu", \%opt_HH);
+if(opt_IsUsed("--cpu", $opt_HHR)) {
+  $vannot_extra_opts .= " --cpu " . opt_Get("--cpu", $opt_HHR);
 }
 
 #---------------------------------------
@@ -592,8 +711,8 @@ if(opt_IsUsed("--cpu", \%opt_HH)) {
 my @rna_regions_A = (); # Array of hashes: { start, end, strand, cm_family, cm_accession, score, evalue }
 my $rna_annot_file = $out_root . ".rna_annotation.tsv";
 my $rna_ss_cons = undef; # Full-length consensus secondary structure string
-my $do_keep = opt_Get("--keep", \%opt_HH);
-my $do_cds_rf_rewrite = ! opt_Get("--no-cds-rf-rewrite", \%opt_HH);
+my $do_keep = opt_Get("--keep", $opt_HHR);
+my $do_cds_rf_rewrite = ! opt_Get("--no-cds-rf-rewrite", $opt_HHR);
 my @to_remove_A = (); # files to remove at end unless --keep
 
 if($do_rna_discovery) {
@@ -603,16 +722,16 @@ if($do_rna_discovery) {
   }
   
   run_rna_discovery($ref_seq_file, $rna_cm_file, $seed_model_len, $out_root, $env_vadr_rfam_dir,
-                    \@rna_regions_A, \$rna_ss_cons, $do_keep, opt_Get("-v", \%opt_HH),
-                    \%execs_H, \%ofile_info_HH, \@to_remove_A, $FH_HR);
+                    \@rna_regions_A, \$rna_ss_cons, $do_keep, opt_Get("-v", $opt_HHR),
+                    $execs_HR, $ofile_info_HHR, \@to_remove_A, $FH_HR);
 
   # Step 3b: RNA structure generation via cmalign
   run_rna_sstruct_generation(\@rna_regions_A, $ref_seq_file, $rna_cm_file, $env_vadr_rfam_dir,
-                             $out_root, $do_keep, opt_Get("-v", \%opt_HH),
-                             \%execs_H, \%ofile_info_HH, $FH_HR);
+                             $out_root, $do_keep, opt_Get("-v", $opt_HHR),
+                             $execs_HR, $ofile_info_HHR, $FH_HR);
 
   # Write RNA annotation output (after structure extraction)
-  write_rna_annotation_table(\@rna_regions_A, $rna_annot_file, \%ofile_info_HH, $FH_HR);
+  write_rna_annotation_table(\@rna_regions_A, $rna_annot_file, $ofile_info_HHR, $FH_HR);
 }
 else {
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA discovery: skipped due to --skip-rna\n"));
@@ -655,18 +774,18 @@ else {
 #---------------------------------------
 # Holdout split (before any tier-1 filtering)
 #---------------------------------------
-my $holdout_frac = opt_Get("--holdout-frac", \%opt_HH);
+my $holdout_frac = opt_Get("--holdout-frac", $opt_HHR);
 my $do_holdout   = ($holdout_frac > 0);
 my %holdout_accn_H = ();  # accessions reserved as held-out test set
 
 if($do_holdout) {
-  my $holdout_seed     = opt_Get("--holdout-seed", \%opt_HH);
+  my $holdout_seed     = opt_Get("--holdout-seed", $opt_HHR);
   my $holdout_tsv_file = $out_root . ".holdout.tsv";
   my $train_meta_tsv   = $out_root . ".train.metadata.tsv";  # temp training-only metadata
 
   perform_holdout_split($meta_tsv, $holdout_frac, $holdout_seed, $ref_accn,
                         $holdout_tsv_file, $train_meta_tsv, \%holdout_accn_H,
-                        $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
+                        $do_keep, $ofile_info_HHR, \@to_remove_A, $FH_HR);
 
   $meta_tsv = $train_meta_tsv;  # tier-1 pipeline operates only on training split
 
@@ -679,12 +798,12 @@ if($do_holdout) {
   if(! $do_keep) { push(@to_remove_A, $holdout_accn_list); }
 
   fetch_fasta_from_accession_list($holdout_accn_list, $holdout_fa_file, 1, "holdout.fa",
-                                  \%ofile_info_HH, \@to_remove_A, \%opt_HH, $FH_HR);
+                                  $ofile_info_HHR, \@to_remove_A, $opt_HHR, $FH_HR);
 }
 
 my %candidate_AH = ();
 my %decision_H = ();
-my $max_per_group = opt_Get("--xpergroup", \%opt_HH);
+my $max_per_group = opt_Get("--xpergroup", $opt_HHR);
 
 # Note: %group_alias_H / %alias_source_used_H were declared and
 # populated upstream (before the pre-filter call) so that
@@ -695,7 +814,7 @@ parse_and_filter_metadata($meta_tsv, $seed_model_len, $max_per_group, \%candidat
 
 # Warn about alias-file source keys that never matched any sequence's
 # post-normalization canonical (non-fatal).
-if(opt_IsUsed("--group-aliases", \%opt_HH)) {
+if(opt_IsUsed("--group-aliases", $opt_HHR)) {
   my @unused = sort grep { ! $alias_source_used_H{$_} } keys %group_alias_H;
   foreach my $src (@unused) {
     ofile_OutputString($FH_HR->{"log"}, 1,
@@ -705,7 +824,7 @@ if(opt_IsUsed("--group-aliases", \%opt_HH)) {
 }
 
 my $groups_audit_file = $out_root . ".groups_audit.tsv";
-write_groups_audit(\%decision_H, $groups_audit_file, \%group_alias_H, \%alias_source_used_H, \%ofile_info_HH, $FH_HR);
+write_groups_audit(\%decision_H, $groups_audit_file, \%group_alias_H, \%alias_source_used_H, $ofile_info_HHR, $FH_HR);
 
 # Verify reference accession was found in metadata
 if(! exists $decision_H{$ref_accn}) {
@@ -720,7 +839,7 @@ if(! exists $decision_H{$ref_accn}) {
 #---------------------------------------
 my $tier1_accn_file = $out_root . ".tier1.accn.list";
 my $tier2_fasta_file = $out_root . ".tier2.fa";
-my $max_ambig_nt = opt_Get("--xambig", \%opt_HH);
+my $max_ambig_nt = opt_Get("--xambig", $opt_HHR);
 my $tier2_ant_outdir = $out_root . ".tier2.annot";
 my $centroid_tsv_file = $out_root . ".centroid.tsv";
 my $decision_tsv_file = $out_root . ".filter.seq.tsv";
@@ -741,8 +860,8 @@ my $stitch_cds_msa_aa_stk_file = $out_root . ".cds.msa.aa.stk";
 my $stitch_cds_msa_nt_fa_file = $out_root . ".cds.msa.nt.afa";
 my $rna_annotation_file       = $out_root . ".rna_annotation.tsv";
 
-write_accession_list_from_candidates(\%candidate_AH, $tier1_accn_file, $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
-fetch_fasta_from_accession_list($tier1_accn_file, $tier2_fasta_file, $do_keep, "tier2.fa", \%ofile_info_HH, \@to_remove_A, \%opt_HH, $FH_HR);
+write_accession_list_from_candidates(\%candidate_AH, $tier1_accn_file, $do_keep, $ofile_info_HHR, \@to_remove_A, $FH_HR);
+fetch_fasta_from_accession_list($tier1_accn_file, $tier2_fasta_file, $do_keep, "tier2.fa", $ofile_info_HHR, \@to_remove_A, $opt_HHR, $FH_HR);
 apply_ambiguity_filter_to_candidates(\%candidate_AH, $tier2_fasta_file, $max_ambig_nt, \%decision_H, $ref_accn, $FH_HR);
 
 my $tier2_align_stk_file = undef;
@@ -760,30 +879,30 @@ if($do_skip_annotate) {
   mark_all_remaining_as_selected_for_tier3(\%candidate_AH, \%decision_H);
 }
 else {
-  $tier2_align_stk_file = run_vannotate_filter_fails(\%candidate_AH, $tier2_fasta_file, $tier2_ant_outdir, $model_dir, $model_key, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H, \%decision_H, $vannot_extra_opts, $FH_HR);
+  $tier2_align_stk_file = run_vannotate_filter_fails(\%candidate_AH, $tier2_fasta_file, $tier2_ant_outdir, $model_dir, $model_key, $do_keep, opt_Get("-v", $opt_HHR), $execs_HR, \%decision_H, $vannot_extra_opts, $FH_HR);
 }
 
 #---------------------------------------
 # Step 5b: Auto-detect alternative CDS features and exceptions
 #---------------------------------------
-my $do_auto_alt = (! $do_skip_annotate) && (! opt_Get("--no-auto-alt", \%opt_HH));
+my $do_auto_alt = (! $do_skip_annotate) && (! opt_Get("--no-auto-alt", $opt_HHR));
 if($do_auto_alt) {
   my $tier2_ant_tail = $tier2_ant_outdir;
   $tier2_ant_tail =~ s/^.+\///;
   my $tier2_alt_file = $tier2_ant_outdir . "/" . $tier2_ant_tail . ".vadr.alt";
   my $tier2_ftr_file = $tier2_ant_outdir . "/" . $tier2_ant_tail . ".vadr.ftr";
-  my $min_independent = opt_Get("--alt-min-ind", \%opt_HH);
+  my $min_independent = opt_Get("--alt-min-ind", $opt_HHR);
 
   if(-e $tier2_alt_file && -e $tier2_ftr_file) {
     # Detect alternative CDS features
     my $alt_groups_HHR = parse_alt_for_cds_boundary_alerts($tier2_alt_file, $FH_HR);
-    my $max_fract_diff = opt_Get("--alt-max-fract", \%opt_HH);
-    my $alt_features_AR = detect_alternative_features($alt_groups_HHR, $min_independent, opt_Get("--alt-min-count", \%opt_HH), $max_fract_diff,
+    my $max_fract_diff = opt_Get("--alt-max-fract", $opt_HHR);
+    my $alt_features_AR = detect_alternative_features($alt_groups_HHR, $min_independent, opt_Get("--alt-min-count", $opt_HHR), $max_fract_diff,
                                                        \@{$ftr_info_HA{$minfo_model_key}}, $minfo_model_key, $FH_HR);
 
     # Detect exceptions
     my $exc_groups_HHR = parse_alt_for_exceptions($tier2_alt_file, $FH_HR);
-    my $exceptions_AR = detect_exceptions($exc_groups_HHR, $min_independent, opt_Get("--alt-min-count", \%opt_HH), $FH_HR);
+    my $exceptions_AR = detect_exceptions($exc_groups_HHR, $min_independent, opt_Get("--alt-min-count", $opt_HHR), $FH_HR);
 
     my $n_alt = scalar(@{$alt_features_AR});
     my $n_exc = scalar(@{$exceptions_AR});
@@ -805,10 +924,10 @@ if($do_auto_alt) {
         my $updated_protein_fa = $out_root . ".alt.protein.fa";
         my $seed_protein_fa = $model_dir . "/" . $model_key . ".vadr.protein.fa";
         if(-e $seed_protein_fa) {
-          utl_RunCommand("cp $seed_protein_fa $updated_protein_fa", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+          utl_RunCommand("cp $seed_protein_fa $updated_protein_fa", opt_Get("-v", $opt_HHR), 0, $FH_HR);
           translate_alternative_cds_proteins($alt_features_AR, $tier2_ftr_file, $tier2_alt_file,
                                               $tier2_fasta_file, $updated_protein_fa,
-                                              $model_key, \%execs_H, \%opt_HH, $FH_HR);
+                                              $model_key, $execs_HR, $opt_HHR, $FH_HR);
         }
       }
 
@@ -833,11 +952,11 @@ if($do_auto_alt) {
         close($accn_fh);
         # Index the tier2 FASTA for esl-sfetch if not already indexed
         if(! -e $tier2_fasta_file . ".ssi") {
-          utl_RunCommand($execs_H{"esl-sfetch"} . " --index $tier2_fasta_file",
-                         opt_Get("-v", \%opt_HH), 0, $FH_HR);
+          utl_RunCommand($execs_HR->{"esl-sfetch"} . " --index $tier2_fasta_file",
+                         opt_Get("-v", $opt_HHR), 0, $FH_HR);
         }
-        utl_RunCommand($execs_H{"esl-sfetch"} . " -f $tier2_fasta_file $rerun_accn_file > $rerun_fa",
-                       opt_Get("-v", \%opt_HH), 0, $FH_HR);
+        utl_RunCommand($execs_HR->{"esl-sfetch"} . " -f $tier2_fasta_file $rerun_accn_file > $rerun_fa",
+                       opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
         # Set up temp model dir with updated minfo + model files
         my $tmp_mdir = $out_root . ".alt.mdir";
@@ -869,16 +988,16 @@ if($do_auto_alt) {
         if(-e $src_protein_fa) {
           my $dst_protein_fa = $tmp_mdir . "/" . $model_key . ".vadr.protein.fa";
           utl_RunCommand("cp $src_protein_fa $dst_protein_fa", 0, 0, $FH_HR);
-          sqf_BlastDbCreate($execs_H{"makeblastdb"}, "prot", $dst_protein_fa, \%opt_HH, $FH_HR);
+          sqf_BlastDbCreate($execs_HR->{"makeblastdb"}, "prot", $dst_protein_fa, $opt_HHR, $FH_HR);
         }
 
         # Run v-annotate.pl on the subset
         my $rerun_outdir = $out_root . ".vadr.tier2.annot.pass2";
         my $rerun_mkey = $model_key . ".vadr";
-        my $cmd = $execs_H{"v-annotate.pl"} . " -f --mdir " . $tmp_mdir . " --mkey " . $rerun_mkey .
+        my $cmd = $execs_HR->{"v-annotate.pl"} . " -f --mdir " . $tmp_mdir . " --mkey " . $rerun_mkey .
                   $vannot_extra_opts . " --out_stk " . $rerun_fa . " " . $rerun_outdir;
-        if(! opt_Get("-v", \%opt_HH)) { $cmd .= " > /dev/null"; }
-        utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+        if(! opt_Get("-v", $opt_HHR)) { $cmd .= " > /dev/null"; }
+        utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
         # Read pass2 fail list and update decisions
         my $rerun_outdir_tail = $rerun_outdir;
@@ -958,20 +1077,20 @@ my $n_nonempty_groups = 0;
 foreach my $group (keys %candidate_AH) {
   if(scalar(@{$candidate_AH{$group}}) > 0) { $n_nonempty_groups++; }
 }
-my $nper1grp = opt_Get("--nper1grp", \%opt_HH);
-my $n_per_group = opt_IsUsed("--npergrp", \%opt_HH)
-                  ? opt_Get("--npergrp", \%opt_HH)
+my $nper1grp = opt_Get("--nper1grp", $opt_HHR);
+my $n_per_group = opt_IsUsed("--npergrp", $opt_HHR)
+                  ? opt_Get("--npergrp", $opt_HHR)
                   : determine_seqs_per_group($n_nonempty_groups, $nper1grp);
 ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Centroid selection: %d non-empty groups, selecting %d seqs per group%s\n",
                                                 $n_nonempty_groups, $n_per_group,
-                                                opt_IsUsed("--npergrp", \%opt_HH) ? " [--npergrp override]" : ""));
-select_group_centroids_blast(\%candidate_AH, $tier2_fasta_file, $out_root, $centroid_tsv_file, $n_per_group, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H, \%decision_H, \%partial_cds_H, $ref_accn, \%ofile_info_HH, \@to_remove_A, $FH_HR);
+                                                opt_IsUsed("--npergrp", $opt_HHR) ? " [--npergrp override]" : ""));
+select_group_centroids_blast(\%candidate_AH, $tier2_fasta_file, $out_root, $centroid_tsv_file, $n_per_group, $do_keep, opt_Get("-v", $opt_HHR), $execs_HR, \%decision_H, \%partial_cds_H, $ref_accn, $ofile_info_HHR, \@to_remove_A, $FH_HR);
 
-write_decision_report(\%decision_H, $decision_tsv_file, \%ofile_info_HH, $FH_HR);
+write_decision_report(\%decision_H, $decision_tsv_file, $ofile_info_HHR, $FH_HR);
 if($do_keep) {
-  write_decision_stage_reports(\%decision_H, $out_root . ".filter", $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
+  write_decision_stage_reports(\%decision_H, $out_root . ".filter", $do_keep, $ofile_info_HHR, \@to_remove_A, $FH_HR);
 }
-write_decision_summary_report(\%decision_H, $decision_summary_tsv_file, \%ofile_info_HH, $FH_HR);
+write_decision_summary_report(\%decision_H, $decision_summary_tsv_file, $ofile_info_HHR, $FH_HR);
 
 #---------------------------------------
 # Step 6b: Overall centroid selection and RF re-anchoring
@@ -998,8 +1117,8 @@ my $seed_accn_versioned = $ref_accn;
 if(! $do_skip_annotate) {
   $overall_centroid_accn = compute_overall_centroid_blast(
     \%candidate_AH, $tier2_fasta_file, $out_root,
-    $seed_model_len, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H,
-    \%ofile_info_HH, \@to_remove_A, $FH_HR);
+    $seed_model_len, $do_keep, opt_Get("-v", $opt_HHR), $execs_HR,
+    $ofile_info_HHR, \@to_remove_A, $FH_HR);
 
   if($overall_centroid_accn ne "" && $overall_centroid_accn ne $ref_accn) {
     ofile_OutputString($FH_HR->{"log"}, 1,
@@ -1020,7 +1139,7 @@ if(! $do_skip_annotate) {
 #---------------------------------------
 # Step 7: Initial piecewise stitching scaffold outputs
 #---------------------------------------
-my $n_selected = write_stitch_scaffold_outputs(\%candidate_AH, $tier2_fasta_file, \%ftr_info_HA, $minfo_model_key, $seed_model_len, $stitch_selected_accn_file, $stitch_selected_fa_file, $stitch_block_plan_file, $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
+my $n_selected = write_stitch_scaffold_outputs(\%candidate_AH, $tier2_fasta_file, \%ftr_info_HA, $minfo_model_key, $seed_model_len, $stitch_selected_accn_file, $stitch_selected_fa_file, $stitch_block_plan_file, $do_keep, $ofile_info_HHR, \@to_remove_A, $FH_HR);
 
 if($n_selected == 0) {
   ofile_OutputString($FH_HR->{"log"}, 1, "#\n# Zero sequences passed all filters. Cannot build profile alignment.\n");
@@ -1032,15 +1151,15 @@ if($n_selected == 0) {
 #---------------------------------------
 # Step 8: CDS translation prep for protein alignment
 #---------------------------------------
-prepare_cds_translation_for_stitching(\%candidate_AH, $stitch_selected_fa_file, $tier2_ant_outdir, $stitch_cds_nt_fa_file, $stitch_cds_orf_fa_file, $stitch_cds_aa_fa_file, $stitch_cds_map_tsv_file, \@{$ftr_info_HA{$minfo_model_key}}, $do_skip_annotate, $do_keep, opt_Get("-v", \%opt_HH), \%execs_H, \%ofile_info_HH, \@to_remove_A, $FH_HR);
+prepare_cds_translation_for_stitching(\%candidate_AH, $stitch_selected_fa_file, $tier2_ant_outdir, $stitch_cds_nt_fa_file, $stitch_cds_orf_fa_file, $stitch_cds_aa_fa_file, $stitch_cds_map_tsv_file, \@{$ftr_info_HA{$minfo_model_key}}, $do_skip_annotate, $do_keep, opt_Get("-v", $opt_HHR), $execs_HR, $ofile_info_HHR, \@to_remove_A, $FH_HR);
 
 #---------------------------------------
 # Step 9: Multiple AA alignment with muscle (per CDS feature)
 #---------------------------------------
 run_muscle_aa_alignment($stitch_cds_aa_fa_file, $stitch_cds_map_tsv_file, $ref_accn,
                         $stitch_cds_anchor_tsv_file, $stitch_cds_muscle_dir,
-                        $do_skip_annotate, $do_keep, opt_Get("-v", \%opt_HH),
-                        \%execs_H, \%ofile_info_HH, \@to_remove_A, $FH_HR);
+                        $do_skip_annotate, $do_keep, opt_Get("-v", $opt_HHR),
+                        $execs_HR, $ofile_info_HHR, \@to_remove_A, $FH_HR);
 
 #---------------------------------------
 # Step 10: Build CDS MSA from muscle alignment, backconvert to NT
@@ -1054,7 +1173,7 @@ build_muscle_cds_msa($stitch_cds_aa_fa_file,
                      $stitch_cds_msa_aa_stk_file,
                      $stitch_cds_msa_nt_fa_file,
                      $do_skip_annotate,
-                     $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
+                     $do_keep, $ofile_info_HHR, \@to_remove_A, $FH_HR);
 
 
 #---------------------------------------
@@ -1063,8 +1182,8 @@ build_muscle_cds_msa($stitch_cds_aa_fa_file,
 if($do_rna_discovery && (scalar(@rna_regions_A) > 0) && (!$do_skip_annotate)) {
   my $rna_struct_dir = $out_root . ".rna_struct";
   extract_and_align_rna_regions(\@rna_regions_A, $tier2_align_stk_file, $rna_struct_dir,
-                                $out_root, $do_keep, opt_Get("-v", \%opt_HH),
-                                \%execs_H, \%ofile_info_HH, \@to_remove_A, $FH_HR);
+                                $out_root, $do_keep, opt_Get("-v", $opt_HHR),
+                                $execs_HR, $ofile_info_HHR, \@to_remove_A, $FH_HR);
 }
 
 #---------------------------------------
@@ -1085,8 +1204,8 @@ stitch_and_refine_final_alignment($stitch_block_plan_file,
                                   $do_rna_discovery,
                                   $do_skip_annotate,
                                   $seed_model_len,
-                                  \%execs_H,
-                                  $do_keep, \%ofile_info_HH, \@to_remove_A,
+                                  $execs_HR,
+                                  $do_keep, $ofile_info_HHR, \@to_remove_A,
                                   $seed_accn_versioned, $do_cds_rf_rewrite, $FH_HR);
 
 #---------------------------------------
@@ -1132,9 +1251,9 @@ if(! $do_skip_annotate && $overall_centroid_accn ne "" && $overall_centroid_accn
   my $new_model_len = realign_to_centroid_rf(
     $output_stk_file, $overall_centroid_accn, $realign_work_root,
     \%ftr_info_HA, $minfo_model_key,
-    opt_Get("--mxsize", \%opt_HH),
-    \%execs_H, $do_keep, opt_Get("-v", \%opt_HH),
-    \%ofile_info_HH, \@to_remove_A, $FH_HR);
+    opt_Get("--mxsize", $opt_HHR),
+    $execs_HR, $do_keep, opt_Get("-v", $opt_HHR),
+    $ofile_info_HHR, \@to_remove_A, $FH_HR);
 
   ofile_OutputString($FH_HR->{"log"}, 1,
     sprintf("# Centroid realignment: seed len=%d -> centroid len=%d\n",
@@ -1157,18 +1276,18 @@ if(! $do_skip_annotate && $overall_centroid_accn ne "" && $overall_centroid_accn
 # Then cmbuild --hand and cmalign all training seqs to produce a proper
 # realignment at the new RF positions. Feature coord remapping happens
 # later in Step 12g via a walk of the final stk.
-if(! $do_skip_annotate && ! opt_Get("--no-overhang-ext", \%opt_HH)) {
+if(! $do_skip_annotate && ! opt_Get("--no-overhang-ext", $opt_HHR)) {
   my $overhang_work_root = $out_root . ".overhang_ext";
   my ($n_5p, $n_3p) = extend_rf_with_overhangs(
     $output_stk_file, $overhang_work_root,
     \%ftr_info_HA, $minfo_model_key,
-    opt_Get("--overhang-anchor-len",      \%opt_HH),
-    opt_Get("--overhang-min-coverage",    \%opt_HH),
-    opt_Get("--overhang-min-conservation",\%opt_HH),
-    opt_Get("--overhang-stop-lookahead",  \%opt_HH),
-    opt_Get("--overhang-min-active",      \%opt_HH),
-    \%execs_H, $do_keep, opt_Get("-v", \%opt_HH),
-    \%ofile_info_HH, \@to_remove_A, $FH_HR);
+    opt_Get("--overhang-anchor-len",      $opt_HHR),
+    opt_Get("--overhang-min-coverage",    $opt_HHR),
+    opt_Get("--overhang-min-conservation",$opt_HHR),
+    opt_Get("--overhang-stop-lookahead",  $opt_HHR),
+    opt_Get("--overhang-min-active",      $opt_HHR),
+    $execs_HR, $do_keep, opt_Get("-v", $opt_HHR),
+    $ofile_info_HHR, \@to_remove_A, $FH_HR);
 
   if($n_5p > 0 || $n_3p > 0) {
     ofile_OutputString($FH_HR->{"log"}, 1,
@@ -1218,7 +1337,7 @@ if(! $do_skip_annotate) {
 if($do_rna_discovery && !$do_skip_annotate && scalar(@rna_regions_A) > 0) {
   my $updated_minfo_file = $out_root . ".minfo";
   generate_updated_minfo($seed_minfo, $rna_annotation_file, \@rna_regions_A,
-                         $updated_minfo_file, $model_key, \%execs_H, \%ofile_info_HH, $FH_HR);
+                         $updated_minfo_file, $model_key, $execs_HR, $ofile_info_HHR, $FH_HR);
 }
 
 #---------------------------------------
@@ -1238,15 +1357,11 @@ if($do_rna_discovery && !$do_skip_annotate && scalar(@rna_regions_A) > 0) {
 }
 
 if(! $do_keep) {
-  utl_FileRemoveList(\@to_remove_A, "v-prep.pl", \%opt_HH, $FH_HR);
+  utl_FileRemoveList(\@to_remove_A, "v-prep.pl", $opt_HHR, $FH_HR);
 }
 
-ofile_OutputString(\*STDOUT, 1, sprintf("All done.\n"));
-
-$total_seconds += ofile_SecondsSinceEpoch();
-ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
-exit(0);
-
+  return ($seed_minfo, $seed_model_len, $ref_accn);
+}
 
 #################################################################
 # Subroutine : prefilter_metadata_by_seed_group()
