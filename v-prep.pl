@@ -582,8 +582,89 @@ if($is_multi_seed) {
     }
   }
 
-  die sprintf("Multi-seed Phase A done for %d seeds. Phase B (per-seed pipeline) and Phase C (merge) not yet implemented in this commit.\n  See briefs/2026-04-29_issue9_multi_seed_impl.md for the rollout plan.\n",
-              scalar(@seed_accn_A));
+  #---------------------------------------
+  # Issue 9 Phase B: per-seed pipeline loop
+  #
+  # For each seed, call run_single_seed_pipeline() with that seed's
+  # filtered metadata TSV (from Phase A) and its own per-seed working
+  # directory. Each call produces a complete .cm / .stk / .minfo /
+  # .protein.fa under the per-seed working dir. We accumulate
+  # per-seed output paths in @per_seed_outputs_A for Phase C.
+  #---------------------------------------
+  my @per_seed_outputs_A = ();
+  for(my $i = 0; $i < @seed_accn_A; $i++) {
+    my $seed             = $seed_accn_A[$i];
+    my $per_seed_meta    = $per_seed_filtered_tsv_A[$i];
+    my $seed_dir_tail    = sprintf("seed%d.%s", $i + 1, $seed);
+    my $seed_dir         = $dir . "/" . $seed_dir_tail;
+    if(-d $seed_dir) {
+      utl_RunCommand("rm -rf $seed_dir", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+    }
+    utl_RunCommand("mkdir -p $seed_dir", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+
+    my $seed_out_root   = $seed_dir . "/" . $seed_dir_tail . ".vadr";
+    my $seed_model_key  = $seed . "-seed";
+    my $seed_model_dir  = $seed_dir . "/" . $seed_model_key;
+    my $seed_minfo_init = $seed_model_dir . "/" . $seed_model_key . ".vadr.minfo";
+
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# Multi-seed Phase B: seed %d/%d (%s, group=\"%s\") -> working dir %s\n",
+              $i + 1, scalar(@seed_accn_A), $seed, $seed_group_A[$i], $seed_dir));
+
+    my ($final_seed_minfo, $final_seed_model_len, $final_ref_accn) =
+        run_single_seed_pipeline({
+          opt_HHR              => \%opt_HH,
+          execs_HR             => \%execs_H,
+          ofile_info_HHR       => \%ofile_info_HH,
+          FH_HR                => $FH_HR,
+          env_vadr_scripts_dir => $env_vadr_scripts_dir,
+          env_vadr_rfam_dir    => $env_vadr_rfam_dir,
+          dir                  => $seed_dir,
+          dir_tail             => $seed_dir_tail,
+          model_dir            => $seed_model_dir,
+          model_key            => $seed_model_key,
+          seed_minfo           => $seed_minfo_init,
+          do_seed_bootstrap    => 1,
+          do_skip_annotate     => $do_skip_annotate,
+          do_rna_discovery     => $do_rna_discovery,
+          rna_cm_file          => $rna_cm_file,
+          out_root             => $seed_out_root,
+          meta_tsv             => $per_seed_meta,
+          seed_canonical_group => undef,
+          group_name           => $group_name,
+        });
+
+    push(@per_seed_outputs_A, {
+      seed_accn    => $seed,
+      seed_dir     => $seed_dir,
+      out_root     => $seed_out_root,
+      cm_file      => $seed_model_dir . "/" . $seed_model_key . ".vadr.cm",
+      minfo_file   => $final_seed_minfo,
+      stk_file     => $seed_out_root . ".stk",
+      protein_file => $seed_model_dir . "/" . $seed_model_key . ".vadr.protein.fa",
+    });
+  }
+
+  #---------------------------------------
+  # Issue 9 Phase C: merge per-seed outputs into unified --mdir
+  #---------------------------------------
+  my $unified_mdir = $model_dir;
+  merge_multiseed_outputs($unified_mdir, \@per_seed_outputs_A,
+                          \%execs_H, \%opt_HH, \%ofile_info_HH, $FH_HR);
+
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# Multi-seed: completed %d seeds; merged library at %s\n",
+            scalar(@seed_accn_A), $unified_mdir));
+
+  if(! opt_Get("--keep", \%opt_HH)) {
+    # Per-seed run_single_seed_pipeline calls did their own intermediate
+    # cleanup. Nothing more to remove at the multi-seed level.
+  }
+
+  ofile_OutputString(\*STDOUT, 1, sprintf("All done.\n"));
+  $total_seconds += ofile_SecondsSinceEpoch();
+  ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
+  exit(0);
 }
 
 #---------------------------------------
@@ -1664,6 +1745,133 @@ sub derive_seed_canonical_groups_from_metadata {
 # Returns    : the canonical-group display label that was used for
 #              filtering (string).
 #################################################################
+
+#################################################################
+# Subroutine : merge_multiseed_outputs()
+# Incept     : EPN* Wed Apr 29 2026
+#
+# Purpose    : Merge per-seed outputs from Issue 9 Phase B into a
+#              unified library directory (Phase C). Concatenates
+#              the per-seed .cm files (then cmpresses), concatenates
+#              the per-seed .minfo files with workaround #1 applied
+#              (strip group:":FILE:..." and subgroup:":FILE:..." from
+#              MODEL lines so v-annotate's multi-MODEL
+#              classify_based_on_alignment doesn't trip on the
+#              length-mismatch bug), concatenates per-seed .protein.fa
+#              files (then makeblastdb), and symlinks each per-seed
+#              .stk into the unified dir as <seed_accn>.vadr.stk
+#              (matching the brief's expected naming).
+#
+# Arguments:
+#   $unified_mdir         : output dir for the merged library
+#                           (created if needed); typically the
+#                           user's --mdir value
+#   $per_seed_outputs_AR  : ref to array of per-seed output hashrefs;
+#                           each element has keys: seed_accn, seed_dir,
+#                           out_root, cm_file, minfo_file, stk_file,
+#                           protein_file
+#   $execs_HR             : \%execs_H
+#   $opt_HHR              : \%opt_HH
+#   $ofile_info_HHR       : \%ofile_info_HH
+#   $FH_HR                : log file-handle hashref
+#
+# Returns:    void; side effect is files written to $unified_mdir.
+#
+#################################################################
+sub merge_multiseed_outputs {
+  my ($unified_mdir, $per_seed_outputs_AR,
+      $execs_HR, $opt_HHR, $ofile_info_HHR, $FH_HR) = @_;
+
+  my $verbose = opt_Get("-v", $opt_HHR);
+
+  if(! -d $unified_mdir) {
+    utl_RunCommand("mkdir -p $unified_mdir", $verbose, 0, $FH_HR);
+  }
+
+  my $combined_cm      = $unified_mdir . "/combined.cm";
+  my $combined_minfo   = $unified_mdir . "/combined.minfo";
+  my $combined_protein = $unified_mdir . "/combined.protein.fa";
+
+  # 1) Concat .cm files; cmpress with -F to overwrite any prior indexes
+  my @cm_files = ();
+  foreach my $so (@$per_seed_outputs_AR) {
+    if(! -e $so->{cm_file}) {
+      ofile_FAIL(sprintf("ERROR, merge_multiseed_outputs: per-seed .cm not found for %s: %s",
+                         $so->{seed_accn}, $so->{cm_file}), 1, $FH_HR);
+    }
+    push(@cm_files, $so->{cm_file});
+  }
+  utl_RunCommand("cat " . join(" ", @cm_files) . " > $combined_cm", $verbose, 0, $FH_HR);
+  utl_RunCommand($execs_HR->{"cmpress"} . " -F $combined_cm > /dev/null", $verbose, 0, $FH_HR);
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "combined.cm", $combined_cm, 1, 1,
+    "merged multi-seed CM file (Issue 9 Phase C)");
+
+  # 2) Merge minfos with workaround #1
+  open(my $oh, ">", $combined_minfo)
+    or ofile_FAIL("ERROR, merge_multiseed_outputs: can't write $combined_minfo: $!", 1, $FH_HR);
+  my $stripped_n = 0;
+  for(my $i = 0; $i < @$per_seed_outputs_AR; $i++) {
+    my $so = $per_seed_outputs_AR->[$i];
+    if(! -e $so->{minfo_file}) {
+      ofile_FAIL(sprintf("ERROR, merge_multiseed_outputs: per-seed .minfo not found for %s: %s",
+                         $so->{seed_accn}, $so->{minfo_file}), 1, $FH_HR);
+    }
+    open(my $ih, "<", $so->{minfo_file})
+      or ofile_FAIL("ERROR, merge_multiseed_outputs: can't read $so->{minfo_file}: $!", 1, $FH_HR);
+    while(my $line = <$ih>) {
+      if($line =~ /^MODEL\s/) {
+        my $orig = $line;
+        $line =~ s/\s+group:":FILE:[^"]*"//g;
+        $line =~ s/\s+subgroup:":FILE:[^"]*"//g;
+        if($line ne $orig) { $stripped_n++; }
+      }
+      print $oh $line;
+    }
+    close($ih);
+    if($i < $#{$per_seed_outputs_AR}) { print $oh "\n"; }  # blank line between MODEL blocks
+  }
+  close($oh);
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "combined.minfo", $combined_minfo, 1, 1,
+    "merged multi-seed minfo (Issue 9 Phase C; workaround #1 applied: group/subgroup :FILE: stripped from MODEL lines)");
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# Multi-seed Phase C: workaround #1 stripped group/subgroup :FILE: from %d MODEL lines (out of %d seeds).\n",
+            $stripped_n, scalar(@$per_seed_outputs_AR)));
+
+  # 3) Concat .protein.fa files; rebuild blastdb
+  my @prot_files = ();
+  foreach my $so (@$per_seed_outputs_AR) {
+    if(-e $so->{protein_file}) { push(@prot_files, $so->{protein_file}); }
+  }
+  if(@prot_files > 0) {
+    utl_RunCommand("cat " . join(" ", @prot_files) . " > $combined_protein", $verbose, 0, $FH_HR);
+    sqf_BlastDbCreate($execs_HR->{"makeblastdb"}, "prot", $combined_protein, $opt_HHR, $FH_HR);
+    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "combined.protein.fa", $combined_protein, 1, 1,
+      "merged multi-seed protein BLAST db (Issue 9 Phase C)");
+  }
+  else {
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      "# Multi-seed Phase C: no per-seed protein.fa files found; skipping merged blastdb build.\n");
+  }
+
+  # 4) Symlink each per-seed .stk into $unified_mdir as <seed_accn>.vadr.stk
+  require Cwd;
+  foreach my $so (@$per_seed_outputs_AR) {
+    if(! -e $so->{stk_file}) {
+      ofile_FAIL(sprintf("ERROR, merge_multiseed_outputs: per-seed .stk not found for %s: %s",
+                         $so->{seed_accn}, $so->{stk_file}), 1, $FH_HR);
+    }
+    my $src_stk = $so->{stk_file};
+    if($src_stk !~ m|^/|) { $src_stk = Cwd::abs_path($src_stk) || $src_stk; }
+    my $dst_stk = $unified_mdir . "/" . $so->{seed_accn} . ".vadr.stk";
+    if(-e $dst_stk || -l $dst_stk) { unlink $dst_stk; }
+    utl_RunCommand("ln -s $src_stk $dst_stk", $verbose, 0, $FH_HR);
+  }
+
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# Multi-seed Phase C: merged %d seeds into %s (combined.{cm,minfo,protein.fa} + per-seed .stk symlinks)\n",
+            scalar(@$per_seed_outputs_AR), $unified_mdir));
+}
+
 sub prefilter_metadata_by_seed_group {
   my ($in_tsv, $out_tsv, $seed_accn, $seed_group_user, $min_pool, $alias_HR, $alias_used_HR, $ofile_info_HHR, $FH_HR) = @_;
 
