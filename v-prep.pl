@@ -240,6 +240,45 @@ my $meta_tsv = undef;
 my $do_seed_bootstrap = opt_IsUsed("--seed-accn", \%opt_HH);
 my $do_skip_annotate = opt_Get("--skip-annotate", \%opt_HH);
 
+# Issue 9: detect multi-seed mode (comma-separated --seed-accn) and run
+# the pre-fetch portion of multi-seed validation here. Post-fetch
+# validation (per-seed metadata reconciliation) runs after Step 1.
+my @seed_accn_A = ();
+my @seed_group_A = ();
+my $is_multi_seed = 0;
+if($do_seed_bootstrap) {
+  my $seed_accn_raw = opt_Get("--seed-accn", \%opt_HH);
+  @seed_accn_A = split(/,/, $seed_accn_raw);
+  s/^\s+|\s+$//g for @seed_accn_A;
+  $is_multi_seed = (scalar(@seed_accn_A) > 1);
+}
+if($is_multi_seed) {
+  # Pre-fetch validation 1: if --seed-group is given, length must match.
+  # If missing, defer to post-fetch (so we can derive groups from
+  # metadata for the what-to-type diagnostic).
+  if(opt_IsUsed("--seed-group", \%opt_HH)) {
+    my $seed_group_raw = opt_Get("--seed-group", \%opt_HH);
+    @seed_group_A = split(/,/, $seed_group_raw);
+    s/^\s+|\s+$//g for @seed_group_A;
+    if(scalar(@seed_group_A) != scalar(@seed_accn_A)) {
+      die sprintf("ERROR, multi-seed: got %d seeds via --seed-accn but %d groups via --seed-group; lengths must match.\n",
+                  scalar(@seed_accn_A), scalar(@seed_group_A));
+    }
+    # Pre-fetch validation 2: norm_keys pairwise distinct.
+    my $do_collapse = (! opt_Get("--no-collapse-numerals", \%opt_HH));
+    my $do_strip    = (! opt_Get("--no-strip-descriptors", \%opt_HH));
+    my %seen_normkey_H = ();
+    for(my $i = 0; $i < @seed_group_A; $i++) {
+      my $nk = normalize_group_name_expanded($seed_group_A[$i], $do_collapse, $do_strip);
+      if(exists $seen_normkey_H{$nk}) {
+        die sprintf("ERROR, multi-seed: duplicate --seed-group norm_key \"%s\" for seeds %s and %s. Each seed must declare a distinct canonical group.\n",
+                    $nk, $seen_normkey_H{$nk}, $seed_accn_A[$i]);
+      }
+      $seen_normkey_H{$nk} = $seed_accn_A[$i];
+    }
+  }
+}
+
 if((! defined $model_dir) || ($model_dir =~ /^\s*$/)) {
   if($do_seed_bootstrap) {
     die "ERROR, --seed-accn requires --mdir <s>: v-profprep.pl runs v-build.pl to create seed model files in <mdir>, then reads the derived .vadr.minfo from that same directory.";
@@ -428,6 +467,74 @@ if(opt_IsUsed("--taxid", \%opt_HH)) {
 
 if((! defined $meta_tsv) || (! -e $meta_tsv)) {
   die "ERROR, metadata TSV is undefined or does not exist: " . ((defined $meta_tsv) ? $meta_tsv : "[undef]");
+}
+
+#---------------------------------------
+# Issue 9: multi-seed post-fetch validation (Stage 2)
+#
+# Now that metadata is available, derive each seed's canonical group
+# from its TSV row and either die-with-diagnostic (if --seed-group
+# was missing) or reconcile per seed against the user-supplied
+# --seed-group. If validation passes, die cleanly because multi-seed
+# execution (Phase A.5 / Phase B / Phase C) is implemented in
+# subsequent Issue 9 commits, not this one.
+#---------------------------------------
+if($is_multi_seed) {
+  my $derived_HR = derive_seed_canonical_groups_from_metadata(
+    $meta_tsv, \@seed_accn_A, \%opt_HH, $FH_HR);
+
+  my @missing_seeds = grep { ! defined $derived_HR->{$_} } @seed_accn_A;
+  if(@missing_seeds) {
+    die sprintf("ERROR, multi-seed: seed accession(s) not found in metadata TSV %s: %s\n  Each seed must be present in the taxid pool. If a seed is missing, add it manually to the metadata TSV and rerun with --meta.\n",
+                $meta_tsv, join(", ", @missing_seeds));
+  }
+
+  my $do_collapse = (! opt_Get("--no-collapse-numerals", \%opt_HH));
+  my $do_strip    = (! opt_Get("--no-strip-descriptors", \%opt_HH));
+  my $unknown_norm = normalize_group_name_expanded("Unknown", $do_collapse, $do_strip);
+
+  if(! opt_IsUsed("--seed-group", \%opt_HH)) {
+    # Stage-2 deferred die: --seed-group is required in multi-seed mode.
+    my $msg = sprintf("ERROR, --seed-accn has %d values; --seed-group is REQUIRED in multi-seed mode.\n\n",
+                      scalar(@seed_accn_A));
+    $msg .= "Seed groups derived from metadata (use these or override):\n";
+    my @derived_displays = ();
+    foreach my $sa (@seed_accn_A) {
+      my $d = $derived_HR->{$sa};
+      my $sparse = ($d->{norm_key} eq $unknown_norm)
+        ? "  (serotype/genotype fields empty in TSV; you must supply this group manually)"
+        : "";
+      $msg .= sprintf("   %s : \"%s\"%s\n", $sa, $d->{display}, $sparse);
+      push(@derived_displays, $d->{display});
+    }
+    $msg .= "\nRerun with:\n   --seed-group \"" . join(",", @derived_displays) . "\"\n";
+    die $msg;
+  }
+
+  # Per-seed reconciliation against user-supplied --seed-group values.
+  # Seed metadata canonicalizing to "Unknown" -> user value is authoritative.
+  # Specific metadata that disagrees with user value -> die with both shown.
+  for(my $i = 0; $i < @seed_accn_A; $i++) {
+    my $sa        = $seed_accn_A[$i];
+    my $user_grp  = $seed_group_A[$i];
+    my $user_norm = normalize_group_name_expanded($user_grp, $do_collapse, $do_strip);
+    my $meta_norm = $derived_HR->{$sa}{norm_key};
+    if($meta_norm ne $unknown_norm && $meta_norm ne $user_norm) {
+      die sprintf("ERROR, multi-seed: seed %s's metadata canonicalizes to \"%s\" (norm_key \"%s\"; serotype=\"%s\", genotype=\"%s\"), but --seed-group specifies \"%s\" (norm_key \"%s\") for this seed. Check that --seed-accn and --seed-group are paired in matching order.\n",
+                  $sa, $derived_HR->{$sa}{display}, $meta_norm,
+                  $derived_HR->{$sa}{serotype}, $derived_HR->{$sa}{genotype},
+                  $user_grp, $user_norm);
+    }
+  }
+
+  # All multi-seed validation passed. Multi-seed execution (per-seed
+  # prefilter, blastn-vs-metadata reconciliation, per-seed pipeline,
+  # Phase C merge) lands in Issue 9 commits 3 and 4.
+  ofile_OutputString(\*STDERR, 1,
+    sprintf("# Multi-seed validation passed for %d seeds: %s\n",
+            scalar(@seed_accn_A), join(", ", @seed_accn_A)));
+  die sprintf("Multi-seed validation passed for %d seeds (%s); execution not yet implemented in this commit.\n  See briefs/2026-04-29_issue9_multi_seed_impl.md for the rollout plan (Phase A.5 + Phase B + Phase C in commits 3 and 4).\n",
+              scalar(@seed_accn_A), join(", ", @seed_accn_A));
 }
 
 #---------------------------------------
@@ -1361,6 +1468,79 @@ if(! $do_keep) {
 }
 
   return ($seed_minfo, $seed_model_len, $ref_accn);
+}
+
+#################################################################
+# Subroutine : derive_seed_canonical_groups_from_metadata()
+# Incept     : EPN* Wed Apr 29 2026
+#
+# Purpose    : For each seed accession in @$seed_accn_AR, scan the
+#              metadata TSV and return its canonical group, using
+#              the same normalize_group_name_expanded() canonicalization
+#              as the rest of the pipeline. Used by multi-seed mode
+#              (Issue 9) two-stage validation: deriving the
+#              what-to-type diagnostic when --seed-group is missing,
+#              and reconciling user-supplied --seed-group against
+#              metadata-canonical per seed.
+#
+#              Accepts both unversioned (NC_001563) and versioned
+#              (NC_001563.2) forms via the same prefix-then-version
+#              tolerance used by prefilter_metadata_by_seed_group().
+#
+# Arguments:
+#   $meta_tsv     : path to metadata TSV
+#   $seed_accn_AR : ref to array of seed accession strings (input order)
+#   $opt_HHR      : ref to %opt_HH (for --no-collapse-numerals /
+#                   --no-strip-descriptors options)
+#   $FH_HR        : log file-handle hashref (for ofile_FAIL on read errors)
+#
+# Returns:    hashref keyed by input seed accession; each value is
+#             undef (if seed not found in TSV) or a hashref:
+#               { display       => first-seen display group label,
+#                 norm_key      => normalize_group_name_expanded result,
+#                 resolved_accn => versioned accession found in TSV,
+#                 serotype      => raw serotype field,
+#                 genotype      => raw genotype field }
+#
+# Dies:       on TSV read error via ofile_FAIL.
+#
+#################################################################
+sub derive_seed_canonical_groups_from_metadata {
+  my ($meta_tsv, $seed_accn_AR, $opt_HHR, $FH_HR) = @_;
+
+  my $do_collapse = (! opt_Get("--no-collapse-numerals", $opt_HHR));
+  my $do_strip    = (! opt_Get("--no-strip-descriptors", $opt_HHR));
+
+  my %result_H = ();
+  foreach my $sa (@$seed_accn_AR) { $result_H{$sa} = undef; }
+
+  open(my $fh, "<", $meta_tsv)
+    or ofile_FAIL("ERROR, derive_seed_canonical_groups_from_metadata: unable to read $meta_tsv: $!", 1, $FH_HR);
+  my $hdr = <$fh>;
+  while(my $line = <$fh>) {
+    chomp $line;
+    my ($acc, $len, $cdate, $serotype, $genotype, $isolate, $title) = split(/\t/, $line, -1);
+    next if(! defined $acc || $acc eq "");
+    foreach my $sa (@$seed_accn_AR) {
+      next if(defined $result_H{$sa});
+      if($acc eq $sa || $acc =~ /^\Q$sa\E\.\d+$/) {
+        my $orig_group = "Unknown";
+        if    (defined $serotype && $serotype ne "") { $orig_group = $serotype; }
+        elsif (defined $genotype && $genotype ne "") { $orig_group = $genotype; }
+        my $nk = normalize_group_name_expanded($orig_group, $do_collapse, $do_strip);
+        $result_H{$sa} = {
+          display       => $orig_group,
+          norm_key      => $nk,
+          resolved_accn => $acc,
+          serotype      => $serotype // "",
+          genotype      => $genotype // "",
+        };
+      }
+    }
+  }
+  close($fh);
+
+  return \%result_H;
 }
 
 #################################################################
