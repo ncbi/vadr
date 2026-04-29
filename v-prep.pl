@@ -115,8 +115,8 @@ opt_Add("--npergrp",      "integer", undef,     $g,    undef, undef,          "o
 opt_Add("--no-collapse-numerals", "boolean", 0, $g,    undef, undef,          "disable Roman<->Arabic numeral collapsing in group_key normalization", "disable Roman<->Arabic numeral collapsing in group_key normalization (warn only, do not collapse)", \%opt_HH, \@opt_order_A);
 opt_Add("--no-strip-descriptors", "boolean", 0, $g,    undef, undef,          "disable descriptor-word stripping/token-sort in group_key normalization", "disable descriptor-word stripping (lineage,genotype,...) and alphabetical token sort in group_key normalization", \%opt_HH, \@opt_order_A);
 opt_Add("--group-aliases", "string",  undef,  $g,    undef, undef,          "apply user-supplied group-name alias file <s>", "apply user-supplied group-name alias file <s> AFTER built-in normalization; 2-column TSV: target<TAB>source, where source is the post-normalization canonical as it appears in .vadr.groups_audit.tsv", \%opt_HH, \@opt_order_A);
-opt_Add("--seed-group",       "string",  undef, $g,   "--seed-accn", "--no-group-prefilter", "explicit canonical group label for seed accession is <s>",                       "explicit canonical group label for seed accession is <s> (overrides auto-derivation from metadata; required when seed metadata gives canonical group \"Unknown\"); value is matched against canonical_group column of .vadr.groups_audit.tsv after built-in normalization", \%opt_HH, \@opt_order_A);
-opt_Add("--no-group-prefilter", "boolean", 0,   $g,   "--seed-accn", "--seed-group",         "disable pre-filter of candidate pool by seed's canonical group",                "disable pre-filter of candidate pool by seed's canonical group (default ON when --seed-accn provided); when disabled, pool is unfiltered and may contain mixed lineages, leading to chimeric training sets", \%opt_HH, \@opt_order_A);
+opt_Add("--seed-group",       "string",  undef, $g,   "--seed-accn", undef,                  "explicit canonical group label for seed accession is <s>",                       "explicit canonical group label for seed accession is <s> (overrides auto-derivation from metadata; required when seed metadata gives canonical group \"Unknown\"); value is matched against canonical_group column of .vadr.groups_audit.tsv after built-in normalization. In multi-seed mode (comma-separated --seed-accn) use a comma-separated list, one label per seed.", \%opt_HH, \@opt_order_A);
+opt_Add("--no-group-prefilter", "boolean", 0,   $g,   "--seed-accn", undef,                   "disable pre-filter of candidate pool by seed's canonical group",                "disable pre-filter of candidate pool by seed's canonical group (default ON when --seed-accn provided); when disabled, pool is unfiltered and may contain mixed lineages, leading to chimeric training sets. In multi-seed mode --no-group-prefilter passes the full unfiltered pool to every seed (escape hatch for sparse-metadata viruses where per-seed prefilter would yield empty pools, e.g. WNV).", \%opt_HH, \@opt_order_A);
 opt_Add("--min-group-pool",   "integer", 5,     $g,   "--seed-accn", "--no-group-prefilter", "min seqs in seed's canonical group required after pre-filter as <n>",            "min seqs in seed's canonical group required after pre-filter as <n>; abort before expensive seed CM build if fewer than <n> candidates remain", \%opt_HH, \@opt_order_A);
 opt_Add("--include-unknown-group", "boolean", 0, $g,  "--seed-accn", "--no-group-prefilter", "in --seed-group pre-filter, also admit sequences with blank/Unknown genotype",  "in --seed-group pre-filter, also admit candidate sequences whose serotype/genotype metadata fields are both blank (canonical \"Unknown\"); off by default to preserve Issue-12 safety net; opt in on viruses where the blank-genotype pool is biologically OK and you want production-equivalent inclusivity", \%opt_HH, \@opt_order_A);
 opt_Add("--holdout-frac",  "real",    0,      $g,    undef, undef,          "fraction [0,1) of fetched sequences to hold out as test set (0 = disabled)", "fraction [0,1) of fetched sequences to hold out as test set as <x>; 0 = no holdout (default); split is done before tier-1 filtering", \%opt_HH, \@opt_order_A);
@@ -527,14 +527,63 @@ if($is_multi_seed) {
     }
   }
 
-  # All multi-seed validation passed. Multi-seed execution (per-seed
-  # prefilter, blastn-vs-metadata reconciliation, per-seed pipeline,
-  # Phase C merge) lands in Issue 9 commits 3 and 4.
-  ofile_OutputString(\*STDERR, 1,
+  # All multi-seed validation passed; proceed to Phase A.
+  ofile_OutputString($FH_HR->{"log"}, 1,
     sprintf("# Multi-seed validation passed for %d seeds: %s\n",
             scalar(@seed_accn_A), join(", ", @seed_accn_A)));
-  die sprintf("Multi-seed validation passed for %d seeds (%s); execution not yet implemented in this commit.\n  See briefs/2026-04-29_issue9_multi_seed_impl.md for the rollout plan (Phase A.5 + Phase B + Phase C in commits 3 and 4).\n",
-              scalar(@seed_accn_A), join(", ", @seed_accn_A));
+}
+
+#---------------------------------------
+# Issue 9 Phase A: per-seed metadata prefilter
+#
+# When --no-group-prefilter is NOT given, run the existing
+# prefilter_metadata_by_seed_group() once per seed, producing
+# N per-seed filtered TSVs. When --no-group-prefilter is given
+# (escape hatch for sparse-metadata viruses where per-seed
+# canonical match yields empty pools, e.g. WNV), every seed
+# receives the full unfiltered metadata pool so per-seed
+# pipelines can train on it independently — matches sibling's
+# manual POC pattern (vb-wnv-combo-v2/, 78.6% on WNV holdout).
+#
+# Phase A.5 (blastn-vs-metadata reconciliation) is DEFERRED.
+# See briefs/2026-04-29_issue9_multi_seed_impl.md Phase A.5
+# for the design. Without reconciliation, GenBank metadata-
+# mislabels can poison per-seed pools at the edges; for the
+# initial Issue 9 cut, sparse-metadata viruses use the
+# --no-group-prefilter escape hatch and specific-metadata
+# viruses get clean per-serotype partitioning via Phase A
+# alone.
+#---------------------------------------
+my @per_seed_filtered_tsv_A = ();
+if($is_multi_seed) {
+  if(! opt_Get("--no-group-prefilter", \%opt_HH)) {
+    my $min_group_pool = opt_Get("--min-group-pool", \%opt_HH);
+    if($min_group_pool < 1) {
+      die "ERROR, --min-group-pool must be >= 1, got: $min_group_pool";
+    }
+    for(my $i = 0; $i < @seed_accn_A; $i++) {
+      my $filtered_tsv = $out_root . sprintf(".seed%d.prefilter.metadata.tsv", $i + 1);
+      ofile_OutputString($FH_HR->{"log"}, 1,
+        sprintf("# Multi-seed Phase A: prefiltering for seed %d/%d (%s, group=\"%s\") -> %s\n",
+                $i + 1, scalar(@seed_accn_A), $seed_accn_A[$i], $seed_group_A[$i], $filtered_tsv));
+      prefilter_metadata_by_seed_group(
+        $meta_tsv, $filtered_tsv,
+        $seed_accn_A[$i], $seed_group_A[$i],
+        $min_group_pool,
+        \%ofile_info_HH, $FH_HR);
+      push(@per_seed_filtered_tsv_A, $filtered_tsv);
+    }
+  }
+  else {
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      "# Multi-seed Phase A: skipped due to --no-group-prefilter; every seed will receive the full metadata pool.\n");
+    foreach my $sa (@seed_accn_A) {
+      push(@per_seed_filtered_tsv_A, $meta_tsv);
+    }
+  }
+
+  die sprintf("Multi-seed Phase A done for %d seeds. Phase B (per-seed pipeline) and Phase C (merge) not yet implemented in this commit.\n  See briefs/2026-04-29_issue9_multi_seed_impl.md for the rollout plan.\n",
+              scalar(@seed_accn_A));
 }
 
 #---------------------------------------
