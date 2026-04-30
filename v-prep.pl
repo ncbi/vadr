@@ -566,7 +566,9 @@ if($is_multi_seed) {
         $meta_tsv, $filtered_tsv,
         $seed_accn_A[$i], $seed_group_A[$i],
         $min_group_pool,
-        \%ofile_info_HH, $FH_HR);
+        \%group_alias_H, \%alias_source_used_H,
+        \%ofile_info_HH, $FH_HR,
+        ".seed" . ($i + 1));
       push(@per_seed_filtered_tsv_A, $filtered_tsv);
     }
   }
@@ -652,6 +654,7 @@ if($is_multi_seed) {
           model_dir            => $seed_model_dir,
           model_key            => $seed_model_key,
           seed_minfo           => $seed_minfo_init,
+          seed_accn            => $seed_accn_A[$i],
           do_seed_bootstrap    => 1,
           do_skip_annotate     => $do_skip_annotate,
           do_rna_discovery     => $do_rna_discovery,
@@ -773,6 +776,7 @@ my ($final_seed_minfo, $final_seed_model_len, $final_ref_accn) =
       model_dir            => $model_dir,
       model_key            => $model_key,
       seed_minfo           => $seed_minfo,
+      seed_accn            => opt_Get("--seed-accn", \%opt_HH),
       do_seed_bootstrap    => $do_seed_bootstrap,
       do_skip_annotate     => $do_skip_annotate,
       do_rna_discovery     => $do_rna_discovery,
@@ -830,6 +834,10 @@ exit(0);
 #       model_dir            : --mdir value
 #       model_key            : derived model key
 #       seed_minfo           : initial seed .minfo path
+#       seed_accn            : seed accession (this seed's accn in
+#                              multi-seed mode; --seed-accn value or
+#                              undef in single-seed; consumed only
+#                              when do_seed_bootstrap=1)
 #       do_seed_bootstrap    : 1 iff --seed-accn supplied
 #       do_skip_annotate     : --skip-annotate boolean
 #       do_rna_discovery     : (! --skip-rna)
@@ -860,6 +868,7 @@ sub run_single_seed_pipeline {
   my $model_dir            = $args_HR->{model_dir};
   my $model_key            = $args_HR->{model_key};
   my $seed_minfo           = $args_HR->{seed_minfo};
+  my $seed_accn            = $args_HR->{seed_accn};
   my $do_seed_bootstrap    = $args_HR->{do_seed_bootstrap};
   my $do_skip_annotate     = $args_HR->{do_skip_annotate};
   my $do_rna_discovery     = $args_HR->{do_rna_discovery};
@@ -901,7 +910,6 @@ if($do_seed_bootstrap) {
     push(@seed_opt_A, "-v");
   }
 
-  my $seed_accn = opt_Get("--seed-accn", $opt_HHR);
   my $seed_opt_str = join(" ", @seed_opt_A);
   $cmd = $execs_HR->{"v-build.pl"} . " " . (($seed_opt_str ne "") ? ($seed_opt_str . " ") : "") . $seed_accn . " " . $model_dir;
   utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
@@ -940,7 +948,7 @@ my $minfo_model_key = minfo_parse_model_key($seed_minfo, $FH_HR);
 #     because $model_dir is conventionally named after the accession,
 #     e.g. NC_006232/)
 my $ref_accn = opt_IsUsed("--refaccn", $opt_HHR) ? opt_Get("--refaccn", $opt_HHR) :
-               $do_seed_bootstrap                ? opt_Get("--seed-accn", $opt_HHR) :
+               $do_seed_bootstrap                ? $seed_accn :
                                                    $model_key;
 ofile_OutputString(*STDOUT, 1, sprintf("# Read seed model length: %d\n", $seed_model_len));
 ofile_OutputString(*STDOUT, 1, sprintf("# Reference accession: %s\n", $ref_accn));
@@ -1769,6 +1777,13 @@ sub derive_seed_canonical_groups_from_metadata {
 #                     downstream unused-alias warnings stay accurate.
 #   $ofile_info_HHR : output file info hash (for register/filelist)
 #   $FH_HR          : output file handles ("log", ...)
+#   $ofile_key_suffix: optional string inserted into the ofile_info
+#                     key for the registered prefiltered TSV (yields
+#                     "prefilter.metadata${suffix}.tsv"). Defaults to
+#                     empty string in single-seed mode (preserves the
+#                     legacy "prefilter.metadata.tsv" key). Multi-seed
+#                     Phase A loop passes ".seed1", ".seed2", ... to
+#                     avoid duplicate-ofile-key collisions on N>=2.
 #
 # Returns    : the canonical-group display label that was used for
 #              filtering (string).
@@ -2268,7 +2283,8 @@ sub reconcile_pools_by_blastn_against_seeds {
 }
 
 sub prefilter_metadata_by_seed_group {
-  my ($in_tsv, $out_tsv, $seed_accn, $seed_group_user, $min_pool, $alias_HR, $alias_used_HR, $ofile_info_HHR, $FH_HR) = @_;
+  my ($in_tsv, $out_tsv, $seed_accn, $seed_group_user, $min_pool, $alias_HR, $alias_used_HR, $ofile_info_HHR, $FH_HR, $ofile_key_suffix) = @_;
+  $ofile_key_suffix = "" if(! defined $ofile_key_suffix);
 
   my $do_collapse = (! opt_Get("--no-collapse-numerals", \%opt_HH));
   my $do_strip    = (! opt_Get("--no-strip-descriptors", \%opt_HH));
@@ -2423,7 +2439,7 @@ sub prefilter_metadata_by_seed_group {
   close($in2);
   close($out_fh);
 
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "prefilter.metadata.tsv", $out_tsv, 1, 1,
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "prefilter.metadata${ofile_key_suffix}.tsv", $out_tsv, 1, 1,
     "metadata TSV pre-filtered to seed canonical group (Issue 12)");
   ofile_OutputString($FH_HR->{"log"}, 1,
     sprintf("# Pre-filter: kept %d sequences (canonical \"%s\"), dropped %d off-group sequences (input %d total).\n",
