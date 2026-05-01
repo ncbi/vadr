@@ -722,6 +722,15 @@ fetch_fasta_from_accession_list($tier1_accn_file, $tier2_fasta_file, $do_keep, "
 apply_ambiguity_filter_to_candidates(\%candidate_AH, $tier2_fasta_file, $max_ambig_nt, \%decision_H, $ref_accn, $FH_HR);
 
 my $tier2_align_stk_file = undef;
+# Snapshot post-ambiguity candidate seq hashes by accession so the auto-alt
+# Step 5b rescue path (Step 5b below) can restore rescued seqs to
+# %candidate_AH after run_vannotate_filter_fails removes them.
+my %pre_vannotate_seq_H = ();  # acc -> { group => g, seq => $seq_ref }
+foreach my $g (keys %candidate_AH) {
+  foreach my $s (@{$candidate_AH{$g}}) {
+    $pre_vannotate_seq_H{$s->{acc}} = { group => $g, seq => $s };
+  }
+}
 if($do_skip_annotate) {
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Tier 2 v-annotate filter: skipped due to --skip-annotate\n"));
   mark_all_remaining_as_selected_for_tier3(\%candidate_AH, \%decision_H);
@@ -859,6 +868,7 @@ if($do_auto_alt) {
         }
 
         my $n_rescued = 0;
+        my $n_rescued_no_snapshot = 0;
         foreach my $acc (@rerun_accessions) {
           if(! exists $pass2_fail_H{$acc}) {
             # This sequence now passes — restore it to the candidate pool
@@ -866,11 +876,25 @@ if($do_auto_alt) {
             $decision_H{$acc}{"reason_code"} = "pass_alt";
             $decision_H{$acc}{"reason_detail"} = "rescued by auto-alt second pass";
             $decision_H{$acc}{"stage_last_seen"} = "selected_for_tier3";
-            # Re-add to candidate_AH (need to find its group)
-            # The sequence was removed from candidate_AH by run_vannotate_filter_fails
-            # We need its group info from decision_H or the original candidate data
+            # Re-add to candidate_AH using the pre-vannotate snapshot.
+            # The seq was pruned from candidate_AH by run_vannotate_filter_fails;
+            # without restoring it here, downstream Tier 3 / stitching steps
+            # never see the rescued sequence and the rescue is silently lost.
+            if(exists $pre_vannotate_seq_H{$acc}) {
+              my $g = $pre_vannotate_seq_H{$acc}{group};
+              if(! exists $candidate_AH{$g}) { $candidate_AH{$g} = []; }
+              push(@{$candidate_AH{$g}}, $pre_vannotate_seq_H{$acc}{seq});
+            }
+            else {
+              $n_rescued_no_snapshot++;
+            }
             $n_rescued++;
           }
+        }
+        if($n_rescued_no_snapshot > 0) {
+          ofile_OutputString($FH_HR->{"log"}, 1,
+            sprintf("# Auto-alt detect: WARNING %d rescued seqs not in pre-vannotate snapshot, downstream pool not updated for them\n",
+                    $n_rescued_no_snapshot));
         }
         ofile_OutputString($FH_HR->{"log"}, 1,
           sprintf("# Auto-alt detect: pass2 rescued %d of %d re-run candidates\n",
