@@ -57,6 +57,7 @@ $execs_H{"cmscan"}        = $env_vadr_infernal_dir . "/cmscan";
 $execs_H{"cmalign"}       = $env_vadr_infernal_dir . "/cmalign";
 $execs_H{"cmbuild"}       = $env_vadr_infernal_dir . "/cmbuild";
 $execs_H{"cmfetch"}       = $env_vadr_infernal_dir . "/cmfetch";
+$execs_H{"cmpress"}       = $env_vadr_infernal_dir . "/cmpress";
 $execs_H{"esl-reformat"}  = $env_vadr_easel_dir    . "/esl-reformat";
 $execs_H{"v-build.pl"}    = $env_vadr_scripts_dir  . "/v-build.pl";
 $execs_H{"v-annotate.pl"} = $env_vadr_scripts_dir  . "/v-annotate.pl";
