@@ -4131,6 +4131,42 @@ sub write_stitch_scaffold_outputs {
 }
 
 #################################################################
+# Subroutine : parse_coord_segments()
+# Incept     : EPN* Fri May  1 2026
+#
+# Purpose    : Parse a comma-separated coords string (e.g.
+#              "7669..8256:+,8222..8494:+") into an ordered list of
+#              segments. Each segment is returned as a 3-element
+#              arrayref [lo, hi, len] where len = hi - lo + 1.
+#
+#              Segment order in the returned list is the same as in
+#              the input string — overlap detection downstream relies
+#              on segments being in CDS-MSA-concatenation order, which
+#              build_muscle_cds_msa() establishes as ascending genomic
+#              start position (see fkey_order sort there).
+#
+# Arguments  :
+#   $coords_str : coords string, e.g. "7669..8256:+,8222..8494:+"
+#
+# Returns    : list of arrayrefs ([lo, hi, len], ...), one per segment.
+#              Empty list if $coords_str is empty/unparseable.
+#################################################################
+sub parse_coord_segments {
+  my ($coords_str) = @_;
+  return () if((! defined $coords_str) || ($coords_str eq ""));
+  my @segs;
+  foreach my $seg (split(/,/, $coords_str)) {
+    if($seg =~ /^<?(\d+)\.\.>?(\d+):[\+\-]$/) {
+      my ($s, $e) = ($1, $2);
+      my $lo = ($s < $e) ? $s : $e;
+      my $hi = ($s > $e) ? $s : $e;
+      push @segs, [$lo, $hi, $hi - $lo + 1];
+    }
+  }
+  return @segs;
+}
+
+#################################################################
 # Subroutine : parse_coords_bounds()
 #################################################################
 sub parse_coords_bounds {
@@ -5460,13 +5496,21 @@ sub stitch_and_refine_final_alignment {
   while(my $line = <$bpfh>) {
     chomp $line;
     my @f = split(/\t/, $line);
+    # Load per-feature coords for coding blocks. concatenate_all_blocks
+    # uses this to walk the CDS MSA feature-by-feature so it can detect
+    # and skip overlap regions between adjacent CDSs in the same block
+    # (e.g. RSV M2-1/M2-2). Without it, overlap chars leak from one
+    # block's slice into the next, corrupting downstream rows.
     push(@blocks_A, {
-      "idx"      => $f[0],
-      "type"     => $f[1],
-      "start"    => $f[2],
-      "end"      => $f[3],
-      "len"      => $f[4],
-      "source"   => $f[5]
+      "idx"       => $f[0],
+      "type"      => $f[1],
+      "start"     => $f[2],
+      "end"       => $f[3],
+      "len"       => $f[4],
+      "source"    => $f[5],
+      "ftr_type"  => (defined $f[6] ? $f[6] : ""),
+      "ftr_count" => (defined $f[7] ? $f[7] : 0),
+      "coords"    => (defined $f[8] ? $f[8] : "")
     });
   }
   close($bpfh);
@@ -5768,33 +5812,94 @@ sub concatenate_all_blocks {
   if(!defined $anchor_cds_seq) {
     die "ERROR in concatenate_all_blocks: anchor accession $anchor_accn not found in CDS MSA $cds_msa_fa_file";
   }
-  my @cds_col_ranges_A = ();  # array of [start_col, end_col] (0-based) per coding block
+  # @cds_col_ranges_AA: per coding block, an array of [start_col, end_col]
+  # 0-based KEEP ranges in the CDS MSA. For a single-feature block (no
+  # overlapping CDS), this is one range covering the whole block. For a
+  # block with overlapping CDS features (RSV M2-1/M2-2: 7669..8256 and
+  # 8222..8494, sharing 35 nt), the CDS MSA stores each feature as a
+  # separate concatenated chunk so the OVERLAP region appears twice in
+  # the CDS MSA. We walk feature-by-feature, advancing the cursor by
+  # each feature's full nucleotide length, but skip the first overlap_len
+  # non-gap anchor cols of any feature that overlaps its predecessor —
+  # those bases are already represented in the previous feature's slice.
+  # Without this skip, leftover overlap cols leak into the NEXT coding
+  # block's slice, shifting and corrupting it (the "stk LONGER" / wrong-row
+  # bug surfaced by verify_stk_sequence_integrity on RSV-B at MZ515594.1
+  # position 8215, where the L-CDS region was contaminated with M2-2's
+  # tail nt).
+  my @cds_col_ranges_AA = ();
   {
     my $col_cursor = 0;
     my $total_anchor_len = length($anchor_cds_seq);
     foreach my $blk (@{$blocks_AR}) {
       next unless $blk->{"type"} eq "coding";
-      my $need = $blk->{"end"} - $blk->{"start"} + 1;  # genomic nt for this block
-      my $start_col = $col_cursor;
-      my $consumed = 0;
-      while($col_cursor < $total_anchor_len && $consumed < $need) {
-        my $c = substr($anchor_cds_seq, $col_cursor, 1);
-        if($c ne '-' && $c ne '.') { $consumed++; }
-        $col_cursor++;
+      # The CDS MSA is built from CDS features only — one chunk per CDS,
+      # in genomic-start order. The block plan, however, can use either CDS
+      # OR mat_peptide as its underlying feature_type (mat_peptide is
+      # preferred when annotations have any). For mat_peptide blocks the
+      # block.coords field lists many overlapping cleavage products that
+      # do NOT correspond to separate chunks in the CDS MSA — the parent
+      # polyprotein CDS is one chunk. So feature-by-feature walking with
+      # overlap-skip only makes sense when feature_type == "CDS" with
+      # multiple CDSs in this block (the RSV M2-1/M2-2 case). For
+      # mat_peptide blocks (or single-CDS blocks), fall through to a
+      # single-segment ruler walk on the genomic span.
+      my $is_cds_multi = (($blk->{"ftr_type"} eq "CDS")
+                          && (defined $blk->{"ftr_count"})
+                          && ($blk->{"ftr_count"} > 1));
+      my @seg_A;
+      if($is_cds_multi) {
+        @seg_A = parse_coord_segments($blk->{"coords"});
       }
-      # Extend past any trailing insert columns (anchor gaps) so that
-      # other sequences' inserted nucleotides at the block boundary are
-      # not lost. Stop at the next anchor non-gap column (which belongs
-      # to the next block) or at the end of the alignment.
-      while($col_cursor < $total_anchor_len) {
-        my $c = substr($anchor_cds_seq, $col_cursor, 1);
-        if($c ne '-' && $c ne '.') { last; }  # next non-gap = next block's territory
-        $col_cursor++;
+      if(scalar(@seg_A) == 0) {
+        @seg_A = ([$blk->{"start"}, $blk->{"end"}, $blk->{"end"} - $blk->{"start"} + 1]);
       }
-      push @cds_col_ranges_A, [$start_col, $col_cursor - 1];
+      my $n_segs = scalar(@seg_A);
+      my @kept_AA = ();
+      my $prev_end = undef;
+      for(my $si = 0; $si < $n_segs; $si++) {
+        my ($fs, $fe, $flen) = @{$seg_A[$si]};
+        my $feat_first_col = $col_cursor;
+        my $consumed = 0;
+        while($col_cursor < $total_anchor_len && $consumed < $flen) {
+          my $c = substr($anchor_cds_seq, $col_cursor, 1);
+          if($c ne '-' && $c ne '.') { $consumed++; }
+          $col_cursor++;
+        }
+        my $feat_last_col = $col_cursor - 1;
+        # On the LAST feature of the block, extend past trailing insert
+        # cols (anchor gaps) so other sequences' inserted nucleotides
+        # at the block boundary are not lost.
+        if($si == $n_segs - 1) {
+          while($col_cursor < $total_anchor_len) {
+            my $c = substr($anchor_cds_seq, $col_cursor, 1);
+            if($c ne '-' && $c ne '.') { last; }
+            $col_cursor++;
+          }
+          $feat_last_col = $col_cursor - 1;
+        }
+        # If this feature overlaps the previous one in the block, skip
+        # its first overlap_len non-gap anchor cols (already represented
+        # in the previous feature's slice).
+        my $keep_first_col = $feat_first_col;
+        if(defined $prev_end && $fs <= $prev_end) {
+          my $overlap_len = $prev_end - $fs + 1;
+          my $skip_done = 0;
+          while($keep_first_col <= $feat_last_col && $skip_done < $overlap_len) {
+            my $c = substr($anchor_cds_seq, $keep_first_col, 1);
+            if($c ne '-' && $c ne '.') { $skip_done++; }
+            $keep_first_col++;
+          }
+        }
+        if($keep_first_col <= $feat_last_col) {
+          push @kept_AA, [$keep_first_col, $feat_last_col];
+        }
+        if(! defined $prev_end || $fe > $prev_end) { $prev_end = $fe; }
+      }
+      push @cds_col_ranges_AA, \@kept_AA;
     }
   }
-  my $cds_blk_idx = 0;  # index into @cds_col_ranges_A, incremented per coding block
+  my $cds_blk_idx = 0;  # index into @cds_col_ranges_AA, incremented per coding block
 
   # Open output file and write header
   open(my $outfh, ">", $out_stk_file) || die "ERROR unable to write $out_stk_file: $!";
@@ -5817,13 +5922,25 @@ sub concatenate_all_blocks {
     my $block_end   = $block->{"end"};
 
     if($type eq "coding") {
-      # Extract only this block's slice of the CDS MSA
-      my $slice_start = $cds_col_ranges_A[$cds_blk_idx][0];
-      my $slice_end   = $cds_col_ranges_A[$cds_blk_idx][1];
+      # Extract only this block's keep-cols of the CDS MSA. With overlapping
+      # CDS features, kept_AR contains multiple [start,end] ranges (skipping
+      # overlap region duplicates); for ordinary single-feature blocks it
+      # contains one range covering the whole block.
+      my $kept_AR = $cds_col_ranges_AA[$cds_blk_idx];
       $cds_blk_idx++;
-      my $slice_len = $slice_end - $slice_start + 1;
 
-      my $anchor_slice = substr($anchor_cds_seq, $slice_start, $slice_len);
+      # Helper: concatenate kept-col substrings from a sequence string
+      my $extract_kept = sub {
+        my ($s) = @_;
+        my $out = "";
+        foreach my $rng (@$kept_AR) {
+          my ($a, $b) = @$rng;
+          $out .= substr($s, $a, $b - $a + 1);
+        }
+        return $out;
+      };
+
+      my $anchor_slice = $extract_kept->($anchor_cds_seq);
 
       # Build RF from anchor slice: non-gap -> x, gap -> .
       my $cds_rf = "";
@@ -5831,11 +5948,11 @@ sub concatenate_all_blocks {
         $cds_rf .= ($char eq '-' || $char eq '.') ? '.' : 'x';
       }
 
-      # Write sequence lines in canonical order (slice of each sequence)
+      # Write sequence lines in canonical order (kept-col concatenation)
       my $full_anchor_len = length($anchor_cds_seq);
       foreach my $name (@seq_names) {
         my $full_seq = exists $accn_to_cds_seq_H{$name} ? $accn_to_cds_seq_H{$name} : '-' x $full_anchor_len;
-        my $seq = substr($full_seq, $slice_start, $slice_len);
+        my $seq = $extract_kept->($full_seq);
         printf $outfh "%-30s %s\n", $name, $seq;
       }
       printf $outfh "#=GC %-24s %s\n", "RF", $cds_rf;
@@ -5857,7 +5974,7 @@ sub concatenate_all_blocks {
       print  $outfh "\n";
 
       ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: added CDS MSA slice (%d..%d, %d alignment columns)\n",
-                                                       $block_start, $block_end, $slice_len));
+                                                       $block_start, $block_end, length($anchor_slice)));
     }
     elsif($type eq "rna") {
       # Read RNA Stockholm via Bio::Easel::MSA
