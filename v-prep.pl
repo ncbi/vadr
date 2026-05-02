@@ -1062,7 +1062,8 @@ stitch_and_refine_final_alignment($stitch_block_plan_file,
                                   $do_skip_annotate,
                                   $seed_model_len,
                                   \%execs_H,
-                                  $do_keep, \%ofile_info_HH, \@to_remove_A, $FH_HR);
+                                  $do_keep, \%ofile_info_HH, \@to_remove_A,
+                                  $seed_accn_versioned, $FH_HR);
 
 #---------------------------------------
 # Step 12b: Add #=GS GP/SG group/subgroup annotations to final alignment
@@ -5485,7 +5486,7 @@ sub stitch_and_refine_final_alignment {
   my ($block_plan_file, $rna_annot_file, $tier2_stk_file, $cds_msa_fa_file, $out_root,
       $rna_regions_AR, $final_stk_file, $temp_cm_file,
       $do_rna_discovery, $do_skip_annotate, $seed_model_len, $execs_HR,
-      $do_keep, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
+      $do_keep, $ofile_info_HHR, $to_remove_AR, $seed_accn, $FH_HR) = @_;
 
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: merging CDS, RNA, and noncoding blocks\n"));
 
@@ -5565,7 +5566,7 @@ sub stitch_and_refine_final_alignment {
 
   # Extract and concatenate all blocks with interleaved Stockholm and per-block RF/SS_cons
   concatenate_all_blocks(\@merged_blocks_A, $tier2_stk_file, $cds_msa_fa_file, $final_stk_file,
-                         $anchor_accn, $ungapped_ss_cons, $execs_HR, $FH_HR);
+                         $anchor_accn, $ungapped_ss_cons, $seed_accn, $execs_HR, $FH_HR);
 
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: wrote concatenated alignment to %s\n", $final_stk_file));
 
@@ -5764,7 +5765,7 @@ sub merge_rna_into_blocks {
 #################################################################
 sub concatenate_all_blocks {
   my ($blocks_AR, $tier2_stk_file, $cds_msa_fa_file, $out_stk_file,
-      $anchor_accn, $ungapped_ss_cons, $execs_HR, $FH_HR) = @_;
+      $anchor_accn, $ungapped_ss_cons, $seed_accn, $execs_HR, $FH_HR) = @_;
 
   # Read CDS MSA FASTA, key by accession (strip ':coords:strand' suffix)
   my %cds_seqs_H = ();
@@ -5804,14 +5805,25 @@ sub concatenate_all_blocks {
   }
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: %d sequences in final alignment (restricted to CDS MSA members)\n", scalar(@seq_names)));
 
-  # Pre-compute CDS MSA column slice [start, end] (0-based) for each coding block,
-  # using the anchor sequence's non-gap positions as a ruler.
-  # This ensures each coding block writes only its own columns in genomic order,
-  # so that RF position n in the stitched alignment corresponds to genome position n.
+  # Pre-compute CDS MSA column slice [start, end] (0-based) for each coding block.
+  # The ruler that determines which columns belong to each block must be the SEED
+  # sequence (the reference whose model coordinates define the block plan), not the
+  # anchor (centroid).  When the centroid has MORE nt than the seed in a coding block
+  # the anchor-based ruler terminates too early: the anchor's N-th non-gap position
+  # is at a lower column index than the seed's N-th non-gap position, so the seed's
+  # last few coding nt (at higher column indices, pushed right by the gap characters
+  # in the seed's MSA row) fall outside the slice and are lost from the stitched stk.
+  # Using the seed as the ruler ensures the slice extends to cover all of the seed's
+  # model positions for the block.  If the seed is absent from the CDS MSA (rare
+  # edge case), fall back to the anchor.
   my $anchor_cds_seq = $accn_to_cds_seq_H{$anchor_accn};
   if(!defined $anchor_cds_seq) {
     die "ERROR in concatenate_all_blocks: anchor accession $anchor_accn not found in CDS MSA $cds_msa_fa_file";
   }
+  my $seed_cds_seq = (defined $seed_accn && $seed_accn ne $anchor_accn && exists $accn_to_cds_seq_H{$seed_accn})
+                     ? $accn_to_cds_seq_H{$seed_accn} : undef;
+  # ruler_seq: seed when available (and different from anchor), otherwise anchor
+  my $ruler_seq = defined($seed_cds_seq) ? $seed_cds_seq : $anchor_cds_seq;
   # @cds_col_ranges_AA: per coding block, an array of [start_col, end_col]
   # 0-based KEEP ranges in the CDS MSA. For a single-feature block (no
   # overlapping CDS), this is one range covering the whole block. For a
@@ -5862,17 +5874,17 @@ sub concatenate_all_blocks {
         my $feat_first_col = $col_cursor;
         my $consumed = 0;
         while($col_cursor < $total_anchor_len && $consumed < $flen) {
-          my $c = substr($anchor_cds_seq, $col_cursor, 1);
+          my $c = substr($ruler_seq, $col_cursor, 1);
           if($c ne '-' && $c ne '.') { $consumed++; }
           $col_cursor++;
         }
         my $feat_last_col = $col_cursor - 1;
         # On the LAST feature of the block, extend past trailing insert
-        # cols (anchor gaps) so other sequences' inserted nucleotides
+        # cols (ruler gaps) so other sequences' inserted nucleotides
         # at the block boundary are not lost.
         if($si == $n_segs - 1) {
           while($col_cursor < $total_anchor_len) {
-            my $c = substr($anchor_cds_seq, $col_cursor, 1);
+            my $c = substr($ruler_seq, $col_cursor, 1);
             if($c ne '-' && $c ne '.') { last; }
             $col_cursor++;
           }
@@ -5940,11 +5952,14 @@ sub concatenate_all_blocks {
         return $out;
       };
 
-      my $anchor_slice = $extract_kept->($anchor_cds_seq);
+      # ruler_slice: extracted from the ruler (seed when different from anchor,
+      # otherwise anchor).  RF and SS_cons are based on the ruler so that model
+      # positions correspond to seed (reference) non-gap columns.
+      my $ruler_slice = $extract_kept->($ruler_seq);
 
-      # Build RF from anchor slice: non-gap -> x, gap -> .
+      # Build RF from ruler slice: non-gap -> x, gap -> .
       my $cds_rf = "";
-      foreach my $char (split(//, $anchor_slice)) {
+      foreach my $char (split(//, $ruler_slice)) {
         $cds_rf .= ($char eq '-' || $char eq '.') ? '.' : 'x';
       }
 
@@ -5961,7 +5976,7 @@ sub concatenate_all_blocks {
       my $ungapped_substr = substr($ungapped_ss_cons, $block_start - 1, $block_end - $block_start + 1);
       my $cds_ss = "";
       my $ss_pos = 0;
-      foreach my $char (split(//, $anchor_slice)) {
+      foreach my $char (split(//, $ruler_slice)) {
         if($char eq '-' || $char eq '.') {
           $cds_ss .= '.';
         }
@@ -5974,7 +5989,7 @@ sub concatenate_all_blocks {
       print  $outfh "\n";
 
       ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: added CDS MSA slice (%d..%d, %d alignment columns)\n",
-                                                       $block_start, $block_end, length($anchor_slice)));
+                                                       $block_start, $block_end, length($ruler_slice)));
     }
     elsif($type eq "rna") {
       # Read RNA Stockholm via Bio::Easel::MSA
