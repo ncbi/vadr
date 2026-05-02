@@ -1874,7 +1874,10 @@ sub merge_multiseed_outputs {
       print $oh $line;
     }
     close($ih);
-    if($i < $#{$per_seed_outputs_AR}) { print $oh "\n"; }  # blank line between MODEL blocks
+    # No blank line between MODEL blocks: vdr_ModelInfoFileParse rejects
+    # blank lines (only comment lines starting with '#' or
+    # MODEL/FEATURE lines are permitted), so the per-seed minfos must be
+    # cat'd back-to-back. Each per-seed minfo already ends with a newline.
   }
   close($oh);
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "combined.minfo", $combined_minfo, 1, 1,
