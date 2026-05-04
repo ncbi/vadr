@@ -668,13 +668,14 @@ if($is_multi_seed) {
         });
 
     push(@per_seed_outputs_A, {
-      seed_accn    => $seed,
-      seed_dir     => $seed_dir,
-      out_root     => $seed_out_root,
-      cm_file      => $seed_model_dir . "/" . $seed_model_key . ".vadr.cm",
-      minfo_file   => $final_seed_minfo,
-      stk_file     => $seed_out_root . ".stk",
-      protein_file => $seed_model_dir . "/" . $seed_model_key . ".vadr.protein.fa",
+      seed_accn         => $seed,
+      seed_dir          => $seed_dir,
+      out_root          => $seed_out_root,
+      cm_file           => $seed_out_root . ".cm",
+      minfo_file        => $final_seed_minfo,
+      stk_file          => $seed_out_root . ".stk",
+      protein_file      => $seed_model_dir . "/" . $seed_model_key . ".vadr.protein.fa",
+      protein_blastdb   => $seed_model_dir . "/" . $seed_model_key . ".vadr.protein.fa",
     });
   }
 
@@ -1484,6 +1485,21 @@ stitch_and_refine_final_alignment($stitch_block_plan_file,
                                   $do_keep, $ofile_info_HHR, \@to_remove_A,
                                   $seed_accn_versioned, $do_cds_rf_rewrite, $FH_HR, $ofile_key_suffix);
 
+# Multi-seed mode (Issue 9 Phase C): persist the trained CM at <out_root>.cm
+# so merge_multiseed_outputs concatenates trained CMs (RF coords matching the
+# trained per-seed minfo) instead of v-build seed-bootstrap CMs (different RF).
+# The bootstrap-CM concat was producing indf5plg/indf3plg on every CDS because
+# v-annotate aligned to bootstrap-RF but minfo coords came from trained-RF.
+# Single-seed mode preserves legacy behavior — v-build.pl --profile rebuilds
+# the CM post-v-prep, so there's no need to persist the intermediate here.
+if($ofile_key_suffix ne "" && -e $temp_cm_file) {
+  my $persisted_cm_file = $out_root . ".cm";
+  utl_RunCommand("mv $temp_cm_file $persisted_cm_file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  @to_remove_A = grep { $_ ne $temp_cm_file } @to_remove_A;
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# Multi-seed: persisted trained CM to %s for Phase C merge\n", $persisted_cm_file));
+}
+
 #---------------------------------------
 # Step 12b: Add #=GS GP/SG group/subgroup annotations to final alignment
 #---------------------------------------
@@ -1886,20 +1902,42 @@ sub merge_multiseed_outputs {
     sprintf("# Multi-seed Phase C: workaround #1 stripped group/subgroup :FILE: from %d MODEL lines (out of %d seeds).\n",
             $stripped_n, scalar(@$per_seed_outputs_AR)));
 
-  # 3) Concat .protein.fa files; rebuild blastdb
-  my @prot_files = ();
+  # 3) Symlink per-seed bootstrap protein.fa + blastdb index files into
+  # $unified_mdir. v-annotate.pl resolves each MODEL's blastdb: attribute
+  # relative to --mdir, and the trained per-seed minfo retains the bootstrap
+  # blastdb name (e.g. "NC_001477-seed.vadr.protein.fa"). A single combined
+  # combined.protein.fa (the original Phase C approach) is never consulted
+  # because v-annotate performs per-MODEL lookups by the minfo blastdb: name.
+  require Cwd;
   foreach my $so (@$per_seed_outputs_AR) {
-    if(-e $so->{protein_file}) { push(@prot_files, $so->{protein_file}); }
-  }
-  if(@prot_files > 0) {
-    utl_RunCommand("cat " . join(" ", @prot_files) . " > $combined_protein", $verbose, 0, $FH_HR);
-    sqf_BlastDbCreate($execs_HR->{"makeblastdb"}, "prot", $combined_protein, $opt_HHR, $FH_HR);
-    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "combined.protein.fa", $combined_protein, 1, 1,
-      "merged multi-seed protein BLAST db (Issue 9 Phase C)");
-  }
-  else {
+    my $src = $so->{protein_blastdb} // $so->{protein_file};
+    my $src_abs = Cwd::abs_path($src);
+    if(!defined $src_abs || ! -e $src_abs) {
+      ofile_OutputString($FH_HR->{"log"}, 1,
+        sprintf("# Multi-seed Phase C: protein.fa not found for %s (%s); skipping symlink\n",
+                $so->{seed_accn}, $src));
+      next;
+    }
+    (my $dst_name = $src_abs) =~ s|.*/||;
+    my $dst      = $unified_mdir . "/" . $dst_name;
+    if(! -e $dst) {
+      symlink($src_abs, $dst)
+        or ofile_FAIL(sprintf("ERROR, merge_multiseed_outputs: symlink failed %s -> %s: $!",
+                              $src_abs, $dst), 1, $FH_HR);
+    }
+    # Also symlink the blastdb index files (.pdb .phr .pin .pjs .pot .psq .ptf .pto)
+    foreach my $ext (qw(pdb phr pin pjs pot psq ptf pto)) {
+      my $idx_src = $src_abs . "." . $ext;
+      my $idx_dst = $dst    . "." . $ext;
+      if(-e $idx_src && ! -e $idx_dst) {
+        symlink($idx_src, $idx_dst)
+          or ofile_FAIL(sprintf("ERROR, merge_multiseed_outputs: symlink failed %s -> %s: $!",
+                                $idx_src, $idx_dst), 1, $FH_HR);
+      }
+    }
     ofile_OutputString($FH_HR->{"log"}, 1,
-      "# Multi-seed Phase C: no per-seed protein.fa files found; skipping merged blastdb build.\n");
+      sprintf("# Multi-seed Phase C: symlinked protein blastdb for %s -> %s\n",
+              $so->{seed_accn}, $dst));
   }
 
   # 4) Symlink each per-seed .stk into $unified_mdir as <seed_accn>.vadr.stk
