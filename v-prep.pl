@@ -1854,16 +1854,28 @@ sub merge_multiseed_outputs {
   my $combined_minfo   = $unified_mdir . "/combined.minfo";
   my $combined_protein = $unified_mdir . "/combined.protein.fa";
 
-  # 1) Concat .cm files; cmpress with -F to overwrite any prior indexes
-  my @cm_files = ();
+  # 1) Concat trained per-seed .cm files into combined.cm, renaming each
+  # model's NAME field to the seed accession (e.g. NC_001477) so it
+  # matches the minfo MODEL name. cmbuild derives the NAME from the
+  # final.stk filename stem (e.g. "seed1.NC_001477.vadr.final"), which
+  # doesn't match the minfo MODEL name that v-annotate uses for lookups.
+  open(my $cm_oh, ">", $combined_cm)
+    or ofile_FAIL("ERROR, merge_multiseed_outputs: can't write $combined_cm: $!", 1, $FH_HR);
   foreach my $so (@$per_seed_outputs_AR) {
     if(! -e $so->{cm_file}) {
       ofile_FAIL(sprintf("ERROR, merge_multiseed_outputs: per-seed .cm not found for %s: %s",
                          $so->{seed_accn}, $so->{cm_file}), 1, $FH_HR);
     }
-    push(@cm_files, $so->{cm_file});
+    my $wanted_name = $so->{seed_accn};
+    open(my $cm_ih, "<", $so->{cm_file})
+      or ofile_FAIL("ERROR, merge_multiseed_outputs: can't read $so->{cm_file}: $!", 1, $FH_HR);
+    while(my $line = <$cm_ih>) {
+      $line =~ s/^(NAME\s+)\S+/$1$wanted_name/;
+      print $cm_oh $line;
+    }
+    close($cm_ih);
   }
-  utl_RunCommand("cat " . join(" ", @cm_files) . " > $combined_cm", $verbose, 0, $FH_HR);
+  close($cm_oh);
   utl_RunCommand($execs_HR->{"cmpress"} . " -F $combined_cm > /dev/null", $verbose, 0, $FH_HR);
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "combined.cm", $combined_cm, 1, 1,
     "merged multi-seed CM file (Issue 9 Phase C)");
