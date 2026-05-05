@@ -1485,20 +1485,6 @@ stitch_and_refine_final_alignment($stitch_block_plan_file,
                                   $do_keep, $ofile_info_HHR, \@to_remove_A,
                                   $seed_accn_versioned, $do_cds_rf_rewrite, $FH_HR, $ofile_key_suffix);
 
-# Multi-seed mode (Issue 9 Phase C): persist the trained CM at <out_root>.cm
-# so merge_multiseed_outputs concatenates trained CMs (RF coords matching the
-# trained per-seed minfo) instead of v-build seed-bootstrap CMs (different RF).
-# The bootstrap-CM concat was producing indf5plg/indf3plg on every CDS because
-# v-annotate aligned to bootstrap-RF but minfo coords came from trained-RF.
-# Single-seed mode preserves legacy behavior — v-build.pl --profile rebuilds
-# the CM post-v-prep, so there's no need to persist the intermediate here.
-if($ofile_key_suffix ne "" && -e $temp_cm_file) {
-  my $persisted_cm_file = $out_root . ".cm";
-  utl_RunCommand("mv $temp_cm_file $persisted_cm_file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
-  @to_remove_A = grep { $_ ne $temp_cm_file } @to_remove_A;
-  ofile_OutputString($FH_HR->{"log"}, 1,
-    sprintf("# Multi-seed: persisted trained CM to %s for Phase C merge\n", $persisted_cm_file));
-}
 
 #---------------------------------------
 # Step 12b: Add #=GS GP/SG group/subgroup annotations to final alignment
@@ -1646,6 +1632,27 @@ if($do_rna_discovery && !$do_skip_annotate && scalar(@rna_regions_A) > 0) {
     ofile_OutputString($FH_HR->{"log"}, 1,
       sprintf("# Wrote canonical minfo to %s (copied from %s)\n", $canonical_minfo, $seed_minfo));
   }
+}
+
+# Multi-seed mode (Issue 9 Phase C): build the production CM by running
+# cmbuild --hand on the FINAL stk (post centroid-realign, post overhang
+# extension, post coord remap). This guarantees the CM's CLEN matches the
+# minfo's MODEL length attribute regardless of what intermediate steps did
+# to the stk's RF count. Persisting an earlier-stage CM (e.g., the temp.cm
+# from stitch_and_refine_final_alignment, built before centroid realignment
+# can change the RF count) leads to a CLEN/length mismatch and a frame-off
+# cascade at v-annotate time. Single-seed mode does this via v-build.pl
+# --profile post-v-prep; multi-seed has no equivalent post-step so we do it
+# inline.
+if($ofile_key_suffix ne "") {
+  my $persisted_cm_file = $out_root . ".cm";
+  my $final_cmbuild_out = $out_root . ".final_persist.cmbuild.out";
+  my $cmd = $execs_HR->{"cmbuild"} . " --hand -F " . $persisted_cm_file . " " .
+            $output_stk_file . " > " . $final_cmbuild_out;
+  utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# Multi-seed: built production CM from final stk -> %s\n", $persisted_cm_file));
+  if(! $do_keep) { push(@to_remove_A, $final_cmbuild_out); }
 }
 
 if(! $do_keep) {
