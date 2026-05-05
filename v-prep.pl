@@ -126,6 +126,10 @@ opt_Add("--overhang-min-conservation","real",   0.8,     $g,    undef,          
 opt_Add("--overhang-stop-lookahead", "integer", 3,       $g,    undef,                  "--no-overhang-ext", "stop extension when no INCLUDE seen in last M columns",                      "stop extension when no INCLUDE seen in last <n> columns", \%opt_HH, \@opt_order_A);
 opt_Add("--overhang-min-active",     "integer", 5,       $g,    undef,                  "--no-overhang-ext", "minimum active sequences to classify an overhang column",                    "minimum n_active sequences to classify an overhang column as <n> (else SKIP)", \%opt_HH, \@opt_order_A);
 
+$opt_group_desc_H{++$g} = "CDS RF-rewrite options";
+#       option                     type      default  group  requires incompat      preamble-output                                                                              help-output
+opt_Add("--no-cds-rf-rewrite", "boolean", 0,         $g,    undef, undef,          "skip CDS-column RF-rewrite step (pre-2026-05-04 behaviour)",                                "skip the post-stitching RF-rewrite step that promotes CDS-internal alignment columns to match states; useful for debugging or for reproducing pre-2026-05-04 builds", \%opt_HH, \@opt_order_A);
+
 $opt_group_desc_H{++$g} = "other expert options";
 #       option       type          default     group  requires incompat      preamble-output                                              help-output
 opt_Add("--execname",   "string",  undef,         $g,    undef, undef,       "define executable name of this script as <s>",              "define executable name of this script as <s>", \%opt_HH, \@opt_order_A);
@@ -179,6 +183,8 @@ my $options_okay =
                 'overhang-min-conservation=f' => \$GetOptions_H{"--overhang-min-conservation"},
                 'overhang-stop-lookahead=i' => \$GetOptions_H{"--overhang-stop-lookahead"},
                 'overhang-min-active=i'    => \$GetOptions_H{"--overhang-min-active"},
+# CDS RF-rewrite options
+                'no-cds-rf-rewrite'        => \$GetOptions_H{"--no-cds-rf-rewrite"},
 # other expert options
                 'execname=s'   => \$GetOptions_H{"--execname"},
                 'mxsize=i'     => \$GetOptions_H{"--mxsize"},
@@ -566,6 +572,7 @@ my @rna_regions_A = (); # Array of hashes: { start, end, strand, cm_family, cm_a
 my $rna_annot_file = $out_root . ".rna_annotation.tsv";
 my $rna_ss_cons = undef; # Full-length consensus secondary structure string
 my $do_keep = opt_Get("--keep", \%opt_HH);
+my $do_cds_rf_rewrite = ! opt_Get("--no-cds-rf-rewrite", \%opt_HH);
 my @to_remove_A = (); # files to remove at end unless --keep
 
 if($do_rna_discovery) {
@@ -1063,7 +1070,7 @@ stitch_and_refine_final_alignment($stitch_block_plan_file,
                                   $seed_model_len,
                                   \%execs_H,
                                   $do_keep, \%ofile_info_HH, \@to_remove_A,
-                                  $seed_accn_versioned, $FH_HR);
+                                  $seed_accn_versioned, $do_cds_rf_rewrite, $FH_HR);
 
 #---------------------------------------
 # Step 12b: Add #=GS GP/SG group/subgroup annotations to final alignment
@@ -5462,7 +5469,7 @@ sub extract_and_align_rna_regions {
 
 #################################################################
 # Subroutine : stitch_and_refine_final_alignment()
-# Purpose    : Stitch all alignment blocks (CDS, RNA, noncoding)  
+# Purpose    : Stitch all alignment blocks (CDS, RNA, noncoding)
 #              into final training alignment and refine with cmbuild
 #
 # Arguments  :
@@ -5478,6 +5485,13 @@ sub extract_and_align_rna_regions {
 #   $do_skip_annotate   : flag to skip annotation
 #   $seed_model_len     : reference sequence length
 #   $execs_HR           : ref to hash of executable paths
+#   $do_keep            : flag to keep intermediate files
+#   $ofile_info_HHR     : ref to output file info hash of hashes
+#   $to_remove_AR       : ref to array of files to remove at end
+#   $seed_accn          : seed accession (ruler for column slicing)
+#   $do_cds_rf_rewrite  : if 1, promote all CDS-block columns to RF match
+#                         states (x) before cmbuild; if 0, use ruler-gap
+#                         columns as insert states (pre-2026-05-04 behaviour)
 #   $FH_HR              : ref to hash of file handles
 #
 # Returns    : void
@@ -5486,7 +5500,7 @@ sub stitch_and_refine_final_alignment {
   my ($block_plan_file, $rna_annot_file, $tier2_stk_file, $cds_msa_fa_file, $out_root,
       $rna_regions_AR, $final_stk_file, $temp_cm_file,
       $do_rna_discovery, $do_skip_annotate, $seed_model_len, $execs_HR,
-      $do_keep, $ofile_info_HHR, $to_remove_AR, $seed_accn, $FH_HR) = @_;
+      $do_keep, $ofile_info_HHR, $to_remove_AR, $seed_accn, $do_cds_rf_rewrite, $FH_HR) = @_;
 
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: merging CDS, RNA, and noncoding blocks\n"));
 
@@ -5566,7 +5580,7 @@ sub stitch_and_refine_final_alignment {
 
   # Extract and concatenate all blocks with interleaved Stockholm and per-block RF/SS_cons
   concatenate_all_blocks(\@merged_blocks_A, $tier2_stk_file, $cds_msa_fa_file, $final_stk_file,
-                         $anchor_accn, $ungapped_ss_cons, $seed_accn, $execs_HR, $FH_HR);
+                         $anchor_accn, $ungapped_ss_cons, $seed_accn, $do_cds_rf_rewrite, $execs_HR, $FH_HR);
 
   ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: wrote concatenated alignment to %s\n", $final_stk_file));
 
@@ -5748,24 +5762,29 @@ sub merge_rna_into_blocks {
 
 #################################################################
 # Subroutine : concatenate_all_blocks()
+# Incept     : EPN* Mon May  4 2026
 # Purpose    : Extract and concatenate all blocks into final Stockholm
 #              using interleaved format with per-block RF and full SS_cons.
 #
 # Arguments  :
-#   $blocks_AR         : ref to array of merged block hashes
-#   $tier2_stk_file    : tier2 full-sequence alignment (Stockholm)
-#   $cds_msa_fa_file   : CDS MSA FASTA file
-#   $out_stk_file      : output Stockholm file
-#   $anchor_accn       : accession of CDS anchor/reference sequence
-#   $ungapped_ss_cons  : ungapped reference-length SS_cons string
-#   $execs_HR          : ref to hash of executable paths
-#   $FH_HR             : ref to hash of file handles
+#   $blocks_AR           : ref to array of merged block hashes
+#   $tier2_stk_file      : tier2 full-sequence alignment (Stockholm)
+#   $cds_msa_fa_file     : CDS MSA FASTA file
+#   $out_stk_file        : output Stockholm file
+#   $anchor_accn         : accession of CDS anchor/reference sequence
+#   $ungapped_ss_cons    : ungapped reference-length SS_cons string
+#   $seed_accn           : seed accession used as column-slice ruler
+#   $do_cds_rf_rewrite   : if 1, set ALL CDS-block columns to RF 'x'
+#                          (match states), overriding ruler-gap '.' positions;
+#                          if 0, use ruler-derived RF (pre-2026-05-04 behaviour)
+#   $execs_HR            : ref to hash of executable paths
+#   $FH_HR               : ref to hash of file handles
 #
 # Returns    : void
 #################################################################
 sub concatenate_all_blocks {
   my ($blocks_AR, $tier2_stk_file, $cds_msa_fa_file, $out_stk_file,
-      $anchor_accn, $ungapped_ss_cons, $seed_accn, $execs_HR, $FH_HR) = @_;
+      $anchor_accn, $ungapped_ss_cons, $seed_accn, $do_cds_rf_rewrite, $execs_HR, $FH_HR) = @_;
 
   # Read CDS MSA FASTA, key by accession (strip ':coords:strand' suffix)
   my %cds_seqs_H = ();
@@ -5957,10 +5976,28 @@ sub concatenate_all_blocks {
       # positions correspond to seed (reference) non-gap columns.
       my $ruler_slice = $extract_kept->($ruler_seq);
 
-      # Build RF from ruler slice: non-gap -> x, gap -> .
+      # Build RF from ruler slice.
+      # Default (pre-2026-05-04): non-gap -> x, gap -> .
+      #   Gap columns in the ruler become INSERT states in cmbuild; holdout
+      #   sequences accumulating nt at those states fire false fsthicfi alerts.
+      # With --no-cds-rf-rewrite disabled (default ON): promote ALL CDS columns
+      #   to 'x' (match states) regardless of ruler gaps.  This is the
+      #   RF-in-CDS structural hardening (Issue 2, 2026-05-04):
+      #   every in-frame CDS position becomes a match state with trained
+      #   per-position emissions, eliminating the gap-rich-column / INSERT-state
+      #   false-fsthicfi pathway for multi-RefSeq profile CMs.
+      #   SS_cons is still guided by the ruler (single-stranded for CDS), so
+      #   the structural annotation is unaffected.
       my $cds_rf = "";
-      foreach my $char (split(//, $ruler_slice)) {
-        $cds_rf .= ($char eq '-' || $char eq '.') ? '.' : 'x';
+      if($do_cds_rf_rewrite) {
+        # RF-rewrite ON: all CDS columns become match states (x)
+        $cds_rf = 'x' x length($ruler_slice);
+      }
+      else {
+        # RF-rewrite OFF (--no-cds-rf-rewrite): legacy ruler-gap behaviour
+        foreach my $char (split(//, $ruler_slice)) {
+          $cds_rf .= ($char eq '-' || $char eq '.') ? '.' : 'x';
+        }
       }
 
       # Write sequence lines in canonical order (kept-col concatenation)
@@ -5988,8 +6025,17 @@ sub concatenate_all_blocks {
       printf $outfh "#=GC %-24s %s\n", "SS_cons", $cds_ss;
       print  $outfh "\n";
 
-      ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: added CDS MSA slice (%d..%d, %d alignment columns)\n",
-                                                       $block_start, $block_end, length($ruler_slice)));
+      # Count RF-rewritten columns (. -> x promotions) for log
+      my $n_rf_promoted = 0;
+      if($do_cds_rf_rewrite) {
+        # Count positions where ruler has a gap (would have been '.' without rewrite)
+        foreach my $char (split(//, $ruler_slice)) {
+          if($char eq '-' || $char eq '.') { $n_rf_promoted++; }
+        }
+      }
+      ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# Final stitching: added CDS MSA slice (%d..%d, %d alignment columns%s)\n",
+                                                       $block_start, $block_end, length($ruler_slice),
+                                                       $do_cds_rf_rewrite ? sprintf(", RF-rewrite: %d insert cols promoted to match", $n_rf_promoted) : ""));
     }
     elsif($type eq "rna") {
       # Read RNA Stockholm via Bio::Easel::MSA
