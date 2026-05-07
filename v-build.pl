@@ -877,16 +877,25 @@ if($ncds > 0) {
   }
   close $ofile_info_HH{"FH"}{"proteinfasta"};
 
-  # Append alt proteins from v-prep (e.g. rsvb.vadr.alt.protein.fa) if provided
+  # Append alt proteins from v-prep if available. Explicit --altprotein
+  # wins; otherwise fall back to <stk_prefix>.alt.protein.fa next to the
+  # --stk file, which v-prep writes by convention.
+  my $alt_prot_file = undef;
   if(opt_IsUsed("--altprotein", \%opt_HH)) {
-    my $alt_prot_file = opt_Get("--altprotein", \%opt_HH);
-    if(-s $alt_prot_file) {
-      open(my $alt_fh, "<", $alt_prot_file) || ofile_FAIL("ERROR, unable to open --altprotein file $alt_prot_file", 1, $FH_HR);
-      open(my $prot_fh, ">>", $protein_fa_file) || ofile_FAIL("ERROR, unable to append to $protein_fa_file", 1, $FH_HR);
-      while(my $line = <$alt_fh>) { print $prot_fh $line; }
-      close($alt_fh);
-      close($prot_fh);
-    }
+    $alt_prot_file = opt_Get("--altprotein", \%opt_HH);
+  }
+  elsif(opt_IsUsed("--stk", \%opt_HH)) {
+    my $stk_file = opt_Get("--stk", \%opt_HH);
+    (my $stk_prefix = $stk_file) =~ s/\.stk$//;
+    my $auto_alt_file = $stk_prefix . ".alt.protein.fa";
+    if(-s $auto_alt_file) { $alt_prot_file = $auto_alt_file; }
+  }
+  if(defined $alt_prot_file && -s $alt_prot_file) {
+    open(my $alt_fh, "<", $alt_prot_file) || ofile_FAIL("ERROR, unable to open alt protein file $alt_prot_file", 1, $FH_HR);
+    open(my $prot_fh, ">>", $protein_fa_file) || ofile_FAIL("ERROR, unable to append to $protein_fa_file", 1, $FH_HR);
+    while(my $line = <$alt_fh>) { print $prot_fh $line; }
+    close($alt_fh);
+    close($prot_fh);
   }
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
