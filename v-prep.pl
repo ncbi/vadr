@@ -3943,6 +3943,7 @@ sub write_decision_summary_report {
 
 #################################################################
 # Subroutine : write_stitch_scaffold_outputs()
+# Incept     : EPN* Wed May  7 2026
 #################################################################
 sub write_stitch_scaffold_outputs {
   my ($candidate_AHR, $tier2_fasta_file, $ftr_info_HAR, $model_key, $seed_model_len, $selected_accn_file, $selected_fa_file, $block_plan_file, $do_keep, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
@@ -4039,6 +4040,9 @@ sub write_stitch_scaffold_outputs {
       foreach my $a (@cds_spans_A) {
         foreach my $b (@cds_spans_A) {
           next if($a->{idx} == $b->{idx});
+          my $afset_a = (defined $ftr_A[$a->{idx}]{"alternative_ftr_set"}) ? $ftr_A[$a->{idx}]{"alternative_ftr_set"} : "";
+          my $afset_b = (defined $ftr_A[$b->{idx}]{"alternative_ftr_set"}) ? $ftr_A[$b->{idx}]{"alternative_ftr_set"} : "";
+          next if($afset_a ne "" && $afset_a eq $afset_b);
           if($b->{lo} <= $a->{lo} && $b->{hi} >= $a->{hi} && $b->{span} > $a->{span}) {
             $contained_idx_H{$a->{idx}} = 1;
             last;
