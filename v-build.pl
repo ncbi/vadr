@@ -176,6 +176,7 @@ my $options_okay =
         'profile'      => \$GetOptions_H{"--profile"},
                 'stk=s'        => \$GetOptions_H{"--stk"},
         'minfoin=s'    => \$GetOptions_H{"--minfoin"},
+                'altprotein=s' => \$GetOptions_H{"--altprotein"},
                 'copy-stk'     => \$GetOptions_H{"--copy-stk"},
                 'abspath-stk'  => \$GetOptions_H{"--abspath-stk"},
                 'infa=s'       => \$GetOptions_H{"--infa"},
