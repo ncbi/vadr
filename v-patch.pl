@@ -50,16 +50,18 @@ opt_Add("-v",          "boolean",  0,          $g,    undef, undef, "verbose; ec
 opt_Add("--dry",       "boolean",  0,          $g,    undef, undef, "dry-run; parse and validate only",         "do not modify any files; just report planned ops",     \%opt_HH, \@opt_order_A);
 opt_Add("--keep",      "boolean",  0,          $g,    undef, undef, "keep tmp files",                           "do not remove tmp files",                              \%opt_HH, \@opt_order_A);
 opt_Add("--stk",       "string",   undef,      $g,    undef, undef, "alignment STK for new-alt protein source", "use <s> as source alignment for translating added alts", \%opt_HH, \@opt_order_A);
+opt_Add("--altprotein", "string",  undef,      $g,    undef, undef, "pre-translated protein fasta <s> for added alts", "fasta <s> of pre-built alt proteins (headers must end with /refcoords)", \%opt_HH, \@opt_order_A);
 
 my %GetOptions_H = ();
 my $synopsis = "v-patch.pl :: post-hoc minfo / protein-db patcher for v-build --profile output\n";
 my $usage    = "Usage: v-patch.pl [-options] <vb-dir> <patch.tsv>\n";
-my $options_okay = &GetOptions('h'      => \$GetOptions_H{"-h"},
-                               'f'      => \$GetOptions_H{"-f"},
-                               'v'      => \$GetOptions_H{"-v"},
-                               'dry'    => \$GetOptions_H{"--dry"},
-                               'keep'   => \$GetOptions_H{"--keep"},
-                               'stk=s'  => \$GetOptions_H{"--stk"});
+my $options_okay = &GetOptions('h'            => \$GetOptions_H{"-h"},
+                               'f'            => \$GetOptions_H{"-f"},
+                               'v'            => \$GetOptions_H{"-v"},
+                               'dry'          => \$GetOptions_H{"--dry"},
+                               'keep'         => \$GetOptions_H{"--keep"},
+                               'stk=s'        => \$GetOptions_H{"--stk"},
+                               'altprotein=s' => \$GetOptions_H{"--altprotein"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch();
 my $date          = scalar localtime();
@@ -403,6 +405,46 @@ sub vpatch_apply_add_alt {
 }
 
 #################################################################
+# Subroutine: vpatch_load_altprotein_fasta()
+# Incept:     EPN* Sun May 11 2026
+#
+# Parse a fasta file of pre-translated alt proteins. Each header is
+# expected to end with "/<refcoords>" (matching the convention v-build
+# uses, e.g. ">MZ515594.1:4644..5576:+/4688..5620:+"). Stored as:
+#   $by_coords{$refcoords} = [ $seedname, $protein_aa_string ]
+# where $seedname is the part of the header BEFORE the final "/".
+#
+# If multiple entries map to the same coords, the first wins.
+#################################################################
+sub vpatch_load_altprotein_fasta {
+  my ($file, $by_coords_HR) = @_;
+  open(my $fh, "<", $file) or die "ERROR, cannot read --altprotein $file: $!";
+  my $cur_hdr = undef;
+  my $cur_seq = "";
+  while(my $line = <$fh>) {
+    chomp $line;
+    if($line =~ /^>(.+)$/) {
+      _altprot_store($cur_hdr, $cur_seq, $by_coords_HR) if defined $cur_hdr;
+      $cur_hdr = $1;
+      $cur_seq = "";
+    } elsif(defined $cur_hdr) {
+      $line =~ s/\s+//g;
+      $cur_seq .= $line;
+    }
+  }
+  _altprot_store($cur_hdr, $cur_seq, $by_coords_HR) if defined $cur_hdr;
+  close($fh);
+}
+
+sub _altprot_store {
+  my ($hdr, $seq, $by_coords_HR) = @_;
+  return unless $hdr =~ /^(\S+)\/(\d+\.\.\d+:[\+\-])$/;
+  my ($seedfull, $coords) = ($1, $2);
+  return if exists $by_coords_HR->{$coords};
+  $by_coords_HR->{$coords} = [ $seedfull, $seq ];
+}
+
+#################################################################
 # Subroutine: vpatch_extract_alt_protein()
 # Incept:     EPN* Thu May  7 2026
 #
@@ -526,28 +568,58 @@ sub vpatch_finalize {
   my $nalt = 0;
   for my $op (@{$ops_AR}) { $nalt++ if $op->{"op"} eq "add_alt"; }
   if($nalt > 0) {
+    # Optional pre-translated protein library — headers must end with /<refcoords>
+    my %altprot_by_coords_H = ();
+    if(opt_IsUsed("--altprotein", \%opt_HH)) {
+      my $apf = opt_Get("--altprotein", \%opt_HH);
+      vpatch_load_altprotein_fasta($apf, \%altprot_by_coords_H);
+      printf("# finalize: loaded %d pre-translated proteins from %s\n",
+             scalar(keys %altprot_by_coords_H), $apf);
+    }
+
+    # STK source (only loaded if needed)
     my $stk_file = opt_IsUsed("--stk", \%opt_HH)
                      ? opt_Get("--stk", \%opt_HH)
                      : "$vb_dir/$root.stk";
-    if(! -s $stk_file) {
-      die "ERROR, finalize: cannot find seed STK at $stk_file (use --stk to override)";
-    }
-    my $msa = Bio::Easel::MSA->new({ fileLocation => $stk_file, isDna => 1 });
-    if(! $msa->has_rf) {
-      die "ERROR, finalize: STK $stk_file lacks RF annotation; cannot translate alts";
-    }
+    my $msa = undef;
+    my $msa_load_failed = 0;
+
     open(my $prot_fh, ">>", $protein_fa_file)
       or die "ERROR, cannot append to $protein_fa_file: $!";
     for my $op (@{$ops_AR}) {
       next unless $op->{"op"} eq "add_alt";
       my $new_coords = $op->{"_new_cds_coords"};
-      my ($seed, $protein) = vpatch_extract_alt_protein($msa, $new_coords, \%FH_H);
+      my ($seed, $protein) = (undef, undef);
+
+      # 1) library lookup
+      if(exists $altprot_by_coords_H{$new_coords}) {
+        ($seed, $protein) = @{$altprot_by_coords_H{$new_coords}};
+      }
+      # 2) STK extraction fallback
       if(! defined $protein) {
-        die "ERROR, finalize: no seed sequence in $stk_file produced a complete ORF for new alt coords $new_coords";
+        if(! defined $msa && ! $msa_load_failed) {
+          if(! -s $stk_file) { $msa_load_failed = 1; }
+          else {
+            $msa = Bio::Easel::MSA->new({ fileLocation => $stk_file, isDna => 1 });
+            if(! $msa->has_rf) {
+              warn "WARNING, $stk_file lacks RF annotation; STK extraction disabled\n";
+              $msa_load_failed = 1; $msa = undef;
+            }
+          }
+        }
+        if(defined $msa) {
+          ($seed, $protein) = vpatch_extract_alt_protein($msa, $new_coords, \%FH_H);
+        }
+      }
+
+      if(! defined $protein) {
+        die "ERROR, finalize: no protein found for new alt coords $new_coords. "
+          . "Tried --altprotein library (if any) and STK '$stk_file'. "
+          . "Provide --altprotein <file> with a fasta entry whose header ends with /$new_coords, "
+          . "or supply a --stk that contains a seed with the matching ORF.";
       }
       my $hdr = "$seed/$new_coords";
       print $prot_fh ">$hdr\n";
-      # 60 chars per line
       for(my $i = 0; $i < length($protein); $i += 60) {
         print $prot_fh substr($protein, $i, 60) . "\n";
       }
@@ -557,6 +629,12 @@ sub vpatch_finalize {
              $hdr, length($protein), $seed);
     }
     close($prot_fh);
+  }
+
+  # sanity-check patched feature coords are within model length
+  for(my $mi = 0; $mi < scalar(@{$mdl_info_AHR}); $mi++) {
+    my $mname = $mdl_info_AHR->[$mi]{"name"};
+    vdr_FeatureInfoValidateCoords($ftr_info_HAHR->{$mname}, $mdl_info_AHR->[$mi]{"length"}, \%FH_H);
   }
 
   # write patched minfo
