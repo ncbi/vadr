@@ -235,13 +235,68 @@ sub vpatch_parse_tsv {
 }
 
 #################################################################
-# Subroutine: vpatch_apply_add_exc()  -- stub for commit 1
+# Subroutine: vpatch_apply_add_exc()
 # Incept:     EPN* Thu May  7 2026
+#
+# Apply one add_exc op: append a key:value qualifier to either the
+# MODEL line (if key is "lowsim_exc") or a single matching CDS FEATURE
+# line (matched on coords). If the key already exists, append the new
+# value to the existing one separated by ",". The minfo writer in
+# vadr.pm preserves the in-memory map exactly, so order of existing
+# keys is unchanged.
 #################################################################
 sub vpatch_apply_add_exc {
   my ($op_HR, $mdl_info_AHR, $ftr_info_HAHR) = @_;
-  printf("# [planned] add_exc %s coords=%s key=%s value=%s\n",
-         $op_HR->{"model"}, $op_HR->{"coords"}, $op_HR->{"key"}, $op_HR->{"value"});
+  my $model  = $op_HR->{"model"};
+  my $coords = $op_HR->{"coords"};
+  my $key    = $op_HR->{"key"};
+  my $value  = $op_HR->{"value"};
+  my $line_n = $op_HR->{"line"};
+
+  # locate model
+  my $mdl_idx = -1;
+  for(my $i = 0; $i < scalar(@{$mdl_info_AHR}); $i++) {
+    if($mdl_info_AHR->[$i]{"name"} eq $model) { $mdl_idx = $i; last; }
+  }
+  if($mdl_idx < 0) { die "ERROR, add_exc line $line_n: model '$model' not found in minfo"; }
+
+  # MODEL-level exceptions
+  if($key eq "lowsim_exc") {
+    if(defined $mdl_info_AHR->[$mdl_idx]{$key} && $mdl_info_AHR->[$mdl_idx]{$key} ne "") {
+      $mdl_info_AHR->[$mdl_idx]{$key} .= "," . $value;
+    }
+    else {
+      $mdl_info_AHR->[$mdl_idx]{$key} = $value;
+    }
+    printf("# applied add_exc MODEL %s key=%s value=%s\n", $model, $key, $value);
+    return;
+  }
+
+  # FEATURE-level: find a single CDS feature with matching coords.
+  my $ftr_AR = $ftr_info_HAHR->{$model};
+  if(! defined $ftr_AR) { die "ERROR, add_exc line $line_n: model $model has no features in ftr_info"; }
+
+  my @match_idxs = ();
+  for(my $fi = 0; $fi < scalar(@{$ftr_AR}); $fi++) {
+    if($ftr_AR->[$fi]{"coords"} eq $coords && $ftr_AR->[$fi]{"type"} eq "CDS") {
+      push(@match_idxs, $fi);
+    }
+  }
+  if(scalar(@match_idxs) == 0) {
+    die "ERROR, add_exc line $line_n: no CDS feature with coords '$coords' on model '$model'";
+  }
+  if(scalar(@match_idxs) > 1) {
+    die sprintf("ERROR, add_exc line %d: %d CDS features match coords %s on model %s; cannot disambiguate",
+                $line_n, scalar(@match_idxs), $coords, $model);
+  }
+  my $fi = $match_idxs[0];
+  if(defined $ftr_AR->[$fi]{$key} && $ftr_AR->[$fi]{$key} ne "") {
+    $ftr_AR->[$fi]{$key} .= "," . $value;
+  }
+  else {
+    $ftr_AR->[$fi]{$key} = $value;
+  }
+  printf("# applied add_exc FEATURE CDS coords=%s key=%s value=%s\n", $coords, $key, $value);
 }
 
 #################################################################
