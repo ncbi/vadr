@@ -118,6 +118,7 @@ opt_Add("--group-aliases", "string",  undef,  $g,    undef, undef,          "app
 opt_Add("--seed-group",       "string",  undef, $g,   "--seed-accn", "--no-group-prefilter", "explicit canonical group label for seed accession is <s>",                       "explicit canonical group label for seed accession is <s> (overrides auto-derivation from metadata; required when seed metadata gives canonical group \"Unknown\"); value is matched against canonical_group column of .vadr.groups_audit.tsv after built-in normalization", \%opt_HH, \@opt_order_A);
 opt_Add("--no-group-prefilter", "boolean", 0,   $g,   "--seed-accn", "--seed-group",         "disable pre-filter of candidate pool by seed's canonical group",                "disable pre-filter of candidate pool by seed's canonical group (default ON when --seed-accn provided); when disabled, pool is unfiltered and may contain mixed lineages, leading to chimeric training sets", \%opt_HH, \@opt_order_A);
 opt_Add("--min-group-pool",   "integer", 5,     $g,   "--seed-accn", "--no-group-prefilter", "min seqs in seed's canonical group required after pre-filter as <n>",            "min seqs in seed's canonical group required after pre-filter as <n>; abort before expensive seed CM build if fewer than <n> candidates remain", \%opt_HH, \@opt_order_A);
+opt_Add("--include-unknown-group", "boolean", 0, $g,  "--seed-accn", "--no-group-prefilter", "in --seed-group pre-filter, also admit sequences with blank/Unknown genotype",  "in --seed-group pre-filter, also admit candidate sequences whose serotype/genotype metadata fields are both blank (canonical \"Unknown\"); off by default to preserve Issue-12 safety net; opt in on viruses where the blank-genotype pool is biologically OK and you want production-equivalent inclusivity", \%opt_HH, \@opt_order_A);
 opt_Add("--holdout-frac",  "real",    0,      $g,    undef, undef,          "fraction [0,1) of fetched sequences to hold out as test set (0 = disabled)", "fraction [0,1) of fetched sequences to hold out as test set as <x>; 0 = no holdout (default); split is done before tier-1 filtering", \%opt_HH, \@opt_order_A);
 opt_Add("--holdout-seed",  "integer", 42,     $g,    undef, undef,          "random seed for --holdout-frac shuffle",                                        "random seed for --holdout-frac shuffle as <n>", \%opt_HH, \@opt_order_A);
 
@@ -179,6 +180,7 @@ my $options_okay =
                 'seed-group=s'        => \$GetOptions_H{"--seed-group"},
                 'no-group-prefilter'  => \$GetOptions_H{"--no-group-prefilter"},
                 'min-group-pool=i'    => \$GetOptions_H{"--min-group-pool"},
+                'include-unknown-group' => \$GetOptions_H{"--include-unknown-group"},
                 'holdout-frac=f'  => \$GetOptions_H{"--holdout-frac"},
                 'holdout-seed=i'  => \$GetOptions_H{"--holdout-seed"},
 # overhang extension options
@@ -1323,6 +1325,7 @@ sub prefilter_metadata_by_seed_group {
 
   my $do_collapse = (! opt_Get("--no-collapse-numerals", \%opt_HH));
   my $do_strip    = (! opt_Get("--no-strip-descriptors", \%opt_HH));
+  my $do_include_unknown = opt_Get("--include-unknown-group", \%opt_HH) ? 1 : 0;
 
   # Helper: apply a --group-aliases mapping (display -> display) on top
   # of the built-in normalizer's display form, returning the possibly-
@@ -1436,6 +1439,7 @@ sub prefilter_metadata_by_seed_group {
   print $out_fh $hdr2;
   my $n_kept = 0;
   my $n_dropped = 0;
+  my $n_unknown_admitted = 0;
   my $seed_kept_via_match = 0;
   my $seed_kept_via_override = 0;
   while(my $line = <$in2>) {
@@ -1451,11 +1455,19 @@ sub prefilter_metadata_by_seed_group {
     my (undef, $nk) = $apply_alias->($pre_display, $pre_nk);
     my $is_seed = ($acc eq $resolved_seed_accn) ? 1 : 0;
     my $matches = ($nk eq $chosen_norm) ? 1 : 0;
-    if($matches || $is_seed) {
+    # --include-unknown-group: admit rows whose serotype AND genotype
+    # fields are both blank (orig_group fell through to literal
+    # "Unknown"). Production manually-curated builds train on such
+    # sequences; the auto-pipeline default keeps the Issue-12 safety
+    # net (drop them) and lets the user opt in per-virus.
+    my $is_blank_unknown = ($orig_group eq "Unknown") ? 1 : 0;
+    my $admit_unknown = ($do_include_unknown && $is_blank_unknown) ? 1 : 0;
+    if($matches || $is_seed || $admit_unknown) {
       print $out_fh $line . "\n";
       $n_kept++;
       if($is_seed && ! $matches) { $seed_kept_via_override = 1; }
       if($is_seed &&   $matches) { $seed_kept_via_match    = 1; }
+      if($admit_unknown && ! $matches && ! $is_seed) { $n_unknown_admitted++; }
     }
     else {
       $n_dropped++;
@@ -1473,6 +1485,11 @@ sub prefilter_metadata_by_seed_group {
     ofile_OutputString($FH_HR->{"log"}, 1,
       sprintf("# Pre-filter: seed %s did NOT match canonical \"%s\" on its own metadata; retained anyway as the explicit reference accession.\n",
               $resolved_seed_accn, $chosen_display));
+  }
+  if($do_include_unknown) {
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# Pre-filter: --include-unknown-group admitted %d additional blank/Unknown-genotype sequences (beyond canonical \"%s\" matches).\n",
+              $n_unknown_admitted, $chosen_display));
   }
 
   # Fail-fast: post-filter pool too small.
