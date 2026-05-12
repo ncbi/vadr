@@ -118,6 +118,7 @@ opt_Add("--group-aliases", "string",  undef,  $g,    undef, undef,          "app
 opt_Add("--seed-group",       "string",  undef, $g,   "--seed-accn", "--no-group-prefilter", "explicit canonical group label for seed accession is <s>",                       "explicit canonical group label for seed accession is <s> (overrides auto-derivation from metadata; required when seed metadata gives canonical group \"Unknown\"); value is matched against canonical_group column of .vadr.groups_audit.tsv after built-in normalization", \%opt_HH, \@opt_order_A);
 opt_Add("--no-group-prefilter", "boolean", 0,   $g,   "--seed-accn", "--seed-group",         "disable pre-filter of candidate pool by seed's canonical group",                "disable pre-filter of candidate pool by seed's canonical group (default ON when --seed-accn provided); when disabled, pool is unfiltered and may contain mixed lineages, leading to chimeric training sets", \%opt_HH, \@opt_order_A);
 opt_Add("--min-group-pool",   "integer", 5,     $g,   "--seed-accn", "--no-group-prefilter", "min seqs in seed's canonical group required after pre-filter as <n>",            "min seqs in seed's canonical group required after pre-filter as <n>; abort before expensive seed CM build if fewer than <n> candidates remain", \%opt_HH, \@opt_order_A);
+opt_Add("--include-unknown-group", "boolean", 0, $g,  "--seed-accn", "--no-group-prefilter", "in --seed-group pre-filter, also admit sequences with blank/Unknown genotype",  "in --seed-group pre-filter, also admit candidate sequences whose serotype/genotype metadata fields are both blank (canonical \"Unknown\"); off by default to preserve Issue-12 safety net; opt in on viruses where the blank-genotype pool is biologically OK and you want production-equivalent inclusivity", \%opt_HH, \@opt_order_A);
 opt_Add("--holdout-frac",  "real",    0,      $g,    undef, undef,          "fraction [0,1) of fetched sequences to hold out as test set (0 = disabled)", "fraction [0,1) of fetched sequences to hold out as test set as <x>; 0 = no holdout (default); split is done before tier-1 filtering", \%opt_HH, \@opt_order_A);
 opt_Add("--holdout-seed",  "integer", 42,     $g,    undef, undef,          "random seed for --holdout-frac shuffle",                                        "random seed for --holdout-frac shuffle as <n>", \%opt_HH, \@opt_order_A);
 
@@ -179,6 +180,7 @@ my $options_okay =
                 'seed-group=s'        => \$GetOptions_H{"--seed-group"},
                 'no-group-prefilter'  => \$GetOptions_H{"--no-group-prefilter"},
                 'min-group-pool=i'    => \$GetOptions_H{"--min-group-pool"},
+                'include-unknown-group' => \$GetOptions_H{"--include-unknown-group"},
                 'holdout-frac=f'  => \$GetOptions_H{"--holdout-frac"},
                 'holdout-seed=i'  => \$GetOptions_H{"--holdout-seed"},
 # overhang extension options
@@ -451,6 +453,19 @@ if((! defined $meta_tsv) || (! -e $meta_tsv)) {
 # (early-blastn each candidate against the seed) is the natural
 # follow-up if mislabel rates are significant in practice.
 #---------------------------------------
+# Load the user-supplied --group-aliases file (if any) BEFORE the
+# pre-filter so the alias hash is available to
+# prefilter_metadata_by_seed_group(). Previously this load happened
+# downstream in parse_and_filter_metadata, leaving the pre-filter
+# alias-blind and silently dropping sequences whose canonical group
+# differed from the seed's only by a user-defined alias (e.g.
+# rsv-b BA9 -> BA).
+my %group_alias_H  = ();
+my %alias_source_used_H = ();
+if(opt_IsUsed("--group-aliases", \%opt_HH)) {
+  read_group_aliases(opt_Get("--group-aliases", \%opt_HH), \%group_alias_H, $FH_HR);
+}
+
 my $do_group_prefilter = ($do_seed_bootstrap && (! opt_Get("--no-group-prefilter", \%opt_HH)));
 my $seed_canonical_group = undef;
 if($do_group_prefilter) {
@@ -467,6 +482,7 @@ if($do_group_prefilter) {
                                      $seed_accn_for_filter,
                                      $seed_group_user,
                                      $min_group_pool,
+                                     \%group_alias_H, \%alias_source_used_H,
                                      \%ofile_info_HH, $FH_HR);
   $meta_tsv = $prefiltered_tsv;
 }
@@ -670,15 +686,11 @@ my %candidate_AH = ();
 my %decision_H = ();
 my $max_per_group = opt_Get("--xpergroup", \%opt_HH);
 
-# Read user-supplied group-name alias file (if any). Returns a hash
-# keyed by source canonical (as produced by the built-in normalizer)
-# mapping to the final target canonical after chain resolution.
-my %group_alias_H  = ();
-my %alias_source_used_H = ();
-if(opt_IsUsed("--group-aliases", \%opt_HH)) {
-  read_group_aliases(opt_Get("--group-aliases", \%opt_HH), \%group_alias_H, $FH_HR);
-}
-
+# Note: %group_alias_H / %alias_source_used_H were declared and
+# populated upstream (before the pre-filter call) so that
+# prefilter_metadata_by_seed_group() can honor user-defined aliases.
+# %alias_source_used_H may already contain entries marked used by the
+# pre-filter; parse_and_filter_metadata adds any additional hits.
 parse_and_filter_metadata($meta_tsv, $seed_model_len, $max_per_group, \%candidate_AH, \%decision_H, $ref_accn, \%group_alias_H, \%alias_source_used_H, $FH_HR);
 
 # Warn about alias-file source keys that never matched any sequence's
@@ -1239,6 +1251,9 @@ exit(0);
 #################################################################
 # Subroutine : prefilter_metadata_by_seed_group()
 # Incept     : EPN* Tue Apr 28 2026
+#              EPN* Thu May  7 2026 [thread --group-aliases hash into
+#                                    pre-filter so user-defined aliases
+#                                    are honored during pre-filtering]
 #
 # Purpose    : Pre-filter the candidate-pool metadata TSV to keep
 #              only sequences whose canonical group matches the
@@ -1292,6 +1307,13 @@ exit(0);
 #                     seed's TSV row
 #   $min_pool       : --min-group-pool threshold; die if surviving
 #                     pool < $min_pool (seed itself counts toward pool)
+#   $alias_HR       : ref to user-supplied alias map source_display ->
+#                     final_target_display (may be empty / undef);
+#                     applied AFTER built-in normalization, matching
+#                     parse_and_filter_metadata() semantics.
+#   $alias_used_HR  : ref to hash; alias sources that fired at least
+#                     once during pre-filter get marked here so that
+#                     downstream unused-alias warnings stay accurate.
 #   $ofile_info_HHR : output file info hash (for register/filelist)
 #   $FH_HR          : output file handles ("log", ...)
 #
@@ -1299,10 +1321,25 @@ exit(0);
 #              filtering (string).
 #################################################################
 sub prefilter_metadata_by_seed_group {
-  my ($in_tsv, $out_tsv, $seed_accn, $seed_group_user, $min_pool, $ofile_info_HHR, $FH_HR) = @_;
+  my ($in_tsv, $out_tsv, $seed_accn, $seed_group_user, $min_pool, $alias_HR, $alias_used_HR, $ofile_info_HHR, $FH_HR) = @_;
 
   my $do_collapse = (! opt_Get("--no-collapse-numerals", \%opt_HH));
   my $do_strip    = (! opt_Get("--no-strip-descriptors", \%opt_HH));
+  my $do_include_unknown = opt_Get("--include-unknown-group", \%opt_HH) ? 1 : 0;
+
+  # Helper: apply a --group-aliases mapping (display -> display) on top
+  # of the built-in normalizer's display form, returning the possibly-
+  # aliased (display, norm_key) pair. No-op if no aliases provided.
+  my $apply_alias = sub {
+    my ($disp, $nk) = @_;
+    if(defined $alias_HR && exists $alias_HR->{$disp}) {
+      $alias_used_HR->{$disp} = 1 if(defined $alias_used_HR);
+      my $new_disp = $alias_HR->{$disp};
+      my $new_nk   = normalize_group_name_expanded($new_disp, $do_collapse, $do_strip);
+      return ($new_disp, $new_nk);
+    }
+    return ($disp, $nk);
+  };
 
   # Pass 1: scan every TSV row, compute canonical group, count per
   # canonical, and resolve the seed's row (with version-suffix tolerance).
@@ -1310,9 +1347,10 @@ sub prefilter_metadata_by_seed_group {
   my $hdr1 = <$in1>;
   my $resolved_seed_accn = $seed_accn;  # may be upgraded to versioned form
   my $seed_row_canonical = undef;       # canonical group key for seed (post-normalize, display)
-  my %canon_count_H = ();               # display-canonical -> n_seqs
-  my %canon_norm_H  = ();               # display-canonical -> norm_key
-  my %first_display_for_norm_H = ();    # norm_key -> first-seen display canonical
+  my %canon_count_H = ();               # display-canonical -> n_seqs (post-alias)
+  my %canon_norm_H  = ();               # display-canonical -> norm_key (post-alias)
+  my %first_display_for_norm_H = ();    # norm_key -> first-seen display canonical (post-alias)
+  my %pre_display_for_pre_nk_H = ();    # pre-alias norm_key -> first-seen orig display
   my %seed_row_H = ();                  # store seed's row fields
   my $seed_found = 0;
   while(my $line = <$in1>) {
@@ -1322,11 +1360,17 @@ sub prefilter_metadata_by_seed_group {
     my $orig_group = "Unknown";
     if    (defined $serotype && $serotype ne "") { $orig_group = $serotype; }
     elsif (defined $genotype && $genotype ne "") { $orig_group = $genotype; }
-    my $norm_key = normalize_group_name_expanded($orig_group, $do_collapse, $do_strip);
-    if(! exists $first_display_for_norm_H{$norm_key}) {
-      $first_display_for_norm_H{$norm_key} = $orig_group;
+    my $pre_nk = normalize_group_name_expanded($orig_group, $do_collapse, $do_strip);
+    if(! exists $pre_display_for_pre_nk_H{$pre_nk}) {
+      $pre_display_for_pre_nk_H{$pre_nk} = $orig_group;
     }
-    my $display = $first_display_for_norm_H{$norm_key};
+    my $pre_display = $pre_display_for_pre_nk_H{$pre_nk};
+    # Apply --group-aliases (post-builtin-normalization, display->display).
+    my ($display, $norm_key) = $apply_alias->($pre_display, $pre_nk);
+    if(! exists $first_display_for_norm_H{$norm_key}) {
+      $first_display_for_norm_H{$norm_key} = $display;
+    }
+    $display = $first_display_for_norm_H{$norm_key};
     $canon_count_H{$display}++;
     $canon_norm_H{$display} = $norm_key;
 
@@ -1359,8 +1403,11 @@ sub prefilter_metadata_by_seed_group {
   my $chosen_norm    = undef;  # norm_key for record matching
 
   if(defined $seed_group_user) {
-    # User-supplied; normalize and validate.
-    my $user_norm = normalize_group_name_expanded($seed_group_user, $do_collapse, $do_strip);
+    # User-supplied; normalize, alias, and validate. Alias applies to
+    # the user's label too so that e.g. --seed-group BA9 with alias
+    # BA9->BA selects the BA pool.
+    my $user_pre_nk = normalize_group_name_expanded($seed_group_user, $do_collapse, $do_strip);
+    my ($user_disp, $user_norm) = $apply_alias->($seed_group_user, $user_pre_nk);
     if(! exists $first_display_for_norm_H{$user_norm}) {
       ofile_FAIL(sprintf("ERROR, --seed-group \"%s\" (normalized to \"%s\") does not match any canonical group in metadata TSV %s.\nValid canonical labels (top 5 by count): %s.\nFull list available in <out_root>.vadr.groups_audit.tsv after a previous run, or by reviewing the TSV's serotype/genotype columns directly.",
                          $seed_group_user, $user_norm, $in_tsv, $top5_str), 1, $FH_HR);
@@ -1392,6 +1439,7 @@ sub prefilter_metadata_by_seed_group {
   print $out_fh $hdr2;
   my $n_kept = 0;
   my $n_dropped = 0;
+  my $n_unknown_admitted = 0;
   my $seed_kept_via_match = 0;
   my $seed_kept_via_override = 0;
   while(my $line = <$in2>) {
@@ -1401,14 +1449,25 @@ sub prefilter_metadata_by_seed_group {
     my $orig_group = "Unknown";
     if    (defined $serotype && $serotype ne "") { $orig_group = $serotype; }
     elsif (defined $genotype && $genotype ne "") { $orig_group = $genotype; }
-    my $nk = normalize_group_name_expanded($orig_group, $do_collapse, $do_strip);
+    my $pre_nk = normalize_group_name_expanded($orig_group, $do_collapse, $do_strip);
+    my $pre_display = exists $pre_display_for_pre_nk_H{$pre_nk}
+                      ? $pre_display_for_pre_nk_H{$pre_nk} : $orig_group;
+    my (undef, $nk) = $apply_alias->($pre_display, $pre_nk);
     my $is_seed = ($acc eq $resolved_seed_accn) ? 1 : 0;
     my $matches = ($nk eq $chosen_norm) ? 1 : 0;
-    if($matches || $is_seed) {
+    # --include-unknown-group: admit rows whose serotype AND genotype
+    # fields are both blank (orig_group fell through to literal
+    # "Unknown"). Production manually-curated builds train on such
+    # sequences; the auto-pipeline default keeps the Issue-12 safety
+    # net (drop them) and lets the user opt in per-virus.
+    my $is_blank_unknown = ($orig_group eq "Unknown") ? 1 : 0;
+    my $admit_unknown = ($do_include_unknown && $is_blank_unknown) ? 1 : 0;
+    if($matches || $is_seed || $admit_unknown) {
       print $out_fh $line . "\n";
       $n_kept++;
       if($is_seed && ! $matches) { $seed_kept_via_override = 1; }
       if($is_seed &&   $matches) { $seed_kept_via_match    = 1; }
+      if($admit_unknown && ! $matches && ! $is_seed) { $n_unknown_admitted++; }
     }
     else {
       $n_dropped++;
@@ -1426,6 +1485,11 @@ sub prefilter_metadata_by_seed_group {
     ofile_OutputString($FH_HR->{"log"}, 1,
       sprintf("# Pre-filter: seed %s did NOT match canonical \"%s\" on its own metadata; retained anyway as the explicit reference accession.\n",
               $resolved_seed_accn, $chosen_display));
+  }
+  if($do_include_unknown) {
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# Pre-filter: --include-unknown-group admitted %d additional blank/Unknown-genotype sequences (beyond canonical \"%s\" matches).\n",
+              $n_unknown_admitted, $chosen_display));
   }
 
   # Fail-fast: post-filter pool too small.
