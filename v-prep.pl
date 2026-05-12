@@ -3106,7 +3106,116 @@ sub suggest_alias_candidates {
     }
   }
 
-  # --- Heuristic 4: singleton advisory (no auto-merge target) ---
+  # --- Heuristic 4: Roman-numeral suffix collapse ---
+  # For each pair (X, Y): if X matches ^Y[\s_-]?[IVXivx]+$ and Y exists,
+  # propose merge with direction by count.
+  # Catches: "South American I" -> "South American", "lineage I" -> "lineage", etc.
+  {
+    my @props = ();
+    my @groups = sort keys %grp_ct;
+    foreach my $x (@groups) {
+      foreach my $y (@groups) {
+        next if $x eq $y;
+        if ($x =~ /^\Q$y\E[\s_-]?[IVXivx]+$/) {
+          my ($tgt, $src) = ($grp_ct{$x} > $grp_ct{$y})
+            ? ($x, $y)
+            : ($y, $x);
+          my $key = "$tgt\t$src";
+          unless (exists $proposed{$key}) {
+            $proposed{$key} = 1;
+            push @props, [$tgt, $src];
+            $n_proposed++;
+          }
+        }
+      }
+    }
+    if (@props) {
+      my $blk = "# Heuristic: Roman-numeral suffix collapse\n# Confidence: high\n";
+      foreach my $p (sort { $a->[0] cmp $b->[0] || $a->[1] cmp $b->[1] } @props) {
+        my ($tgt, $src) = @{$p};
+        $blk .= sprintf("# %s (%d seqs) looks like a Roman-numeral suffix variant of %s (%d seqs).\n",
+          $src, $grp_ct{$src}, $tgt, $grp_ct{$tgt});
+        $blk .= "$tgt\t$src\n";
+      }
+      push @blocks, $blk;
+    }
+  }
+
+  # --- Heuristic 5: bracket-stripping ---
+  # For each group X containing "(<something>)": strip the parenthesized portion
+  # and surrounding whitespace to get Y; if Y exists as a canonical group,
+  # propose merge with direction by count.
+  # Catches: "European (Western)" -> "European"
+  {
+    my @props = ();
+    my @groups = sort keys %grp_ct;
+    foreach my $x (@groups) {
+      (my $stripped = $x) =~ s/\s*\([^)]*\)\s*/ /g;
+      $stripped =~ s/^\s+|\s+$//g;
+      $stripped =~ s/\s{2,}/ /g;
+      next if $stripped eq "" || $stripped eq $x;
+      next unless exists $grp_ct{$stripped};
+      my ($tgt, $src) = ($grp_ct{$x} > $grp_ct{$stripped})
+        ? ($x, $stripped)
+        : ($stripped, $x);
+      my $key = "$tgt\t$src";
+      unless (exists $proposed{$key}) {
+        $proposed{$key} = 1;
+        push @props, [$tgt, $src];
+        $n_proposed++;
+      }
+    }
+    if (@props) {
+      my $blk = "# Heuristic: bracket-stripping\n# Confidence: high\n";
+      foreach my $p (sort { $a->[0] cmp $b->[0] || $a->[1] cmp $b->[1] } @props) {
+        my ($tgt, $src) = @{$p};
+        $blk .= sprintf("# %s (%d seqs) matches %s (%d seqs) after removing parenthesized qualifier.\n",
+          $src, $grp_ct{$src}, $tgt, $grp_ct{$tgt});
+        $blk .= "$tgt\t$src\n";
+      }
+      push @blocks, $blk;
+    }
+  }
+
+  # --- Heuristic 6: trailing-delimiter stripping ---
+  # For each group X containing ";" or ",": take the portion BEFORE the delimiter,
+  # trimmed; if that prefix string exists as canonical Y, propose merge (direction
+  # by count).  User should verify that the pre-delimiter portion is the canonical
+  # label rather than an accidental prefix.
+  # Catches: "lineage II, deer tick virus" -> "lineage II"
+  #          "lineage 1; Western Mediterranean subtype" -> "lineage 1"
+  {
+    my @props = ();
+    my @groups = sort keys %grp_ct;
+    foreach my $x (@groups) {
+      next unless $x =~ /[;,]/;
+      (my $prefix_str = $x) =~ s/[;,].*$//;
+      $prefix_str =~ s/^\s+|\s+$//g;
+      next if $prefix_str eq "" || $prefix_str eq $x;
+      next unless exists $grp_ct{$prefix_str};
+      my ($tgt, $src) = ($grp_ct{$x} > $grp_ct{$prefix_str})
+        ? ($x, $prefix_str)
+        : ($prefix_str, $x);
+      my $key = "$tgt\t$src";
+      unless (exists $proposed{$key}) {
+        $proposed{$key} = 1;
+        push @props, [$tgt, $src];
+        $n_proposed++;
+      }
+    }
+    if (@props) {
+      my $blk = "# Heuristic: trailing-delimiter stripping\n# Confidence: medium — verify pre-delimiter portion is the canonical label\n";
+      foreach my $p (sort { $a->[0] cmp $b->[0] || $a->[1] cmp $b->[1] } @props) {
+        my ($tgt, $src) = @{$p};
+        $blk .= sprintf("# %s (%d seqs) matches %s (%d seqs) after stripping trailing delimiter clause.\n",
+          $src, $grp_ct{$src}, $tgt, $grp_ct{$tgt});
+        $blk .= "$tgt\t$src\n";
+      }
+      push @blocks, $blk;
+    }
+  }
+
+  # --- Advisory: singleton groups (no auto-merge target) ---
   {
     my @singletons = sort grep { $grp_ct{$_} <= 1 } keys %grp_ct;
     if (@singletons) {
