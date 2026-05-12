@@ -470,6 +470,17 @@ if((! defined $meta_tsv) || (! -e $meta_tsv)) {
   die "ERROR, metadata TSV is undefined or does not exist: " . ((defined $meta_tsv) ? $meta_tsv : "[undef]");
 }
 
+# Load the user-supplied --group-aliases file (if any) BEFORE the
+# pre-filter so the alias hash is available to
+# prefilter_metadata_by_seed_group() in both single-seed and multi-seed
+# modes. Previously this load happened downstream in
+# parse_and_filter_metadata, leaving the pre-filter alias-blind.
+my %group_alias_H  = ();
+my %alias_source_used_H = ();
+if(opt_IsUsed("--group-aliases", \%opt_HH)) {
+  read_group_aliases(opt_Get("--group-aliases", \%opt_HH), \%group_alias_H, $FH_HR);
+}
+
 #---------------------------------------
 # Issue 9: multi-seed post-fetch validation (Stage 2)
 #
@@ -724,18 +735,11 @@ if($is_multi_seed) {
 # (early-blastn each candidate against the seed) is the natural
 # follow-up if mislabel rates are significant in practice.
 #---------------------------------------
-# Load the user-supplied --group-aliases file (if any) BEFORE the
-# pre-filter so the alias hash is available to
-# prefilter_metadata_by_seed_group(). Previously this load happened
-# downstream in parse_and_filter_metadata, leaving the pre-filter
-# alias-blind and silently dropping sequences whose canonical group
-# differed from the seed's only by a user-defined alias (e.g.
-# rsv-b BA9 -> BA).
-my %group_alias_H  = ();
-my %alias_source_used_H = ();
-if(opt_IsUsed("--group-aliases", \%opt_HH)) {
-  read_group_aliases(opt_Get("--group-aliases", \%opt_HH), \%group_alias_H, $FH_HR);
-}
+# Note: %group_alias_H / %alias_source_used_H were declared and
+# populated upstream (before multi-seed Phase A) so that both
+# prefilter_metadata_by_seed_group() calls (multi-seed and single-seed)
+# honor user-defined aliases. %alias_source_used_H may already contain
+# entries marked used by earlier prefilter calls.
 
 my $do_group_prefilter = ($do_seed_bootstrap && (! opt_Get("--no-group-prefilter", \%opt_HH)));
 my $seed_canonical_group = undef;
