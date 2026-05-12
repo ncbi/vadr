@@ -98,6 +98,7 @@ opt_Add("-v",           "boolean", 0,          $g,    undef, undef,       "be ve
 opt_Add("--profile",    "boolean", 0,          $g,  "--stk,--minfoin", "--infa,--inft,--gb,--ingb,--addminfo,--onlyurl", "build a model from an input multi-sequence alignment (--stk) and model info (--minfoin)", "build a model from an input multi-sequence alignment (--stk) and model info (--minfoin)", \%opt_HH, \@opt_order_A);
 opt_Add("--stk",        "string",  undef,      $g,    undef, undef,       "read stockholm alignment from <s> (single-seq unless --profile)", "read stockholm alignment from <s> (single-seq unless --profile)", \%opt_HH, \@opt_order_A);
 opt_Add("--minfoin",    "string",  undef,      $g, "--profile", undef,   "read model info file from <s> (for --profile mode)",           "read model info file from <s> (for --profile mode)", \%opt_HH, \@opt_order_A);
+opt_Add("--altprotein", "string",  undef,      $g, "--profile", undef,   "append alt protein seqs from <s> to protein DB (for --profile mode)", "append alt protein seqs from <s> to protein DB (for --profile mode)", \%opt_HH, \@opt_order_A);
 opt_Add("--copy-stk",   "boolean", 0,          $g, "--profile", "--abspath-stk", "in --profile mode, copy seed .stk into output dir (default: symlink)", "in --profile mode, copy seed .stk into output dir instead of symlinking it", \%opt_HH, \@opt_order_A);
 opt_Add("--abspath-stk","boolean", 0,          $g, "--profile", "--copy-stk",    "in --profile mode, write absolute :FILE: path to minfo (no symlink/copy)", "in --profile mode, rewrite :FILE: minfo references to absolute paths instead of placing the seed .stk in --mdir", \%opt_HH, \@opt_order_A);
 opt_Add("--infa",       "string",  undef,      $g,    undef, undef,       "read single sequence fasta file from <s>, don't fetch it",    "read single sequence fasta file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
@@ -175,6 +176,7 @@ my $options_okay =
         'profile'      => \$GetOptions_H{"--profile"},
                 'stk=s'        => \$GetOptions_H{"--stk"},
         'minfoin=s'    => \$GetOptions_H{"--minfoin"},
+                'altprotein=s' => \$GetOptions_H{"--altprotein"},
                 'copy-stk'     => \$GetOptions_H{"--copy-stk"},
                 'abspath-stk'  => \$GetOptions_H{"--abspath-stk"},
                 'infa=s'       => \$GetOptions_H{"--infa"},
@@ -875,6 +877,28 @@ if($ncds > 0) {
                                    $out_root, \@{$ftr_info_HAH{$mdl_name}}, \%opt_HH, $FH_HR);
   }
   close $ofile_info_HH{"FH"}{"proteinfasta"};
+
+  # Append alt proteins from v-prep if available. Explicit --altprotein
+  # wins; otherwise fall back to <stk_prefix>.alt.protein.fa next to the
+  # --stk file, which v-prep writes by convention.
+  my $alt_prot_file = undef;
+  if(opt_IsUsed("--altprotein", \%opt_HH)) {
+    $alt_prot_file = opt_Get("--altprotein", \%opt_HH);
+  }
+  elsif(opt_IsUsed("--stk", \%opt_HH)) {
+    my $stk_file = opt_Get("--stk", \%opt_HH);
+    (my $stk_prefix = $stk_file) =~ s/\.stk$//;
+    my $auto_alt_file = $stk_prefix . ".alt.protein.fa";
+    if(-s $auto_alt_file) { $alt_prot_file = $auto_alt_file; }
+  }
+  if(defined $alt_prot_file && -s $alt_prot_file) {
+    open(my $alt_fh, "<", $alt_prot_file) || ofile_FAIL("ERROR, unable to open alt protein file $alt_prot_file", 1, $FH_HR);
+    open(my $prot_fh, ">>", $protein_fa_file) || ofile_FAIL("ERROR, unable to append to $protein_fa_file", 1, $FH_HR);
+    while(my $line = <$alt_fh>) { print $prot_fh $line; }
+    close($alt_fh);
+    close($prot_fh);
+  }
+
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
   # build blast db

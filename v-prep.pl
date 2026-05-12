@@ -104,6 +104,10 @@ opt_Add("--skip-rna",   "boolean", 0,             $g,    undef, "--rna-cm-file",
 opt_Add("--no-auto-alt", "boolean", 0,           $g,    undef, "--alt-file",   "skip auto-detection of alternative CDS features and exceptions", "skip auto-detection of alternative CDS features and exceptions", \%opt_HH, \@opt_order_A);
 opt_Add("--alt-file",   "string",  undef,         $g,    undef, "--no-auto-alt", "read alternative feature definitions from file <s>",           "read alternative feature definitions from file <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--alt-min-ind", "integer", 2,            $g,    undef, "--no-auto-alt", "min independent observations to add an alternative or exception", "min independent observations to add an alternative or exception as <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--alt-min-count", "integer", 3,          $g,    undef, "--no-auto-alt",
+  "min raw sequence count to add an alternative or exception (parallel to --alt-min-ind)",
+  "min raw sequence count to add an alt/exc regardless of prefix diversity as <n>",
+  \%opt_HH, \@opt_order_A);
 opt_Add("--vannot-opts-file", "string", undef,    $g,    undef, undef,          "read extra v-annotate.pl options from file <s>",              "read extra v-annotate.pl options from file <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--alt-max-fract", "real",    0.2,       $g,    undef, "--no-auto-alt", "max fractional length deviation for alternative CDS",         "max fractional length deviation for alternative CDS as <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--nper1grp",     "integer", 5,         $g,    undef, undef,          "number of seqs per group when 1 group",                       "number of seqs per group when 1 group as <n>", \%opt_HH, \@opt_order_A);
@@ -164,6 +168,7 @@ my $options_okay =
                 'no-auto-alt'  => \$GetOptions_H{"--no-auto-alt"},
                 'alt-file=s'   => \$GetOptions_H{"--alt-file"},
                 'alt-min-ind=i' => \$GetOptions_H{"--alt-min-ind"},
+                'alt-min-count=i' => \$GetOptions_H{"--alt-min-count"},
                 'vannot-opts-file=s' => \$GetOptions_H{"--vannot-opts-file"},
                 'alt-max-fract=f' => \$GetOptions_H{"--alt-max-fract"},
                 'nper1grp=i'   => \$GetOptions_H{"--nper1grp"},
@@ -761,12 +766,12 @@ if($do_auto_alt) {
     # Detect alternative CDS features
     my $alt_groups_HHR = parse_alt_for_cds_boundary_alerts($tier2_alt_file, $FH_HR);
     my $max_fract_diff = opt_Get("--alt-max-fract", \%opt_HH);
-    my $alt_features_AR = detect_alternative_features($alt_groups_HHR, $min_independent, $max_fract_diff,
+    my $alt_features_AR = detect_alternative_features($alt_groups_HHR, $min_independent, opt_Get("--alt-min-count", \%opt_HH), $max_fract_diff,
                                                        \@{$ftr_info_HA{$minfo_model_key}}, $minfo_model_key, $FH_HR);
 
     # Detect exceptions
     my $exc_groups_HHR = parse_alt_for_exceptions($tier2_alt_file, $FH_HR);
-    my $exceptions_AR = detect_exceptions($exc_groups_HHR, $min_independent, $FH_HR);
+    my $exceptions_AR = detect_exceptions($exc_groups_HHR, $min_independent, opt_Get("--alt-min-count", \%opt_HH), $FH_HR);
 
     my $n_alt = scalar(@{$alt_features_AR});
     my $n_exc = scalar(@{$exceptions_AR});
@@ -3938,6 +3943,7 @@ sub write_decision_summary_report {
 
 #################################################################
 # Subroutine : write_stitch_scaffold_outputs()
+# Incept     : EPN* Wed May  7 2026
 #################################################################
 sub write_stitch_scaffold_outputs {
   my ($candidate_AHR, $tier2_fasta_file, $ftr_info_HAR, $model_key, $seed_model_len, $selected_accn_file, $selected_fa_file, $block_plan_file, $do_keep, $ofile_info_HHR, $to_remove_AR, $FH_HR) = @_;
@@ -4034,6 +4040,9 @@ sub write_stitch_scaffold_outputs {
       foreach my $a (@cds_spans_A) {
         foreach my $b (@cds_spans_A) {
           next if($a->{idx} == $b->{idx});
+          my $afset_a = (defined $ftr_A[$a->{idx}]{"alternative_ftr_set"}) ? $ftr_A[$a->{idx}]{"alternative_ftr_set"} : "";
+          my $afset_b = (defined $ftr_A[$b->{idx}]{"alternative_ftr_set"}) ? $ftr_A[$b->{idx}]{"alternative_ftr_set"} : "";
+          next if($afset_a ne "" && $afset_a eq $afset_b);
           if($b->{lo} <= $a->{lo} && $b->{hi} >= $a->{hi} && $b->{span} > $a->{span}) {
             $contained_idx_H{$a->{idx}} = 1;
             last;
@@ -6722,7 +6731,7 @@ sub count_independent_observations {
 
 #################################################################
 # Subroutine: detect_alternative_features()
-# Incept:     EPN, Thu Mar 27 2026
+# Incept:     EPN, Thu Mar 27 2026 EPN*
 #
 # Purpose:    Given grouped CDS boundary alerts from
 #             parse_alt_for_cds_boundary_alerts(), apply the
@@ -6733,6 +6742,7 @@ sub count_independent_observations {
 #   $alt_groups_HHR:  REF to hash of hash of arrays from
 #                     parse_alt_for_cds_boundary_alerts()
 #   $min_independent: minimum number of independent observations
+#   $min_count:       minimum raw sequence count (alternative to min_independent)
 #   $max_fract_diff:  max fractional length deviation allowed
 #                     (e.g., 0.2 means alt CDS must be within
 #                     80%-120% of original CDS length)
@@ -6747,10 +6757,10 @@ sub count_independent_observations {
 #################################################################
 sub detect_alternative_features {
   my $sub_name = "detect_alternative_features";
-  my $nargs_expected = 6;
+  my $nargs_expected = 7;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
 
-  my ($alt_groups_HHR, $min_independent, $max_fract_diff, $ftr_info_AHR, $model_key, $FH_HR) = @_;
+  my ($alt_groups_HHR, $min_independent, $min_count, $max_fract_diff, $ftr_info_AHR, $model_key, $FH_HR) = @_;
 
   my @alt_features = ();
 
@@ -6768,12 +6778,16 @@ sub detect_alternative_features {
     foreach my $mdl_coords (sort keys %{$alt_groups_HHR->{$ftr_key}}) {
       my @entries = @{$alt_groups_HHR->{$ftr_key}{$mdl_coords}};
       my @accessions = map { $_->{"acc"} } @entries;
-      my $n_ind = count_independent_observations(\@accessions);
+      my $n_ind  = count_independent_observations(\@accessions);
+      my $n_seqs = scalar(@accessions);
 
-      if($n_ind < $min_independent) {
+      if($n_ind >= $min_independent || $n_seqs >= $min_count) {
+        # passes dual criterion: sufficient independent prefixes OR sufficient raw count
+      }
+      else {
         ofile_OutputString($FH_HR->{"log"}, 1,
-          sprintf("# Alt detect: %s %s n_seqs=%d n_ind=%d < min=%d, skipping\n",
-                  $ftr_key, $mdl_coords, scalar(@entries), $n_ind, $min_independent));
+          sprintf("# Alt detect: %s %s n_seqs=%d n_ind=%d < min_ind=%d and n_seqs=%d < min_count=%d, skipping\n",
+                  $ftr_key, $mdl_coords, $n_seqs, $n_ind, $min_independent, $n_seqs, $min_count));
         next;
       }
 
@@ -7065,7 +7079,7 @@ sub parse_alt_for_exceptions {
 
 #################################################################
 # Subroutine: detect_exceptions()
-# Incept:     EPN, Thu Mar 27 2026
+# Incept:     EPN, Thu Mar 27 2026 EPN*
 #
 # Purpose:    Given grouped exception-worthy alerts from
 #             parse_alt_for_exceptions(), apply the independence
@@ -7076,6 +7090,7 @@ sub parse_alt_for_exceptions {
 # Arguments:
 #   $exc_groups_HHR: REF to hash from parse_alt_for_exceptions()
 #   $min_independent: minimum independent observations
+#   $min_count:       minimum raw sequence count (alternative to min_independent)
 #   $FH_HR:          REF to hash of file handles
 #
 # Returns: REF to array of hashrefs, each with keys:
@@ -7084,10 +7099,10 @@ sub parse_alt_for_exceptions {
 #################################################################
 sub detect_exceptions {
   my $sub_name = "detect_exceptions";
-  my $nargs_expected = 3;
+  my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
 
-  my ($exc_groups_HHR, $min_independent, $FH_HR) = @_;
+  my ($exc_groups_HHR, $min_independent, $min_count, $FH_HR) = @_;
 
   my @exceptions = ();
 
@@ -7159,11 +7174,15 @@ sub detect_exceptions {
         next;
       }
 
-      if($n_ind < $min_independent) {
+      my $n_seqs_exc = scalar(@unique_acc_list);
+      if($n_ind >= $min_independent || $n_seqs_exc >= $min_count) {
+        # passes dual criterion: sufficient independent prefixes OR sufficient raw count
+      }
+      else {
         ofile_OutputString($FH_HR->{"log"}, 1,
-          sprintf("# Exc detect: %s %s %d..%d:%s n_seqs=%d n_ind=%d < min=%d, skipping\n",
+          sprintf("# Exc detect: %s %s %d..%d:%s n_seqs=%d n_ind=%d < min_ind=%d and n_seqs=%d < min_count=%d, skipping\n",
                   $exc_type, $ftr_name, $rstart, $rstop, $rstrand,
-                  scalar(@unique_acc_list), $n_ind, $min_independent));
+                  $n_seqs_exc, $n_ind, $min_independent, $n_seqs_exc, $min_count));
         next;
       }
 
