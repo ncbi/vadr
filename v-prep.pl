@@ -116,6 +116,7 @@ opt_Add("--npergrp",      "integer", undef,     $g,    undef, undef,          "o
 opt_Add("--no-collapse-numerals", "boolean", 0, $g,    undef, undef,          "disable Roman<->Arabic numeral collapsing in group_key normalization", "disable Roman<->Arabic numeral collapsing in group_key normalization (warn only, do not collapse)", \%opt_HH, \@opt_order_A);
 opt_Add("--no-strip-descriptors", "boolean", 0, $g,    undef, undef,          "disable descriptor-word stripping/token-sort in group_key normalization", "disable descriptor-word stripping (lineage,genotype,...) and alphabetical token sort in group_key normalization", \%opt_HH, \@opt_order_A);
 opt_Add("--group-aliases", "string",  undef,  $g,    undef, undef,          "apply user-supplied group-name alias file <s>", "apply user-supplied group-name alias file <s> AFTER built-in normalization; 2-column TSV: target<TAB>source, where source is the post-normalization canonical as it appears in .vadr.groups_audit.tsv", \%opt_HH, \@opt_order_A);
+opt_Add("--suggest-aliases", "string", undef, $g,   undef, undef,          "write candidate alias TSV to file <s>", "after built-in normalization, write a candidate alias TSV to <s> using prefix/suffix heuristics; file is for user review and does NOT feed back into the current run; pass reviewed file via --group-aliases on a subsequent run", \%opt_HH, \@opt_order_A);
 opt_Add("--seed-group",       "string",  undef, $g,   "--seed-accn", undef,                  "explicit canonical group label for seed accession is <s>",                       "explicit canonical group label for seed accession is <s> (overrides auto-derivation from metadata; required when seed metadata gives canonical group \"Unknown\"); value is matched against canonical_group column of .vadr.groups_audit.tsv after built-in normalization. In multi-seed mode (comma-separated --seed-accn) use a comma-separated list, one label per seed.", \%opt_HH, \@opt_order_A);
 opt_Add("--no-group-prefilter", "boolean", 0,   $g,   "--seed-accn", undef,                   "disable pre-filter of candidate pool by seed's canonical group",                "disable pre-filter of candidate pool by seed's canonical group (default ON when --seed-accn provided); when disabled, pool is unfiltered and may contain mixed lineages, leading to chimeric training sets. In multi-seed mode --no-group-prefilter passes the full unfiltered pool to every seed (escape hatch for sparse-metadata viruses where per-seed prefilter would yield empty pools, e.g. WNV).", \%opt_HH, \@opt_order_A);
 opt_Add("--min-group-pool",   "integer", 5,     $g,   "--seed-accn", "--no-group-prefilter", "min seqs in seed's canonical group required after pre-filter as <n>",            "min seqs in seed's canonical group required after pre-filter as <n>; abort before expensive seed CM build if fewer than <n> candidates remain", \%opt_HH, \@opt_order_A);
@@ -1106,6 +1107,12 @@ if(opt_IsUsed("--group-aliases", $opt_HHR)) {
 
 my $groups_audit_file = $out_root . ".groups_audit.tsv";
 write_groups_audit(\%decision_H, $groups_audit_file, \%group_alias_H, \%alias_source_used_H, $ofile_info_HHR, $FH_HR, $ofile_key_suffix);
+
+if(opt_IsUsed("--suggest-aliases", \%opt_HH)) {
+  my $suggest_file   = opt_Get("--suggest-aliases", \%opt_HH);
+  my $virus_prefix   = opt_IsUsed("--group", \%opt_HH) ? opt_Get("--group", \%opt_HH) : "";
+  suggest_alias_candidates(\%decision_H, $suggest_file, $virus_prefix, \%ofile_info_HH, $FH_HR);
+}
 
 # Verify reference accession was found in metadata
 if(! exists $decision_H{$ref_accn}) {
@@ -2945,6 +2952,189 @@ sub write_groups_audit {
   ofile_OutputString($FH_HR->{"log"}, 1,
     sprintf("# Wrote groups audit (%d canonical groups) to %s\n", scalar(@sorted), $audit_file));
   return scalar(@sorted);
+}
+
+#################################################################
+# Subroutine : suggest_alias_candidates()
+# Incept     : EPN* Thu May 7 2026
+#
+# Purpose    : After built-in normalization, analyze the set of
+#              canonical groups present in kept sequences and write
+#              a candidate alias TSV to $out_file using three
+#              heuristics applied in decreasing confidence order:
+#
+#              1. numeric-suffix subclade collapse (high confidence):
+#                 if X matches ^Y(\.|_|-)?[0-9]+$ and Y exists,
+#                 propose target=Y, source=X (e.g. BA9->BA,
+#                 B.D.E.1.2->B.D.E.1).
+#              2. alphabetic-suffix subclade collapse (high confidence):
+#                 if X matches ^Y[a-z]$ and Y exists,
+#                 propose target=Y, source=X (e.g. 1a->1).
+#              3. prefix-stripping (medium confidence):
+#                 if X has a hyphen/underscore whose prefix looks like
+#                 a short virus-name prefix (<8 chars, mostly alphabetic)
+#                 and the post-separator suffix exists as a canonical
+#                 group Y, propose target=Y, source=X (e.g. HRSV-B->B).
+#
+#              Also emits a singleton advisory (no auto-merge target).
+#
+#              The output uses the same target<TAB>source format as
+#              --group-aliases. It does NOT feed back into the current
+#              run. The user reviews, edits direction/acceptance, then
+#              passes the curated file via --group-aliases on re-run.
+#
+# Arguments  :
+#   $decision_HR    : ref to hash keyed by accession with fields:
+#                     group_key (post-normalization canonical), status
+#   $out_file       : path to write the candidate alias TSV
+#   $virus_prefix   : short virus name (--group value) or "" if unset
+#   $ofile_info_HHR : output file info hash (for register/filelist)
+#   $FH_HR          : output file handles ("log", ...)
+#
+# Returns    : number of candidate aliases proposed (excluding singletons)
+#################################################################
+sub suggest_alias_candidates {
+  my ($decision_HR, $out_file, $virus_prefix, $ofile_info_HHR, $FH_HR) = @_;
+
+  # Build canonical group -> n_seqs map from kept sequences only
+  my %grp_ct = ();
+  foreach my $acc (sort keys %{$decision_HR}) {
+    my $d = $decision_HR->{$acc};
+    next if(!defined $d->{status} || $d->{status} ne "kept");
+    my $gk = $d->{group_key};
+    next if(!defined $gk || $gk eq "");
+    $grp_ct{$gk}++;
+  }
+
+  my %proposed = ();  # "target\tsource" => 1, to deduplicate
+  my @blocks   = ();  # finished comment+data blocks for output
+  my $n_proposed = 0;
+
+  # --- Heuristic 1: numeric-suffix subclade collapse ---
+  {
+    my @props = ();
+    my @groups = sort keys %grp_ct;
+    foreach my $x (@groups) {
+      foreach my $y (@groups) {
+        next if $x eq $y;
+        if ($x =~ /^\Q$y\E(?:[._-])?[0-9]+$/) {
+          my $key = "$y\t$x";
+          unless (exists $proposed{$key}) {
+            $proposed{$key} = 1;
+            push @props, [$y, $x];
+            $n_proposed++;
+          }
+        }
+      }
+    }
+    if (@props) {
+      my $blk = "# Heuristic: numeric-suffix subclade collapse\n# Confidence: high\n";
+      foreach my $p (sort { $a->[0] cmp $b->[0] || $a->[1] cmp $b->[1] } @props) {
+        my ($tgt, $src) = @{$p};
+        $blk .= sprintf("# %s (%d seqs) looks like a numeric subclade of %s (%d seqs).\n",
+          $src, $grp_ct{$src}, $tgt, $grp_ct{$tgt});
+        $blk .= "$tgt\t$src\n";
+      }
+      push @blocks, $blk;
+    }
+  }
+
+  # --- Heuristic 2: alphabetic-suffix subclade collapse ---
+  {
+    my @props = ();
+    my @groups = sort keys %grp_ct;
+    foreach my $x (@groups) {
+      foreach my $y (@groups) {
+        next if $x eq $y;
+        if ($x =~ /^\Q$y\E[a-z]$/) {
+          my $key = "$y\t$x";
+          unless (exists $proposed{$key}) {
+            $proposed{$key} = 1;
+            push @props, [$y, $x];
+            $n_proposed++;
+          }
+        }
+      }
+    }
+    if (@props) {
+      my $blk = "# Heuristic: alphabetic-suffix subclade collapse\n# Confidence: high\n";
+      foreach my $p (sort { $a->[0] cmp $b->[0] || $a->[1] cmp $b->[1] } @props) {
+        my ($tgt, $src) = @{$p};
+        $blk .= sprintf("# %s (%d seqs) looks like an alphabetic subclade of %s (%d seqs).\n",
+          $src, $grp_ct{$src}, $tgt, $grp_ct{$tgt});
+        $blk .= "$tgt\t$src\n";
+      }
+      push @blocks, $blk;
+    }
+  }
+
+  # --- Heuristic 3: prefix-stripping ---
+  # X must have a hyphen or underscore; prefix portion must be ≤7 chars
+  # and ≥60% alphabetic; post-separator suffix must exist as canonical Y.
+  {
+    my @props = ();
+    my @groups = sort keys %grp_ct;
+    foreach my $x (@groups) {
+      if ($x =~ /^([A-Za-z0-9]{1,7})[-_](.+)$/) {
+        my ($prefix, $suffix) = ($1, $2);
+        my $alpha_count = ($prefix =~ tr/A-Za-z//);
+        next if $alpha_count < length($prefix) * 0.6;
+        next unless exists $grp_ct{$suffix};
+        my $key = "$suffix\t$x";
+        unless (exists $proposed{$key}) {
+          $proposed{$key} = 1;
+          push @props, [$suffix, $x, $prefix];
+          $n_proposed++;
+        }
+      }
+    }
+    if (@props) {
+      my $blk = "# Heuristic: prefix-stripping\n# Confidence: medium — review domain meaning\n";
+      foreach my $p (sort { $a->[0] cmp $b->[0] || $a->[1] cmp $b->[1] } @props) {
+        my ($tgt, $src, $pfx) = @{$p};
+        $blk .= sprintf("# %s (%d seqs) shares post-prefix label with %s (%d seqs); prefix \"%s\" looks like a virus-name tag.\n",
+          $src, $grp_ct{$src}, $tgt, $grp_ct{$tgt}, $pfx);
+        $blk .= "$tgt\t$src\n";
+      }
+      push @blocks, $blk;
+    }
+  }
+
+  # --- Heuristic 4: singleton advisory (no auto-merge target) ---
+  {
+    my @singletons = sort grep { $grp_ct{$_} <= 1 } keys %grp_ct;
+    if (@singletons) {
+      my $blk = "# Advisory: singleton groups (n_seqs <= 1) — no auto-merge target proposed\n";
+      foreach my $g (@singletons) {
+        $blk .= sprintf("# SINGLETON: '%s' has %d sequence — consider merging into nearest larger group.\n",
+          $g, $grp_ct{$g});
+      }
+      push @blocks, $blk;
+    }
+  }
+
+  # Write output file
+  open(my $fh, ">", $out_file)
+    or ofile_FAIL("ERROR: unable to write --suggest-aliases file $out_file: $!", 1, $FH_HR);
+  print $fh "# Candidate alias file generated by v-prep.pl --suggest-aliases\n";
+  print $fh "# Format: target<TAB>source (same as --group-aliases input)\n";
+  print $fh "# Review each block; accept/reject; then pass curated file via --group-aliases on re-run.\n";
+  print $fh "#\n";
+  if ($n_proposed == 0 && !@blocks) {
+    print $fh "# No candidate aliases proposed by heuristics.\n";
+  } else {
+    foreach my $blk (@blocks) {
+      print $fh "\n$blk";
+    }
+  }
+  close($fh);
+
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "suggest.aliases", $out_file, 1, 1,
+    "candidate alias TSV from heuristic analysis (review before use with --group-aliases)");
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# Wrote candidate alias file (%d proposals) to %s\n", $n_proposed, $out_file));
+
+  return $n_proposed;
 }
 
 #################################################################
