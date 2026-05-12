@@ -2961,8 +2961,8 @@ sub write_groups_audit {
 #
 # Purpose    : After built-in normalization, analyze the set of
 #              canonical groups present in kept sequences and write
-#              a candidate alias TSV to $out_file using three
-#              heuristics applied in decreasing confidence order:
+#              a candidate alias TSV to $out_file using heuristics
+#              applied in decreasing confidence order:
 #
 #              1. numeric-suffix subclade collapse (high confidence):
 #                 if X matches ^Y(\.|_|-)?[0-9]+$ and Y exists,
@@ -3072,6 +3072,7 @@ sub suggest_alias_candidates {
   # --- Heuristic 3: prefix-stripping ---
   # X must have a hyphen or underscore; prefix portion must be ≤7 chars
   # and ≥60% alphabetic; post-separator suffix must exist as canonical Y.
+  # Direction is chosen by count: the group with more sequences is the target.
   {
     my @props = ();
     my @groups = sort keys %grp_ct;
@@ -3081,10 +3082,14 @@ sub suggest_alias_candidates {
         my $alpha_count = ($prefix =~ tr/A-Za-z//);
         next if $alpha_count < length($prefix) * 0.6;
         next unless exists $grp_ct{$suffix};
-        my $key = "$suffix\t$x";
+        # Direction by count: target = group with more sequences; tie → suffix (simpler)
+        my ($tgt, $src) = ($grp_ct{$x} > $grp_ct{$suffix})
+          ? ($x, $suffix)
+          : ($suffix, $x);
+        my $key = "$tgt\t$src";
         unless (exists $proposed{$key}) {
           $proposed{$key} = 1;
-          push @props, [$suffix, $x, $prefix];
+          push @props, [$tgt, $src, $prefix];
           $n_proposed++;
         }
       }
