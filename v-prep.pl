@@ -179,6 +179,7 @@ my $options_okay =
                 'no-collapse-numerals' => \$GetOptions_H{"--no-collapse-numerals"},
                 'no-strip-descriptors' => \$GetOptions_H{"--no-strip-descriptors"},
                 'group-aliases=s' => \$GetOptions_H{"--group-aliases"},
+                'suggest-aliases=s' => \$GetOptions_H{"--suggest-aliases"},
                 'seed-group=s'        => \$GetOptions_H{"--seed-group"},
                 'no-group-prefilter'  => \$GetOptions_H{"--no-group-prefilter"},
                 'min-group-pool=i'    => \$GetOptions_H{"--min-group-pool"},
