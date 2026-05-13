@@ -314,48 +314,67 @@ sub vpatch_apply_add_exc {
 # v-build/v-prep has already emitted a segment that the patch TSV
 # overlaps.
 #
-# Resolution: same-strand overlap with identical value collapses to the
-# larger-containing span; partial overlap (neither contains) or
-# conflicting values dies with a clear error.
+# Resolution: any chain of same-strand overlapping segments that all
+# share the same value is collapsed to a single segment covering the
+# union of their ranges. Overlapping segments with conflicting values
+# die with a clear error (no meaningful merge exists). Disjoint
+# segments are preserved as-is. Order of the original existing segments
+# is preserved for non-overlapping survivors; merged groups appear at
+# the position of their leftmost contributor.
 #################################################################
 sub vpatch_merge_exc_value {
   my ($key, $existing, $new, $line_n) = @_;
-  my @exist_segs = split(/,/, $existing);
-  for my $nseg (split(/,/, $new)) {
-    my ($ns, $ne, $nstr, $nv) = vpatch_parse_exc_segment($nseg, $line_n);
-    my ($nlo, $nhi) = ($ns <= $ne) ? ($ns, $ne) : ($ne, $ns);
-    my $skip_new = 0;
-    my @replace_idxs = ();
-    for(my $i = 0; $i < scalar(@exist_segs); $i++) {
-      my ($es, $ee, $estr, $ev) = vpatch_parse_exc_segment($exist_segs[$i], $line_n);
-      next if $estr ne $nstr;
-      my ($elo, $ehi) = ($es <= $ee) ? ($es, $ee) : ($ee, $es);
-      next if($nhi < $elo || $ehi < $nlo); # no overlap
-      if(defined $nv && defined $ev && $nv ne $ev) {
-        die "ERROR, add_exc line $line_n: $key overlap with conflicting values: existing '$exist_segs[$i]' vs new '$nseg'";
-      }
-      my $new_contains = ($nlo <= $elo && $nhi >= $ehi);
-      my $exist_contains = ($elo <= $nlo && $ehi >= $nhi);
-      if($exist_contains) {
-        printf("# add_exc line %d: dropping redundant %s span %s (contained in existing %s)\n", $line_n, $key, $nseg, $exist_segs[$i]);
-        $skip_new = 1;
-        last;
-      }
-      elsif($new_contains) {
-        push(@replace_idxs, $i);
-      }
-      else {
-        die "ERROR, add_exc line $line_n: $key partial overlap (neither contains the other): existing '$exist_segs[$i]' vs new '$nseg'";
-      }
-    }
-    next if $skip_new;
-    for my $idx (sort {$b<=>$a} @replace_idxs) {
-      printf("# add_exc line %d: replacing %s segment %s with broader %s\n", $line_n, $key, $exist_segs[$idx], $nseg);
-      splice(@exist_segs, $idx, 1);
-    }
-    push(@exist_segs, $nseg);
+
+  # Parse all segments (existing first, then new) into a flat list of
+  # tuples, remembering which side each came from for log/error msgs.
+  my @segs = (); # each: { lo, hi, strand, value, raw, src }
+  for my $raw (split(/,/, $existing)) {
+    my ($s, $e, $str, $v) = vpatch_parse_exc_segment($raw, $line_n);
+    my ($lo, $hi) = ($s <= $e) ? ($s, $e) : ($e, $s);
+    push(@segs, { lo => $lo, hi => $hi, strand => $str, value => $v, raw => $raw, src => "existing" });
   }
-  return join(",", @exist_segs);
+  for my $raw (split(/,/, $new)) {
+    my ($s, $e, $str, $v) = vpatch_parse_exc_segment($raw, $line_n);
+    my ($lo, $hi) = ($s <= $e) ? ($s, $e) : ($e, $s);
+    push(@segs, { lo => $lo, hi => $hi, strand => $str, value => $v, raw => $raw, src => "new" });
+  }
+
+  # Iteratively coalesce: scan for any pair of same-strand overlapping
+  # segments and merge them. Repeat until stable. Each merge logs a line.
+  my $changed = 1;
+  while($changed) {
+    $changed = 0;
+    OUTER: for(my $i = 0; $i < scalar(@segs); $i++) {
+      for(my $j = $i+1; $j < scalar(@segs); $j++) {
+        next if $segs[$i]->{strand} ne $segs[$j]->{strand};
+        next if $segs[$i]->{hi} < $segs[$j]->{lo} || $segs[$j]->{hi} < $segs[$i]->{lo}; # disjoint
+        my $vi = $segs[$i]->{value};
+        my $vj = $segs[$j]->{value};
+        if((defined $vi) != (defined $vj)) {
+          die "ERROR, add_exc line $line_n: $key overlap with mismatched value-presence: '$segs[$i]->{raw}' vs '$segs[$j]->{raw}'";
+        }
+        if(defined $vi && $vi ne $vj) {
+          die "ERROR, add_exc line $line_n: $key overlap with conflicting values: '$segs[$i]->{raw}' vs '$segs[$j]->{raw}'";
+        }
+        # union range, keep strand/value
+        my $ulo = ($segs[$i]->{lo} <= $segs[$j]->{lo}) ? $segs[$i]->{lo} : $segs[$j]->{lo};
+        my $uhi = ($segs[$i]->{hi} >= $segs[$j]->{hi}) ? $segs[$i]->{hi} : $segs[$j]->{hi};
+        my $str = $segs[$i]->{strand};
+        my ($us, $ue) = ($str eq "-") ? ($uhi, $ulo) : ($ulo, $uhi);
+        my $uraw = (defined $vi) ? sprintf("%d..%d:%s:%s", $us, $ue, $str, $vi)
+                                 : sprintf("%d..%d:%s",    $us, $ue, $str);
+        printf("# add_exc line %d: merging overlapping %s segments %s + %s -> %s\n",
+               $line_n, $key, $segs[$i]->{raw}, $segs[$j]->{raw}, $uraw);
+        # replace the pair with the merged segment at position $i
+        splice(@segs, $j, 1);
+        $segs[$i] = { lo => $ulo, hi => $uhi, strand => $str, value => $vi, raw => $uraw, src => "merged" };
+        $changed = 1;
+        last OUTER;
+      }
+    }
+  }
+
+  return join(",", map { $_->{raw} } @segs);
 }
 
 #################################################################
