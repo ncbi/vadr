@@ -265,7 +265,7 @@ sub vpatch_apply_add_exc {
   # MODEL-level exceptions
   if($key eq "lowsim_exc") {
     if(defined $mdl_info_AHR->[$mdl_idx]{$key} && $mdl_info_AHR->[$mdl_idx]{$key} ne "") {
-      $mdl_info_AHR->[$mdl_idx]{$key} .= "," . $value;
+      $mdl_info_AHR->[$mdl_idx]{$key} = vpatch_merge_exc_value($key, $mdl_info_AHR->[$mdl_idx]{$key}, $value, $line_n);
     }
     else {
       $mdl_info_AHR->[$mdl_idx]{$key} = $value;
@@ -293,12 +293,89 @@ sub vpatch_apply_add_exc {
   }
   my $fi = $match_idxs[0];
   if(defined $ftr_AR->[$fi]{$key} && $ftr_AR->[$fi]{$key} ne "") {
-    $ftr_AR->[$fi]{$key} .= "," . $value;
+    $ftr_AR->[$fi]{$key} = vpatch_merge_exc_value($key, $ftr_AR->[$fi]{$key}, $value, $line_n);
   }
   else {
     $ftr_AR->[$fi]{$key} = $value;
   }
   printf("# applied add_exc FEATURE CDS coords=%s key=%s value=%s\n", $coords, $key, $value);
+}
+
+#################################################################
+# Subroutine: vpatch_merge_exc_value()
+# Incept:     EPN* Tue May 12 2026
+#
+# Merge a new exception-coords value into an existing one for the same
+# key, detecting and resolving overlaps between segments. Each segment
+# is "<start>..<stop>:<strand>:<value>" (coords-value) or
+# "<start>..<stop>:<strand>" (coords-only). v-annotate's validator
+# (vdr_ExceptionCoordsAndValuesToSegmentsAndValues) rejects overlapping
+# segments, so blind concatenation can produce an invalid minfo when
+# v-build/v-prep has already emitted a segment that the patch TSV
+# overlaps.
+#
+# Resolution: same-strand overlap with identical value collapses to the
+# larger-containing span; partial overlap (neither contains) or
+# conflicting values dies with a clear error.
+#################################################################
+sub vpatch_merge_exc_value {
+  my ($key, $existing, $new, $line_n) = @_;
+  my @exist_segs = split(/,/, $existing);
+  for my $nseg (split(/,/, $new)) {
+    my ($ns, $ne, $nstr, $nv) = vpatch_parse_exc_segment($nseg, $line_n);
+    my ($nlo, $nhi) = ($ns <= $ne) ? ($ns, $ne) : ($ne, $ns);
+    my $skip_new = 0;
+    my @replace_idxs = ();
+    for(my $i = 0; $i < scalar(@exist_segs); $i++) {
+      my ($es, $ee, $estr, $ev) = vpatch_parse_exc_segment($exist_segs[$i], $line_n);
+      next if $estr ne $nstr;
+      my ($elo, $ehi) = ($es <= $ee) ? ($es, $ee) : ($ee, $es);
+      next if($nhi < $elo || $ehi < $nlo); # no overlap
+      if(defined $nv && defined $ev && $nv ne $ev) {
+        die "ERROR, add_exc line $line_n: $key overlap with conflicting values: existing '$exist_segs[$i]' vs new '$nseg'";
+      }
+      my $new_contains = ($nlo <= $elo && $nhi >= $ehi);
+      my $exist_contains = ($elo <= $nlo && $ehi >= $nhi);
+      if($exist_contains) {
+        printf("# add_exc line %d: dropping redundant %s span %s (contained in existing %s)\n", $line_n, $key, $nseg, $exist_segs[$i]);
+        $skip_new = 1;
+        last;
+      }
+      elsif($new_contains) {
+        push(@replace_idxs, $i);
+      }
+      else {
+        die "ERROR, add_exc line $line_n: $key partial overlap (neither contains the other): existing '$exist_segs[$i]' vs new '$nseg'";
+      }
+    }
+    next if $skip_new;
+    for my $idx (sort {$b<=>$a} @replace_idxs) {
+      printf("# add_exc line %d: replacing %s segment %s with broader %s\n", $line_n, $key, $exist_segs[$idx], $nseg);
+      splice(@exist_segs, $idx, 1);
+    }
+    push(@exist_segs, $nseg);
+  }
+  return join(",", @exist_segs);
+}
+
+#################################################################
+# Subroutine: vpatch_parse_exc_segment()
+# Incept:     EPN* Tue May 12 2026
+#
+# Parse one exception-coords segment of the form
+# "<start>..<stop>:<strand>:<value>" (coords-value) or
+# "<start>..<stop>:<strand>" (coords-only). Tolerates leading "<" or
+# ">" on the start/stop tokens. Returns (start, stop, strand, value-or-undef).
+#################################################################
+sub vpatch_parse_exc_segment {
+  my ($seg, $line_n) = @_;
+  if($seg =~ /^\<?(\d+)\.\.\>?(\d+):([+\-]):(\S+)$/) {
+    return ($1, $2, $3, $4);
+  }
+  if($seg =~ /^\<?(\d+)\.\.\>?(\d+):([+\-])$/) {
+    return ($1, $2, $3, undef);
+  }
+  die "ERROR, add_exc line $line_n: cannot parse exception segment '$seg'";
 }
 
 #################################################################
