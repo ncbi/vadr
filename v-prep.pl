@@ -1467,6 +1467,18 @@ if($do_rna_discovery && (scalar(@rna_regions_A) > 0) && (!$do_skip_annotate)) {
                                 $execs_HR, $ofile_info_HHR, \@to_remove_A, $FH_HR, $ofile_key_suffix);
 }
 
+# Cleanup the per-region RNA CM work directory now that Phase 2 (Step 11)
+# has consumed the rna.NNN.cm files produced by Phase 1 (Step 3b).
+# Previously this cleanup lived inside run_rna_sstruct_generation(), which
+# deleted the CMs before Phase 2 could read them, breaking any model with
+# RNA region annotations unless the user passed --keep. EPN* Wed May 13 2026
+if($do_rna_discovery && (! $do_keep)) {
+  my $rna_struct_dir_cleanup = $out_root . ".rna_struct";
+  if(-d $rna_struct_dir_cleanup) {
+    system("rm -rf $rna_struct_dir_cleanup");
+  }
+}
+
 #---------------------------------------
 #---------------------------------------
 # Step 12: Stitch all blocks into final training alignment
@@ -6463,10 +6475,11 @@ sub run_rna_sstruct_generation {
     $idx++;
   }
 
-  # Cleanup if not keeping intermediate files
-  if(! $do_keep) {
-    system("rm -rf $rna_work_dir");
-  }
+  # NOTE: $rna_work_dir is NOT cleaned up here. The per-region rna.NNN.cm
+  # files in this directory are consumed downstream by Phase 2
+  # (extract_and_align_rna_regions, Step 11). Cleanup happens at the
+  # main() call-site after Phase 2 completes; see post-Step-11 block.
+  # EPN* Wed May 13 2026
 
   return;
 }
