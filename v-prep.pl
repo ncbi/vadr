@@ -6570,9 +6570,17 @@ sub extract_and_align_rna_regions {
     # Step 11: Align with custom CM from Step 3b
     my $cm_file = $rna_struct_dir . "/rna." . sprintf("%03d", $idx) . ".cm";
     if(! -e $cm_file) {
-      ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# RNA alignment: WARNING - CM not found for region %d, skipping\n", $idx));
-      $idx++;
-      next;
+      # Defensive: this should never happen. Phase 1 (run_rna_sstruct_generation)
+      # writes one rna.NNN.cm per RNA region into $rna_struct_dir. If we get
+      # here, the directory was deleted prematurely (the cleanup race fixed
+      # 2026-05-13) or Phase 1 failed silently. Die loudly so future
+      # regressions surface immediately rather than masquerading as missing
+      # downstream .rna.NNN.stk files. EPN* Wed May 13 2026
+      ofile_FAIL(sprintf("ERROR in extract_and_align_rna_regions(): RNA region CM file not found: %s\n" .
+                         "This file should have been produced by Step 3b (run_rna_sstruct_generation).\n" .
+                         "If you see this error, the rna_struct/ directory was likely deleted before\n" .
+                         "Step 11 could consume it, or Phase 1 failed without aborting.",
+                         $cm_file), 1, $FH_HR);
     }
 
     # Step 11: Output refined RNA block Stockholm
