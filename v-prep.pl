@@ -1509,18 +1509,6 @@ my $output_stk_file = $out_root . ".stk";
 annotate_stk_group_subgroup($output_stk_file, $centroid_tsv_file, $group_name, $FH_HR);
 
 #---------------------------------------
-# Step 12c: Update seed minfo MODEL line with NN classification keys
-#---------------------------------------
-# Add group:":FILE:..." and subgroup:":FILE:..." to enable nearest-neighbor
-# classification using the GP/SG annotations in the final.stk
-{
-  my $stk_basename = $output_stk_file;
-  $stk_basename =~ s|^.+/||;  # use relative path (basename only) so the
-                               # minfo can be moved to a different dir along with the stk
-  add_nn_classification_keys_to_minfo($seed_minfo, $stk_basename, $FH_HR);
-}
-
-#---------------------------------------
 # Step 12d: Verify final alignment sequence integrity
 #---------------------------------------
 # Sanity check: every sequence in the final .stk, when degapped, must
@@ -1623,6 +1611,16 @@ if(! $do_skip_annotate) {
   ofile_OutputString($FH_HR->{"log"}, 1,
     sprintf("# Wrote remapped minfo to %s (model length=%d, ref %s native length=%d)\n",
             $remapped_minfo, $new_model_len, $seed_accn_versioned, $ref_native_len));
+
+  # Step 12c: Add NN classification keys (group/subgroup :FILE:) to the
+  # OUTPUT minfo (not the input --mdir seed minfo). Writing into the
+  # output dir avoids corrupting the shared seed dir with dangling
+  # relative :FILE: references that break when the run dir is gone.
+  {
+    my $stk_basename = $output_stk_file;
+    $stk_basename =~ s|^.+/||;  # basename only: minfo and stk travel together
+    add_nn_classification_keys_to_minfo($seed_minfo, $stk_basename, $FH_HR);
+  }
 }
 
 #---------------------------------------
@@ -7468,12 +7466,16 @@ sub build_ungapped_ss_cons {
 #################################################################
 # Subroutine: add_nn_classification_keys_to_minfo()
 # Incept:     EPN, Wed Apr  9 2026
+# Modified:   EPN* Wed May 13 2026
 #
 # Purpose:    Add group:":FILE:<stk>" and subgroup:":FILE:<stk>" keys
 #             to the MODEL line of a minfo file. These keys enable
 #             VADR's nearest-neighbor classification using the GP/SG
 #             annotations in the referenced Stockholm alignment.
-#             Modifies the file in place.
+#             Modifies the file in place. Must be called on an output-side
+#             minfo (e.g., <out_root>.remapped.minfo), never on the
+#             input --mdir seed minfo, to avoid corrupting the shared
+#             seed dir with relative :FILE: references to run output files.
 #
 # Arguments:
 #   $minfo_file:   path to .minfo file (modified in place)
