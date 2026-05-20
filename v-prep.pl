@@ -117,8 +117,8 @@ opt_Add("--no-collapse-numerals", "boolean", 0, $g,    undef, undef,          "d
 opt_Add("--no-strip-descriptors", "boolean", 0, $g,    undef, undef,          "disable descriptor-word stripping/token-sort in group_key normalization", "disable descriptor-word stripping (lineage,genotype,...) and alphabetical token sort in group_key normalization", \%opt_HH, \@opt_order_A);
 opt_Add("--group-aliases", "string",  undef,  $g,    undef, undef,          "apply user-supplied group-name alias file <s>", "apply user-supplied group-name alias file <s> AFTER built-in normalization; 2-column TSV: target<TAB>source, where source is the post-normalization canonical as it appears in .vadr.groups_audit.tsv", \%opt_HH, \@opt_order_A);
 opt_Add("--suggest-aliases", "string", undef, $g,   undef, undef,          "write candidate alias TSV to file <s>", "after built-in normalization, write a candidate alias TSV to <s> using prefix/suffix heuristics; file is for user review and does NOT feed back into the current run; pass reviewed file via --group-aliases on a subsequent run", \%opt_HH, \@opt_order_A);
-opt_Add("--seed-group",       "string",  undef, $g,   "--seed-accn", undef,                  "explicit canonical group label for seed accession is <s>",                       "explicit canonical group label for seed accession is <s> (overrides auto-derivation from metadata; required when seed metadata gives canonical group \"Unknown\"); value is matched against canonical_group column of .vadr.groups_audit.tsv after built-in normalization. In multi-seed mode (comma-separated --seed-accn) use a comma-separated list, one label per seed.", \%opt_HH, \@opt_order_A);
-opt_Add("--no-group-prefilter", "boolean", 0,   $g,   "--seed-accn", undef,                   "disable pre-filter of candidate pool by seed's canonical group",                "disable pre-filter of candidate pool by seed's canonical group (default ON when --seed-accn provided); when disabled, pool is unfiltered and may contain mixed lineages, leading to chimeric training sets. In multi-seed mode --no-group-prefilter passes the full unfiltered pool to every seed (escape hatch for sparse-metadata viruses where per-seed prefilter would yield empty pools, e.g. WNV).", \%opt_HH, \@opt_order_A);
+opt_Add("--seed-group",       "string",  undef, $g,   "--seed-accn", undef,                  "explicit canonical group label for seed accession is <s>",                       "explicit canonical group label for seed accession is <s> (overrides auto-derivation from metadata; required when seed metadata gives canonical group \"Unknown\"); value is matched against canonical_group column of .vadr.groups_audit.tsv after built-in normalization. In single-seed mode, passing --seed-group also triggers the seed-group pre-filter (drop candidates whose canonical group does not match). In multi-seed mode (comma-separated --seed-accn) --seed-group is required; use a comma-separated list, one label per seed.", \%opt_HH, \@opt_order_A);
+opt_Add("--no-group-prefilter", "boolean", 0,   $g,   "--seed-accn", undef,                   "disable pre-filter of candidate pool by seed's canonical group",                "disable pre-filter of candidate pool by seed's canonical group; only relevant when --seed-group IS set (single-seed: prefilter fires only with explicit --seed-group; multi-seed: prefilter always fires unless this flag is given). When disabled, pool is unfiltered and may contain mixed lineages, leading to chimeric training sets. Escape hatch for sparse-metadata viruses where per-seed prefilter would yield empty pools (e.g. WNV in multi-seed mode).", \%opt_HH, \@opt_order_A);
 opt_Add("--min-group-pool",   "integer", 5,     $g,   "--seed-accn", "--no-group-prefilter", "min seqs in seed's canonical group required after pre-filter as <n>",            "min seqs in seed's canonical group required after pre-filter as <n>; abort before expensive seed CM build if fewer than <n> candidates remain", \%opt_HH, \@opt_order_A);
 opt_Add("--include-unknown-group", "boolean", 0, $g,  "--seed-accn", "--no-group-prefilter", "in --seed-group pre-filter, also admit sequences with blank/Unknown genotype",  "in --seed-group pre-filter, also admit candidate sequences whose serotype/genotype metadata fields are both blank (canonical \"Unknown\"); off by default to preserve Issue-12 safety net; opt in on viruses where the blank-genotype pool is biologically OK and you want production-equivalent inclusivity", \%opt_HH, \@opt_order_A);
 opt_Add("--holdout-frac",  "real",    0,      $g,    undef, undef,          "fraction [0,1) of fetched sequences to hold out as test set (0 = disabled)", "fraction [0,1) of fetched sequences to hold out as test set as <x>; 0 = no holdout (default); split is done before tier-1 filtering", \%opt_HH, \@opt_order_A);
@@ -717,25 +717,36 @@ if($is_multi_seed) {
 #---------------------------------------
 # Step 1.5: Pre-filter candidate pool by seed canonical group (Issue 12)
 #
-# When --seed-accn is given (and --no-group-prefilter is NOT given),
-# determine the seed's canonical_group from its metadata-TSV row,
-# then drop all sequences whose canonical_group does not match the
-# seed's. This prevents the seed CM (built from a single-lineage
-# RefSeq) from later being trained on a chimeric mix of lineages
-# under the same taxid. Two cheap fail-fast checks fire here:
+# Fires only when BOTH conditions hold:
+#   1. --seed-group is explicitly set (single-seed mode; multi-seed
+#      always requires --seed-group, so this is the distinguishing gate)
+#   2. --no-group-prefilter is NOT set (escape hatch for sparse-metadata
+#      seeds where filtering would yield an empty pool)
 #
-#   (a) seed canonical group is "Unknown" / ambiguous -> die unless
-#       user supplied --seed-group <label>
+# When active, determine the seed's canonical_group from --seed-group,
+# then drop all candidates whose canonical_group does not match.
+# This prevents the seed CM (built from a single-lineage RefSeq) from
+# being trained on a chimeric mix of lineages under the same taxid.
+# Two cheap fail-fast checks fire here:
+#
+#   (a) seed canonical group is "Unknown" / ambiguous -> die with
+#       --seed-group diagnostic
 #   (b) post-filter pool size < --min-group-pool (default 5) -> die
 #
 # Both complete before the expensive seed CM build.
 #
-# Limitation (documented in --no-group-prefilter help and below):
-# the canonicalization is metadata-string based. Submitter mislabels
-# (sequence is really lineage 2 but /serotype="1") will mis-route
-# that sequence to the wrong seed. A similarity-based pre-filter
-# (early-blastn each candidate against the seed) is the natural
-# follow-up if mislabel rates are significant in practice.
+# Rationale for requiring explicit --seed-group (instead of the prior
+# default-ON behavior): viruses scoped by taxid to a single subtype
+# (e.g. RSV-A taxid 208893, RSV-B taxid 208895) need the whole
+# subtype population for training. Without an explicit --seed-group
+# the old code wrongly filtered to the seed's own genotype (ON1 for
+# RSV-A, BA for RSV-B), requiring the confusing --no-group-prefilter
+# workaround. Viruses that genuinely need per-genotype filtering
+# (JEV, TBEV, ZIKV, YFV, POWV) already pass --seed-group explicitly.
+#
+# Limitation: the canonicalization is metadata-string based. Submitter
+# mislabels will mis-route sequences; a blastn-based pre-filter is the
+# natural follow-up if mislabel rates are significant in practice.
 #---------------------------------------
 # Note: %group_alias_H / %alias_source_used_H were declared and
 # populated upstream (before multi-seed Phase A) so that both
@@ -743,7 +754,7 @@ if($is_multi_seed) {
 # honor user-defined aliases. %alias_source_used_H may already contain
 # entries marked used by earlier prefilter calls.
 
-my $do_group_prefilter = ($do_seed_bootstrap && (! opt_Get("--no-group-prefilter", \%opt_HH)));
+my $do_group_prefilter = ($do_seed_bootstrap && opt_IsUsed("--seed-group", \%opt_HH) && (! opt_Get("--no-group-prefilter", \%opt_HH)));
 my $seed_canonical_group = undef;
 if($do_group_prefilter) {
   my $seed_accn_for_filter = opt_Get("--seed-accn", \%opt_HH);
