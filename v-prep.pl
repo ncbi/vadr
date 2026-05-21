@@ -5687,10 +5687,24 @@ sub prepare_cds_translation_for_stitching {
       my ($lo, $hi) = ($start < $end) ? ($start, $end) : ($end, $start);
       push(@cds_idxs_A, { ftr_idx => $fi, lo => $lo, hi => $hi, span => $hi - $lo + 1, ftr_idx_1based => $fi + 1 });
     }
-    # For each CDS, check if it's fully contained within a LARGER CDS
+    # For each CDS, check if it's fully contained within a LARGER CDS.
+    # Pairs from the same alternative_ftr_set are mutually exclusive
+    # variants of the same gene (e.g., L_v1 8561..15058 vs L_v2 8561..15061
+    # produced by an alt_stop_late auto-alt). Comparing them with
+    # containment is meaningless and produces false-positive skips whose
+    # 1-based ftr_idx (in alt.minfo numbering) collides with an unrelated
+    # CDS's ftr_idx in the seed.minfo numbering used by the v-annotate
+    # ftr file — silently dropping that CDS from the muscle alignment.
+    # Mirror the same guard already present in
+    # write_stitch_scaffold_outputs() (see contained_idx_H block).
     foreach my $a (@cds_idxs_A) {
       foreach my $b (@cds_idxs_A) {
         next if($a->{ftr_idx} == $b->{ftr_idx});
+        my $afset_a = (defined $ftr_info_AHR->[$a->{ftr_idx}]{"alternative_ftr_set"})
+                      ? $ftr_info_AHR->[$a->{ftr_idx}]{"alternative_ftr_set"} : "";
+        my $afset_b = (defined $ftr_info_AHR->[$b->{ftr_idx}]{"alternative_ftr_set"})
+                      ? $ftr_info_AHR->[$b->{ftr_idx}]{"alternative_ftr_set"} : "";
+        next if($afset_a ne "" && $afset_a eq $afset_b);
         # b strictly contains a if b->lo <= a->lo and b->hi >= a->hi and b->span > a->span
         if($b->{lo} <= $a->{lo} && $b->{hi} >= $a->{hi} && $b->{span} > $a->{span}) {
           $skip_ftr_idx_H{$a->{ftr_idx_1based}} = 1;
