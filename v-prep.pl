@@ -1200,9 +1200,11 @@ if($do_auto_alt) {
     my $alt_features_AR = detect_alternative_features($alt_groups_HHR, $min_independent, opt_Get("--alt-min-count", $opt_HHR), $max_fract_diff,
                                                        \@{$ftr_info_HA{$minfo_model_key}}, $minfo_model_key, $FH_HR);
 
-    # Detect exceptions
-    my $exc_groups_HHR = parse_alt_for_exceptions($tier2_alt_file, $FH_HR);
-    my $exceptions_AR = detect_exceptions($exc_groups_HHR, $min_independent, opt_Get("--alt-min-count", $opt_HHR), $FH_HR);
+    # Detect exceptions (tier-2 alerts only at this stage; pass-2
+    # alerts are folded in after pass-2 v-annotate completes — see
+    # pass-2 detection block below).
+    my $tier2_exc_groups_HHR = parse_alt_for_exceptions($tier2_alt_file, $FH_HR);
+    my $exceptions_AR = detect_exceptions($tier2_exc_groups_HHR, $min_independent, opt_Get("--alt-min-count", $opt_HHR), $FH_HR);
 
     my $n_alt = scalar(@{$alt_features_AR});
     my $n_exc = scalar(@{$exceptions_AR});
@@ -1210,7 +1212,8 @@ if($do_auto_alt) {
       sprintf("# Auto-alt detect: found %d alternative features and %d exceptions\n", $n_alt, $n_exc));
 
     if($n_alt > 0 || $n_exc > 0) {
-      # Update the minfo file
+      # Update the minfo file (tier-2 exceptions only at this point;
+      # may be re-written below after pass-2 exception detection).
       my $updated_minfo = $out_root . ".alt.minfo";
       add_alternatives_and_exceptions_to_minfo($seed_minfo, $updated_minfo,
                                                 $alt_features_AR, $exceptions_AR,
@@ -1234,15 +1237,27 @@ if($do_auto_alt) {
       # Selective v-annotate re-run: identify sequences that failed
       # ONLY due to alerts addressed by the new alternatives/exceptions,
       # and re-run v-annotate.pl on just those sequences
-      my @rerun_accessions = identify_rerun_candidates($tier2_alt_file,
+      my @rescue_accessions = identify_rerun_candidates($tier2_alt_file,
                                                         \%decision_H,
                                                         $alt_features_AR,
                                                         $exceptions_AR,
                                                         $FH_HR);
+      # Calibration-only set: tier-2 failers NOT in the rescue subset.
+      # These won't be rescued (they have unaddressed fatal alerts) but
+      # their pass-2 alerts are unbiased evidence for any alt-induced
+      # exceptions (e.g. insertn_exc from dup-bearing queries routed onto
+      # a dup-less centroid). See identify_calibration_candidates().
+      my @all_failers = identify_calibration_candidates(\%decision_H, $FH_HR);
+      my %rescue_set = map { $_ => 1 } @rescue_accessions;
+      my @calibration_only = grep { ! exists $rescue_set{$_} } @all_failers;
+      my @rerun_accessions = (@rescue_accessions, @calibration_only);
 
       if(scalar(@rerun_accessions) > 0) {
         ofile_OutputString($FH_HR->{"log"}, 1,
-          sprintf("# Auto-alt detect: re-running v-annotate on %d candidate sequences\n", scalar(@rerun_accessions)));
+          sprintf("# Auto-alt detect: re-running v-annotate on %d sequences\n", scalar(@rerun_accessions)));
+        ofile_OutputString($FH_HR->{"log"}, 1,
+          sprintf("#                  (%d rescue candidates + %d calibration-only)\n",
+                  scalar(@rescue_accessions), scalar(@calibration_only)));
 
         # Create a FASTA subset for the re-run candidates
         my $rerun_fa = $out_root . ".alt.rerun.fa";
@@ -1312,7 +1327,12 @@ if($do_auto_alt) {
 
         my $n_rescued = 0;
         my $n_rescued_no_snapshot = 0;
-        foreach my $acc (@rerun_accessions) {
+        # Rescue counting is restricted to the rescue subset (the
+        # all-addressed candidates). Calibration-only seqs are in
+        # @rerun_accessions to feed pass-2 alerts back into exception
+        # detection, but they have unaddressed fatal alerts so they
+        # were never rescue-eligible regardless of pass-2 outcome.
+        foreach my $acc (@rescue_accessions) {
           if(! exists $pass2_fail_H{$acc}) {
             # This sequence now passes — restore it to the candidate pool
             $decision_H{$acc}{"status"} = "kept";
@@ -1340,8 +1360,62 @@ if($do_auto_alt) {
                     $n_rescued_no_snapshot));
         }
         ofile_OutputString($FH_HR->{"log"}, 1,
-          sprintf("# Auto-alt detect: pass2 rescued %d of %d re-run candidates\n",
-                  $n_rescued, scalar(@rerun_accessions)));
+          sprintf("# Auto-alt detect: pass2 rescued %d of %d rescue candidates\n",
+                  $n_rescued, scalar(@rescue_accessions)));
+
+        # ---- Pass-2 exception detection ----
+        # Re-detect exceptions on the pass-2 alt file. Alt-feature
+        # selection can route queries onto centroids whose model
+        # geometry the seed didn't represent (e.g. the RSV-B BA-dup
+        # G CDS variants), producing alert classes that tier-2 never
+        # saw (insertnp/deletinp on length-differing variants,
+        # fsthicfi on frameshift-resolved variants, lowsim_exc on
+        # extended-flank variants, etc.). Without re-detecting on
+        # pass-2 alerts these exceptions are structurally absent from
+        # the auto-generated minfo. See subagent brief 19 for the
+        # RSV-B insertn_exc instance that motivated this.
+        #
+        # Single iteration only — pass-2 ran against minfo v1 (no new
+        # pass-2 excs yet), so calibration-only seqs that would be
+        # rescued only with the pass-2 excs aren't rescued in this
+        # run. Downstream v-annotate (using the final minfo) will
+        # correctly handle queries that trigger those alerts.
+        my $pass2_alt_file = $rerun_outdir . "/" . $rerun_outdir_tail . ".vadr.alt";
+        if(-e $pass2_alt_file) {
+          ofile_OutputString($FH_HR->{"log"}, 1,
+            sprintf("# Auto-alt detect: re-running exception detection on pass-2 alerts\n"));
+          my $pass2_exc_groups_HHR = parse_alt_for_exceptions($pass2_alt_file, $FH_HR);
+          # Combine tier-2 and pass-2 evidence so detect_exceptions'
+          # region-merge logic spans both passes.
+          my $combined_exc_groups_HHR = merge_exc_groups($tier2_exc_groups_HHR, $pass2_exc_groups_HHR);
+          my $combined_exceptions_AR = detect_exceptions($combined_exc_groups_HHR,
+                                                          $min_independent,
+                                                          opt_Get("--alt-min-count", $opt_HHR),
+                                                          $FH_HR);
+          my $n_combined_exc = scalar(@{$combined_exceptions_AR});
+          my $n_new_exc = $n_combined_exc - $n_exc;
+          if($n_new_exc > 0) {
+            ofile_OutputString($FH_HR->{"log"}, 1,
+              sprintf("# Auto-alt detect: %d exceptions discovered post-pass-2; these will apply at v-annotate-time but did not rescue additional training seqs this run\n",
+                      $n_new_exc));
+            # Re-write the minfo with the merged exception list.
+            # Alt features are unchanged (BLAST db / proteins built
+            # from minfo v1 remain valid).
+            add_alternatives_and_exceptions_to_minfo($seed_minfo, $updated_minfo,
+                                                      $alt_features_AR, $combined_exceptions_AR,
+                                                      $model_key, $FH_HR);
+            ofile_OutputString($FH_HR->{"log"}, 1,
+              sprintf("# Auto-alt detect: re-wrote minfo with combined tier-2+pass-2 exceptions: %s\n", $updated_minfo));
+          }
+          else {
+            ofile_OutputString($FH_HR->{"log"}, 1,
+              sprintf("# Auto-alt detect: no new exceptions from pass-2 alerts\n"));
+          }
+        }
+        else {
+          ofile_OutputString($FH_HR->{"log"}, 1,
+            sprintf("# Auto-alt detect: WARNING pass-2 alt file not found at %s, skipping pass-2 exception detection\n", $pass2_alt_file));
+        }
       }
       else {
         ofile_OutputString($FH_HR->{"log"}, 1,
@@ -9335,6 +9409,86 @@ sub replace_first_segment_start {
     return join(",", @segs);
   }
   return undef;
+}
+
+#################################################################
+# Subroutine: identify_calibration_candidates()
+# Incept:     EPN*, Thu May 28 2026
+#
+# Purpose:    Return all tier-2 failers, without the "all addressed"
+#             gate that identify_rerun_candidates applies. The broader
+#             set is the unbiased population for pass-2 exception
+#             calibration: any tier-2 passer routed onto the seed
+#             variant in pass-2 still passes (alt selection minimizes
+#             fatal alerts, seed is always retained), so it cannot
+#             contribute exception evidence. Tier-2 failers — even
+#             those with mixed addressed/unaddressed alerts — can.
+#
+#             Used in addition to identify_rerun_candidates(): the
+#             pass-2 v-annotate input is the union of the rescue
+#             candidates and the calibration candidates. The rescue
+#             count (final report) is still computed against the
+#             rescue subset only.
+#
+# Arguments:
+#   $decision_HR: REF to decision hash
+#   $FH_HR:       REF to hash of file handles
+#
+# Returns: array of accession strings (all tier-2 failers)
+#################################################################
+sub identify_calibration_candidates {
+  my $sub_name = "identify_calibration_candidates";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+
+  my ($decision_HR, $FH_HR) = @_;
+
+  my @cands = ();
+  foreach my $acc (sort keys %{$decision_HR}) {
+    next if($decision_HR->{$acc}{"status"} ne "removed");
+    next if($decision_HR->{$acc}{"reason_code"} ne "vadr_fail");
+    push(@cands, $acc);
+  }
+  return @cands;
+}
+
+#################################################################
+# Subroutine: merge_exc_groups()
+# Incept:     EPN*, Thu May 28 2026
+#
+# Purpose:    Combine two exception-group hashes produced by
+#             parse_alt_for_exceptions() into one hash. Used to
+#             feed tier-2 and pass-2 evidence into a single
+#             detect_exceptions() call so its region-merge logic
+#             naturally spans both passes.
+#
+#             For each (exc_key, mdl_coords) present in either
+#             input, the entries arrays are concatenated. Same
+#             accession appearing in both passes is fine —
+#             detect_exceptions() deduplicates accessions per
+#             region.
+#
+# Arguments:
+#   $a_HHR: REF to first exc_groups hash (e.g. tier-2)
+#   $b_HHR: REF to second exc_groups hash (e.g. pass-2)
+#
+# Returns: REF to combined hash
+#################################################################
+sub merge_exc_groups {
+  my ($a_HHR, $b_HHR) = @_;
+  my %combined = ();
+  foreach my $src ($a_HHR, $b_HHR) {
+    next if(! defined $src);
+    foreach my $exc_key (keys %{$src}) {
+      foreach my $mdl_coords (keys %{$src->{$exc_key}}) {
+        if(! exists $combined{$exc_key}{$mdl_coords}) {
+          $combined{$exc_key}{$mdl_coords} = [];
+        }
+        push(@{$combined{$exc_key}{$mdl_coords}}, @{$src->{$exc_key}{$mdl_coords}});
+      }
+    }
+  }
+  return \%combined;
 }
 
 #################################################################
