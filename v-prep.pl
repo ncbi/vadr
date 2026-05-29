@@ -1200,9 +1200,9 @@ if($do_auto_alt) {
     my $alt_features_AR = detect_alternative_features($alt_groups_HHR, $min_independent, opt_Get("--alt-min-count", $opt_HHR), $max_fract_diff,
                                                        \@{$ftr_info_HA{$minfo_model_key}}, $minfo_model_key, $FH_HR);
 
-    # Detect exceptions (tier-2 alerts only at this stage; pass-2
-    # alerts are folded in after pass-2 v-annotate completes — see
-    # pass-2 detection block below).
+    # Detect tier-2 exceptions. Pass-2 exceptions are detected after
+    # pass-2 v-annotate completes (see pass-2 detection block below)
+    # and applied to minfo v1 directly using pass-2 ftr_idx.
     my $tier2_exc_groups_HHR = parse_alt_for_exceptions($tier2_alt_file, $FH_HR);
     my $exceptions_AR = detect_exceptions($tier2_exc_groups_HHR, $min_independent, opt_Get("--alt-min-count", $opt_HHR), $FH_HR);
 
@@ -1384,28 +1384,50 @@ if($do_auto_alt) {
         if(-e $pass2_alt_file) {
           ofile_OutputString($FH_HR->{"log"}, 1,
             sprintf("# Auto-alt detect: re-running exception detection on pass-2 alerts\n"));
+          # Pass-2 alerts have ftr_idx in minfo-v1's feature order
+          # (with alts inserted). detect_exceptions returns
+          # exceptions carrying those ftr indexes, which we must
+          # apply to minfo v1 itself (NOT seed_minfo) — otherwise
+          # ftr_idx points to the wrong line in seed_minfo (e.g.
+          # insertn_exc on alt G CDS would land on M2-1 because
+          # alt CDS insertions shifted seed-feature indexes
+          # downstream).
           my $pass2_exc_groups_HHR = parse_alt_for_exceptions($pass2_alt_file, $FH_HR);
-          # Combine tier-2 and pass-2 evidence so detect_exceptions'
-          # region-merge logic spans both passes.
-          my $combined_exc_groups_HHR = merge_exc_groups($tier2_exc_groups_HHR, $pass2_exc_groups_HHR);
-          my $combined_exceptions_AR = detect_exceptions($combined_exc_groups_HHR,
-                                                          $min_independent,
-                                                          opt_Get("--alt-min-count", $opt_HHR),
-                                                          $FH_HR);
-          my $n_combined_exc = scalar(@{$combined_exceptions_AR});
-          my $n_new_exc = $n_combined_exc - $n_exc;
+          my $pass2_exceptions_AR = detect_exceptions($pass2_exc_groups_HHR,
+                                                       $min_independent,
+                                                       opt_Get("--alt-min-count", $opt_HHR),
+                                                       $FH_HR);
+          # Skip pass-2 exceptions that are exact duplicates of
+          # tier-2 exceptions (same exc_type, ftr_name, exc_coords).
+          # Tier-2 evidence is already captured in minfo v1; re-adding
+          # would produce duplicate coords in the _exc value (e.g.
+          # deletin_exc:"5399..5502:+:60,5399..5502:+:60"). The
+          # ftr_idx values differ across passes for features past an
+          # alt-insertion point, but ftr_name + coords are stable.
+          my %tier2_seen = ();
+          foreach my $e (@{$exceptions_AR}) {
+            my $k = $e->{"exc_type"} . ":" . $e->{"ftr_name"} . ":" . $e->{"exc_coords"};
+            $tier2_seen{$k} = 1;
+          }
+          my @new_pass2_excs = ();
+          foreach my $e (@{$pass2_exceptions_AR}) {
+            my $k = $e->{"exc_type"} . ":" . $e->{"ftr_name"} . ":" . $e->{"exc_coords"};
+            push(@new_pass2_excs, $e) if(! exists $tier2_seen{$k});
+          }
+          my $n_new_exc = scalar(@new_pass2_excs);
           if($n_new_exc > 0) {
             ofile_OutputString($FH_HR->{"log"}, 1,
               sprintf("# Auto-alt detect: %d exceptions discovered post-pass-2; these will apply at v-annotate-time but did not rescue additional training seqs this run\n",
                       $n_new_exc));
-            # Re-write the minfo with the merged exception list.
-            # Alt features are unchanged (BLAST db / proteins built
-            # from minfo v1 remain valid).
-            add_alternatives_and_exceptions_to_minfo($seed_minfo, $updated_minfo,
-                                                      $alt_features_AR, $combined_exceptions_AR,
-                                                      $model_key, $FH_HR);
+            # Apply to minfo v1 in place. skip_alts=1 because the
+            # alt CDS lines are already in minfo v1; we only want
+            # to append the new pass-2 _exc keys. Pass-2 ftr_idx
+            # values index minfo v1 directly.
+            add_alternatives_and_exceptions_to_minfo($updated_minfo, $updated_minfo,
+                                                      [], \@new_pass2_excs,
+                                                      $model_key, $FH_HR, 1);
             ofile_OutputString($FH_HR->{"log"}, 1,
-              sprintf("# Auto-alt detect: re-wrote minfo with combined tier-2+pass-2 exceptions: %s\n", $updated_minfo));
+              sprintf("# Auto-alt detect: re-wrote minfo with pass-2 exceptions: %s\n", $updated_minfo));
           }
           else {
             ofile_OutputString($FH_HR->{"log"}, 1,
@@ -8784,10 +8806,21 @@ sub detect_exceptions {
 #################################################################
 sub add_alternatives_and_exceptions_to_minfo {
   my $sub_name = "add_alternatives_and_exceptions_to_minfo";
-  my $nargs_expected = 6;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+  # Optional 7th arg $skip_alts: when true, do not insert alt
+  # feature lines (alts are assumed already present in $in_minfo_file).
+  # Used by the pass-2 exception-detection path, which applies pass-2
+  # exceptions to minfo v1 in place — pass-2's ftr_idx refers to
+  # minfo v1's feature order (with alts inserted), so the in-file must
+  # also be minfo v1 for ftr_idx to match.
+  my $nargs_expected_min = 6;
+  my $nargs_expected_max = 7;
+  if(scalar(@_) < $nargs_expected_min || scalar(@_) > $nargs_expected_max) {
+    printf STDERR ("ERROR, $sub_name entered with %d input arguments, expected %d or %d.\n", scalar(@_), $nargs_expected_min, $nargs_expected_max);
+    exit(1);
+  }
 
-  my ($in_minfo_file, $out_minfo_file, $alt_features_AR, $exceptions_AR, $model_key, $FH_HR) = @_;
+  my ($in_minfo_file, $out_minfo_file, $alt_features_AR, $exceptions_AR, $model_key, $FH_HR, $skip_alts) = @_;
+  $skip_alts = 0 if(! defined $skip_alts);
 
   # Read all lines from input minfo
   my @lines = ();
@@ -8865,8 +8898,12 @@ sub add_alternatives_and_exceptions_to_minfo {
 
   # --- Step 2: Build alternative feature insertions ---
   # Group alternatives by ftr_idx so we can handle multiple alternatives
-  # for the same CDS
+  # for the same CDS. %insert_after is declared at the function scope
+  # so Step 3 can see it whether or not Step 2 ran ($skip_alts case).
+  my %insert_after = ();  # line_idx -> [line1, line2, ...]
   my %alts_by_ftr_idx = ();
+  my %used_set_names = (); # track used alternative_ftr_set names for uniqueness
+  if(! $skip_alts) {
   foreach my $alt (@{$alt_features_AR}) {
     my $ftr_idx = $alt->{"ftr_idx"};
     if(! exists $alts_by_ftr_idx{$ftr_idx}) {
@@ -8883,8 +8920,7 @@ sub add_alternatives_and_exceptions_to_minfo {
   #
   # We build a map of: line_index -> [lines to insert AFTER this line]
   # and lines to modify in-place
-  my %insert_after = ();  # line_idx -> [line1, line2, ...]
-  my %used_set_names = (); # track used alternative_ftr_set names for uniqueness
+  # (%insert_after and %used_set_names declared at function scope above)
 
   foreach my $ftr_idx (sort { $a <=> $b } keys %alts_by_ftr_idx) {
     my @alts = @{$alts_by_ftr_idx{$ftr_idx}};
@@ -9008,6 +9044,7 @@ sub add_alternatives_and_exceptions_to_minfo {
       } # end of if(! $gene_already_spans_all)
     } # end of if($gene_ftr_idx >= 0)
   }
+  } # end of if(! $skip_alts)
 
   # --- Step 3: Write output minfo ---
   open(my $outfh, ">", $out_minfo_file) || ofile_FAIL("ERROR in $sub_name, unable to open $out_minfo_file for writing", 1, $FH_HR);
@@ -9450,45 +9487,6 @@ sub identify_calibration_candidates {
     push(@cands, $acc);
   }
   return @cands;
-}
-
-#################################################################
-# Subroutine: merge_exc_groups()
-# Incept:     EPN*, Thu May 28 2026
-#
-# Purpose:    Combine two exception-group hashes produced by
-#             parse_alt_for_exceptions() into one hash. Used to
-#             feed tier-2 and pass-2 evidence into a single
-#             detect_exceptions() call so its region-merge logic
-#             naturally spans both passes.
-#
-#             For each (exc_key, mdl_coords) present in either
-#             input, the entries arrays are concatenated. Same
-#             accession appearing in both passes is fine —
-#             detect_exceptions() deduplicates accessions per
-#             region.
-#
-# Arguments:
-#   $a_HHR: REF to first exc_groups hash (e.g. tier-2)
-#   $b_HHR: REF to second exc_groups hash (e.g. pass-2)
-#
-# Returns: REF to combined hash
-#################################################################
-sub merge_exc_groups {
-  my ($a_HHR, $b_HHR) = @_;
-  my %combined = ();
-  foreach my $src ($a_HHR, $b_HHR) {
-    next if(! defined $src);
-    foreach my $exc_key (keys %{$src}) {
-      foreach my $mdl_coords (keys %{$src->{$exc_key}}) {
-        if(! exists $combined{$exc_key}{$mdl_coords}) {
-          $combined{$exc_key}{$mdl_coords} = [];
-        }
-        push(@{$combined{$exc_key}{$mdl_coords}}, @{$src->{$exc_key}{$mdl_coords}});
-      }
-    }
-  }
-  return \%combined;
 }
 
 #################################################################
