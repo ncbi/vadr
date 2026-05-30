@@ -11,19 +11,30 @@ use HTML::Entities qw(decode_entities);
 my $taxid     = "";
 my $outprefix = "";
 my $api_key   = "";
+my $maxdate   = "";
+my $mindate   = "";
 my $quiet     = 0;
 
 GetOptions(
     "taxid=s"   => \$taxid,
     "out=s"     => \$outprefix,
     "api_key=s" => \$api_key,
+    "maxdate=s" => \$maxdate,
+    "mindate=s" => \$mindate,
     "q|quiet"   => \$quiet,
 );
 
 if (!$taxid || !$outprefix) {
-    print STDERR "Usage: $0 --taxid <taxid> --out <output_prefix> [--api_key <key>]\n";
+    print STDERR "Usage: $0 --taxid <taxid> --out <output_prefix> [--api_key <key>] [--maxdate <YYYY/MM/DD>] [--mindate <YYYY/MM/DD>]\n";
     print STDERR "Example: $0 --taxid 138951 --out evD_metadata --api_key ABC123DEF456\n";
     exit(1);
+}
+
+if ($maxdate && $maxdate !~ /^\d{4}\/\d{2}\/\d{2}$/) {
+    die "ERROR: --maxdate format invalid; expected YYYY/MM/DD, got $maxdate\n";
+}
+if ($mindate && $mindate !~ /^\d{4}\/\d{2}\/\d{2}$/) {
+    die "ERROR: --mindate format invalid; expected YYYY/MM/DD, got $mindate\n";
 }
 
 my $base_esearch = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi";
@@ -38,9 +49,21 @@ my $query = "txid$taxid\[Organism\] NOT (gbdiv_syn\[prop\] OR gbdiv_pat\[prop\] 
 my $api_params = "";
 if ($api_key) { $api_params .= "&api_key=$api_key"; }
 
+if ($maxdate || $mindate) {
+    my $min_part = $mindate || "0001/01/01";
+    my $max_part = $maxdate || "3000/12/31";
+    $query .= " AND $min_part:$max_part\[pdat\]";
+}
+
 # Step 1: esearch with usehistory to get WebEnv
 my $esearch_url = "$base_esearch?db=nuccore&term=" . _url_encode($query) . "&usehistory=y&retmax=0" . $api_params;
 print "- Querying NCBI esearch for taxonomy ID $taxid...\n" unless $quiet;
+if (!$quiet && ($mindate || $maxdate)) {
+    my @bounds = ();
+    push @bounds, "mindate=$mindate" if $mindate;
+    push @bounds, "maxdate=$maxdate" if $maxdate;
+    print "- Date bounds: " . join(" ", @bounds) . "\n";
+}
 
 my $esearch_res = get($esearch_url);
 if (!defined($esearch_res)) {
