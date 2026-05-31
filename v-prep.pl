@@ -1200,9 +1200,11 @@ if($do_auto_alt) {
     my $alt_features_AR = detect_alternative_features($alt_groups_HHR, $min_independent, opt_Get("--alt-min-count", $opt_HHR), $max_fract_diff,
                                                        \@{$ftr_info_HA{$minfo_model_key}}, $minfo_model_key, $FH_HR);
 
-    # Detect exceptions
-    my $exc_groups_HHR = parse_alt_for_exceptions($tier2_alt_file, $FH_HR);
-    my $exceptions_AR = detect_exceptions($exc_groups_HHR, $min_independent, opt_Get("--alt-min-count", $opt_HHR), $FH_HR);
+    # Detect tier-2 exceptions. Pass-2 exceptions are detected after
+    # pass-2 v-annotate completes (see pass-2 detection block below)
+    # and applied to minfo v1 directly using pass-2 ftr_idx.
+    my $tier2_exc_groups_HHR = parse_alt_for_exceptions($tier2_alt_file, $FH_HR);
+    my $exceptions_AR = detect_exceptions($tier2_exc_groups_HHR, $min_independent, opt_Get("--alt-min-count", $opt_HHR), $FH_HR);
 
     my $n_alt = scalar(@{$alt_features_AR});
     my $n_exc = scalar(@{$exceptions_AR});
@@ -1210,7 +1212,8 @@ if($do_auto_alt) {
       sprintf("# Auto-alt detect: found %d alternative features and %d exceptions\n", $n_alt, $n_exc));
 
     if($n_alt > 0 || $n_exc > 0) {
-      # Update the minfo file
+      # Update the minfo file (tier-2 exceptions only at this point;
+      # may be re-written below after pass-2 exception detection).
       my $updated_minfo = $out_root . ".alt.minfo";
       add_alternatives_and_exceptions_to_minfo($seed_minfo, $updated_minfo,
                                                 $alt_features_AR, $exceptions_AR,
@@ -1234,15 +1237,27 @@ if($do_auto_alt) {
       # Selective v-annotate re-run: identify sequences that failed
       # ONLY due to alerts addressed by the new alternatives/exceptions,
       # and re-run v-annotate.pl on just those sequences
-      my @rerun_accessions = identify_rerun_candidates($tier2_alt_file,
+      my @rescue_accessions = identify_rerun_candidates($tier2_alt_file,
                                                         \%decision_H,
                                                         $alt_features_AR,
                                                         $exceptions_AR,
                                                         $FH_HR);
+      # Calibration-only set: tier-2 failers NOT in the rescue subset.
+      # These won't be rescued (they have unaddressed fatal alerts) but
+      # their pass-2 alerts are unbiased evidence for any alt-induced
+      # exceptions (e.g. insertn_exc from dup-bearing queries routed onto
+      # a dup-less centroid). See identify_calibration_candidates().
+      my @all_failers = identify_calibration_candidates(\%decision_H, $FH_HR);
+      my %rescue_set = map { $_ => 1 } @rescue_accessions;
+      my @calibration_only = grep { ! exists $rescue_set{$_} } @all_failers;
+      my @rerun_accessions = (@rescue_accessions, @calibration_only);
 
       if(scalar(@rerun_accessions) > 0) {
         ofile_OutputString($FH_HR->{"log"}, 1,
-          sprintf("# Auto-alt detect: re-running v-annotate on %d candidate sequences\n", scalar(@rerun_accessions)));
+          sprintf("# Auto-alt detect: re-running v-annotate on %d sequences\n", scalar(@rerun_accessions)));
+        ofile_OutputString($FH_HR->{"log"}, 1,
+          sprintf("#                  (%d rescue candidates + %d calibration-only)\n",
+                  scalar(@rescue_accessions), scalar(@calibration_only)));
 
         # Create a FASTA subset for the re-run candidates
         my $rerun_fa = $out_root . ".alt.rerun.fa";
@@ -1312,7 +1327,12 @@ if($do_auto_alt) {
 
         my $n_rescued = 0;
         my $n_rescued_no_snapshot = 0;
-        foreach my $acc (@rerun_accessions) {
+        # Rescue counting is restricted to the rescue subset (the
+        # all-addressed candidates). Calibration-only seqs are in
+        # @rerun_accessions to feed pass-2 alerts back into exception
+        # detection, but they have unaddressed fatal alerts so they
+        # were never rescue-eligible regardless of pass-2 outcome.
+        foreach my $acc (@rescue_accessions) {
           if(! exists $pass2_fail_H{$acc}) {
             # This sequence now passes — restore it to the candidate pool
             $decision_H{$acc}{"status"} = "kept";
@@ -1340,8 +1360,84 @@ if($do_auto_alt) {
                     $n_rescued_no_snapshot));
         }
         ofile_OutputString($FH_HR->{"log"}, 1,
-          sprintf("# Auto-alt detect: pass2 rescued %d of %d re-run candidates\n",
-                  $n_rescued, scalar(@rerun_accessions)));
+          sprintf("# Auto-alt detect: pass2 rescued %d of %d rescue candidates\n",
+                  $n_rescued, scalar(@rescue_accessions)));
+
+        # ---- Pass-2 exception detection ----
+        # Re-detect exceptions on the pass-2 alt file. Alt-feature
+        # selection can route queries onto centroids whose model
+        # geometry the seed didn't represent (e.g. the RSV-B BA-dup
+        # G CDS variants), producing alert classes that tier-2 never
+        # saw (insertnp/deletinp on length-differing variants,
+        # fsthicfi on frameshift-resolved variants, lowsim_exc on
+        # extended-flank variants, etc.). Without re-detecting on
+        # pass-2 alerts these exceptions are structurally absent from
+        # the auto-generated minfo. See subagent brief 19 for the
+        # RSV-B insertn_exc instance that motivated this.
+        #
+        # Single iteration only — pass-2 ran against minfo v1 (no new
+        # pass-2 excs yet), so calibration-only seqs that would be
+        # rescued only with the pass-2 excs aren't rescued in this
+        # run. Downstream v-annotate (using the final minfo) will
+        # correctly handle queries that trigger those alerts.
+        my $pass2_alt_file = $rerun_outdir . "/" . $rerun_outdir_tail . ".vadr.alt";
+        if(-e $pass2_alt_file) {
+          ofile_OutputString($FH_HR->{"log"}, 1,
+            sprintf("# Auto-alt detect: re-running exception detection on pass-2 alerts\n"));
+          # Pass-2 alerts have ftr_idx in minfo-v1's feature order
+          # (with alts inserted). detect_exceptions returns
+          # exceptions carrying those ftr indexes, which we must
+          # apply to minfo v1 itself (NOT seed_minfo) — otherwise
+          # ftr_idx points to the wrong line in seed_minfo (e.g.
+          # insertn_exc on alt G CDS would land on M2-1 because
+          # alt CDS insertions shifted seed-feature indexes
+          # downstream).
+          my $pass2_exc_groups_HHR = parse_alt_for_exceptions($pass2_alt_file, $FH_HR);
+          my $pass2_exceptions_AR = detect_exceptions($pass2_exc_groups_HHR,
+                                                       $min_independent,
+                                                       opt_Get("--alt-min-count", $opt_HHR),
+                                                       $FH_HR);
+          # Skip pass-2 exceptions that are exact duplicates of
+          # tier-2 exceptions (same exc_type, ftr_name, exc_coords).
+          # Tier-2 evidence is already captured in minfo v1; re-adding
+          # would produce duplicate coords in the _exc value (e.g.
+          # deletin_exc:"5399..5502:+:60,5399..5502:+:60"). The
+          # ftr_idx values differ across passes for features past an
+          # alt-insertion point, but ftr_name + coords are stable.
+          my %tier2_seen = ();
+          foreach my $e (@{$exceptions_AR}) {
+            my $k = $e->{"exc_type"} . ":" . $e->{"ftr_name"} . ":" . $e->{"exc_coords"};
+            $tier2_seen{$k} = 1;
+          }
+          my @new_pass2_excs = ();
+          foreach my $e (@{$pass2_exceptions_AR}) {
+            my $k = $e->{"exc_type"} . ":" . $e->{"ftr_name"} . ":" . $e->{"exc_coords"};
+            push(@new_pass2_excs, $e) if(! exists $tier2_seen{$k});
+          }
+          my $n_new_exc = scalar(@new_pass2_excs);
+          if($n_new_exc > 0) {
+            ofile_OutputString($FH_HR->{"log"}, 1,
+              sprintf("# Auto-alt detect: %d exceptions discovered post-pass-2; these will apply at v-annotate-time but did not rescue additional training seqs this run\n",
+                      $n_new_exc));
+            # Apply to minfo v1 in place. skip_alts=1 because the
+            # alt CDS lines are already in minfo v1; we only want
+            # to append the new pass-2 _exc keys. Pass-2 ftr_idx
+            # values index minfo v1 directly.
+            add_alternatives_and_exceptions_to_minfo($updated_minfo, $updated_minfo,
+                                                      [], \@new_pass2_excs,
+                                                      $model_key, $FH_HR, 1);
+            ofile_OutputString($FH_HR->{"log"}, 1,
+              sprintf("# Auto-alt detect: re-wrote minfo with pass-2 exceptions: %s\n", $updated_minfo));
+          }
+          else {
+            ofile_OutputString($FH_HR->{"log"}, 1,
+              sprintf("# Auto-alt detect: no new exceptions from pass-2 alerts\n"));
+          }
+        }
+        else {
+          ofile_OutputString($FH_HR->{"log"}, 1,
+            sprintf("# Auto-alt detect: WARNING pass-2 alt file not found at %s, skipping pass-2 exception detection\n", $pass2_alt_file));
+        }
       }
       else {
         ofile_OutputString($FH_HR->{"log"}, 1,
@@ -8710,10 +8806,21 @@ sub detect_exceptions {
 #################################################################
 sub add_alternatives_and_exceptions_to_minfo {
   my $sub_name = "add_alternatives_and_exceptions_to_minfo";
-  my $nargs_expected = 6;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+  # Optional 7th arg $skip_alts: when true, do not insert alt
+  # feature lines (alts are assumed already present in $in_minfo_file).
+  # Used by the pass-2 exception-detection path, which applies pass-2
+  # exceptions to minfo v1 in place — pass-2's ftr_idx refers to
+  # minfo v1's feature order (with alts inserted), so the in-file must
+  # also be minfo v1 for ftr_idx to match.
+  my $nargs_expected_min = 6;
+  my $nargs_expected_max = 7;
+  if(scalar(@_) < $nargs_expected_min || scalar(@_) > $nargs_expected_max) {
+    printf STDERR ("ERROR, $sub_name entered with %d input arguments, expected %d or %d.\n", scalar(@_), $nargs_expected_min, $nargs_expected_max);
+    exit(1);
+  }
 
-  my ($in_minfo_file, $out_minfo_file, $alt_features_AR, $exceptions_AR, $model_key, $FH_HR) = @_;
+  my ($in_minfo_file, $out_minfo_file, $alt_features_AR, $exceptions_AR, $model_key, $FH_HR, $skip_alts) = @_;
+  $skip_alts = 0 if(! defined $skip_alts);
 
   # Read all lines from input minfo
   my @lines = ();
@@ -8791,8 +8898,12 @@ sub add_alternatives_and_exceptions_to_minfo {
 
   # --- Step 2: Build alternative feature insertions ---
   # Group alternatives by ftr_idx so we can handle multiple alternatives
-  # for the same CDS
+  # for the same CDS. %insert_after is declared at the function scope
+  # so Step 3 can see it whether or not Step 2 ran ($skip_alts case).
+  my %insert_after = ();  # line_idx -> [line1, line2, ...]
   my %alts_by_ftr_idx = ();
+  my %used_set_names = (); # track used alternative_ftr_set names for uniqueness
+  if(! $skip_alts) {
   foreach my $alt (@{$alt_features_AR}) {
     my $ftr_idx = $alt->{"ftr_idx"};
     if(! exists $alts_by_ftr_idx{$ftr_idx}) {
@@ -8809,8 +8920,7 @@ sub add_alternatives_and_exceptions_to_minfo {
   #
   # We build a map of: line_index -> [lines to insert AFTER this line]
   # and lines to modify in-place
-  my %insert_after = ();  # line_idx -> [line1, line2, ...]
-  my %used_set_names = (); # track used alternative_ftr_set names for uniqueness
+  # (%insert_after and %used_set_names declared at function scope above)
 
   foreach my $ftr_idx (sort { $a <=> $b } keys %alts_by_ftr_idx) {
     my @alts = @{$alts_by_ftr_idx{$ftr_idx}};
@@ -8934,6 +9044,7 @@ sub add_alternatives_and_exceptions_to_minfo {
       } # end of if(! $gene_already_spans_all)
     } # end of if($gene_ftr_idx >= 0)
   }
+  } # end of if(! $skip_alts)
 
   # --- Step 3: Write output minfo ---
   open(my $outfh, ">", $out_minfo_file) || ofile_FAIL("ERROR in $sub_name, unable to open $out_minfo_file for writing", 1, $FH_HR);
@@ -9335,6 +9446,47 @@ sub replace_first_segment_start {
     return join(",", @segs);
   }
   return undef;
+}
+
+#################################################################
+# Subroutine: identify_calibration_candidates()
+# Incept:     EPN*, Thu May 28 2026
+#
+# Purpose:    Return all tier-2 failers, without the "all addressed"
+#             gate that identify_rerun_candidates applies. The broader
+#             set is the unbiased population for pass-2 exception
+#             calibration: any tier-2 passer routed onto the seed
+#             variant in pass-2 still passes (alt selection minimizes
+#             fatal alerts, seed is always retained), so it cannot
+#             contribute exception evidence. Tier-2 failers — even
+#             those with mixed addressed/unaddressed alerts — can.
+#
+#             Used in addition to identify_rerun_candidates(): the
+#             pass-2 v-annotate input is the union of the rescue
+#             candidates and the calibration candidates. The rescue
+#             count (final report) is still computed against the
+#             rescue subset only.
+#
+# Arguments:
+#   $decision_HR: REF to decision hash
+#   $FH_HR:       REF to hash of file handles
+#
+# Returns: array of accession strings (all tier-2 failers)
+#################################################################
+sub identify_calibration_candidates {
+  my $sub_name = "identify_calibration_candidates";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+
+  my ($decision_HR, $FH_HR) = @_;
+
+  my @cands = ();
+  foreach my $acc (sort keys %{$decision_HR}) {
+    next if($decision_HR->{$acc}{"status"} ne "removed");
+    next if($decision_HR->{$acc}{"reason_code"} ne "vadr_fail");
+    push(@cands, $acc);
+  }
+  return @cands;
 }
 
 #################################################################
