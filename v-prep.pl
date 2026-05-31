@@ -93,6 +93,8 @@ opt_Add("--refaccn",    "string",  undef,      $g,    undef, undef,       "refer
 opt_Add("--taxid",      "string",  undef,      $g,    undef, "--meta",    "fetch metadata from NCBI for taxonomy ID <s>",                "fetch metadata from NCBI for taxonomy ID <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--meta",       "string",  undef,      $g,    undef, "--taxid",   "read metadata TSV from <s> instead of fetching",              "read metadata TSV from <s> instead of fetching", \%opt_HH, \@opt_order_A);
 opt_Add("--api_key",    "string",  undef,      $g,    "--taxid", undef,   "NCBI API key to use for metadata fetch",                      "NCBI API key to use for metadata fetch as <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--maxdate",    "string",  undef,      $g,    "--taxid", "--meta", "restrict NCBI fetch to seqs published on or before <s> (YYYY/MM/DD)", "restrict NCBI fetch to seqs published on or before <s> (YYYY/MM/DD); requires --taxid; incompatible with --meta", \%opt_HH, \@opt_order_A);
+opt_Add("--mindate",    "string",  undef,      $g,    "--taxid", "--meta", "restrict NCBI fetch to seqs published on or after <s> (YYYY/MM/DD)",  "restrict NCBI fetch to seqs published on or after <s> (YYYY/MM/DD); requires --taxid; incompatible with --meta", \%opt_HH, \@opt_order_A);
 opt_Add("--seed-accn",  "string",  undef,      $g,    undef, undef,       "build seed model internally from accession <s>",              "build seed model internally from accession <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--seed-build-opts-file", "string", undef,   $g,    "--seed-accn", "--seed-build-opts", "read extra v-build.pl options from file <s>",     "read extra v-build.pl options from file <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--seed-build-opts", "string", undef,        $g,    "--seed-accn", "--seed-build-opts-file", "extra v-build.pl options from single string <s>", "extra v-build.pl options from single string <s>", \%opt_HH, \@opt_order_A);
@@ -186,6 +188,8 @@ my $options_okay =
                 'include-unknown-group' => \$GetOptions_H{"--include-unknown-group"},
                 'holdout-frac=f'  => \$GetOptions_H{"--holdout-frac"},
                 'holdout-seed=i'  => \$GetOptions_H{"--holdout-seed"},
+                'maxdate=s'       => \$GetOptions_H{"--maxdate"},
+                'mindate=s'       => \$GetOptions_H{"--mindate"},
 # overhang extension options
                 'no-overhang-ext'          => \$GetOptions_H{"--no-overhang-ext"},
                 'overhang-anchor-len=i'    => \$GetOptions_H{"--overhang-anchor-len"},
@@ -459,6 +463,12 @@ if(opt_IsUsed("--taxid", \%opt_HH)) {
   $cmd = "$^X $fetch_script --taxid $taxid --out $fetch_out_prefix";
   if(opt_IsUsed("--api_key", \%opt_HH)) {
     $cmd .= " --api_key " . opt_Get("--api_key", \%opt_HH);
+  }
+  if(opt_IsUsed("--maxdate", \%opt_HH)) {
+    $cmd .= " --maxdate " . opt_Get("--maxdate", \%opt_HH);
+  }
+  if(opt_IsUsed("--mindate", \%opt_HH)) {
+    $cmd .= " --mindate " . opt_Get("--mindate", \%opt_HH);
   }
   if(! opt_Get("-v", \%opt_HH)) {
     $cmd .= " --quiet";
