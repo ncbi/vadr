@@ -5992,12 +5992,15 @@ sub vdr_ModelInfoFileParse {
   my %mdl_read_H = ();    # keeps track of which model names we've seen MODEL lines for, to avoid duplicates
   open(IN, $in_file) || ofile_FileOpenFailure($in_file, $sub_name, $!, "reading", $FH_HR);
   while(my $line = <IN>) { 
-    if($line !~ /^#/) { 
-      # not a comment line
+    if(($line !~ /^#/) && ($line !~ /^R2DT_TEMPLATE\s/)) {
+      # not a comment line and not an R2DT_TEMPLATE line
+      # (R2DT_TEMPLATE lines are parsed separately by vdr_R2dtTemplateFileParse(),
+      #  invoked only when v-annotate.pl --draw_r2dt is used; they are ignored here
+      #  so that the standard MODEL/FEATURE parse is unaffected)
       my $orig_line = $line;
       chomp $line;
       my $is_model_line = 0; # set to 1 if line we are parsing is a MODEL line, else it's a FEATURE line
-      if($line =~ /^MODEL\s+(\S+)\s*/) { 
+      if($line =~ /^MODEL\s+(\S+)\s*/) {
         $mdl_name = $1;
         if($mdl_name =~ /[\)\(]/) { 
           ofile_FAIL("ERROR in $sub_name, model info file has model named $mdl_name which contains '(' and/or ')', which are not allowed in model names", 1, $FH_HR);
@@ -6059,12 +6062,125 @@ sub vdr_ModelInfoFileParse {
   # verify we read what we need
   utl_AHValidate($mdl_info_AHR, $reqd_mdl_keys_AR, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing", $FH_HR);
   my $nmdl = scalar(@{$mdl_info_AHR});
-  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
     utl_AHValidate($ftr_info_HAHR->{$mdl_name}, $reqd_ftr_keys_AR, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing for model " . $mdl_info_AHR->[$mdl_idx]{"name"}, $FH_HR);
   }
 
   return;
+}
+
+#################################################################
+# Subroutine: vdr_R2dtTemplateFileParse()
+# Incept:     EPN, Tue Jun  2 2026
+#
+# Synopsis: Parse R2DT_TEMPLATE lines from a model info (.minfo) file.
+#           Used by v-annotate.pl --draw_r2dt only. R2DT_TEMPLATE lines
+#           are ignored by the standard vdr_ModelInfoFileParse().
+#
+#           R2DT_TEMPLATE line format:
+#             R2DT_TEMPLATE name=<template_name> model=<vadr_model_name> ranges=<rfstart..rfend>[,<rfstart..rfend>]*
+#
+#           Fields:
+#             name:   R2DT template name (matches <R2DT_install>/data/local_data/<name>/)
+#             model:  VADR model name (must match a MODEL line's name)
+#             ranges: comma-separated list of inclusive, 1-indexed RF column
+#                     ranges in the VADR model's RF frame. Concatenated in the
+#                     order given to form the extracted sub-sequence.
+#
+#           Results are stored in @{$tmpl_info_HAR->{$model}}, one hash per
+#           R2DT_TEMPLATE applicable to that model, with keys:
+#             "name"      => template name
+#             "model"     => model name
+#             "ranges_AR" => ref to array of [start,end] pairs (1-indexed)
+#
+# Arguments:
+#  $in_file:        input .minfo file to parse
+#  $mdl_len_HR:     REF to hash, key: model name, value: model CLEN (length),
+#                   used to validate ranges are in bounds. Can be undef to skip
+#                   the in-bounds check.
+#  $tmpl_info_HAR:  REF to hash of arrays of hashes, filled here (see above)
+#  $FH_HR:          REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    number of R2DT_TEMPLATE lines parsed
+#
+# Dies:       if unable to parse a line
+#             if model name is unknown (not a key in $mdl_len_HR, if defined)
+#             if a range is out-of-bounds for the model CLEN
+#             if ranges are overlapping or non-monotonic
+#################################################################
+sub vdr_R2dtTemplateFileParse {
+  my $sub_name = "vdr_R2dtTemplateFileParse";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+
+  my ($in_file, $mdl_len_HR, $tmpl_info_HAR, $FH_HR) = @_;
+
+  my $ntmpl = 0;
+  open(IN, $in_file) || ofile_FileOpenFailure($in_file, $sub_name, $!, "reading", $FH_HR);
+  while(my $line = <IN>) {
+    if($line =~ /^R2DT_TEMPLATE\s/) {
+      my $orig_line = $line;
+      chomp $line;
+      # parse the three required key=value fields (order-independent)
+      my ($tmpl_name, $tmpl_model, $tmpl_ranges) = (undef, undef, undef);
+      my $rest = $line;
+      $rest =~ s/^R2DT_TEMPLATE\s+//;
+      foreach my $tok (split(/\s+/, $rest)) {
+        if   ($tok =~ /^name=(\S+)$/)   { $tmpl_name   = $1; }
+        elsif($tok =~ /^model=(\S+)$/)  { $tmpl_model  = $1; }
+        elsif($tok =~ /^ranges=(\S+)$/) { $tmpl_ranges = $1; }
+        else {
+          ofile_FAIL("ERROR in $sub_name, unable to parse R2DT_TEMPLATE token '$tok'; expected name=, model=, or ranges=; line:\n$orig_line\n", 1, $FH_HR);
+        }
+      }
+      if(! defined $tmpl_name)   { ofile_FAIL("ERROR in $sub_name, R2DT_TEMPLATE line missing name= field; line:\n$orig_line\n", 1, $FH_HR); }
+      if(! defined $tmpl_model)  { ofile_FAIL("ERROR in $sub_name, R2DT_TEMPLATE line missing model= field; line:\n$orig_line\n", 1, $FH_HR); }
+      if(! defined $tmpl_ranges) { ofile_FAIL("ERROR in $sub_name, R2DT_TEMPLATE line missing ranges= field; line:\n$orig_line\n", 1, $FH_HR); }
+
+      # validate model reference
+      if((defined $mdl_len_HR) && (! exists $mdl_len_HR->{$tmpl_model})) {
+        ofile_FAIL("ERROR in $sub_name, R2DT_TEMPLATE references unknown model '$tmpl_model'; line:\n$orig_line\n", 1, $FH_HR);
+      }
+      my $clen = (defined $mdl_len_HR) ? $mdl_len_HR->{$tmpl_model} : undef;
+
+      # parse + validate ranges
+      my @ranges_A = ();
+      my $prev_end = 0;
+      foreach my $range (split(/,/, $tmpl_ranges)) {
+        if($range !~ /^(\d+)\.\.(\d+)$/) {
+          ofile_FAIL("ERROR in $sub_name, unable to parse R2DT_TEMPLATE range '$range', expected <start>..<end>; line:\n$orig_line\n", 1, $FH_HR);
+        }
+        my ($start, $end) = ($1, $2);
+        if($start < 1) {
+          ofile_FAIL("ERROR in $sub_name, R2DT_TEMPLATE range start $start < 1; line:\n$orig_line\n", 1, $FH_HR);
+        }
+        if($end < $start) {
+          ofile_FAIL("ERROR in $sub_name, R2DT_TEMPLATE range $range has end < start (non-monotonic within range); line:\n$orig_line\n", 1, $FH_HR);
+        }
+        if((defined $clen) && ($end > $clen)) {
+          ofile_FAIL("ERROR in $sub_name, R2DT_TEMPLATE range end $end > model $tmpl_model CLEN $clen (out of bounds); line:\n$orig_line\n", 1, $FH_HR);
+        }
+        if($start <= $prev_end) {
+          ofile_FAIL("ERROR in $sub_name, R2DT_TEMPLATE ranges overlap or are non-monotonic (range start $start <= previous range end $prev_end); line:\n$orig_line\n", 1, $FH_HR);
+        }
+        push(@ranges_A, [$start, $end]);
+        $prev_end = $end;
+      }
+      if(scalar(@ranges_A) == 0) {
+        ofile_FAIL("ERROR in $sub_name, R2DT_TEMPLATE has empty ranges; line:\n$orig_line\n", 1, $FH_HR);
+      }
+
+      if(! exists $tmpl_info_HAR->{$tmpl_model}) { @{$tmpl_info_HAR->{$tmpl_model}} = (); }
+      push(@{$tmpl_info_HAR->{$tmpl_model}}, { "name"      => $tmpl_name,
+                                               "model"     => $tmpl_model,
+                                               "ranges_AR" => \@ranges_A });
+      $ntmpl++;
+    }
+  }
+  close(IN);
+
+  return $ntmpl;
 }
 
 #################################################################
