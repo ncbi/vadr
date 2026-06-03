@@ -222,6 +222,10 @@ opt_Add("--minpvlen",   "integer", 30,        $g,    undef, undef,      "min CDS
 opt_Add("--nkb",        "integer", 300,       $g,    undef,  undef,     "number of KB of sequence for each alignment job and/or chunk is <n>",                     "number of KB of sequence for each alignment job and/or chunk is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,         $g,    undef, undef,      "leaving intermediate files on disk",                                                      "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
+$opt_group_desc_H{++$g} = "options for drawing R2DT secondary structure figures";
+#        option               type   default  group  requires incompat    preamble-output                                                     help-output
+opt_Add("--draw_r2dt",  "boolean", 0,         $g,    undef, undef,      "draw R2DT secondary structure SVG figures for pass-classified seqs",                       "draw R2DT secondary structure SVG figures for pass-classified seqs (requires \$R2DT_DIR env var)", \%opt_HH, \@opt_order_A);
+
 $opt_group_desc_H{++$g} = "options for specifying classification";
 #        option               type   default  group  requires incompat    preamble-output                                                     help-output    
 opt_Add("--group",         "string",  undef,     $g,     undef, undef,     "set expected classification of all seqs to group <s>",             "set expected classification of all seqs to group <s>",            \%opt_HH, \@opt_order_A);
@@ -470,6 +474,8 @@ my $options_okay =
                 'minpvlen=s'    => \$GetOptions_H{"--minpvlen"},
                 'nkb=s'         => \$GetOptions_H{"--nkb"}, 
                 'keep'          => \$GetOptions_H{"--keep"},
+# options for drawing R2DT secondary structure figures
+                'draw_r2dt'     => \$GetOptions_H{"--draw_r2dt"},
 # options for specifiying classification
                 'group=s'       => \$GetOptions_H{"--group"},
                 'subgroup=s'    => \$GetOptions_H{"--subgroup"},
@@ -698,10 +704,34 @@ opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
 # validate options (check for conflicts)
 opt_ValidateSet(\%opt_HH, \@opt_order_A);
 
+my $do_draw_r2dt  = opt_Get("--draw_r2dt", \%opt_HH);
+
+# --draw_r2dt requires the per-model RF-frame alignment (.align.afa) to be on
+# disk so we can extract per-seq residues at each R2DT template's RF column
+# ranges. Force --keep on internally so output_alignments() writes the .align.afa
+# (see output_alignments(): $do_keep => $do_out_afa = 1).
+if($do_draw_r2dt) {
+  $opt_HH{"--keep"}{"value"} = 1;
+}
+
 my $do_keep       = opt_Get("--keep", \%opt_HH);
 my $do_replace_ns = opt_Get("-r", \%opt_HH);
 my $do_nofasta    = opt_Get("--out_nofasta", \%opt_HH);
 my $do_clsonly    = opt_Get("--cls_only", \%opt_HH);
+
+# --draw_r2dt: validate R2DT_DIR env var and the r2dt.py script exist now,
+# so we fail fast before doing any annotation work. Per-template local_data
+# directory existence is checked after the .minfo is parsed (see below).
+my $r2dt_dir = undef;
+if($do_draw_r2dt) {
+  $r2dt_dir = $ENV{"R2DT_DIR"};
+  if((! defined $r2dt_dir) || ($r2dt_dir eq "")) {
+    die "ERROR, --draw_r2dt requires the R2DT_DIR environment variable to be set\nto the R2DT install root, e.g.\n  export R2DT_DIR=/net/intdev/oblast01/infernal/git/RNAcentral/R2DT\n";
+  }
+  if(! -e "$r2dt_dir/r2dt.py") {
+    die "ERROR, --draw_r2dt: \$R2DT_DIR/r2dt.py does not exist ($r2dt_dir/r2dt.py)\nCheck that R2DT_DIR points to the R2DT install root.\n";
+  }
+}
 
 #######################################
 # deal with --alt_list option, if used
@@ -1099,7 +1129,33 @@ my $mdl_idx;
 # verify feature coords make sense and parent_idx_str is valid
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
-  vdr_FeatureInfoValidateCoords(\@{$ftr_info_HAH{$mdl_name}}, $mdl_info_AH[$mdl_idx]{"length"}, $FH_HR); 
+  vdr_FeatureInfoValidateCoords(\@{$ftr_info_HAH{$mdl_name}}, $mdl_info_AH[$mdl_idx]{"length"}, $FH_HR);
+}
+
+# --draw_r2dt: parse R2DT_TEMPLATE lines from the .minfo, validate them against
+# the models we read, and verify each template's local_data dir exists under
+# $R2DT_DIR/data/local_data/<name>/.
+my %r2dt_tmpl_info_HA = (); # key: model name, value: array of hashes (one per R2DT_TEMPLATE for that model)
+if($do_draw_r2dt) {
+  # build a model name => CLEN (length) hash for range bounds validation
+  my %mdl_len_H = ();
+  for(my $mi = 0; $mi < $nmdl; $mi++) {
+    $mdl_len_H{$mdl_info_AH[$mi]{"name"}} = $mdl_info_AH[$mi]{"length"};
+  }
+  my $ntmpl = vdr_R2dtTemplateFileParse($minfo_file, \%mdl_len_H, \%r2dt_tmpl_info_HA, $FH_HR);
+  if($ntmpl == 0) {
+    ofile_FAIL("ERROR, --draw_r2dt used but no R2DT_TEMPLATE lines found in model info file:\n$minfo_file", 1, $FH_HR);
+  }
+  # verify each referenced template's local_data directory exists
+  foreach my $r2dt_mdl (sort keys %r2dt_tmpl_info_HA) {
+    foreach my $tmpl_HR (@{$r2dt_tmpl_info_HA{$r2dt_mdl}}) {
+      my $tmpl_name = $tmpl_HR->{"name"};
+      my $tmpl_data_dir = "$r2dt_dir/data/local_data/$tmpl_name";
+      if(! -d $tmpl_data_dir) {
+        ofile_FAIL("ERROR, --draw_r2dt: R2DT template data directory does not exist:\n$tmpl_data_dir\n(referenced by R2DT_TEMPLATE name=$tmpl_name model=$r2dt_mdl in $minfo_file)", 1, $FH_HR);
+      }
+    }
+  }
 }
 
 # if --group or --subgroup used, make sure at least one model has that group/subgroup
