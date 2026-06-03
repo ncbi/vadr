@@ -9,6 +9,7 @@ use Getopt::Long qw(:config no_auto_abbrev);
 use Time::HiRes qw(gettimeofday);
 use Bio::Easel::MSA;
 use Bio::Easel::SqFile;
+use Cwd qw(getcwd);
 
 require "vadr.pm"; 
 require "vadr_seed.pm"; 
@@ -2465,7 +2466,9 @@ if(exists $ofile_info_HH{"FH"}{"sdaoutput"}) {
 #####################################
 if($do_draw_r2dt) {
   $start_secs = ofile_OutputProgressPrior("Drawing R2DT secondary structure figures", $progress_w, $log_FH, *STDOUT);
-  draw_r2dt_figures($out_root, $dir_tail, $r2dt_dir, \%r2dt_tmpl_info_HA, \%seq2mdl_H, \%opt_HH, \%ofile_info_HH);
+  draw_r2dt_figures($out_root, $dir_tail, $r2dt_dir, \%r2dt_tmpl_info_HA, \%seq2mdl_H,
+                    \@seq_name_A, \%ftr_info_HAH, \%alt_info_HH, \%alt_seq_instances_HH, \%alt_ftr_instances_HHH,
+                    \%opt_HH, \%ofile_info_HH);
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 
@@ -2619,26 +2622,39 @@ exit 0;
 #               <out_root>.r2dt.warn                        (warnings, if any)
 #
 # Arguments:
-#  $out_root:          root name for output file names ($dir/$dir_tail.vadr)
-#  $dir_tail:          output directory tail (basename), used for file naming
-#  $r2dt_dir:          R2DT install root (from $R2DT_DIR env var)
-#  $tmpl_info_HAR:     REF to hash of arrays of R2DT template info, keyed by model
-#  $seq2mdl_HR:        REF to hash mapping seq name to model name
-#  $opt_HHR:           REF to 2D hash of option values
-#  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
+#  $out_root:               root name for output file names ($dir/$dir_tail.vadr)
+#  $dir_tail:               output directory tail (basename), used for file naming
+#  $r2dt_dir:               R2DT install root (from $R2DT_DIR env var)
+#  $tmpl_info_HAR:          REF to hash of arrays of R2DT template info, keyed by model
+#  $seq2mdl_HR:             REF to hash mapping seq name to model name
+#  $seq_name_AR:            REF to array of all sequence names (input order)
+#  $ftr_info_HAHR:          REF to hash (by model) of array of hashes of feature info
+#  $alt_info_HHR:           REF to 2D hash of alert info
+#  $alt_seq_instances_HHR:  REF to 2D hash of per-sequence alert instances
+#  $alt_ftr_instances_HHHR: REF to 3D hash of per-feature alert instances
+#  $opt_HHR:                REF to 2D hash of option values
+#  $ofile_info_HHR:         REF to 2D hash of output file information, ADDED TO HERE
 #
 # Returns:    void
 #
 #################################################################
 sub draw_r2dt_figures {
   my $sub_name = "draw_r2dt_figures";
-  my $nargs_exp = 7;
+  my $nargs_exp = 12;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($out_root, $dir_tail, $r2dt_dir, $tmpl_info_HAR, $seq2mdl_HR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($out_root, $dir_tail, $r2dt_dir, $tmpl_info_HAR, $seq2mdl_HR,
+      $seq_name_AR, $ftr_info_HAHR, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR,
+      $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
   my $do_keep = opt_Get("--keep", $opt_HHR);
+
+  # Current working directory, used to absolutize input/output paths in the
+  # r2dt.py command. We 'cd' into $r2dt_dir before running r2dt.py (it expects to
+  # run from its install root), so any relative VADR output paths would otherwise
+  # be resolved relative to $r2dt_dir, not VADR's cwd. Absolutize them here.
+  my $cwd = getcwd();
 
   # TODO: these env paths are hardcoded for now, matching the validate-v2 mock
   # scripts (r2dt-templates/validate-v2/run-mg-{linear,circular}.sh). They should
@@ -2651,16 +2667,17 @@ sub draw_r2dt_figures {
   my $r2dt_fake_rna    = "/net/intdev/oblast01/infernal/notebook/26_0501_vadr_mscript_zika2/r2dt-track-a/fake-rna";
   my $r2dt_path        = "$r2dt_infernalbin:$r2dt_easelscr:$r2dt_jiffy:$r2dt_travelerbin:\$PATH";
 
-  # read the list of pass-classified sequences from <out_root>.pass.list
-  my $pass_list_file = $out_root . ".pass.list";
+  # determine the set of pass-classified sequences in-memory using
+  # check_if_sequence_passes() (the same logic that writes .pass.list / .fail.list).
+  # We do NOT read .pass.list here because at the point this runs the .pass.list
+  # file handle may still be open/buffered and not yet flushed to disk.
   my @pass_seq_A = ();
-  if(-e $pass_list_file) {
-    open(PL, $pass_list_file) || ofile_FileOpenFailure($pass_list_file, $sub_name, $!, "reading", $FH_HR);
-    while(my $line = <PL>) {
-      chomp $line;
-      if($line =~ /^(\S+)/) { push(@pass_seq_A, $1); }
+  foreach my $seq_name (@{$seq_name_AR}) {
+    my $mdl_name = (exists $seq2mdl_HR->{$seq_name}) ? $seq2mdl_HR->{$seq_name} : undef;
+    my $ftr_info_AR = ((defined $mdl_name) && (exists $ftr_info_HAHR->{$mdl_name})) ? \@{$ftr_info_HAHR->{$mdl_name}} : undef;
+    if(check_if_sequence_passes($seq_name, $ftr_info_AR, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $FH_HR)) {
+      push(@pass_seq_A, $seq_name);
     }
-    close(PL);
   }
 
   # set up output dirs and summary/warning files
@@ -2779,9 +2796,13 @@ sub draw_r2dt_figures {
       print IFA (">$seq_name\n$extracted\n");
       close(IFA);
 
-      # r2dt.py writes into its own output subdir, one per (seq, template)
+      # r2dt.py writes into its own output subdir, one per (seq, template).
+      # absolutize VADR-side paths (we 'cd' into $r2dt_dir before running r2dt.py,
+      # so relative paths would otherwise resolve against $r2dt_dir, not VADR cwd)
       my $r2dt_run_dir = $seq_out_subdir . "/" . $tmpl_name . ".r2dt-out";
-      utl_RunCommand("rm -rf $r2dt_run_dir", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+      my $abs_input_fa    = ($input_fa    =~ m/^\//) ? $input_fa    : "$cwd/$input_fa";
+      my $abs_r2dt_rundir = ($r2dt_run_dir =~ m/^\//) ? $r2dt_run_dir : "$cwd/$r2dt_run_dir";
+      utl_RunCommand("rm -rf $abs_r2dt_rundir", opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
       # build the r2dt.py command with full env (matches validate-v2 mock scripts).
       # OPENBLAS/OMP/MKL pinned to 1 thread; PATH + R2DT_FAKE_RNA set inline.
@@ -2791,23 +2812,23 @@ sub draw_r2dt_figures {
                    . "PATH=$r2dt_path "
                    . "R2DT_FAKE_RNA=$r2dt_fake_rna "
                    . "$r2dt_python $r2dt_dir/r2dt.py draw --force_template $tmpl_name "
-                   . "$input_fa $r2dt_run_dir "
-                   . "> $r2dt_run_dir.stdout 2>&1";
+                   . "$abs_input_fa $abs_r2dt_rundir "
+                   . "> $abs_r2dt_rundir.stdout 2>&1";
 
       # run, allowing failure (do_failok=1) so one bad seq doesn't abort the run
       utl_RunCommand($r2dt_cmd, opt_Get("-v", $opt_HHR), 1, $FH_HR);
       my $r2dt_exit = $?;
 
       # expected colored SVG: <r2dt_run_dir>/results/svg/<SEQ>-<template>.colored.svg
-      my $src_svg = $r2dt_run_dir . "/results/svg/" . $seq_name . "-" . $tmpl_name . ".colored.svg";
+      my $src_svg = $abs_r2dt_rundir . "/results/svg/" . $seq_name . "-" . $tmpl_name . ".colored.svg";
       my $dst_svg = $seq_out_subdir . "/" . $seq_name . "-" . $tmpl_name . ".svg";
 
       if(($r2dt_exit == 0) && (-s $src_svg)) {
         utl_RunCommand("cp $src_svg $dst_svg", opt_Get("-v", $opt_HHR), 0, $FH_HR);
         # try to recover the overlap count from r2dt.py stdout, if present
         my $overlaps = "-";
-        if(-e "$r2dt_run_dir.stdout") {
-          open(SO, "$r2dt_run_dir.stdout");
+        if(-e "$abs_r2dt_rundir.stdout") {
+          open(SO, "$abs_r2dt_rundir.stdout");
           while(my $sline = <SO>) {
             if($sline =~ /(\d+)\s+overlaps?/i) { $overlaps = $1; last; }
           }
@@ -2817,7 +2838,7 @@ sub draw_r2dt_figures {
       }
       else {
         if(! defined $warn_FH) { open($warn_FH, ">", $r2dt_warn_file) || ofile_FileOpenFailure($r2dt_warn_file, $sub_name, $!, "writing", $FH_HR); }
-        print $warn_FH ("WARNING: r2dt.py failed (exit=$r2dt_exit) or produced no SVG for seq $seq_name template $tmpl_name; see $r2dt_run_dir.stdout\n");
+        print $warn_FH ("WARNING: r2dt.py failed (exit=$r2dt_exit) or produced no SVG for seq $seq_name template $tmpl_name; see $abs_r2dt_rundir.stdout\n");
         $nwarn++;
         print TSV ("$seq_name\t$tmpl_name\tfail\t-\t-\n");
       }
@@ -2825,7 +2846,7 @@ sub draw_r2dt_figures {
       # clean up the r2dt.py per-pair output tree unless --keep (we keep the
       # input FASTAs and copied SVGs regardless; the full r2dt tree is large)
       if(! $do_keep) {
-        utl_RunCommand("rm -rf $r2dt_run_dir $r2dt_run_dir.stdout", opt_Get("-v", $opt_HHR), 1, $FH_HR);
+        utl_RunCommand("rm -rf $abs_r2dt_rundir $abs_r2dt_rundir.stdout", opt_Get("-v", $opt_HHR), 1, $FH_HR);
       }
     }
   }
