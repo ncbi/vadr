@@ -2429,6 +2429,15 @@ if(exists $ofile_info_HH{"FH"}{"sdaoutput"}) {
   utl_HHDump($ofile_info_HH{"desc"}{"sdaoutput"}, \%sda_output_HH, $ofile_info_HH{"FH"}{"sdaoutput"});
 }
 
+#####################################
+# draw R2DT figures (--draw_r2dt)   #
+#####################################
+if($do_draw_r2dt) {
+  $start_secs = ofile_OutputProgressPrior("Drawing R2DT secondary structure figures", $progress_w, $log_FH, *STDOUT);
+  draw_r2dt_figures($out_root, $dir_tail, $r2dt_dir, \%r2dt_tmpl_info_HA, \%seq2mdl_H, \%opt_HH, \%ofile_info_HH);
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+}
+
 ############
 # Conclude #
 ############
@@ -2558,6 +2567,250 @@ exit 0;
 # add_classification_errors
 # populate_per_model_data_structures_given_classification_results
 #
+#################################################################
+# Subroutine:  draw_r2dt_figures()
+# Incept:      EPN, Tue Jun  2 2026
+#
+# Purpose:    For each pass-classified sequence, for each R2DT_TEMPLATE
+#             applicable to that sequence's model, extract the sequence's
+#             aligned residues at the template's RF column ranges from the
+#             per-model RF-frame alignment (.align.afa), strip gaps, write
+#             a 2-line input FASTA, invoke r2dt.py draw --force_template,
+#             and bundle the resulting colored SVG into the output dir.
+#
+#             On r2dt.py failure for a (seq, template) pair: log a warning
+#             to <out_root>.r2dt.warn and continue.
+#
+#             Output dir layout:
+#               <out_root>.r2dt-input/<seq>-<template>.fa  (input FASTAs)
+#               <out_root>.r2dt/<seq>/<seq>-<template>.svg  (colored SVGs)
+#               <out_root>.r2dt.tsv                         (summary TSV)
+#               <out_root>.r2dt.warn                        (warnings, if any)
+#
+# Arguments:
+#  $out_root:          root name for output file names ($dir/$dir_tail.vadr)
+#  $dir_tail:          output directory tail (basename), used for file naming
+#  $r2dt_dir:          R2DT install root (from $R2DT_DIR env var)
+#  $tmpl_info_HAR:     REF to hash of arrays of R2DT template info, keyed by model
+#  $seq2mdl_HR:        REF to hash mapping seq name to model name
+#  $opt_HHR:           REF to 2D hash of option values
+#  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    void
+#
+#################################################################
+sub draw_r2dt_figures {
+  my $sub_name = "draw_r2dt_figures";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($out_root, $dir_tail, $r2dt_dir, $tmpl_info_HAR, $seq2mdl_HR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+  my $do_keep = opt_Get("--keep", $opt_HHR);
+
+  # TODO: these env paths are hardcoded for now, matching the validate-v2 mock
+  # scripts (r2dt-templates/validate-v2/run-mg-{linear,circular}.sh). They should
+  # later be derived from $R2DT_DIR or a config file rather than hardcoded.
+  my $r2dt_python      = "/net/intdev/oblast01/infernal/notebook/26_0501_vadr_mscript_zika2/r2dt-track-a/venv/bin/python";
+  my $r2dt_infernalbin = "/usr/local/infernal/1.1.5/bin";
+  my $r2dt_easelscr    = "/net/intdev/oblast01/infernal/git/nawrockie/Bio-Easel/scripts";
+  my $r2dt_jiffy       = "/net/intdev/oblast01/infernal/git/nawrockie/jiffy-infernal-hmmer-scripts";
+  my $r2dt_travelerbin = "/net/intdev/oblast01/infernal/notebook/26_0501_vadr_mscript_zika2/r2dt-track-a/fake-rna/traveler/bin";
+  my $r2dt_fake_rna    = "/net/intdev/oblast01/infernal/notebook/26_0501_vadr_mscript_zika2/r2dt-track-a/fake-rna";
+  my $r2dt_path        = "$r2dt_infernalbin:$r2dt_easelscr:$r2dt_jiffy:$r2dt_travelerbin:\$PATH";
+
+  # read the list of pass-classified sequences from <out_root>.pass.list
+  my $pass_list_file = $out_root . ".pass.list";
+  my @pass_seq_A = ();
+  if(-e $pass_list_file) {
+    open(PL, $pass_list_file) || ofile_FileOpenFailure($pass_list_file, $sub_name, $!, "reading", $FH_HR);
+    while(my $line = <PL>) {
+      chomp $line;
+      if($line =~ /^(\S+)/) { push(@pass_seq_A, $1); }
+    }
+    close(PL);
+  }
+
+  # set up output dirs and summary/warning files
+  my $r2dt_input_dir = $out_root . ".r2dt-input";
+  my $r2dt_out_dir   = $out_root . ".r2dt";
+  my $r2dt_tsv_file  = $out_root . ".r2dt.tsv";
+  my $r2dt_warn_file = $out_root . ".r2dt.warn";
+  utl_RunCommand("mkdir -p $r2dt_input_dir", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  utl_RunCommand("mkdir -p $r2dt_out_dir",   opt_Get("-v", $opt_HHR), 0, $FH_HR);
+
+  open(TSV, ">", $r2dt_tsv_file) || ofile_FileOpenFailure($r2dt_tsv_file, $sub_name, $!, "writing", $FH_HR);
+  print TSV ("#seq_id\ttemplate_name\tr2dt_status\toverlaps\toutput_svg\n");
+  my $nwarn = 0;
+  my $warn_FH = undef;
+
+  # cache, per model, of:
+  #   $mdl_aln_seq_HH{$mdl}{$seq} => full aligned sequence string (incl gaps + inserts)
+  #   $mdl_rfmap_HA{$mdl}         => array mapping RF (match) column N (1-indexed)
+  #                                 to 0-indexed alignment column. RF column N is
+  #                                 a *match* column (RF char is not '.' / '~').
+  # We read each per-model .align.stk once. We use the .stk (not .align.afa)
+  # because the .stk carries the #=GC RF line, which is needed to map RF/model
+  # column numbers (the frame used by R2DT_TEMPLATE ranges) to alignment columns
+  # when the alignment contains insert columns relative to the model.
+  my %mdl_aln_seq_HH = ();
+  my %mdl_rfmap_HA   = ();
+
+  foreach my $seq_name (@pass_seq_A) {
+    my $mdl_name = (exists $seq2mdl_HR->{$seq_name}) ? $seq2mdl_HR->{$seq_name} : undef;
+    if(! defined $mdl_name) { next; } # shouldn't happen for a pass seq, but be safe
+    # if this model has no R2DT_TEMPLATE lines, record 'skipped' and move on
+    if((! exists $tmpl_info_HAR->{$mdl_name}) || (scalar(@{$tmpl_info_HAR->{$mdl_name}}) == 0)) {
+      print TSV ("$seq_name\t-\tskipped\t-\t-\n");
+      next;
+    }
+
+    # load this model's alignment (.align.stk) if not already cached
+    if(! exists $mdl_aln_seq_HH{$mdl_name}) {
+      my $stk_file = $out_root . "." . $mdl_name . ".align.stk";
+      %{$mdl_aln_seq_HH{$mdl_name}} = ();
+      my $rf_str = "";
+      if(-e $stk_file) {
+        open(STK, $stk_file) || ofile_FileOpenFailure($stk_file, $sub_name, $!, "reading", $FH_HR);
+        while(my $sline = <STK>) {
+          chomp $sline;
+          if($sline =~ /^#=GC\s+RF\s+(\S+)\s*$/) {
+            $rf_str .= $1;
+          }
+          elsif($sline =~ /^#/) {
+            ; # other GC/GF/GR/GS comment line, skip
+          }
+          elsif($sline =~ /^(\S+)\s+(\S+)\s*$/) {
+            # sequence line: "name aligned_residues" (Stockholm interleaved)
+            my ($id, $aseq) = ($1, $2);
+            if(! exists $mdl_aln_seq_HH{$mdl_name}{$id}) { $mdl_aln_seq_HH{$mdl_name}{$id} = ""; }
+            $mdl_aln_seq_HH{$mdl_name}{$id} .= $aseq;
+          }
+          # blank lines and "//" terminator are ignored
+        }
+        close(STK);
+      }
+      # build RF (match) column -> 0-indexed alignment column map.
+      # match columns are RF positions that are not gaps ('.' or '~').
+      @{$mdl_rfmap_HA{$mdl_name}} = (-1); # index 0 unused (RF columns are 1-indexed)
+      for(my $ci = 0; $ci < length($rf_str); $ci++) {
+        my $rc = substr($rf_str, $ci, 1);
+        if(($rc ne ".") && ($rc ne "~")) {
+          push(@{$mdl_rfmap_HA{$mdl_name}}, $ci);
+        }
+      }
+    }
+
+    my $aln_seq = $mdl_aln_seq_HH{$mdl_name}{$seq_name};
+    my $rfmap_AR = $mdl_rfmap_HA{$mdl_name};
+    if(! defined $aln_seq) {
+      # alignment row missing; warn + record fail for each template, continue
+      foreach my $tmpl_HR (@{$tmpl_info_HAR->{$mdl_name}}) {
+        my $tmpl_name = $tmpl_HR->{"name"};
+        if(! defined $warn_FH) { open($warn_FH, ">", $r2dt_warn_file) || ofile_FileOpenFailure($r2dt_warn_file, $sub_name, $!, "writing", $FH_HR); }
+        print $warn_FH ("WARNING: no alignment row for sequence $seq_name in model $mdl_name .align.afa; cannot draw template $tmpl_name\n");
+        $nwarn++;
+        print TSV ("$seq_name\t$tmpl_name\tfail\t-\t-\n");
+      }
+      next;
+    }
+
+    # per-seq output subdir
+    my $seq_out_subdir = $r2dt_out_dir . "/" . $seq_name;
+    utl_RunCommand("mkdir -p $seq_out_subdir", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+
+    foreach my $tmpl_HR (@{$tmpl_info_HAR->{$mdl_name}}) {
+      my $tmpl_name = $tmpl_HR->{"name"};
+      my $ranges_AR = $tmpl_HR->{"ranges_AR"};
+
+      # extract residues at each RF (match) column range (1-indexed, inclusive),
+      # concatenate in order, strip gaps, uppercase.
+      # RF column N maps to alignment column $rfmap_AR->[N] (0-indexed).
+      # We only take the residues at match columns (insert columns relative to
+      # the model are not part of the template frame).
+      my $extracted = "";
+      my $max_rfcol = scalar(@{$rfmap_AR}) - 1; # highest valid RF column number
+      foreach my $range_AR (@{$ranges_AR}) {
+        my ($rfstart, $rfend) = ($range_AR->[0], $range_AR->[1]);
+        for(my $rfcol = $rfstart; $rfcol <= $rfend; $rfcol++) {
+          if($rfcol <= $max_rfcol) {
+            $extracted .= substr($aln_seq, $rfmap_AR->[$rfcol], 1);
+          }
+        }
+      }
+      $extracted =~ s/[\-\.\~]//g; # strip gaps
+      $extracted = uc($extracted);
+
+      # write 2-line input FASTA
+      my $input_fa = $r2dt_input_dir . "/" . $seq_name . "-" . $tmpl_name . ".fa";
+      open(IFA, ">", $input_fa) || ofile_FileOpenFailure($input_fa, $sub_name, $!, "writing", $FH_HR);
+      print IFA (">$seq_name\n$extracted\n");
+      close(IFA);
+
+      # r2dt.py writes into its own output subdir, one per (seq, template)
+      my $r2dt_run_dir = $seq_out_subdir . "/" . $tmpl_name . ".r2dt-out";
+      utl_RunCommand("rm -rf $r2dt_run_dir", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+
+      # build the r2dt.py command with full env (matches validate-v2 mock scripts).
+      # OPENBLAS/OMP/MKL pinned to 1 thread; PATH + R2DT_FAKE_RNA set inline.
+      # cd into $r2dt_dir because r2dt.py expects to run from its install root.
+      my $r2dt_cmd = "cd $r2dt_dir && "
+                   . "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 "
+                   . "PATH=$r2dt_path "
+                   . "R2DT_FAKE_RNA=$r2dt_fake_rna "
+                   . "$r2dt_python $r2dt_dir/r2dt.py draw --force_template $tmpl_name "
+                   . "$input_fa $r2dt_run_dir "
+                   . "> $r2dt_run_dir.stdout 2>&1";
+
+      # run, allowing failure (do_failok=1) so one bad seq doesn't abort the run
+      utl_RunCommand($r2dt_cmd, opt_Get("-v", $opt_HHR), 1, $FH_HR);
+      my $r2dt_exit = $?;
+
+      # expected colored SVG: <r2dt_run_dir>/results/svg/<SEQ>-<template>.colored.svg
+      my $src_svg = $r2dt_run_dir . "/results/svg/" . $seq_name . "-" . $tmpl_name . ".colored.svg";
+      my $dst_svg = $seq_out_subdir . "/" . $seq_name . "-" . $tmpl_name . ".svg";
+
+      if(($r2dt_exit == 0) && (-s $src_svg)) {
+        utl_RunCommand("cp $src_svg $dst_svg", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+        # try to recover the overlap count from r2dt.py stdout, if present
+        my $overlaps = "-";
+        if(-e "$r2dt_run_dir.stdout") {
+          open(SO, "$r2dt_run_dir.stdout");
+          while(my $sline = <SO>) {
+            if($sline =~ /(\d+)\s+overlaps?/i) { $overlaps = $1; last; }
+          }
+          close(SO);
+        }
+        print TSV ("$seq_name\t$tmpl_name\tok\t$overlaps\t$dst_svg\n");
+      }
+      else {
+        if(! defined $warn_FH) { open($warn_FH, ">", $r2dt_warn_file) || ofile_FileOpenFailure($r2dt_warn_file, $sub_name, $!, "writing", $FH_HR); }
+        print $warn_FH ("WARNING: r2dt.py failed (exit=$r2dt_exit) or produced no SVG for seq $seq_name template $tmpl_name; see $r2dt_run_dir.stdout\n");
+        $nwarn++;
+        print TSV ("$seq_name\t$tmpl_name\tfail\t-\t-\n");
+      }
+
+      # clean up the r2dt.py per-pair output tree unless --keep (we keep the
+      # input FASTAs and copied SVGs regardless; the full r2dt tree is large)
+      if(! $do_keep) {
+        utl_RunCommand("rm -rf $r2dt_run_dir $r2dt_run_dir.stdout", opt_Get("-v", $opt_HHR), 1, $FH_HR);
+      }
+    }
+  }
+
+  close(TSV);
+  if(defined $warn_FH) { close($warn_FH); }
+
+  # register output files
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "r2dt.tsv", $r2dt_tsv_file, 1, 1, "R2DT figure summary (one row per seq,template pair)");
+  if($nwarn > 0) {
+    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "r2dt.warn", $r2dt_warn_file, 1, 1, "R2DT drawing warnings");
+  }
+
+  return;
+}
+
 #################################################################
 # Subroutine:  classification_stage()
 # Incept:      EPN, Mon Apr 13 17:07:28 2020
