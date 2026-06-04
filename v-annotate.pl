@@ -14472,11 +14472,15 @@ sub write_v_annotate_scripts_for_split_mode {
   # smallest sequence subset
 
   my $err_file = undef;
-  for($fidx = 1; $fidx < $ncpu; $fidx++) { 
-    if($out_ncmd_A[$fidx] > 0) { 
+  my $pid_file = undef;
+  for($fidx = 1; $fidx < $ncpu; $fidx++) {
+    if($out_ncmd_A[$fidx] > 0) {
       $err_file = $out_scriptname_A[$fidx] . ".err";
+      $pid_file = $out_scriptname_A[$fidx] . ".pid";
       $cpu_out_file_AHR->[$fidx]{"err"} = $err_file;
-      $script_cmd .= "sh " . $out_scriptname_A[$fidx] . " > /dev/null 2> $err_file &\n"; 
+      $cpu_out_file_AHR->[$fidx]{"pid"} = $pid_file; # pid file for OOM-kill detection
+      $script_cmd .= "sh " . $out_scriptname_A[$fidx] . " > /dev/null 2> $err_file & echo \$! > $pid_file\n";
+      push(@{$to_remove_AR}, $pid_file);
     }
     push(@{$to_remove_AR}, $out_scriptname_A[$fidx]);
     push(@{$to_remove_AR}, $err_file);
