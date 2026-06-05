@@ -707,13 +707,13 @@ opt_ValidateSet(\%opt_HH, \@opt_order_A);
 
 my $do_draw_r2dt  = opt_Get("--draw_r2dt", \%opt_HH);
 
-# --draw_r2dt requires the per-model RF-frame alignment (.align.afa) to be on
-# disk so we can extract per-seq residues at each R2DT template's RF column
-# ranges. Force --keep on internally so output_alignments() writes the .align.afa
-# (see output_alignments(): $do_keep => $do_out_afa = 1).
-if($do_draw_r2dt) {
-  $opt_HH{"--keep"}{"value"} = 1;
-}
+# --draw_r2dt needs the per-model .align.stk on disk so draw_r2dt_figures() can
+# extract per-seq residues at each R2DT template's RF column ranges. We do NOT
+# force --keep on (that would bloat output for production users). Instead
+# output_alignments() writes the .align.stk whenever --draw_r2dt is set, and
+# (if --keep is off) registers it as a temporary file that the final cleanup
+# removes -- after draw_r2dt_figures() has read it. So removing --draw_r2dt from
+# a command leaves --keep at its CLI default (off).
 
 my $do_keep       = opt_Get("--keep", \%opt_HH);
 my $do_replace_ns = opt_Get("-r", \%opt_HH);
@@ -2141,8 +2141,11 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       }
     }
     
-    # Create option-defined output alignments, if any. 
-    if(opt_Get("--keep", \%opt_HH) || opt_Get("--out_stk", \%opt_HH) || opt_Get("--out_afa", \%opt_HH) || opt_Get("--out_rpstk", \%opt_HH) || opt_Get("--out_rpafa", \%opt_HH)) { 
+    # Create option-defined output alignments, if any.
+    # --draw_r2dt is included because draw_r2dt_figures() reads the per-model
+    # .align.stk (output_alignments() writes it; see the $do_out_stk_keep logic
+    # there for how it is removed afterward when --keep is off).
+    if(opt_Get("--keep", \%opt_HH) || opt_Get("--out_stk", \%opt_HH) || opt_Get("--out_afa", \%opt_HH) || opt_Get("--out_rpstk", \%opt_HH) || opt_Get("--out_rpafa", \%opt_HH) || opt_Get("--draw_r2dt", \%opt_HH)) {
       if(scalar(@{$stk_file_HA{$mdl_name}}) > 0) { 
         output_alignments(\%execs_H, \$in_sqfile, \@{$stk_file_HA{$mdl_name}}, $mdl_name, \%rpn_output_HH, $out_root, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
       }
@@ -12903,13 +12906,23 @@ sub output_alignments {
   my $do_out_rpstk = opt_Get("--out_rpstk", $opt_HHR);
   my $do_out_rpafa = opt_Get("--out_rpafa", $opt_HHR);
   my $do_keep      = opt_Get("--keep", $opt_HHR);
-  if($do_keep) { 
+  if($do_keep) {
     $do_out_stk = 1;
     $do_out_afa = 1;
-    if(opt_Get("-r", $opt_HHR)) { 
+    if(opt_Get("-r", $opt_HHR)) {
       $do_out_rpstk = 1;
       $do_out_rpafa = 1;
-    }      
+    }
+  }
+  # --draw_r2dt needs the per-model .align.stk on disk even when --keep is off.
+  # $do_out_stk_keep records whether the user actually wants the .stk preserved
+  # (--keep or --out_stk); when --draw_r2dt forces the .stk on but the user did
+  # not ask to keep it, we register it as a temporary file (mainout/listout 0)
+  # and push it onto @to_remove_A so the final cleanup removes it after
+  # draw_r2dt_figures() has read it.
+  my $do_out_stk_keep = $do_out_stk;
+  if(opt_Get("--draw_r2dt", $opt_HHR)) {
+    $do_out_stk = 1;
   }
 
   my $stk_list_file = $out_root . "." . $mdl_name . ".align.stk.list";
@@ -12934,9 +12947,10 @@ sub output_alignments {
 
       my $out_stk_file = $out_root . "." . $mdl_name . ".align.stk";
       $msa->write_msa($out_stk_file, "stockholm", 0); # 0: do not append to file if it exists
-      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".align.stk", $out_stk_file, 1, 1, sprintf("model $mdl_name full sequence alignment (stockholm)"));
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".align.stk", $out_stk_file, $do_out_stk_keep, $do_out_stk_keep, sprintf("model $mdl_name full sequence alignment (stockholm)"));
+      if(! $do_out_stk_keep) { push(@{$to_remove_AR}, $out_stk_file); } # --draw_r2dt-only stk: read then removed
     }
-    if($do_out_afa) { 
+    if($do_out_afa) {
       my $out_afa_file = $out_root . "." . $mdl_name . ".align.afa";
       sqf_EslAlimergeListRun($execs_H{"esl-alimerge"}, $stk_list_file, "", $out_afa_file, "afa", $opt_HHR, $FH_HR);
       ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".align.afa", $out_afa_file, 1, 1, sprintf("model $mdl_name full sequence alignment (afa)"));
@@ -12967,9 +12981,10 @@ sub output_alignments {
 
       if($do_out_stk) { 
         # swap replaced sequences back with original sequences in the alignment
-        msa_replace_sequences($execs_HR, $out_rpstk_file, $out_stk_file, $in_sqfile_R, $rpn_output_HHR, $mdl_name, 
+        msa_replace_sequences($execs_HR, $out_rpstk_file, $out_stk_file, $in_sqfile_R, $rpn_output_HHR, $mdl_name,
                               "stockholm", "stockholm", $to_remove_AR, $opt_HHR, $ofile_info_HHR);
-        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . "align.stk", $out_stk_file, 1, 1, sprintf("model $mdl_name full original sequence alignment (stockholm)"));
+        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . "align.stk", $out_stk_file, $do_out_stk_keep, $do_out_stk_keep, sprintf("model $mdl_name full original sequence alignment (stockholm)"));
+        if(! $do_out_stk_keep) { push(@{$to_remove_AR}, $out_stk_file); } # --draw_r2dt-only stk: read then removed
       }
       if(! $do_out_rpstk) { push(@{$to_remove_AR}, $out_rpstk_file); }
     }
