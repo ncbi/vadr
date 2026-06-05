@@ -4145,7 +4145,7 @@ sub vdr_WaitForFarmJobsToFinish {
         ($keep_going)) { 
     # check to see if jobs are finished, every $cur_sleep seconds
     sleep($cur_sleep_secs);
-    $secs_waited += $chunk_secs;
+    $secs_waited += $cur_sleep_secs; # track actual elapsed sleep time (was $chunk_secs, causing ~200h timeout instead of --wait minutes)
     if($secs_waited >= $doubling_secs) { 
       $cur_sleep_secs *= 2;
     }
@@ -4181,15 +4181,39 @@ sub vdr_WaitForFarmJobsToFinish {
           }
         }
         if(($do_errcheck) && (-s $errfile_A[$i])) { # errfile exists and is non-empty, this is a failure, even if we saw $finished_str above
-          if(! $is_finished_A[$i]) { 
+          if(! $is_finished_A[$i]) {
             $nfinished++;
           }
           $is_finished_A[$i] = 1;
           $is_failed_A[$i] = 1;
           $nfail++;
         }
+        # check if background process PID is gone (OOM-killed) without writing $finished_str
+        if((! $is_finished_A[$i]) && (exists $out_file_AHR->[$i]{"pid"})) {
+          my $this_pid_file = $out_file_AHR->[$i]{"pid"};
+          if(-s $this_pid_file) { # pid file exists and is non-empty
+            my $this_pid = `cat $this_pid_file`; chomp $this_pid;
+            if(($this_pid =~ /^\d+$/) && (! kill(0, $this_pid))) { # process no longer exists
+              # double-check out file for finished_str in case of narrow race
+              my $final_line = (-s $outfile_A[$i]) ? `tail -n 1 $outfile_A[$i]` : "";
+              chomp $final_line;
+              if($final_line =~ m/\Q$finished_str\E/) { # process finished just before we checked
+                if(defined $success_AR) { $success_AR->[$i] = 1; }
+                $is_finished_A[$i] = 1;
+                $nfinished++;
+              }
+              else { # process died without completing (e.g. OOM-killed)
+                $is_finished_A[$i] = 1;
+                $is_failed_A[$i] = 1;
+                $nfinished++;
+                $nfail++;
+              }
+            }
+          }
+        }
       }
     }
+    if($nfail > 0) { $keep_going = 0; } # fail fast once any job is detected dead
 
     # output update
     ofile_OutputString($log_FH, 1, sprintf("#\t%4d of %4d jobs finished (%.1f minutes spent waiting)\n", $nfinished, $njobs, $secs_waited / 60.));
@@ -4200,12 +4224,12 @@ sub vdr_WaitForFarmJobsToFinish {
     }
   }
 
-  if($nfail > 0) { 
+  if($nfail > 0) {
     # construct error message
-    my $errmsg = "ERROR in $sub_name, $nfail of $njobs finished in error (output to their respective error files).\n";
+    my $errmsg = "ERROR in $sub_name, $nfail of $njobs jobs failed (check output/error files for each).\n";
     $errmsg .= "Specifically the jobs that were supposed to create the following output and err files:\n";
-    for(my $i = 0; $i < $njobs; $i++) { 
-      if($is_failed_A[$i]) { 
+    for(my $i = 0; $i < $njobs; $i++) {
+      if($is_failed_A[$i]) {
         $errmsg .= "\t$outfile_A[$i]\t$errfile_A[$i]\n";
       }
     }
