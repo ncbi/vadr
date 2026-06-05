@@ -2656,16 +2656,17 @@ sub draw_r2dt_figures {
   # be resolved relative to $r2dt_dir, not VADR's cwd. Absolutize them here.
   my $cwd = getcwd();
 
-  # TODO: these env paths are hardcoded for now, matching the validate-v2 mock
-  # scripts (r2dt-templates/validate-v2/run-mg-{linear,circular}.sh). They should
-  # later be derived from $R2DT_DIR or a config file rather than hardcoded.
-  my $r2dt_python      = "/net/intdev/oblast01/infernal/notebook/26_0501_vadr_mscript_zika2/r2dt-track-a/venv/bin/python";
-  my $r2dt_infernalbin = "/usr/local/infernal/1.1.5/bin";
-  my $r2dt_easelscr    = "/net/intdev/oblast01/infernal/git/nawrockie/Bio-Easel/scripts";
-  my $r2dt_jiffy       = "/net/intdev/oblast01/infernal/git/nawrockie/jiffy-infernal-hmmer-scripts";
-  my $r2dt_travelerbin = "/net/intdev/oblast01/infernal/notebook/26_0501_vadr_mscript_zika2/r2dt-track-a/fake-rna/traveler/bin";
-  my $r2dt_fake_rna    = "/net/intdev/oblast01/infernal/notebook/26_0501_vadr_mscript_zika2/r2dt-track-a/fake-rna";
-  my $r2dt_path        = "$r2dt_infernalbin:$r2dt_easelscr:$r2dt_jiffy:$r2dt_travelerbin:\$PATH";
+  # Site-specific environment for r2dt.py (PATH additions for infernal,
+  # Bio-Easel, jiffy, traveler; the venv python; R2DT_FAKE_RNA; etc.) is the
+  # admin's responsibility via an optional site-config file that we source
+  # before invoking r2dt.py (if it exists):
+  #   $R2DT_DIR/r2dt-vadr-env.sh
+  # If that file does not exist, VADR proceeds assuming the user has set up
+  # PATH such that 'python $R2DT_DIR/r2dt.py' Just Works. A template is at
+  # r2dt-templates/example-r2dt-vadr-env.sh. The only environment VADR sets
+  # unconditionally is thread-count pinning (universal hygiene), applied inline
+  # on the r2dt.py command below.
+  my $r2dt_env_file = "$r2dt_dir/r2dt-vadr-env.sh";
 
   # determine the set of pass-classified sequences in-memory using
   # check_if_sequence_passes() (the same logic that writes .pass.list / .fail.list).
@@ -2804,14 +2805,16 @@ sub draw_r2dt_figures {
       my $abs_r2dt_rundir = ($r2dt_run_dir =~ m/^\//) ? $r2dt_run_dir : "$cwd/$r2dt_run_dir";
       utl_RunCommand("rm -rf $abs_r2dt_rundir", opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
-      # build the r2dt.py command with full env (matches validate-v2 mock scripts).
-      # OPENBLAS/OMP/MKL pinned to 1 thread; PATH + R2DT_FAKE_RNA set inline.
-      # cd into $r2dt_dir because r2dt.py expects to run from its install root.
+      # build the r2dt.py command. cd into $r2dt_dir because r2dt.py expects to
+      # run from its install root. Source the optional site-config (if present)
+      # for any PATH/env additions the local install needs (see $r2dt_env_file
+      # above). Thread counts are pinned to 1 inline (universal hygiene). 'python'
+      # is whatever is on PATH after sourcing the site-config -- we intentionally
+      # do not pin a venv python in VADR code.
       my $r2dt_cmd = "cd $r2dt_dir && "
+                   . "{ if [ -f $r2dt_env_file ]; then . $r2dt_env_file; fi; } && "
                    . "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 "
-                   . "PATH=$r2dt_path "
-                   . "R2DT_FAKE_RNA=$r2dt_fake_rna "
-                   . "$r2dt_python $r2dt_dir/r2dt.py draw --force_template $tmpl_name "
+                   . "python $r2dt_dir/r2dt.py draw --force_template $tmpl_name "
                    . "$abs_input_fa $abs_r2dt_rundir "
                    . "> $abs_r2dt_rundir.stdout 2>&1";
 
