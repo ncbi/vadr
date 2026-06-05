@@ -5991,9 +5991,11 @@ sub vdr_ModelInfoFileParse {
   my $mdl_idx    = -1;    # index of current model
   my %mdl_read_H = ();    # keeps track of which model names we've seen MODEL lines for, to avoid duplicates
   open(IN, $in_file) || ofile_FileOpenFailure($in_file, $sub_name, $!, "reading", $FH_HR);
-  while(my $line = <IN>) { 
-    if(($line !~ /^#/) && ($line !~ /^R2DT_TEMPLATE\s/)) {
-      # not a comment line and not an R2DT_TEMPLATE line
+  while(my $line = <IN>) {
+    if(($line !~ /^#/) && ($line !~ /^R2DT_TEMPLATE\s/) && ($line !~ /^\s*$/)) {
+      # not a comment line, not an R2DT_TEMPLATE line, and not a blank line
+      # (blank lines are skipped so a minfo can be cat'd together with an
+      #  example R2DT_TEMPLATE sidecar that includes blank separator lines)
       # (R2DT_TEMPLATE lines are parsed separately by vdr_R2dtTemplateFileParse(),
       #  invoked only when v-annotate.pl --draw_r2dt is used; they are ignored here
       #  so that the standard MODEL/FEATURE parse is unaffected)
