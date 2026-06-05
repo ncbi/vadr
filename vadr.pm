@@ -5267,6 +5267,42 @@ sub vdr_CoordsProteinRelativeToAbsolute {
 }
 
 #################################################################
+# Subroutine: vdr_CoordsProteinRelativeExceedsAbsolute()
+#
+# Incept:     EPN, 2026
+#
+# Synopsis: Return '1' if any nucleotide position implied by protein
+#           coordinates <$rel_pt_coords> exceeds the length of nucleotide
+#           coordinates <$abs_nt_coords>, else return '0'.
+#
+#           Use this to guard calls to vdr_CoordsProteinRelativeToAbsolute()
+#           (which dies on such a position): a protein position can exceed
+#           the reference CDS frame when the blastx library contains a
+#           registered protein longer than the model's reference CDS (e.g.
+#           HIV-1 env with insertions relative to the model). See github
+#           issue #84; this was originally only guarded at the cdsstopp
+#           ('trcstop') call site but the same condition can occur at
+#           several other protein-validation call sites.
+#
+# Arguments:
+#  $abs_nt_coords:  nucleotide coordinates in full sequence [1..seqlen]
+#  $rel_pt_coords:  relative protein coordinates
+#  $FH_HR:          REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:   '1' if $rel_pt_coords implies a position exceeding $abs_nt_coords length, else '0'.
+#
+#################################################################
+sub vdr_CoordsProteinRelativeExceedsAbsolute {
+  my $sub_name = "vdr_CoordsProteinRelativeExceedsAbsolute";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+
+  my ($abs_nt_coords, $rel_pt_coords, $FH_HR) = @_;
+
+  return (vdr_CoordsMax(vdr_CoordsProteinToNucleotide($rel_pt_coords, $FH_HR), $FH_HR) > vdr_CoordsLength($abs_nt_coords, $FH_HR)) ? 1 : 0;
+}
+
+#################################################################
 # Subroutine: vdr_CoordsProteinToNucleotide()
 #
 # Incept:     EPN, Fri Mar 20 07:40:19 2020

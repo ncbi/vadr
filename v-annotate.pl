@@ -7719,7 +7719,9 @@ sub add_protein_validation_alerts {
                     # nucleotide feature to blastx against, but this is a rare alert so to be safe we require it here
                     $alt_scoords = "seq:" . vdr_CoordsSegmentCreate($p_qstart, $p_qstop, $p_strand, $FH_HR) . ";";
                     $alt_mcoords = "mdl:";
-                    if((defined $p_hstart) && (defined $p_hstop)) { 
+                    # see github issue #84: skip mdl coords (report VADRNULL) if subject hit exceeds reference CDS frame (over-length library protein)
+                    if((defined $p_hstart) && (defined $p_hstop) &&
+                       (! vdr_CoordsProteinRelativeExceedsAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, vdr_CoordsSegmentCreate($p_hstart, $p_hstop, "+", $FH_HR), $FH_HR))) {
                       # get subject nucleotide coords
                       # always create in + strand first, vdr_CoordsProteinRelativeToAbsolute requires it
                       my $tmp_alt_mcoords = vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"},
@@ -7777,7 +7779,9 @@ sub add_protein_validation_alerts {
                     my $exc_coords = undef;
                     # first calculate model coords, this is calc'ed same way regardless of value of $p_blastx_feature_flag
                     $alt_mcoords = "mdl:";
-                    if((defined $p_hstart) && (defined $p_hstop)) { 
+                    # see github issue #84: skip mdl coords (report VADRNULL) if subject hit exceeds reference CDS frame (over-length library protein)
+                    if((defined $p_hstart) && (defined $p_hstop) &&
+                       (! vdr_CoordsProteinRelativeExceedsAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, vdr_CoordsSegmentCreate($p_hstart, $p_hstop, "+", $FH_HR), $FH_HR))) {
                       # always create in + strand first, vdr_CoordsProteinRelativeToAbsolute requires it
                       my $tmp_pos_alt_mcoords = vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, vdr_CoordsSegmentCreate($p_hstart, $p_hstop, "+", $FH_HR), $FH_HR);
                       my $tmp_neg_alt_mcoords = vdr_CoordsReverseComplement($tmp_pos_alt_mcoords, 0, $FH_HR); # 0: don't do carrots
@@ -7895,11 +7899,15 @@ sub add_protein_validation_alerts {
                       my @p_ins_spos_A = ();
                       my @p_ins_len_A  = ();
                       my $nins = helper_blastx_breakdown_max_indel_str($p_ins, \@p_ins_qpos_A, \@p_ins_spos_A, \@p_ins_len_A, $FH_HR);
-                      for(my $ins_idx = 0; $ins_idx < $nins; $ins_idx++) { 
-                        my $nt_ins_spos = vdr_Feature3pMostPosition(vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, 
-                                                                                                        vdr_CoordsSinglePositionSegmentCreate($p_ins_spos_A[$ins_idx], "+", $FH_HR),
-                                                                                                        $FH_HR), $FH_HR);
-                        my $local_xmaxins = (defined $insertn_posn_exc_AH[$ftr_idx]{$nt_ins_spos}) ? $insertn_posn_exc_AH[$ftr_idx]{$nt_ins_spos} : $xmaxins;
+                      for(my $ins_idx = 0; $ins_idx < $nins; $ins_idx++) {
+                        # see github issue #84: subject insert position can exceed reference CDS frame (over-length library protein); no position-specific exception applies, so leave $nt_ins_spos undef and use default xmaxins
+                        my $nt_ins_spos = undef;
+                        if(! vdr_CoordsProteinRelativeExceedsAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, vdr_CoordsSinglePositionSegmentCreate($p_ins_spos_A[$ins_idx], "+", $FH_HR), $FH_HR)) {
+                          $nt_ins_spos = vdr_Feature3pMostPosition(vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"},
+                                                                                                          vdr_CoordsSinglePositionSegmentCreate($p_ins_spos_A[$ins_idx], "+", $FH_HR),
+                                                                                                          $FH_HR), $FH_HR);
+                        }
+                        my $local_xmaxins = ((defined $nt_ins_spos) && (defined $insertn_posn_exc_AH[$ftr_idx]{$nt_ins_spos})) ? $insertn_posn_exc_AH[$ftr_idx]{$nt_ins_spos} : $xmaxins;
                         if($p_ins_len_A[$ins_idx] > $local_xmaxins) { 
                           if(defined $alt_str_HH{$ftr_results_prefix}{"insertnp"}) { $alt_str_HH{$ftr_results_prefix}{"insertnp"} .= ":VADRSEP:"; } # we are adding another instance
                           else                               { $alt_str_HH{$ftr_results_prefix}{"insertnp"}  = ""; } # initialize
@@ -7919,14 +7927,18 @@ sub add_protein_validation_alerts {
                       my @p_del_spos_A = ();
                       my @p_del_len_A  = ();
                       my $ndel = helper_blastx_breakdown_max_indel_str($p_del, \@p_del_qpos_A, \@p_del_spos_A, \@p_del_len_A, $FH_HR);
-                      for(my $del_idx = 0; $del_idx < $ndel; $del_idx++) { 
-                        my $nt_del_spos = 1 + vdr_Feature3pMostPosition(vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, 
-                                                                                                            vdr_CoordsSinglePositionSegmentCreate($p_del_spos_A[$del_idx], "+", $FH_HR),
-                                                                                                            $FH_HR), $FH_HR);
+                      for(my $del_idx = 0; $del_idx < $ndel; $del_idx++) {
+                        # see github issue #84: subject deletion position can exceed reference CDS frame (over-length library protein); no position-specific exception applies, so leave $nt_del_spos undef and use default xmaxdel
+                        my $nt_del_spos = undef;
+                        if(! vdr_CoordsProteinRelativeExceedsAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, vdr_CoordsSinglePositionSegmentCreate($p_del_spos_A[$del_idx], "+", $FH_HR), $FH_HR)) {
+                          $nt_del_spos = 1 + vdr_Feature3pMostPosition(vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"},
+                                                                                                              vdr_CoordsSinglePositionSegmentCreate($p_del_spos_A[$del_idx], "+", $FH_HR),
+                                                                                                              $FH_HR), $FH_HR);
+                        }
                         # we add 1 to make nt_del_spos bc the value returned from vdr_Feature3pMostPosition is the nucleotide subject position of the 3' most nt in the AA
                         # just before the deletion so deletion actually starts at that position + 1
 
-                        my $local_xmaxdel = (defined $deletin_posn_exc_AH[$ftr_idx]{$nt_del_spos}) ? $deletin_posn_exc_AH[$ftr_idx]{$nt_del_spos} : $xmaxdel;
+                        my $local_xmaxdel = ((defined $nt_del_spos) && (defined $deletin_posn_exc_AH[$ftr_idx]{$nt_del_spos})) ? $deletin_posn_exc_AH[$ftr_idx]{$nt_del_spos} : $xmaxdel;
                         if($p_del_len_A[$del_idx] > $local_xmaxdel) { 
                           if(defined $alt_str_HH{$ftr_results_prefix}{"deletinp"}) { $alt_str_HH{$ftr_results_prefix}{"deletinp"} .= ":VADRSEP:"; } # we are adding another instance
                           else                                                     { $alt_str_HH{$ftr_results_prefix}{"deletinp"} = ""; }           # initialize
@@ -9184,16 +9196,22 @@ sub helper_blastx_max_indel_token_to_alt_coords {
     $alt_scoords = sprintf("seq:%s;", vdr_CoordsRelativeToAbsolute($absolute_scoords, $relative_scoords, $FH_HR));
     
     # determine model coordinates
-    $absolute_mcoords = vdr_CoordsProteinRelativeToAbsolute($ftr_mcoords,
-                                                            vdr_CoordsSegmentCreate($aa_mpos, $aa_mpos, "+", $FH_HR), $FH_HR);
-    # $absolute_mcoords will now be a full codon, but we only want the final position
-    # the codon could be split across multiple segments
-    my @absolute_stop_A   = ();
-    my @absolute_strand_A = ();
-    vdr_FeatureStartStopStrandArrays($absolute_mcoords, undef, \@absolute_stop_A, \@absolute_strand_A, $FH_HR);
-    my $absolute_nsgm = scalar(@absolute_stop_A);
-    $absolute_mcoords = vdr_CoordsSegmentCreate($absolute_stop_A[($absolute_nsgm-1)], $absolute_stop_A[($absolute_nsgm-1)], $absolute_strand_A[($absolute_nsgm-1)], $FH_HR); # yes, we want same start/end
-    $alt_mcoords = sprintf("mdl:%s;", $absolute_mcoords);
+    # see github issue #84: report VADRNULL mdl coords if subject insert position exceeds reference CDS frame (over-length library protein)
+    if(vdr_CoordsProteinRelativeExceedsAbsolute($ftr_mcoords, vdr_CoordsSegmentCreate($aa_mpos, $aa_mpos, "+", $FH_HR), $FH_HR)) {
+      $alt_mcoords = "mdl:VADRNULL;";
+    }
+    else {
+      $absolute_mcoords = vdr_CoordsProteinRelativeToAbsolute($ftr_mcoords,
+                                                              vdr_CoordsSegmentCreate($aa_mpos, $aa_mpos, "+", $FH_HR), $FH_HR);
+      # $absolute_mcoords will now be a full codon, but we only want the final position
+      # the codon could be split across multiple segments
+      my @absolute_stop_A   = ();
+      my @absolute_strand_A = ();
+      vdr_FeatureStartStopStrandArrays($absolute_mcoords, undef, \@absolute_stop_A, \@absolute_strand_A, $FH_HR);
+      my $absolute_nsgm = scalar(@absolute_stop_A);
+      $absolute_mcoords = vdr_CoordsSegmentCreate($absolute_stop_A[($absolute_nsgm-1)], $absolute_stop_A[($absolute_nsgm-1)], $absolute_strand_A[($absolute_nsgm-1)], $FH_HR); # yes, we want same start/end
+      $alt_mcoords = sprintf("mdl:%s;", $absolute_mcoords);
+    }
   }
   else { # delete
     # determine sequence coordinates
@@ -9203,10 +9221,16 @@ sub helper_blastx_max_indel_token_to_alt_coords {
     $alt_scoords = sprintf("seq:%s;", vdr_CoordsRelativeToAbsolute($absolute_scoords, $relative_scoords, $FH_HR));
     
     # determine model coordinates
-    my $aa_len = $len / 3; 
-    $absolute_mcoords = vdr_CoordsProteinRelativeToAbsolute($ftr_mcoords,
-                                                            vdr_CoordsSegmentCreate($aa_mpos+1, $aa_mpos+$aa_len, "+", $FH_HR), $FH_HR);
-    $alt_mcoords = sprintf("mdl:%s;", $absolute_mcoords);
+    my $aa_len = $len / 3;
+    # see github issue #84: report VADRNULL mdl coords if subject deletion position exceeds reference CDS frame (over-length library protein)
+    if(vdr_CoordsProteinRelativeExceedsAbsolute($ftr_mcoords, vdr_CoordsSegmentCreate($aa_mpos+1, $aa_mpos+$aa_len, "+", $FH_HR), $FH_HR)) {
+      $alt_mcoords = "mdl:VADRNULL;";
+    }
+    else {
+      $absolute_mcoords = vdr_CoordsProteinRelativeToAbsolute($ftr_mcoords,
+                                                              vdr_CoordsSegmentCreate($aa_mpos+1, $aa_mpos+$aa_len, "+", $FH_HR), $FH_HR);
+      $alt_mcoords = sprintf("mdl:%s;", $absolute_mcoords);
+    }
   }
 
   return($alt_scoords, $alt_mcoords);
