@@ -2852,6 +2852,12 @@ sub draw_r2dt_figures {
         print TSV ("$seq_name\t$tmpl_name\tfail\t-\t-\n");
       }
 
+      # remove the .fa.ssi index that r2dt's internal cmalign leaves next to the
+      # input FASTA in .r2dt-input/ (cosmetic clutter; harmless but unwanted)
+      if(-e "$input_fa.ssi") {
+        utl_RunCommand("rm -f $input_fa.ssi", opt_Get("-v", $opt_HHR), 1, $FH_HR);
+      }
+
       # clean up the r2dt.py per-pair output tree unless --keep (we keep the
       # input FASTAs and copied SVGs regardless; the full r2dt tree is large)
       if(! $do_keep) {
