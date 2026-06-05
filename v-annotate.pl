@@ -2800,14 +2800,17 @@ sub draw_r2dt_figures {
 
       if(($r2dt_exit == 0) && (-s $src_svg)) {
         utl_RunCommand("cp $src_svg $dst_svg", opt_Get("-v", $opt_HHR), 0, $FH_HR);
-        # try to recover the overlap count from r2dt.py stdout, if present
+        # read the overlap count from the per-(seq,template) .overlaps file that
+        # r2dt.py / traveler writes (a single integer). On read failure leave '-'.
+        # Must read before the run-tree cleanup below.
         my $overlaps = "-";
-        if(-e "$abs_r2dt_rundir.stdout") {
-          open(SO, "$abs_r2dt_rundir.stdout");
-          while(my $sline = <SO>) {
-            if($sline =~ /(\d+)\s+overlaps?/i) { $overlaps = $1; last; }
+        my $overlaps_file = "$abs_r2dt_rundir/local-data/" . $seq_name . "-" . $tmpl_name . ".overlaps";
+        if(-e $overlaps_file) {
+          if(open(OVL, $overlaps_file)) {
+            my $oline = <OVL>;
+            close(OVL);
+            if((defined $oline) && ($oline =~ /^\s*(\d+)\s*$/)) { $overlaps = $1; }
           }
-          close(SO);
         }
         print TSV ("$seq_name\t$tmpl_name\tok\t$overlaps\t$dst_svg\n");
       }
