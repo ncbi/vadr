@@ -451,7 +451,16 @@ else {
   vdr_ModelInfoFileParse($minfoin_file, \@reqd_mdl_keys_A, \@reqd_ftr_keys_A, \@minfo_mdl_info_AH, \%minfo_ftr_info_HAH, $FH_HR);
 
   if(! defined $minfo_ftr_info_HAH{$mdl_name}) {
-    ofile_FAIL("ERROR, --minfoin file $minfoin_file must include model $mdl_name, but it does not", 1, $FH_HR);
+    # Build the list of MODEL names actually found in the .minfo so the
+    # user can see what name they should have passed as the positional
+    # <accession> arg. In --profile mode the positional MUST equal the
+    # value after the MODEL keyword on the minfo's MODEL line.
+    my @found_names_A = ();
+    foreach my $entry (@minfo_mdl_info_AH) {
+      if(defined $entry->{"name"}) { push(@found_names_A, $entry->{"name"}); }
+    }
+    my $found_str = (scalar(@found_names_A) > 0) ? join(",", @found_names_A) : "(none)";
+    ofile_FAIL("ERROR, --minfoin file $minfoin_file must include model $mdl_name, but it does not (MODEL name(s) found in minfo: $found_str). In --profile mode the positional <accession> argument MUST equal the value after the MODEL keyword on the minfo's MODEL line.", 1, $FH_HR);
   }
   @{$ftr_info_HAH{$mdl_name}} = @{$minfo_ftr_info_HAH{$mdl_name}};
   # also capture any model-level info for this model, so we can preserve it
