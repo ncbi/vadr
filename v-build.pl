@@ -849,7 +849,7 @@ if($ncds > 0) {
   $cds_fa_file  = $out_root . ".cds.fa";
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cdsfasta", $cds_fa_file, 1, 1, "fasta sequence file for CDS from $mdl_name");
   if($do_profile) {
-    profile_CdsFetchStockholmToFasta($ofile_info_HH{"FH"}{"cdsfasta"}, $stk_file, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+    profile_CdsFetchStockholmToFasta($ofile_info_HH{"FH"}{"cdsfasta"}, $stk_file, \@{$ftr_info_HAH{$mdl_name}}, \%opt_HH, $FH_HR);
   }
   else {
     vdr_CdsFetchStockholmToFasta($ofile_info_HH{"FH"}{"cdsfasta"}, $stk_file, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
@@ -1317,16 +1317,23 @@ sub stockholm_validate_single_sequence_input {
 #   $out_FH:         output file handle
 #   $stk_file:       stockholm file with aligned full length sequences
 #   $ftr_info_AHR:   REF to the feature info, pre-filled (model coords)
+#   $opt_HHR:        REF to 2D hash of command-line options
 #   $FH_HR:          REF to hash of file handles, including "log" and "cmd"
 #
 # Returns: void
 #################################################################
 sub profile_CdsFetchStockholmToFasta {
   my $sub_name = "profile_CdsFetchStockholmToFasta";
-  my $nargs_expected = 4;
+  my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
 
-  my ($out_FH, $stk_file, $ftr_info_AHR, $FH_HR) = (@_);
+  my ($out_FH, $stk_file, $ftr_info_AHR, $opt_HHR, $FH_HR) = (@_);
+
+  # Resolve translation-table and --atgonly once for start-codon validation
+  my $tt       = opt_Get("--ttbl",    $opt_HHR);
+  my $atg_only = opt_Get("--atgonly", $opt_HHR);
+  if(! defined $tt)       { $tt = 1; }
+  if(! defined $atg_only) { $atg_only = 0; }
 
   my $msa = Bio::Easel::MSA->new({ fileLocation => $stk_file, isDna => 1});
   if(! $msa->has_rf) {
@@ -1373,19 +1380,66 @@ sub profile_CdsFetchStockholmToFasta {
           if(exists $alt_set_members{$afset} && $alt_set_members{$afset}[0] != $ftr_idx) {
             next;
           }
-          # This is the primary — try it and each alternative
+          # This is the primary — try each variant in order, choosing the
+          # first variant that satisfies the full validation (3'-complete
+          # + start-codon-valid if not 5'-truncated).
+          #
+          # Variant selection is two-pass:
+          # Pass 1 (strict): require profile_ValidateCdsIsComplete to pass
+          #   with the variant's actual is_trunc5p / codon_start, so a
+          #   start-codon mismatch rejects the variant (drives variant
+          #   selection by 5' start when starts vary across the set —
+          #   e.g. HIV-1 env 6225 vs 6234).
+          # Pass 2 (fallback): if NO variant passes strict, fall back to
+          #   the first variant that is 3'-complete only (ignore start
+          #   codon) and emit it with header is_trunc5p forced so
+          #   esl-translate accepts the non-M protein. A warning is
+          #   logged. Drops only happen if no variant is even
+          #   3'-complete.
           my @try_ftr_idxs = @{$alt_set_members{$afset}};
+          my @cached_A = ();  # parallel to @try_ftr_idxs; stores extraction tuple
           my $success = 0;
-          foreach my $try_fi (@try_ftr_idxs) {
-            my ($cds_str, $header) = profile_ExtractOneCds($msa, $seq_idx, $sqname, $aligned_sqstring,
-                                                           $try_fi, $ftr_info_AHR,
-                                                           \@sgm_start_AA, \@sgm_stop_AA, \@sgm_strand_AA,
-                                                           $FH_HR);
-            if(defined $cds_str && profile_ValidateCdsIsComplete($cds_str)) {
+          # Pass 1: strict
+          for(my $vi = 0; $vi < scalar(@try_ftr_idxs); $vi++) {
+            my $try_fi = $try_ftr_idxs[$vi];
+            my ($cds_str, $header, $is_trunc5p, $is_trunc3p, $codon_start) =
+              profile_ExtractOneCds($msa, $seq_idx, $sqname, $aligned_sqstring,
+                                    $try_fi, $ftr_info_AHR,
+                                    \@sgm_start_AA, \@sgm_stop_AA, \@sgm_strand_AA,
+                                    $FH_HR);
+            $cached_A[$vi] = [$cds_str, $header, $is_trunc5p, $is_trunc3p, $codon_start];
+            if(defined $cds_str && profile_ValidateCdsIsComplete($cds_str, $is_trunc5p, $codon_start, $tt, $atg_only)) {
               print $out_FH ">" . $header . "\n";
               print $out_FH seq_SqstringAddNewlines($cds_str, 60);
               $success = 1;
               last;
+            }
+          }
+          # Pass 2: fallback to first 3'-complete variant if no strict win.
+          # Force 5'-truncation in header so esl-translate accepts non-M.
+          if(! $success) {
+            for(my $vi = 0; $vi < scalar(@cached_A); $vi++) {
+              my $tup = $cached_A[$vi];
+              next if(! defined $tup);
+              my ($cds_str, $header, $is_trunc5p, $is_trunc3p, $codon_start) = @$tup;
+              next if(! defined $cds_str);
+              # 3'-complete-only check: relax start; treat as 5'-truncated
+              if(profile_ValidateCdsIsComplete($cds_str, 1, $codon_start, $tt, $atg_only)) {
+                # Force-mark the header as 5'-truncated (prefix first coord
+                # with '<' if not already) so sequip's esl-translate path
+                # accepts the non-M start.
+                my $forced_header = $header;
+                if($forced_header !~ /\/\</) {
+                  $forced_header =~ s{^(\S+)/(\d+)\.\.}{$1/<$2..};
+                }
+                ofile_OutputString($FH_HR->{"log"}, 1,
+                  sprintf("# WARNING: profile_CdsFetchStockholmToFasta: no alt CDS variant has a valid start codon for %s in set %s; emitting 3'-complete variant with 5'-truncation marker forced\n",
+                          $sqname, $afset));
+                print $out_FH ">" . $forced_header . "\n";
+                print $out_FH seq_SqstringAddNewlines($cds_str, 60);
+                $success = 1;
+                last;
+              }
             }
           }
           if(! $success) {
@@ -1592,11 +1646,13 @@ sub profile_CdsFetchStockholmToFasta {
         $cds_header .= " REFCOORDS=" . $ref_coords_str;
 
         # In profile mode, only include sequences whose CDS is complete
-        # (ends with a stop codon and has no premature in-frame stops).
+        # (ends with a stop codon, has no premature in-frame stops, and
+        # — when not 5'-truncated — starts with a valid start codon).
         # Sequences with truncated CDS (no stop codon — typically CDS-only
-        # GenBank submissions) or frameshifts are skipped; only complete
-        # proteins are needed in the protein BLAST db.
-        if(! profile_ValidateCdsIsComplete($final_cds)) {
+        # GenBank submissions), frameshifts, or wrong-start are skipped;
+        # only complete proteins are needed in the protein BLAST db.
+        my $val_is_trunc5p = ($ref_is_trunc5p || $is_trunc5p_for_this_seq) ? 1 : 0;
+        if(! profile_ValidateCdsIsComplete($final_cds, $val_is_trunc5p, $codon_start, $tt, $atg_only)) {
           ofile_OutputString($FH_HR->{"log"}, 1,
             sprintf("# WARNING: profile_CdsFetchStockholmToFasta: CDS for %s at %s is incomplete or invalid, skipping (only complete CDS are included in protein db)\n",
                     $sqname, $seq_coords_str));
@@ -1668,7 +1724,7 @@ sub profile_ExtractOneCds {
 
     my ($ua_first, $ua_last) = profile_FirstAndLastUngappedPositionsInAlignedRange($aligned_sqstring, $astart, $astop);
     if(! defined $ua_first) {
-      return (undef, undef);  # all gaps in this segment
+      return (undef, undef, undef, undef, undef);  # all gaps in this segment
     }
 
     my $sgm_sqstring = $msa->get_sqstring_unaligned_and_truncated($seq_idx, $astart, $astop);
@@ -1685,7 +1741,7 @@ sub profile_ExtractOneCds {
 
   my $cds_len = length($cds_sqstring);
   if($cds_len == 0 || ($total_rf_offset_5p + $total_rf_offset_3p >= $cds_len)) {
-    return (undef, undef);
+    return (undef, undef, undef, undef, undef);
   }
 
   # Compute sequence coordinates
@@ -1707,8 +1763,90 @@ sub profile_ExtractOneCds {
     }
   }
 
-  my $seq_coords_str = join(",", @final_seq_sgm_coords_A);
   my $ref_coords_str = $ftr_info_AHR->[$ftr_idx]{"coords"};
+  my $ref_is_trunc5p = ($ref_coords_str =~ /</) ? 1 : 0;
+
+  # Determine 5'-truncation status for this seq + this variant.
+  # Mirrors the non-alt-branch logic in profile_CdsFetchStockholmToFasta:
+  # if total_rf_offset_5p > 0 the seq is downstream of biological 5'; else
+  # check whether the biological 5' RF position of segment 0 is gapped in
+  # this seq.
+  my $is_trunc5p_for_this_seq = 0;
+  if($total_rf_offset_5p > 0) {
+    $is_trunc5p_for_this_seq = 1;
+  }
+  elsif(scalar(@{$sgm_start_AAR->[$ftr_idx]}) > 0) {
+    my $sgm0_rfstart = $sgm_start_AAR->[$ftr_idx][0];
+    my $sgm0_rfstop  = $sgm_stop_AAR->[$ftr_idx][0];
+    my $sgm0_strand  = $sgm_strand_AAR->[$ftr_idx][0];
+    my $rf_5p = ($sgm0_strand eq "-") ?
+      ($sgm0_rfstart > $sgm0_rfstop ? $sgm0_rfstart : $sgm0_rfstop) :
+      ($sgm0_rfstart < $sgm0_rfstop ? $sgm0_rfstart : $sgm0_rfstop);
+    my $apos_5p = $msa->rfpos_to_aligned_pos($rf_5p);
+    if($apos_5p >= 1 && $apos_5p <= length($aligned_sqstring)) {
+      my $char_5p = substr($aligned_sqstring, $apos_5p - 1, 1);
+      if($char_5p =~ /[\-\_\.\~]/) { $is_trunc5p_for_this_seq = 1; }
+    }
+  }
+
+  # 3'-truncation: check whether the biological 3' end (3 stop-codon RF
+  # positions of the last segment) is fully ungapped in this seq.
+  my $is_trunc3p_for_this_seq = 0;
+  my $last_sgm_idx = scalar(@{$sgm_start_AAR->[$ftr_idx]}) - 1;
+  if($last_sgm_idx >= 0) {
+    my $strand = $sgm_strand_AAR->[$ftr_idx][$last_sgm_idx];
+    my $ref_start_rfpos = $sgm_start_AAR->[$ftr_idx][$last_sgm_idx];
+    my $ref_stop_rfpos  = $sgm_stop_AAR->[$ftr_idx][$last_sgm_idx];
+    my ($min_rfpos, $max_rfpos) = ($ref_start_rfpos < $ref_stop_rfpos) ?
+                                  ($ref_start_rfpos, $ref_stop_rfpos) :
+                                  ($ref_stop_rfpos, $ref_start_rfpos);
+    my @stop_codon_rfpos_A = ();
+    if($strand eq "+") {
+      push(@stop_codon_rfpos_A, $ref_stop_rfpos, $ref_stop_rfpos-1, $ref_stop_rfpos-2);
+    } else {
+      push(@stop_codon_rfpos_A, $ref_stop_rfpos, $ref_stop_rfpos+1, $ref_stop_rfpos+2);
+    }
+    my $stop_codon_rf_ungapped_count = 0;
+    foreach my $check_rfpos (@stop_codon_rfpos_A) {
+      if($check_rfpos >= $min_rfpos && $check_rfpos <= $max_rfpos) {
+        my $apos = $msa->rfpos_to_aligned_pos($check_rfpos);
+        my $c = substr($aligned_sqstring, $apos-1, 1);
+        my $is_gap = ($c =~ /[\-\_\.\~]/) ? 1 : 0;
+        if(! $is_gap) { $stop_codon_rf_ungapped_count++; }
+      }
+    }
+    if($stop_codon_rf_ungapped_count < 3) {
+      $is_trunc3p_for_this_seq = 1;
+    }
+  }
+
+  # Build coords string with < / > truncation markers if appropriate
+  my $header_is_trunc5p = ($ref_is_trunc5p || $is_trunc5p_for_this_seq) ? 1 : 0;
+  my $header_is_trunc3p = $is_trunc3p_for_this_seq;
+  my $seq_coords_str;
+  if($header_is_trunc5p || $header_is_trunc3p) {
+    my @marked_coords_A = ();
+    for(my $i = 0; $i < scalar(@final_seq_sgm_coords_A); $i++) {
+      my $coord_str = $final_seq_sgm_coords_A[$i];
+      if($coord_str =~ /^(\d+)\.\.(\d+):([+-])$/) {
+        my ($seg_start, $seg_stop, $seg_strand) = ($1, $2, $3);
+        if($i == 0 && $header_is_trunc5p) {
+          $seg_start = "<" . $seg_start;
+        }
+        if($i == scalar(@final_seq_sgm_coords_A) - 1 && $header_is_trunc3p) {
+          $seg_stop = ">" . $seg_stop;
+        }
+        push(@marked_coords_A, $seg_start . ".." . $seg_stop . ":" . $seg_strand);
+      }
+      else {
+        push(@marked_coords_A, $coord_str);
+      }
+    }
+    $seq_coords_str = join(",", @marked_coords_A);
+  }
+  else {
+    $seq_coords_str = join(",", @final_seq_sgm_coords_A);
+  }
 
   # Build header with codon_start if needed
   my $codon_start = $total_rf_offset_5p + 1;
@@ -1718,7 +1856,9 @@ sub profile_ExtractOneCds {
   }
   $cds_header .= " REFCOORDS=" . $ref_coords_str;
 
-  return ($cds_sqstring, $cds_header);
+  # Report truncation status that includes any ref-coords-level 5'
+  # truncation so callers can correctly gate the start-codon check
+  return ($cds_sqstring, $cds_header, $header_is_trunc5p, $header_is_trunc3p, $codon_start);
 }
 
 #################################################################
@@ -1731,18 +1871,28 @@ sub profile_ExtractOneCds {
 #             - Must end with a stop codon (TAA/TAG/TGA)
 #             - No in-frame stop codons before the terminal one
 #             - Length minus 3 (stop) must be divisible by 3
+#             - First (in-frame) codon must be a valid start codon
+#               UNLESS the CDS is 5'-truncated
 #
 #             Sequences that fail (truncated CDS, frameshifts,
-#             premature stops) are excluded from the protein db
-#             but remain in the nucleotide alignment.
+#             premature stops, wrong start) are excluded from the
+#             protein db but remain in the nucleotide alignment.
 #
 # Arguments:
-#   $cds_seq: CDS nucleotide sequence string
+#   $cds_seq:     CDS nucleotide sequence string
+#   $is_trunc5p:  '1' if this CDS is 5'-truncated for this seq (skip start
+#                 check); '0' otherwise.
+#   $codon_start: position (1-based) in $cds_seq where in-frame translation
+#                 starts (typically 1; >1 when sgm0 starts at a non-frame-
+#                 aligned position in this seq).
+#   $tt:          NCBI translation table number (default 1).
+#   $atg_only:    if '1', only ATG is a valid start codon; if '0', accept
+#                 the translation-table's alternative starts.
 #
 # Returns:    1 if complete and valid, 0 if not
 #################################################################
 sub profile_ValidateCdsIsComplete {
-  my ($cds_seq) = @_;
+  my ($cds_seq, $is_trunc5p, $codon_start, $tt, $atg_only) = @_;
 
   my $len = length($cds_seq);
   if($len < 6) { return 0; }
@@ -1766,6 +1916,22 @@ sub profile_ValidateCdsIsComplete {
     my $codon = substr($cds_seq, $i, 3);
     if(exists $stop_codons{$codon}) {
       return 0;  # premature stop
+    }
+  }
+
+  # Start-codon check: only applied when this CDS is NOT 5'-truncated
+  # for this seq. A 5'-truncated CDS legitimately lacks a start codon
+  # (the seq doesn't reach the biological 5' end of the CDS).
+  if(! $is_trunc5p) {
+    $codon_start = 1 unless (defined $codon_start && $codon_start >= 1);
+    $tt          = 1 unless (defined $tt          && $tt          >= 1);
+    $atg_only    = 0 unless (defined $atg_only);
+    if($len < $codon_start + 2) { return 0; }
+    my $start_codon = substr($cds_seq, $codon_start - 1, 3);
+    $start_codon =~ tr/a-z/A-Z/;
+    $start_codon =~ tr/U/T/;
+    if(! seq_CodonValidateStartCapDna($start_codon, $tt, $atg_only)) {
+      return 0;
     }
   }
 
