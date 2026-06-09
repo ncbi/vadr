@@ -1789,52 +1789,30 @@ sub profile_ExtractOneCds {
     }
   }
 
-  # 3'-truncation: check whether the biological 3' end (3 stop-codon RF
-  # positions of the last segment) is fully ungapped in this seq.
-  my $is_trunc3p_for_this_seq = 0;
-  my $last_sgm_idx = scalar(@{$sgm_start_AAR->[$ftr_idx]}) - 1;
-  if($last_sgm_idx >= 0) {
-    my $strand = $sgm_strand_AAR->[$ftr_idx][$last_sgm_idx];
-    my $ref_start_rfpos = $sgm_start_AAR->[$ftr_idx][$last_sgm_idx];
-    my $ref_stop_rfpos  = $sgm_stop_AAR->[$ftr_idx][$last_sgm_idx];
-    my ($min_rfpos, $max_rfpos) = ($ref_start_rfpos < $ref_stop_rfpos) ?
-                                  ($ref_start_rfpos, $ref_stop_rfpos) :
-                                  ($ref_stop_rfpos, $ref_start_rfpos);
-    my @stop_codon_rfpos_A = ();
-    if($strand eq "+") {
-      push(@stop_codon_rfpos_A, $ref_stop_rfpos, $ref_stop_rfpos-1, $ref_stop_rfpos-2);
-    } else {
-      push(@stop_codon_rfpos_A, $ref_stop_rfpos, $ref_stop_rfpos+1, $ref_stop_rfpos+2);
-    }
-    my $stop_codon_rf_ungapped_count = 0;
-    foreach my $check_rfpos (@stop_codon_rfpos_A) {
-      if($check_rfpos >= $min_rfpos && $check_rfpos <= $max_rfpos) {
-        my $apos = $msa->rfpos_to_aligned_pos($check_rfpos);
-        my $c = substr($aligned_sqstring, $apos-1, 1);
-        my $is_gap = ($c =~ /[\-\_\.\~]/) ? 1 : 0;
-        if(! $is_gap) { $stop_codon_rf_ungapped_count++; }
-      }
-    }
-    if($stop_codon_rf_ungapped_count < 3) {
-      $is_trunc3p_for_this_seq = 1;
-    }
-  }
-
-  # Build coords string with < / > truncation markers if appropriate
+  # Build coords string with < truncation marker if appropriate.
+  #
+  # Only the 5' (<) marker is emitted here. The 3' (>) marker is NOT
+  # emitted because profile_ValidateCdsIsComplete already requires a
+  # terminal stop codon, so any emitted CDS is 3'-complete from
+  # sequip's perspective. If we marked '>' on a CDS whose extracted
+  # sequence happens to end in a stop codon by coincidence (e.g., a
+  # splice CDS where the last segment is 1 nt at a splice site),
+  # sequip's sqf_EslTranslateCdsToFastaFile would set is_trunc3=1 and
+  # compute the wrong expected_stop, mismatching esl-translate's actual
+  # ORF coords. The corresponding sgm-3' boundary check (3 stop-codon
+  # RF positions) is therefore not used for marking; the validator's
+  # terminal-stop check is authoritative for 3'-completeness.
   my $header_is_trunc5p = ($ref_is_trunc5p || $is_trunc5p_for_this_seq) ? 1 : 0;
-  my $header_is_trunc3p = $is_trunc3p_for_this_seq;
+  my $header_is_trunc3p = 0;
   my $seq_coords_str;
-  if($header_is_trunc5p || $header_is_trunc3p) {
+  if($header_is_trunc5p) {
     my @marked_coords_A = ();
     for(my $i = 0; $i < scalar(@final_seq_sgm_coords_A); $i++) {
       my $coord_str = $final_seq_sgm_coords_A[$i];
       if($coord_str =~ /^(\d+)\.\.(\d+):([+-])$/) {
         my ($seg_start, $seg_stop, $seg_strand) = ($1, $2, $3);
-        if($i == 0 && $header_is_trunc5p) {
+        if($i == 0) {
           $seg_start = "<" . $seg_start;
-        }
-        if($i == scalar(@final_seq_sgm_coords_A) - 1 && $header_is_trunc3p) {
-          $seg_stop = ">" . $seg_stop;
         }
         push(@marked_coords_A, $seg_start . ".." . $seg_stop . ":" . $seg_strand);
       }
@@ -1894,26 +1872,37 @@ sub profile_ExtractOneCds {
 sub profile_ValidateCdsIsComplete {
   my ($cds_seq, $is_trunc5p, $codon_start, $tt, $atg_only) = @_;
 
-  my $len = length($cds_seq);
-  if($len < 6) { return 0; }
+  $codon_start = 1 unless (defined $codon_start && $codon_start >= 1);
+  $tt          = 1 unless (defined $tt          && $tt          >= 1);
+  $atg_only    = 0 unless (defined $atg_only);
+
+  my $total_len = length($cds_seq);
+  if($total_len < $codon_start + 5) { return 0; }
+
+  # All codon checks operate on the in-frame portion of the CDS,
+  # starting at position $codon_start (1-based). The leading
+  # $codon_start-1 nt are out-of-frame relative to the reference.
+  # The in-frame portion's length must itself be a clean multiple of 3
+  # (so the full CDS-minus-stop is codon-aligned); sequip's downstream
+  # esl-translate path computes expected_stop = seq_length - 3 and
+  # would mismatch the actual ORF coords if trailing nt were tolerated.
+  my $in_frame = substr($cds_seq, $codon_start - 1);
+  my $eff_len  = length($in_frame);
+  if($eff_len < 6)        { return 0; }
+  if(($eff_len % 3) != 0) { return 0; }
 
   my %stop_codons = ("TAA" => 1, "TAG" => 1, "TGA" => 1,
                      "taa" => 1, "tag" => 1, "tga" => 1);
 
-  # Last codon must be a stop
-  my $last_codon = substr($cds_seq, $len - 3, 3);
+  # Last in-frame codon must be a stop
+  my $last_codon = substr($in_frame, $eff_len - 3, 3);
   if(! exists $stop_codons{$last_codon}) {
     return 0;  # no terminal stop — truncated/incomplete CDS
   }
 
-  # Length minus stop must be divisible by 3
-  if(($len - 3) % 3 != 0) {
-    return 0;
-  }
-
   # No premature in-frame stops before the terminal one
-  for(my $i = 0; $i < $len - 3; $i += 3) {
-    my $codon = substr($cds_seq, $i, 3);
+  for(my $i = 0; $i < $eff_len - 3; $i += 3) {
+    my $codon = substr($in_frame, $i, 3);
     if(exists $stop_codons{$codon}) {
       return 0;  # premature stop
     }
@@ -1923,11 +1912,7 @@ sub profile_ValidateCdsIsComplete {
   # for this seq. A 5'-truncated CDS legitimately lacks a start codon
   # (the seq doesn't reach the biological 5' end of the CDS).
   if(! $is_trunc5p) {
-    $codon_start = 1 unless (defined $codon_start && $codon_start >= 1);
-    $tt          = 1 unless (defined $tt          && $tt          >= 1);
-    $atg_only    = 0 unless (defined $atg_only);
-    if($len < $codon_start + 2) { return 0; }
-    my $start_codon = substr($cds_seq, $codon_start - 1, 3);
+    my $start_codon = substr($in_frame, 0, 3);
     $start_codon =~ tr/a-z/A-Z/;
     $start_codon =~ tr/U/T/;
     if(! seq_CodonValidateStartCapDna($start_codon, $tt, $atg_only)) {
