@@ -1409,7 +1409,23 @@ sub profile_CdsFetchStockholmToFasta {
                                     $FH_HR);
             $cached_A[$vi] = [$cds_str, $header, $is_trunc5p, $is_trunc3p, $codon_start];
             if(defined $cds_str && profile_ValidateCdsIsComplete($cds_str, $is_trunc5p, $codon_start, $tt, $atg_only)) {
-              print $out_FH ">" . $header . "\n";
+              # If the accepted start codon is a valid alt-start (TTG, CTG,
+              # etc.) but not ATG, esl-translate translates it as L/V/...
+              # not M, and sqf_EslTranslateCdsToFastaFile would fatal on
+              # the non-M protein. Force the 5'-truncation marker on the
+              # header so esl-translate skips the non-M gate; the protein
+              # is still emitted to the BLAST db.
+              my $emit_header = $header;
+              if(! $is_trunc5p) {
+                my $first = uc(substr($cds_str, $codon_start - 1, 3));
+                $first =~ tr/U/T/;
+                if($first ne "ATG") {
+                  if($emit_header !~ /\/\</) {
+                    $emit_header =~ s{^(\S+)/(\d+)\.\.}{$1/<$2..};
+                  }
+                }
+              }
+              print $out_FH ">" . $emit_header . "\n";
               print $out_FH seq_SqstringAddNewlines($cds_str, 60);
               $success = 1;
               last;
@@ -1657,6 +1673,17 @@ sub profile_CdsFetchStockholmToFasta {
             sprintf("# WARNING: profile_CdsFetchStockholmToFasta: CDS for %s at %s is incomplete or invalid, skipping (only complete CDS are included in protein db)\n",
                     $sqname, $seq_coords_str));
           next;
+        }
+
+        # If accepted start is a valid alt-start (TTG/CTG/...) but not
+        # ATG, force the 5'-truncation marker so esl-translate's non-M
+        # check is skipped. See same logic in the alt-set branch above.
+        if(! $val_is_trunc5p) {
+          my $first = uc(substr($final_cds, $codon_start - 1, 3));
+          $first =~ tr/U/T/;
+          if($first ne "ATG" && $cds_header !~ /\/\</) {
+            $cds_header =~ s{^(\S+)/(\d+)\.\.}{$1/<$2..};
+          }
         }
 
         print $out_FH ">" . $cds_header . "\n";
