@@ -135,6 +135,7 @@ opt_Add("--subgroup",  "string",  undef,        $g,  "--group",     undef,  "spe
 $opt_group_desc_H{++$g} = "options for controlling CDS translation step";
 #     option          type       default    group   requires    incompat   preamble-output                                             help-output    
 opt_Add("--ttbl",     "integer", 1,            $g,  undef,         undef,  "use NCBI translation table <n> to translate CDS",          "use NCBI translation table <n> to translate CDS", \%opt_HH, \@opt_order_A);
+opt_Add("--atgonly",  "boolean", 0,            $g,  undef,         undef,  "only consider ATG a valid start codon",                    "only consider ATG a valid start codon", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling optional HMMER profile HMM building";
 #     option          type       default    group   requires    incompat     preamble-output                                         help-output
@@ -205,6 +206,7 @@ my $options_okay =
                 'subgroup=s'   => \$GetOptions_H{"--subgroup"},
 # options for controlling CDS translation step
                 'ttbl=s'       => \$GetOptions_H{"--ttbl"},
+                'atgonly'      => \$GetOptions_H{"--atgonly"},
 # options for controlling optional HMMER profile HMM building
                 'addhmm'       => \$GetOptions_H{"--addhmm"},
 # options for controlling cmbuild step
