@@ -113,6 +113,8 @@ opt_Add("--alt-min-count", "integer", 3,          $g,    undef, "--no-auto-alt",
   \%opt_HH, \@opt_order_A);
 opt_Add("--vannot-opts-file", "string", undef,    $g,    undef, undef,          "read extra v-annotate.pl options from file <s>",              "read extra v-annotate.pl options from file <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--alt-max-fract", "real",    0.2,       $g,    undef, "--no-auto-alt", "max fractional length deviation for alternative CDS",         "max fractional length deviation for alternative CDS as <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--force-accn",   "string",  undef,        $g,    undef, "--no-auto-alt", "force accessions listed in <s> into tier-2 detection (bypass tier-1 + alt-min thresholds)", "force accessions listed in file <s> (one per line) into tier-2 alt/exception detection: bypass tier-1 length + xpergroup filters AND exempt their alert groups from --alt-min-ind/--alt-min-count; detection-pool only, not seeded into final alignment", \%opt_HH, \@opt_order_A);
+opt_Add("--force-accn-required", "boolean", 0,     $g,    "--force-accn", undef, "FAIL if any --force-accn accession still fails after auto-detection", "FAIL (non-zero exit) if any --force-accn accession still fails under the final model after auto-detected alts/exceptions are applied (default: warn loudly but continue)", \%opt_HH, \@opt_order_A);
 opt_Add("--nper1grp",     "integer", 5,         $g,    undef, undef,          "number of seqs per group when 1 group",                       "number of seqs per group when 1 group as <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--npergrp",      "integer", undef,     $g,    undef, undef,          "override per-group seq count from determine_seqs_per_group",  "override determine_seqs_per_group default and use <n> seqs per group regardless of group count", \%opt_HH, \@opt_order_A);
 opt_Add("--no-collapse-numerals", "boolean", 0, $g,    undef, undef,          "disable Roman<->Arabic numeral collapsing in group_key normalization", "disable Roman<->Arabic numeral collapsing in group_key normalization (warn only, do not collapse)", \%opt_HH, \@opt_order_A);
@@ -176,6 +178,8 @@ my $options_okay =
                 'alt-min-count=i' => \$GetOptions_H{"--alt-min-count"},
                 'vannot-opts-file=s' => \$GetOptions_H{"--vannot-opts-file"},
                 'alt-max-fract=f' => \$GetOptions_H{"--alt-max-fract"},
+                'force-accn=s' => \$GetOptions_H{"--force-accn"},
+                'force-accn-required' => \$GetOptions_H{"--force-accn-required"},
                 'nper1grp=i'   => \$GetOptions_H{"--nper1grp"},
                 'npergrp=i'    => \$GetOptions_H{"--npergrp"},
                 'no-collapse-numerals' => \$GetOptions_H{"--no-collapse-numerals"},
@@ -1109,12 +1113,36 @@ my %candidate_AH = ();
 my %decision_H = ();
 my $max_per_group = opt_Get("--xpergroup", $opt_HHR);
 
+# Parse the optional --force-accn list into %force_accn_H. Keys are
+# version-normalized accessions (trailing ".<digits>" stripped) so the
+# user may supply either "OZ334540" or "OZ334540.1" and it matches the
+# versioned accessions in the metadata TSV. A forced accession bypasses
+# the tier-1 length + xpergroup filters and exempts its tier-2 alert
+# groups from the --alt-min-ind/--alt-min-count threshold. See
+# parse_and_filter_metadata(), detect_alternative_features(),
+# detect_exceptions(), and report_forced_accn_status().
+my %force_accn_H = ();
+if(opt_IsUsed("--force-accn", $opt_HHR)) {
+  my $force_accn_file = opt_Get("--force-accn", $opt_HHR);
+  open(my $fafh, "<", $force_accn_file) || ofile_FAIL("ERROR, unable to read --force-accn file $force_accn_file", 1, $FH_HR);
+  while(my $l = <$fafh>) {
+    chomp $l;
+    $l =~ s/^\s+//; $l =~ s/\s+$//;
+    next if($l eq "" || $l =~ /^\#/);
+    my ($acc) = split(/\s+/, $l);
+    $force_accn_H{normalize_accn_for_force($acc)} = 1;
+  }
+  close($fafh);
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("# --force-accn: %d accessions force-included into tier-2 detection from %s\n",
+                                                 scalar(keys %force_accn_H), $force_accn_file));
+}
+
 # Note: %group_alias_H / %alias_source_used_H were declared and
 # populated upstream (before the pre-filter call) so that
 # prefilter_metadata_by_seed_group() can honor user-defined aliases.
 # %alias_source_used_H may already contain entries marked used by the
 # pre-filter; parse_and_filter_metadata adds any additional hits.
-parse_and_filter_metadata($meta_tsv, $seed_model_len, $max_per_group, \%candidate_AH, \%decision_H, $ref_accn, \%group_alias_H, \%alias_source_used_H, $FH_HR);
+parse_and_filter_metadata($meta_tsv, $seed_model_len, $max_per_group, \%candidate_AH, \%decision_H, $ref_accn, \%group_alias_H, \%alias_source_used_H, \%force_accn_H, $FH_HR);
 
 # Warn about alias-file source keys that never matched any sequence's
 # post-normalization canonical (non-fatal).
@@ -1142,6 +1170,24 @@ if(! exists $decision_H{$ref_accn}) {
              "The reference sequence must be present in the metadata for v-prep.pl to proceed.\n" .
              "If this accession is not returned by the NCBI taxonomy fetch, you can add it\n" .
              "manually to the metadata TSV file and re-run with --meta.", 1, $FH_HR);
+}
+
+# Verify every --force-accn accession was found in the metadata. A forced
+# accession that is not in the fetched/metadata pool at all cannot be
+# force-included (there is nothing to include), so this is a hard error.
+# Match version-normalized so "OZ334540" matches metadata "OZ334540.1".
+if(scalar(keys %force_accn_H) > 0) {
+  my %meta_norm_H = ();
+  foreach my $a (keys %decision_H) { $meta_norm_H{normalize_accn_for_force($a)} = 1; }
+  my @missing_forced = sort grep { ! exists $meta_norm_H{$_} } keys %force_accn_H;
+  if(scalar(@missing_forced) > 0) {
+    ofile_FAIL(sprintf("ERROR, %d --force-accn accession(s) not found in metadata TSV %s: %s\n" .
+                       "Forced accessions must be present in the fetched metadata/sequence pool to be force-included.\n" .
+                       "Add them to the metadata TSV (and ensure they are fetchable) or remove them from the --force-accn file.",
+                       scalar(@missing_forced), $meta_tsv, join(", ", @missing_forced)), 1, $FH_HR);
+  }
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# --force-accn: all %d forced accessions present in metadata\n", scalar(keys %force_accn_H)));
 }
 
 #---------------------------------------
@@ -1208,13 +1254,13 @@ if($do_auto_alt) {
     my $alt_groups_HHR = parse_alt_for_cds_boundary_alerts($tier2_alt_file, $FH_HR);
     my $max_fract_diff = opt_Get("--alt-max-fract", $opt_HHR);
     my $alt_features_AR = detect_alternative_features($alt_groups_HHR, $min_independent, opt_Get("--alt-min-count", $opt_HHR), $max_fract_diff,
-                                                       \@{$ftr_info_HA{$minfo_model_key}}, $minfo_model_key, $FH_HR);
+                                                       \@{$ftr_info_HA{$minfo_model_key}}, $minfo_model_key, \%force_accn_H, $FH_HR);
 
     # Detect tier-2 exceptions. Pass-2 exceptions are detected after
     # pass-2 v-annotate completes (see pass-2 detection block below)
     # and applied to minfo v1 directly using pass-2 ftr_idx.
     my $tier2_exc_groups_HHR = parse_alt_for_exceptions($tier2_alt_file, $FH_HR);
-    my $exceptions_AR = detect_exceptions($tier2_exc_groups_HHR, $min_independent, opt_Get("--alt-min-count", $opt_HHR), $FH_HR);
+    my $exceptions_AR = detect_exceptions($tier2_exc_groups_HHR, $min_independent, opt_Get("--alt-min-count", $opt_HHR), \%force_accn_H, $FH_HR);
 
     my $n_alt = scalar(@{$alt_features_AR});
     my $n_exc = scalar(@{$exceptions_AR});
@@ -1422,6 +1468,7 @@ if($do_auto_alt) {
           my $pass2_exceptions_AR = detect_exceptions($pass2_exc_groups_HHR,
                                                        $min_independent,
                                                        opt_Get("--alt-min-count", $opt_HHR),
+                                                       \%force_accn_H,
                                                        $FH_HR);
           # Skip pass-2 exceptions that are exact duplicates of
           # tier-2 exceptions (same exc_type, ftr_name, exc_coords).
@@ -1478,6 +1525,19 @@ if($do_auto_alt) {
                              \@mdl_info_A, \%ftr_info_HA, $FH_HR);
     }
   }
+}
+
+#---------------------------------------
+# Step 5c: --force-accn quality gate
+#---------------------------------------
+# Report which --force-accn accessions PASS vs FAIL under the final
+# (auto-alt-augmented) model. A forced accession PASSES if its decision
+# status is "kept" after the tier-2/pass-2 v-annotate filtering above;
+# it FAILS if it was removed with a fatal v-annotate alert. With
+# --force-accn-required, any still-failing forced accession is fatal.
+if(scalar(keys %force_accn_H) > 0) {
+  report_forced_accn_status(\%force_accn_H, \%decision_H, $tier2_ant_outdir, $out_root,
+                            opt_Get("--force-accn-required", $opt_HHR), $FH_HR);
 }
 
 #---------------------------------------
@@ -2683,6 +2743,33 @@ sub prefilter_metadata_by_seed_group {
 }
 
 #################################################################
+# Subroutine : normalize_accn_for_force()
+# Incept     : EPN* Thu Jun 11 2026
+#
+# Purpose    : Normalize an accession for --force-accn membership
+#              tests by stripping a trailing version suffix
+#              (".<digits>"). This lets the user supply either a
+#              versioned ("OZ334540.1") or unversioned ("OZ334540")
+#              accession and have it match the versioned accessions
+#              that appear in the metadata TSV and the v-annotate
+#              .alt files. v-prep matches the reference accession
+#              verbatim elsewhere, but the force list is a
+#              user-curated convenience input where tolerating the
+#              version suffix is worth the small normalization.
+#
+# Arguments  :
+#   $acc : accession string
+#
+# Returns    : accession with any trailing ".<digits>" removed
+#################################################################
+sub normalize_accn_for_force {
+  my ($acc) = @_;
+  return "" if(! defined $acc);
+  $acc =~ s/\.\d+$//;
+  return $acc;
+}
+
+#################################################################
 # Subroutine : parse_and_filter_metadata()
 # Incept     : Gemini Thu Mar 05 2026
 #
@@ -2700,7 +2787,7 @@ sub prefilter_metadata_by_seed_group {
 # Returns    : void
 #################################################################
 sub parse_and_filter_metadata {
-  my ($tsv_file, $seed_model_len, $max_per_group, $candidate_AHR, $decision_HR, $ref_accn, $alias_HR, $alias_used_HR, $FH_HR) = @_;
+  my ($tsv_file, $seed_model_len, $max_per_group, $candidate_AHR, $decision_HR, $ref_accn, $alias_HR, $alias_used_HR, $force_accn_HR, $FH_HR) = @_;
 
   my $total_seqs = 0;
   my $kept_len_seqs = 0;
@@ -2797,14 +2884,24 @@ sub parse_and_filter_metadata {
       next;
     }
 
+    # Is this a --force-accn accession? Forced accessions bypass the
+    # tier-1 length + xpergroup filters (version-normalized match).
+    my $is_forced = (defined $force_accn_HR && exists $force_accn_HR->{normalize_accn_for_force($acc)}) ? 1 : 0;
+
     # Length check: Keep sequences >90% of the seed model's length
-    # Reference accession is always kept regardless of length
-    if ($seed_model_len > 0 && $len < ($seed_model_len * 0.90) && $acc ne $ref_accn) {
+    # Reference accession is always kept regardless of length.
+    # Forced (--force-accn) accessions are also kept regardless of length.
+    if ($seed_model_len > 0 && $len < ($seed_model_len * 0.90) && $acc ne $ref_accn && ! $is_forced) {
       $decision_HR->{$acc}{"status"} = "removed";
       $decision_HR->{$acc}{"reason_code"} = "len_lt_90pct_seed";
       $decision_HR->{$acc}{"reason_detail"} = "length $len < 0.9 * seed_length $seed_model_len";
       $decision_HR->{$acc}{"stage_last_seen"} = "tier1_length_filter";
       next;
+    }
+    if($is_forced && $seed_model_len > 0 && $len < ($seed_model_len * 0.90) && $acc ne $ref_accn) {
+      ofile_OutputString($FH_HR->{"log"}, 1,
+        sprintf("# --force-accn: %s bypassed tier-1 length filter (length %d < 0.9 * seed_length %d)\n",
+                $acc, $len, $seed_model_len));
     }
     $kept_len_seqs++;
 
@@ -2943,11 +3040,38 @@ sub parse_and_filter_metadata {
       }
     }
 
+    # Force-include --force-accn accessions even if not chronologically
+    # selected (mirrors the reference force-include above). These are
+    # added beyond the per-group cap so they cannot displace legitimately
+    # sampled sequences; the cap is a soft ceiling that forced accessions
+    # are exempt from. %is_forced_group tracks which were forced so the
+    # decision audit can record reason_code "forced_include".
+    my %is_forced_group = ();
+    if(defined $force_accn_HR) {
+      foreach my $seq (@seqs) {
+        my $acc = $seq->{acc};
+        if(exists $force_accn_HR->{normalize_accn_for_force($acc)}) {
+          $is_forced_group{$acc} = 1;
+          if(! $is_selected{$acc}) {
+            push @selected_for_group, $seq;
+            $is_selected{$acc} = 1;
+            ofile_OutputString($FH_HR->{"log"}, 1,
+              sprintf("# --force-accn: %s force-included into group \"%s\" past xpergroup cap (%d)\n",
+                      $acc, $group, $max_per_group));
+          }
+        }
+      }
+    }
+
     # Replace the original group array with the filtered top N
     foreach my $seq (@seqs) {
       my $acc = $seq->{acc};
       if($is_selected{$acc}) {
         $decision_HR->{$acc}{"stage_last_seen"} = "tier1_selected";
+        if($is_forced_group{$acc}) {
+          $decision_HR->{$acc}{"reason_code"} = "forced_include";
+          $decision_HR->{$acc}{"reason_detail"} = "forced into tier-2 detection via --force-accn";
+        }
       }
       else {
         $decision_HR->{$acc}{"status"} = "removed";
@@ -8342,10 +8466,10 @@ sub count_independent_observations {
 #################################################################
 sub detect_alternative_features {
   my $sub_name = "detect_alternative_features";
-  my $nargs_expected = 7;
+  my $nargs_expected = 8;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
 
-  my ($alt_groups_HHR, $min_independent, $min_count, $max_fract_diff, $ftr_info_AHR, $model_key, $FH_HR) = @_;
+  my ($alt_groups_HHR, $min_independent, $min_count, $max_fract_diff, $ftr_info_AHR, $model_key, $force_accn_HR, $FH_HR) = @_;
 
   my @alt_features = ();
 
@@ -8366,8 +8490,27 @@ sub detect_alternative_features {
       my $n_ind  = count_independent_observations(\@accessions);
       my $n_seqs = scalar(@accessions);
 
-      if($n_ind >= $min_independent || $n_seqs >= $min_count) {
-        # passes dual criterion: sufficient independent prefixes OR sufficient raw count
+      # --force-accn bypass: if this alert group's supporting accessions
+      # include at least one forced accession, the user is asserting the
+      # variant is real, so emit the alternative even from a single
+      # example (bypass the --alt-min-ind/--alt-min-count threshold).
+      # Scoped to groups that actually contain a forced member; the
+      # threshold still applies to all other groups.
+      my $has_forced = 0;
+      if(defined $force_accn_HR) {
+        foreach my $a (@accessions) {
+          if(exists $force_accn_HR->{normalize_accn_for_force($a)}) { $has_forced = 1; last; }
+        }
+      }
+
+      if($n_ind >= $min_independent || $n_seqs >= $min_count || $has_forced) {
+        # passes dual criterion (sufficient independent prefixes OR
+        # sufficient raw count) OR contains a --force-accn member
+        if($has_forced && $n_ind < $min_independent && $n_seqs < $min_count) {
+          ofile_OutputString($FH_HR->{"log"}, 1,
+            sprintf("# Alt detect: %s %s n_seqs=%d n_ind=%d below threshold but FORCED (--force-accn member present), keeping\n",
+                    $ftr_key, $mdl_coords, $n_seqs, $n_ind));
+        }
       }
       else {
         ofile_OutputString($FH_HR->{"log"}, 1,
@@ -8687,10 +8830,10 @@ sub parse_alt_for_exceptions {
 #################################################################
 sub detect_exceptions {
   my $sub_name = "detect_exceptions";
-  my $nargs_expected = 4;
+  my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
 
-  my ($exc_groups_HHR, $min_independent, $min_count, $FH_HR) = @_;
+  my ($exc_groups_HHR, $min_independent, $min_count, $force_accn_HR, $FH_HR) = @_;
 
   my @exceptions = ();
 
@@ -8751,10 +8894,22 @@ sub detect_exceptions {
       my @unique_acc_list = keys %unique_accs;
       my $n_ind = count_independent_observations(\@unique_acc_list);
 
+      # --force-accn bypass: if this exception region's supporting
+      # accessions include a forced accession, the user is asserting the
+      # exception is real, so emit it regardless of count (bypasses both
+      # the fst_exc minimum and the --alt-min-ind/--alt-min-count
+      # threshold). Scoped to regions that contain a forced member.
+      my $has_forced = 0;
+      if(defined $force_accn_HR) {
+        foreach my $a (@unique_acc_list) {
+          if(exists $force_accn_HR->{normalize_accn_for_force($a)}) { $has_forced = 1; last; }
+        }
+      }
+
       # fst_exc: require minimum 2 independent observations regardless
-      # of global --alt-min-ind setting.
+      # of global --alt-min-ind setting (unless forced).
       my $MIN_FST_EXC_NIND = 2;
-      if($exc_type eq "fst_exc" && $n_ind < $MIN_FST_EXC_NIND) {
+      if($exc_type eq "fst_exc" && $n_ind < $MIN_FST_EXC_NIND && ! $has_forced) {
         ofile_OutputString($FH_HR->{"log"}, 1,
           sprintf("# Exc detect: fst_exc %s %d..%d:%s n_seqs=%d n_ind=%d < fst_min=%d, skipping\n",
                   $ftr_name, $rstart, $rstop, $rstrand,
@@ -8763,8 +8918,14 @@ sub detect_exceptions {
       }
 
       my $n_seqs_exc = scalar(@unique_acc_list);
-      if($n_ind >= $min_independent || $n_seqs_exc >= $min_count) {
-        # passes dual criterion: sufficient independent prefixes OR sufficient raw count
+      if($n_ind >= $min_independent || $n_seqs_exc >= $min_count || $has_forced) {
+        # passes dual criterion (sufficient independent prefixes OR
+        # sufficient raw count) OR contains a --force-accn member
+        if($has_forced && $n_ind < $min_independent && $n_seqs_exc < $min_count) {
+          ofile_OutputString($FH_HR->{"log"}, 1,
+            sprintf("# Exc detect: %s %s %d..%d:%s n_seqs=%d n_ind=%d below threshold but FORCED (--force-accn member present), keeping\n",
+                    $exc_type, $ftr_name, $rstart, $rstop, $rstrand, $n_seqs_exc, $n_ind));
+        }
       }
       else {
         ofile_OutputString($FH_HR->{"log"}, 1,
@@ -8801,6 +8962,133 @@ sub detect_exceptions {
   }
 
   return \@exceptions;
+}
+
+#################################################################
+# Subroutine: collect_fail_alerts_from_alt_file()
+# Incept:     EPN* Thu Jun 11 2026
+#
+# Purpose:    Scan a v-annotate .vadr.alt file and, for each
+#             accession present in the forced-accession set, collect
+#             the alert codes of its fatal alerts (the .alt "fail"
+#             column == "yes"). Used by the --force-accn quality gate
+#             to report WHY a forced accession still failed.
+#
+# Arguments:
+#   $alt_file   : path to a .vadr.alt file (may not exist; no-op if so)
+#   $force_HR    : REF to forced-accession set (version-normalized keys)
+#   $codes_HHR  : REF to hash (norm_acc -> { alert_code -> 1 }) to fill
+#
+# Returns: void (fills $codes_HHR)
+#################################################################
+sub collect_fail_alerts_from_alt_file {
+  my ($alt_file, $force_HR, $codes_HHR) = @_;
+  return if(! defined $alt_file || ! -e $alt_file);
+  open(my $fh, "<", $alt_file) || return;
+  while(my $l = <$fh>) {
+    next if($l =~ /^\#/);
+    chomp $l;
+    $l =~ s/^\s+//;
+    my @t = split(/\s+/, $l);
+    next if(scalar(@t) < 8);
+    my $acc  = $t[1];   # seq name
+    my $code = $t[6];   # alert code
+    my $fail = $t[7];   # "yes" if fatal
+    next if($fail ne "yes");
+    my $norm = normalize_accn_for_force($acc);
+    if(exists $force_HR->{$norm}) {
+      $codes_HHR->{$norm}{$code} = 1;
+    }
+  }
+  close($fh);
+  return;
+}
+
+#################################################################
+# Subroutine: report_forced_accn_status()
+# Incept:     EPN* Thu Jun 11 2026
+#
+# Purpose:    The --force-accn quality gate. Report which forced
+#             accessions PASS vs FAIL under the final
+#             (auto-alt-augmented) model. A forced accession PASSES
+#             if its final decision-table status is "kept" (it passed
+#             tier-2 v-annotate, possibly via the auto-alt pass-2
+#             rescue); it FAILS otherwise (removed with a fatal alert,
+#             or filtered upstream e.g. by the ambiguity/unverified
+#             filters which --force-accn does NOT bypass). For each
+#             failing accession the reason code and any fatal v-annotate
+#             alert codes (from the tier-2 and pass-2 .alt files) are
+#             reported. With $required (--force-accn-required), any
+#             still-failing forced accession causes a fatal exit;
+#             otherwise a prominent WARNING is emitted but the run
+#             continues.
+#
+# Arguments:
+#   $force_HR          : REF to forced-accession set (normalized keys)
+#   $decision_HR       : REF to the seq decision table
+#   $tier2_ant_outdir  : tier-2 v-annotate output dir (for .alt path)
+#   $out_root          : output root (for pass-2 .alt path)
+#   $required          : if true, FAIL when any forced accession fails
+#   $FH_HR             : REF to hash of file handles
+#
+# Returns: void (may not return if $required and a forced accn fails)
+#################################################################
+sub report_forced_accn_status {
+  my ($force_HR, $decision_HR, $tier2_ant_outdir, $out_root, $required, $FH_HR) = @_;
+
+  # Map each forced (normalized) accession to its final decision status.
+  my %norm_status_H = ();
+  my %norm_detail_H = ();
+  foreach my $a (keys %{$decision_HR}) {
+    my $norm = normalize_accn_for_force($a);
+    next if(! exists $force_HR->{$norm});
+    $norm_status_H{$norm} = $decision_HR->{$a}{"status"};
+    $norm_detail_H{$norm} = $decision_HR->{$a}{"reason_code"} . ": " . $decision_HR->{$a}{"reason_detail"};
+  }
+
+  # Collect fatal alert codes from the tier-2 and pass-2 .alt files.
+  my %fail_codes_HH = ();
+  my $tier2_tail = $tier2_ant_outdir; $tier2_tail =~ s/^.+\///;
+  collect_fail_alerts_from_alt_file($tier2_ant_outdir . "/" . $tier2_tail . ".vadr.alt", $force_HR, \%fail_codes_HH);
+  my $pass2_outdir = $out_root . ".vadr.tier2.annot.pass2";
+  my $pass2_tail = $pass2_outdir; $pass2_tail =~ s/^.+\///;
+  collect_fail_alerts_from_alt_file($pass2_outdir . "/" . $pass2_tail . ".vadr.alt", $force_HR, \%fail_codes_HH);
+
+  my @passed = ();
+  my @failed = ();
+  foreach my $norm (sort keys %{$force_HR}) {
+    my $status = $norm_status_H{$norm};
+    if(defined $status && $status eq "kept") { push(@passed, $norm); }
+    else                                     { push(@failed, $norm); }
+  }
+
+  ofile_OutputString($FH_HR->{"log"}, 1, "#\n");
+  ofile_OutputString($FH_HR->{"log"}, 1,
+    sprintf("# --force-accn quality gate: %d of %d forced accessions PASS under the final model.\n",
+            scalar(@passed), scalar(keys %{$force_HR})));
+  foreach my $norm (@passed) {
+    ofile_OutputString($FH_HR->{"log"}, 1, sprintf("#   PASS  %s\n", $norm));
+  }
+  foreach my $norm (@failed) {
+    my $detail = defined $norm_detail_H{$norm} ? $norm_detail_H{$norm} : "not present in final decision table";
+    my $codes  = (exists $fail_codes_HH{$norm}) ? join(",", sort keys %{$fail_codes_HH{$norm}}) : "n/a";
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("#   FAIL  %s [%s] fatal_alerts=%s\n", $norm, $detail, $codes));
+  }
+
+  if(scalar(@failed) > 0) {
+    my $msg = sprintf("%d of %d --force-accn accession(s) still FAIL under the final model: %s.\n" .
+                      "Auto-detected alts/exceptions did not rescue them. Possible causes: the sequence is genuinely bad,\n" .
+                      "the variant exceeds auto-alt's reach, or the exception/protein translation did not cover the case.",
+                      scalar(@failed), scalar(keys %{$force_HR}), join(", ", @failed));
+    if($required) {
+      ofile_FAIL("ERROR (--force-accn-required), $msg", 1, $FH_HR);
+    }
+    else {
+      ofile_OutputString($FH_HR->{"log"}, 1, "# WARNING --force-accn: $msg\n");
+    }
+  }
+  return;
 }
 
 #################################################################
