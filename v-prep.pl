@@ -1231,16 +1231,32 @@ if($do_auto_alt) {
       ofile_OutputString($FH_HR->{"log"}, 1,
         sprintf("# Auto-alt detect: wrote updated minfo to %s\n", $updated_minfo));
 
-      # Translate alternative CDS proteins and update BLAST db
-      if($n_alt > 0) {
+      # Translate alternative + exception CDS proteins and update BLAST
+      # db. Both the coord-distinct alt path and the
+      # deletin_exc/insertn_exc exception path append variant proteins to
+      # the same per-RefSeq protein.fa, which the pass-2 rescue re-run
+      # (below) rebuilds into its blastx db -- so the variants are present
+      # for the in-run rescue, not only at production v-annotate time.
+      my $n_exc_translatable = 0;
+      foreach my $exc (@{$exceptions_AR}) {
+        if($exc->{"exc_type"} eq "deletin_exc" || $exc->{"exc_type"} eq "insertn_exc") { $n_exc_translatable++; }
+      }
+      if($n_alt > 0 || $n_exc_translatable > 0) {
         # Copy seed protein.fa to output dir so we can append to it
         my $updated_protein_fa = $out_root . ".alt.protein.fa";
         my $seed_protein_fa = $model_dir . "/" . $model_key . ".vadr.protein.fa";
         if(-e $seed_protein_fa) {
           utl_RunCommand("cp $seed_protein_fa $updated_protein_fa", opt_Get("-v", $opt_HHR), 0, $FH_HR);
-          translate_alternative_cds_proteins($alt_features_AR, $tier2_ftr_file, $tier2_alt_file,
-                                              $tier2_fasta_file, $updated_protein_fa,
-                                              $model_key, $execs_HR, $opt_HHR, $FH_HR);
+          if($n_alt > 0) {
+            translate_alternative_cds_proteins($alt_features_AR, $tier2_ftr_file, $tier2_alt_file,
+                                                $tier2_fasta_file, $updated_protein_fa,
+                                                $model_key, $execs_HR, $opt_HHR, $FH_HR);
+          }
+          if($n_exc_translatable > 0) {
+            translate_exception_cds_proteins($exceptions_AR, \@{$ftr_info_HA{$minfo_model_key}},
+                                             $tier2_ftr_file, $tier2_fasta_file, $updated_protein_fa,
+                                             $model_key, $execs_HR, $opt_HHR, $FH_HR);
+          }
         }
       }
 
@@ -8664,7 +8680,10 @@ sub parse_alt_for_exceptions {
 #
 # Returns: REF to array of hashrefs, each with keys:
 #          exc_type, ftr_name, ftr_idx, exc_coords, n_seqs,
-#          n_independent
+#          n_independent, accessions_AR (REF to array of the
+#          deduplicated accessions that drove the exception; used
+#          by translate_exception_cds_proteins() to pick a
+#          representative sequence)
 #################################################################
 sub detect_exceptions {
   my $sub_name = "detect_exceptions";
@@ -8776,6 +8795,7 @@ sub detect_exceptions {
         exc_coords    => $exc_coords,
         n_seqs        => scalar(@unique_acc_list),
         n_independent => $n_ind,
+        accessions_AR => [@unique_acc_list],
       });
     }
   }
@@ -9404,6 +9424,230 @@ sub translate_alternative_cds_proteins {
 
   # Rebuild BLAST protein database
   sqf_BlastDbCreate($execs_HR->{"makeblastdb"}, "prot", $protein_fa_file, $opt_HHR, $FH_HR);
+
+  return;
+}
+
+#################################################################
+# Subroutine: translate_exception_cds_proteins()
+# Incept:     EPN*, Mon Jun  8 2026
+#
+# Purpose:    For each translatable exception (deletin_exc or
+#             insertn_exc), translate the representative
+#             sequence's variant CDS and append it to the
+#             per-RefSeq protein.fa, then rebuild the BLAST db.
+#
+#             Unlike translate_alternative_cds_proteins() (which
+#             rewrites a CDS boundary to build a coord-distinct
+#             alt protein), a deletin/insertn variant CDS is
+#             simply the representative sequence's OWN annotated
+#             CDS: the internal indel lives in the sequence
+#             itself, so esl-sfetch of that sequence's .vadr.ftr
+#             seq_coords yields the shorter (deletin) or longer
+#             (insertn) variant CDS directly. No coordinate
+#             surgery is needed.
+#
+#             The appended protein's FASTA header uses the
+#             CANONICAL CDS model coords (from $ftr_info_AHR) as
+#             the post-'/' coords token, because v-annotate maps a
+#             blastx subject to a CDS feature by an EXACT match of
+#             that token against a CDS feature's minfo coords
+#             (helper_protein_validation_db_seqname_to_ftr_idx;
+#             a non-matching token makes v-annotate die). An
+#             exception adds no new CDS feature to the minfo, so
+#             the variant protein must map to the existing
+#             canonical CDS. A distinguishing tag is placed in the
+#             pre-'/' accession token (which v-annotate does not
+#             validate) so the variant is traceable and distinct
+#             from the canonical protein.
+#
+#             Frame guard: an indel whose size is not a multiple
+#             of 3 shifts the reading frame and does not yield a
+#             clean in-frame variant protein; such exceptions are
+#             skipped and logged.
+#
+# Arguments:
+#   $exceptions_AR:   REF to array of exception hashrefs from
+#                     detect_exceptions() (must carry accessions_AR)
+#   $ftr_info_AHR:    REF to canonical feature info array (the
+#                     seed minfo feature order); used to look up
+#                     the canonical CDS coords by ftr_idx
+#   $ftr_file:        path to tier-2 .vadr.ftr
+#   $fasta_file:      path to tier-2 input FASTA
+#   $protein_fa_file: path to protein.fa to append to (must exist)
+#   $model_key:       model name
+#   $execs_HR:        REF to hash of executable paths
+#   $opt_HHR:         REF to 2D hash of cmdline options
+#   $FH_HR:           REF to hash of file handles
+#
+# Returns: void
+#################################################################
+sub translate_exception_cds_proteins {
+  my $sub_name = "translate_exception_cds_proteins";
+  my $nargs_expected = 9;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+
+  my ($exceptions_AR, $ftr_info_AHR, $ftr_file, $fasta_file, $protein_fa_file,
+      $model_key, $execs_HR, $opt_HHR, $FH_HR) = @_;
+
+  # Collect translatable exceptions (deletin_exc / insertn_exc only).
+  my @translatable = ();
+  foreach my $exc (@{$exceptions_AR}) {
+    my $et = $exc->{"exc_type"};
+    if($et eq "deletin_exc" || $et eq "insertn_exc") { push(@translatable, $exc); }
+  }
+  if(scalar(@translatable) == 0) { return; }
+
+  # Parse .vadr.ftr: for each (accession, ftr_idx) CDS, store seq_coords.
+  # (Same parse as translate_alternative_cds_proteins.)
+  my %ftr_seq_coords_HH = ();
+  open(my $ftr_fh, "<", $ftr_file) || ofile_FAIL("ERROR in $sub_name, unable to open $ftr_file", 1, $FH_HR);
+  while(my $line = <$ftr_fh>) {
+    chomp $line;
+    next if($line =~ /^\#/ || $line =~ /^\s*$/);
+    my @tok = split(/\s+/, $line);
+    next if(scalar(@tok) < 25);
+    my $acc        = $tok[1];
+    my $ftr_type   = $tok[5];
+    my $ftr_idx    = $tok[8] - 1;  # 1-based (.vadr.ftr) -> 0-based (internal)
+    my $seq_coords = $tok[23];
+    next if($ftr_type ne "CDS");
+    $ftr_seq_coords_HH{$acc}{$ftr_idx} = $seq_coords;
+  }
+  close($ftr_fh);
+
+  # Index the FASTA file for esl-sfetch if not already indexed.
+  my $ssi_file = $fasta_file . ".ssi";
+  if(! -e $ssi_file) {
+    utl_RunCommand($execs_HR->{"esl-sfetch"} . " --index " . $fasta_file,
+                   opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  }
+
+  # Open protein.fa for appending.
+  open(my $prot_fh, ">>", $protein_fa_file) || ofile_FAIL("ERROR in $sub_name, unable to open $protein_fa_file for appending", 1, $FH_HR);
+
+  my $n_appended = 0;
+  foreach my $exc (@translatable) {
+    my $exc_type   = $exc->{"exc_type"};
+    my $ftr_idx    = $exc->{"ftr_idx"};
+    my $ftr_name   = $exc->{"ftr_name"};
+    my $exc_coords = $exc->{"exc_coords"};
+    my @accessions = (exists $exc->{"accessions_AR"}) ? @{$exc->{"accessions_AR"}} : ();
+    my $exc_label  = ($exc_type eq "deletin_exc") ? "deletin" : "insertn";
+
+    # exc_coords for deletin/insertn is "start..stop:strand:maxsize";
+    # the trailing field is the indel size (nt).
+    my $indel_size = 0;
+    if($exc_coords =~ /:(\d+)$/) { $indel_size = $1; }
+
+    # Frame guard: a non-multiple-of-3 indel shifts the reading frame;
+    # skip (a frameshift variant is not a clean in-frame alt protein).
+    if($indel_size == 0 || ($indel_size % 3) != 0) {
+      ofile_OutputString($FH_HR->{"log"}, 1,
+        sprintf("# Exc protein: SKIP %s %s size=%d not a clean in-frame indel (size %% 3 != 0), no variant protein emitted\n",
+                $exc_type, $ftr_name, $indel_size));
+      next;
+    }
+
+    # The canonical CDS model coords are the post-'/' token used for the
+    # blastx->feature mapping; they must EXACTLY match the CDS feature's
+    # minfo coords (an exception adds no new CDS feature).
+    my $canonical_coords = (defined $ftr_info_AHR->[$ftr_idx]) ? $ftr_info_AHR->[$ftr_idx]{"coords"} : undef;
+    if(! defined $canonical_coords) {
+      ofile_OutputString($FH_HR->{"log"}, 1,
+        sprintf("# Exc protein: WARNING no canonical coords for %s %s ftr_idx=%d, skipping\n",
+                $exc_type, $ftr_name, $ftr_idx));
+      next;
+    }
+
+    # Find a representative accession that has a .vadr.ftr CDS entry for
+    # this exception's ftr_idx (its own CDS carries the indel).
+    my $rep_acc = undef;
+    foreach my $acc (@accessions) {
+      if(exists $ftr_seq_coords_HH{$acc}{$ftr_idx}) { $rep_acc = $acc; last; }
+    }
+    if(! defined $rep_acc) {
+      ofile_OutputString($FH_HR->{"log"}, 1,
+        sprintf("# Exc protein: WARNING no representative seq with a CDS annotation for %s %s ftr_idx=%d, skipping\n",
+                $exc_type, $ftr_name, $ftr_idx));
+      next;
+    }
+
+    # Extract the representative sequence's own annotated CDS (already
+    # carries the indel) directly from its seq_coords.
+    my $seq_coords = $ftr_seq_coords_HH{$rep_acc}{$ftr_idx};
+    my $cds_seq = "";
+    my @segments = split(/,/, $seq_coords);
+    foreach my $seg (@segments) {
+      if($seg =~ /^(\d+)\.\.(\d+):([\+\-])$/) {
+        my ($sstart, $sstop, $sstrand) = ($1, $2, $3);
+        my $sfetch_coords = ($sstrand eq "+") ? "$sstart..$sstop" : "$sstop..$sstart";
+        my $seg_seq = `$execs_HR->{"esl-sfetch"} -c $sfetch_coords $fasta_file $rep_acc 2>/dev/null`;
+        $seg_seq =~ s/^>.*\n//;
+        $seg_seq =~ s/\s//g;
+        $cds_seq .= $seg_seq;
+      }
+    }
+
+    if(length($cds_seq) == 0) {
+      ofile_OutputString($FH_HR->{"log"}, 1,
+        sprintf("# Exc protein: WARNING empty CDS for %s %s ftr_idx=%d (rep=%s), skipping\n",
+                $exc_type, $ftr_name, $ftr_idx, $rep_acc));
+      next;
+    }
+
+    # Translate: write to temp, run esl-translate, take the ORF that
+    # starts at position 1 (the full-length translation).
+    my $tmp_cds = $protein_fa_file . ".tmp.exc.cds.fa";
+    open(my $tmp_fh, ">", $tmp_cds) || ofile_FAIL("ERROR in $sub_name, unable to write $tmp_cds", 1, $FH_HR);
+    print $tmp_fh ">$rep_acc/$seq_coords\n$cds_seq\n";
+    close($tmp_fh);
+
+    my $tmp_prot = $protein_fa_file . ".tmp.exc.prot.fa";
+    utl_RunCommand($execs_HR->{"esl-translate"} . " $tmp_cds > $tmp_prot",
+                   opt_Get("-v", $opt_HHR), 0, $FH_HR);
+
+    my ($protein_seq, $protein_header);
+    open(my $prot_in, "<", $tmp_prot) || ofile_FAIL("ERROR in $sub_name, unable to read $tmp_prot", 1, $FH_HR);
+    my ($ch, $cs) = ("", "");
+    while(my $pl = <$prot_in>) {
+      chomp $pl;
+      if($pl =~ /^>/) {
+        if($ch =~ /coords=1\.\./) { $protein_seq = $cs; $protein_header = $ch; }
+        $ch = $pl; $cs = "";
+      } else { $cs .= $pl; }
+    }
+    if($ch =~ /coords=1\.\./ && ! defined $protein_seq) { $protein_seq = $cs; $protein_header = $ch; }
+    close($prot_in);
+
+    unlink($tmp_cds);
+    unlink($tmp_prot);
+
+    if(! defined $protein_seq) {
+      ofile_OutputString($FH_HR->{"log"}, 1,
+        sprintf("# Exc protein: WARNING no full-length ORF for %s %s ftr_idx=%d (rep=%s, cds_len=%d), skipping\n",
+                $exc_type, $ftr_name, $ftr_idx, $rep_acc, length($cds_seq)));
+      next;
+    }
+
+    # Append to protein.fa. Pre-'/' accession token carries a
+    # distinguishing tag; post-'/' token is the canonical CDS coords so
+    # the blastx hit maps to the canonical CDS feature.
+    my $prot_name = "$model_key-$exc_label$indel_size/$canonical_coords";
+    print $prot_fh ">$prot_name\n$protein_seq\n";
+    $n_appended++;
+
+    ofile_OutputString($FH_HR->{"log"}, 1,
+      sprintf("# Exc protein: %s from %s (%s, %d aa, indel=%d nt)\n",
+              $prot_name, $rep_acc, $exc_type, length($protein_seq), $indel_size));
+  }
+
+  close($prot_fh);
+
+  # Rebuild BLAST protein database if we appended anything.
+  if($n_appended > 0) {
+    sqf_BlastDbCreate($execs_HR->{"makeblastdb"}, "prot", $protein_fa_file, $opt_HHR, $FH_HR);
+  }
 
   return;
 }
