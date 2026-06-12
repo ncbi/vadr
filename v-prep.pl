@@ -9010,18 +9010,22 @@ sub collect_fail_alerts_from_alt_file {
 #
 # Purpose:    The --force-accn quality gate. Report which forced
 #             accessions PASS vs FAIL under the final
-#             (auto-alt-augmented) model. A forced accession PASSES
-#             if its final decision-table status is "kept" (it passed
-#             tier-2 v-annotate, possibly via the auto-alt pass-2
-#             rescue); it FAILS otherwise (removed with a fatal alert,
-#             or filtered upstream e.g. by the ambiguity/unverified
-#             filters which --force-accn does NOT bypass). For each
-#             failing accession the reason code and any fatal v-annotate
-#             alert codes (from the tier-2 and pass-2 .alt files) are
-#             reported. With $required (--force-accn-required), any
-#             still-failing forced accession causes a fatal exit;
-#             otherwise a prominent WARNING is emitted but the run
-#             continues.
+#             (auto-alt-augmented) model. The verdict is read from the
+#             actual v-annotate pass lists (tier-2 + pass-2), NOT the
+#             decision table: a forced accession PASSES if it is in the
+#             tier-2 pass list (never failed) OR the pass-2 pass list
+#             (failed tier-2 but passes the alt-augmented model). This
+#             avoids a false negative for forced accessions that fail
+#             tier-2 and are not in the auto-alt rescue subset (their
+#             decision-table status stays "removed" even though the
+#             final model passes them). For each failing accession the
+#             decision reason and any fatal v-annotate alert codes (from
+#             the tier-2 and pass-2 .alt files) are reported. With
+#             $required (--force-accn-required), any still-failing forced
+#             accession causes a fatal exit; otherwise a prominent
+#             WARNING is emitted but the run continues. Note: a forced
+#             accession PASSING here does NOT add it to the training
+#             alignment (detection-pool only by design).
 #
 # Arguments:
 #   $force_HR          : REF to forced-accession set (normalized keys)
@@ -9033,33 +9037,59 @@ sub collect_fail_alerts_from_alt_file {
 #
 # Returns: void (may not return if $required and a forced accn fails)
 #################################################################
-sub report_forced_accn_status {
+sub report_forced_accn_status {  # see also read_accn_list_normalized() below
   my ($force_HR, $decision_HR, $tier2_ant_outdir, $out_root, $required, $FH_HR) = @_;
 
-  # Map each forced (normalized) accession to its final decision status.
-  my %norm_status_H = ();
+  # Map each forced (normalized) accession to its final decision status
+  # (used only for the diagnostic detail string on a FAIL; the PASS/FAIL
+  # verdict itself comes from the v-annotate pass lists below).
   my %norm_detail_H = ();
   foreach my $a (keys %{$decision_HR}) {
     my $norm = normalize_accn_for_force($a);
     next if(! exists $force_HR->{$norm});
-    $norm_status_H{$norm} = $decision_HR->{$a}{"status"};
     $norm_detail_H{$norm} = $decision_HR->{$a}{"reason_code"} . ": " . $decision_HR->{$a}{"reason_detail"};
   }
 
-  # Collect fatal alert codes from the tier-2 and pass-2 .alt files.
-  my %fail_codes_HH = ();
+  # PASS/FAIL must reflect the FINAL (auto-alt-augmented) model, NOT the
+  # decision table. A forced accession that failed tier-2 is excluded from
+  # the auto-alt rescue *subset* (its co-alerts may not be flagged as
+  # "addressed"), so it is re-annotated in pass-2 only as a calibration
+  # seq and its decision-table status stays "removed" even when the final
+  # model actually PASSES it. Reading decision_H here therefore produces
+  # false negatives. Instead, derive the verdict from the actual
+  # v-annotate pass lists: a forced accession PASSES if it is in the
+  # tier-2 pass list (never failed) OR the pass-2 pass list (failed
+  # tier-2 but passes the alt-augmented model).
   my $tier2_tail = $tier2_ant_outdir; $tier2_tail =~ s/^.+\///;
-  collect_fail_alerts_from_alt_file($tier2_ant_outdir . "/" . $tier2_tail . ".vadr.alt", $force_HR, \%fail_codes_HH);
   my $pass2_outdir = $out_root . ".vadr.tier2.annot.pass2";
   my $pass2_tail = $pass2_outdir; $pass2_tail =~ s/^.+\///;
+  my $tier2_pass_file = $tier2_ant_outdir . "/" . $tier2_tail . ".vadr.pass.list";
+  my $pass2_pass_file = $pass2_outdir . "/" . $pass2_tail . ".vadr.pass.list";
+  my %tier2_pass_H = (); read_accn_list_normalized($tier2_pass_file, \%tier2_pass_H);
+  my %pass2_pass_H = (); read_accn_list_normalized($pass2_pass_file, \%pass2_pass_H);
+  my $any_annot = ((-e $tier2_pass_file) || (-e $pass2_pass_file)) ? 1 : 0;
+
+  # Collect fatal alert codes from the tier-2 and pass-2 .alt files (for
+  # the FAIL diagnostic).
+  my %fail_codes_HH = ();
+  collect_fail_alerts_from_alt_file($tier2_ant_outdir . "/" . $tier2_tail . ".vadr.alt", $force_HR, \%fail_codes_HH);
   collect_fail_alerts_from_alt_file($pass2_outdir . "/" . $pass2_tail . ".vadr.alt", $force_HR, \%fail_codes_HH);
 
   my @passed = ();
   my @failed = ();
   foreach my $norm (sort keys %{$force_HR}) {
-    my $status = $norm_status_H{$norm};
-    if(defined $status && $status eq "kept") { push(@passed, $norm); }
-    else                                     { push(@failed, $norm); }
+    my $passes;
+    if($any_annot) {
+      $passes = ((exists $tier2_pass_H{$norm}) || (exists $pass2_pass_H{$norm})) ? 1 : 0;
+    }
+    else {
+      # No v-annotate screening ran (e.g. --skip-annotate): fall back to
+      # the decision-table status.
+      my $st = (exists $decision_HR->{$norm}) ? $decision_HR->{$norm}{"status"} : undef;
+      $passes = (defined $st && $st eq "kept") ? 1 : 0;
+    }
+    if($passes) { push(@passed, $norm); }
+    else        { push(@failed, $norm); }
   }
 
   ofile_OutputString($FH_HR->{"log"}, 1, "#\n");
@@ -9088,6 +9118,37 @@ sub report_forced_accn_status {
       ofile_OutputString($FH_HR->{"log"}, 1, "# WARNING --force-accn: $msg\n");
     }
   }
+  return;
+}
+
+#################################################################
+# Subroutine: read_accn_list_normalized()
+# Incept:     EPN* Fri Jun 12 2026
+#
+# Purpose:    Read a v-annotate .vadr.pass.list / .vadr.fail.list (one
+#             sequence name per line, possibly with trailing fields) and
+#             populate a set keyed on the version-normalized accession.
+#             Used by report_forced_accn_status() to read the final
+#             model's actual PASS/FAIL verdict for forced accessions.
+#
+# Arguments:
+#   $file    : path to the list file (may not exist; no-op if so)
+#   $set_HR  : REF to hash to fill (normalized accession -> 1)
+#
+# Returns: void (fills $set_HR)
+#################################################################
+sub read_accn_list_normalized {
+  my ($file, $set_HR) = @_;
+  return if(! defined $file || ! -e $file);
+  open(my $fh, "<", $file) || return;
+  while(my $l = <$fh>) {
+    chomp $l;
+    $l =~ s/^\s+//; $l =~ s/\s+$//;
+    next if($l eq "" || $l =~ /^\#/);
+    my ($name) = split(/\s+/, $l);
+    $set_HR->{normalize_accn_for_force($name)} = 1;
+  }
+  close($fh);
   return;
 }
 
