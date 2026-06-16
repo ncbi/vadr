@@ -178,6 +178,7 @@ $execs_H{"esl-ssplit"}    = $env_vadr_bioeasel_dir . "/scripts/esl-ssplit.pl";
 $execs_H{"blastx"}        = $env_vadr_blast_dir    . "/blastx";
 $execs_H{"blastn"}        = $env_vadr_blast_dir    . "/blastn";
 $execs_H{"makeblastdb"}   = $env_vadr_blast_dir    . "/makeblastdb";
+$execs_H{"blastdbcmd"}    = $env_vadr_blast_dir    . "/blastdbcmd";
 $execs_H{"parse_blast"}   = $env_vadr_scripts_dir  . "/parse_blast.pl";
 $execs_H{"glsearch"}      = $env_vadr_fasta_dir    . "/glsearch36";
 $execs_H{"minimap2"}      = $env_vadr_minimap2_dir . "/minimap2";
@@ -337,7 +338,7 @@ $opt_group_desc_H{++$g} = "options for controlling blastx protein validation sta
 #        option               type   default  group  requires incompat            preamble-output                                                                          help-output    
 opt_Add("--xmatrix",     "string",   undef,      $g,     undef,"--pv_skip,--pv_hmmer", "use the matrix <s> with blastx (e.g. BLOSUM45)",                                   "use the matrix <s> with blastx (e.g. BLOSUM45)", \%opt_HH, \@opt_order_A);
 opt_Add("--xdrop",       "integer",  25,         $g,     undef,"--pv_skip,--pv_hmmer", "set the xdrop value for blastx to <n>",                                            "set the xdrop value for blastx to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xnumali",     "integer",  20,         $g,     undef,"--pv_skip,--pv_hmmer", "number of alignments to keep in blastx output and consider if --xlongest is <n>",  "number of alignments to keep in blastx output and consider if --xlongest is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xnumali",     "integer",  20,         $g,     undef,"--pv_skip,--pv_hmmer", "set blastx -num_alignments to <n> (default: number of seqs in blastx db, so no alignments discarded)",  "set blastx -num_alignments to <n> (default: number of seqs in blastx db, so no alignments discarded)", \%opt_HH, \@opt_order_A);
 opt_Add("--xnolongest",  "boolean",  0,          $g,     undef,"--pv_skip,--pv_hmmer", "do not consider longest blastx hit, only max scoring",                             "do not consider longest blastx hit, only max scoring", \%opt_HH, \@opt_order_A);
 opt_Add("--xnocomp",     "boolean",  0,          $g,     undef,"--pv_skip,--pv_hmmer", "turn off composition-based for blastx statistics with -comp_based_stats 0",        "turn off composition-based for blastx statistics with comp_based_stats 0", \%opt_HH, \@opt_order_A);
 opt_Add("--xwordsize",   "integer",  3,          $g,     undef,"--pv_skip,--pv_hmmer", "set the blastx word size value to <n> (must be in range [2..7])",                   "set the blastx word size value to <n> (must be in range [2..7])", \%opt_HH, \@opt_order_A);
@@ -8526,7 +8527,21 @@ sub run_blastx_and_summarize_output {
   if(opt_IsUsed("--xwordsize", $opt_HHR)) { 
     $blastx_options .= " -word_size " . opt_Get("--xwordsize", $opt_HHR); 
   }
-  my $xnumali = opt_Get("--xnumali", $opt_HHR);
+  # determine the number of alignments to keep in the blastx output (-num_alignments):
+  # if --xnumali was used, use that exact value (user override, may truncate);
+  # otherwise default to the number of sequences in the blastx db, so that NO
+  # alignments are ever discarded due to top-N truncation. This guarantees that each
+  # predicted CDS's own proteins are always evaluated by the fewest-fatal alt-selection,
+  # regardless of their blastx score rank. blastx -num_alignments is a reporting limit
+  # applied after all hits are scored and sorted (unlike -max_target_seqs), so raising
+  # it cannot change or miss any hit, only report more of them.
+  my $xnumali = undef;
+  if(opt_IsUsed("--xnumali", $opt_HHR)) {
+    $xnumali = opt_Get("--xnumali", $opt_HHR);
+  }
+  else {
+    $xnumali = blastx_db_num_seqs($execs_HR, $blastx_db_file, $out_root, $mdl_name, $opt_HHR, $ofile_info_HHR);
+  }
 
   my $blastx_out_file = $out_root . "." . $mdl_name . ".blastx.out";
   my $blastx_cmd = $execs_HR->{"blastx"} . " -num_threads $ncpu -num_alignments $xnumali -query $blastx_query_fa_file -db $blastx_db_file -seg no -out $blastx_out_file" . $blastx_options;
@@ -8540,6 +8555,61 @@ sub run_blastx_and_summarize_output {
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".blastx-summary", $blastx_summary_file, 0, $do_keep, "parsed (summarized) blastx output");
 
   return;
+}
+
+#################################################################
+# Subroutine:  blastx_db_num_seqs()
+# Incept:      EPN* Tue Jun 16 2026
+#
+# Purpose:    Return the number of sequences in a blastx (protein) db,
+#             by running 'blastdbcmd -info' and parsing its output. Used
+#             to set blastx -num_alignments high enough that no alignment
+#             is ever discarded due to top-N truncation.
+#
+# Arguments:
+#  $execs_HR:        REF to hash of executables, must include "blastdbcmd"
+#  $blastx_db_file:  path to the blastx db
+#  $out_root:        output root, used to name the temporary info file
+#  $mdl_name:        model name, used to name the temporary info file
+#  $opt_HHR:         REF to 2D hash of option values
+#  $ofile_info_HHR:  REF to 2D hash of output file information
+#
+# Returns:    number of sequences in the db (>= 1)
+#
+# Dies:       if blastdbcmd output cannot be parsed
+#
+#################################################################
+sub blastx_db_num_seqs {
+  my $sub_name = "blastx_db_num_seqs";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($execs_HR, $blastx_db_file, $out_root, $mdl_name, $opt_HHR, $ofile_info_HHR) = @_;
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  my $info_file = $out_root . "." . $mdl_name . ".blastx.dbinfo";
+  utl_RunCommand($execs_HR->{"blastdbcmd"} . " -db $blastx_db_file -info > $info_file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+
+  # 'blastdbcmd -info' output includes a line of the form:
+  #   \t<N> sequences; <M> total residues
+  # where <N> and <M> may contain commas (e.g. '3,576 sequences;')
+  my $nseq = undef;
+  open(INFO, $info_file) || ofile_FileOpenFailure($info_file, $sub_name, $!, "reading", $FH_HR);
+  while(my $line = <INFO>) {
+    if($line =~ /([\d\,]+)\s+sequences;/) {
+      $nseq = $1;
+      $nseq =~ s/\,//g;
+      last;
+    }
+  }
+  close(INFO);
+  unlink $info_file;
+
+  if((! defined $nseq) || ($nseq !~ /^\d+$/) || ($nseq < 1)) {
+    ofile_FAIL("ERROR in $sub_name, unable to parse number of sequences from blastdbcmd -info output for db $blastx_db_file", 1, $FH_HR);
+  }
+
+  return $nseq;
 }
 
 #################################################################
