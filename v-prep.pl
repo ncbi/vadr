@@ -1254,7 +1254,7 @@ if($do_auto_alt) {
           }
           if($n_exc_translatable > 0) {
             translate_exception_cds_proteins($exceptions_AR, \@{$ftr_info_HA{$minfo_model_key}},
-                                             $tier2_ftr_file, $tier2_fasta_file, $updated_protein_fa,
+                                             $tier2_ftr_file, $tier2_alt_file, $tier2_fasta_file, $updated_protein_fa,
                                              $model_key, $execs_HR, $opt_HHR, $FH_HR);
           }
         }
@@ -8747,8 +8747,13 @@ sub detect_exceptions {
       my ($rstart, $rstop, $rstrand, $rentries, $rmax_val) = @{$region};
 
       # Deduplicate accessions (same seq may trigger multiple alerts in region)
+      # Sort the deduped list so accessions_AR is reproducible everywhere it
+      # is consumed (plain keys returns per-process-randomized hash order,
+      # which makes variant-protein rep selection non-deterministic). This is
+      # necessary but NOT sufficient for a good rep -- see the
+      # clean-except-the-indel quality gate in translate_exception_cds_proteins().
       my %unique_accs = map { $_->{"acc"} => 1 } @{$rentries};
-      my @unique_acc_list = keys %unique_accs;
+      my @unique_acc_list = sort keys %unique_accs;
       my $n_ind = count_independent_observations(\@unique_acc_list);
 
       # fst_exc: require minimum 2 independent observations regardless
@@ -9466,6 +9471,28 @@ sub translate_alternative_cds_proteins {
 #             clean in-frame variant protein; such exceptions are
 #             skipped and logged.
 #
+#             Rep selection (EPN*, Mon Jun 15 2026): the candidate
+#             member list (accessions_AR) is simply "all tier-2
+#             strains carrying the indel" -- there is zero quality
+#             control on whatever ELSE is wrong with those strains.
+#             A quality-blind first-pick can land on a strain whose
+#             CDS also carries e.g. a mutated stop (mutendcd/mutendex),
+#             so esl-translate reads straight through the missing stop
+#             and emits a malformed read-through reference protein --
+#             a bad blastx reference. So the rep is chosen as the
+#             first (sorted) candidate whose CDS is "clean except the
+#             indel": no FATAL alert on that CDS other than the indel
+#             alert(s) that define the exception (deletinn/deletinp
+#             for deletin_exc; insertnn/insertnp for insertn_exc).
+#             This subsumes a bare stop-codon check (it also rejects
+#             premature internal stops, frameshifts, terminal
+#             ambiguities, etc.). If NO candidate is clean, fall back
+#             to the first translatable candidate with a prominent
+#             logged WARNING. The clean filter applies ONLY to rep
+#             selection -- it does NOT change the member count used
+#             for the exception-emission threshold (in
+#             detect_exceptions).
+#
 # Arguments:
 #   $exceptions_AR:   REF to array of exception hashrefs from
 #                     detect_exceptions() (must carry accessions_AR)
@@ -9473,6 +9500,9 @@ sub translate_alternative_cds_proteins {
 #                     seed minfo feature order); used to look up
 #                     the canonical CDS coords by ftr_idx
 #   $ftr_file:        path to tier-2 .vadr.ftr
+#   $alt_file:        path to tier-2 .vadr.alt (for the per-(acc,
+#                     ftr_idx) fatal-alert profile used by the
+#                     clean-except-the-indel rep-selection gate)
 #   $fasta_file:      path to tier-2 input FASTA
 #   $protein_fa_file: path to protein.fa to append to (must exist)
 #   $model_key:       model name
@@ -9484,10 +9514,10 @@ sub translate_alternative_cds_proteins {
 #################################################################
 sub translate_exception_cds_proteins {
   my $sub_name = "translate_exception_cds_proteins";
-  my $nargs_expected = 9;
+  my $nargs_expected = 10;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
 
-  my ($exceptions_AR, $ftr_info_AHR, $ftr_file, $fasta_file, $protein_fa_file,
+  my ($exceptions_AR, $ftr_info_AHR, $ftr_file, $alt_file, $fasta_file, $protein_fa_file,
       $model_key, $execs_HR, $opt_HHR, $FH_HR) = @_;
 
   # Collect translatable exceptions (deletin_exc / insertn_exc only).
@@ -9515,6 +9545,29 @@ sub translate_exception_cds_proteins {
     $ftr_seq_coords_HH{$acc}{$ftr_idx} = $seq_coords;
   }
   close($ftr_fh);
+
+  # Parse .vadr.alt: build a per-(accession, ftr_idx) set of FATAL alert
+  # codes (the "fail" column == "yes"). Used by rep selection below to pick
+  # a candidate whose CDS is clean except for the indel itself. Column
+  # layout (whitespace-split): tok[1]=seq, tok[5]=ftr_idx (1-based),
+  # tok[6]=alert_code, tok[7]=fail (yes/no).
+  my %fatal_alert_HHH = ();
+  if(defined $alt_file && -e $alt_file) {
+    open(my $alt_fh, "<", $alt_file) || ofile_FAIL("ERROR in $sub_name, unable to open $alt_file", 1, $FH_HR);
+    while(my $line = <$alt_fh>) {
+      chomp $line;
+      next if($line =~ /^\#/ || $line =~ /^\s*$/);
+      my @tok = split(/\s+/, $line);
+      next if(scalar(@tok) < 8);
+      next if($tok[5] eq "-");          # non-feature alert (no ftr_idx)
+      next if($tok[7] ne "yes");        # only FATAL alerts disqualify a rep
+      my $aacc      = $tok[1];
+      my $aftr_idx  = $tok[5] - 1;      # 1-based (.vadr.alt) -> 0-based (internal)
+      my $acode     = $tok[6];
+      $fatal_alert_HHH{$aacc}{$aftr_idx}{$acode} = 1;
+    }
+    close($alt_fh);
+  }
 
   # Index the FASTA file for esl-sfetch if not already indexed.
   my $ssi_file = $fasta_file . ".ssi";
@@ -9560,11 +9613,44 @@ sub translate_exception_cds_proteins {
       next;
     }
 
-    # Find a representative accession that has a .vadr.ftr CDS entry for
-    # this exception's ftr_idx (its own CDS carries the indel).
+    # Find a representative accession whose own CDS for this ftr_idx is
+    # "clean except the indel": it has a .vadr.ftr CDS annotation AND no
+    # FATAL alert on that CDS other than the indel alert(s) that define
+    # this exception. @accessions is sorted (detect_exceptions), so the
+    # pick is deterministic. The indel alerts themselves are allowed
+    # (deletinn/deletinp for deletin_exc; insertnn/insertnp for
+    # insertn_exc); any OTHER fatal alert (e.g. mutendcd/mutendex,
+    # cdsstopn, a frameshift, terminal ambiguities) means the strain's
+    # CDS would yield a degraded reference protein, so it is rejected.
+    my %indel_alert_H = ($exc_type eq "deletin_exc")
+      ? ("deletinn" => 1, "deletinp" => 1)
+      : ("insertnn" => 1, "insertnp" => 1);
+
     my $rep_acc = undef;
     foreach my $acc (@accessions) {
-      if(exists $ftr_seq_coords_HH{$acc}{$ftr_idx}) { $rep_acc = $acc; last; }
+      next if(! exists $ftr_seq_coords_HH{$acc}{$ftr_idx});  # no CDS annotation
+      my $is_clean = 1;
+      if(exists $fatal_alert_HHH{$acc}{$ftr_idx}) {
+        foreach my $code (keys %{$fatal_alert_HHH{$acc}{$ftr_idx}}) {
+          if(! exists $indel_alert_H{$code}) { $is_clean = 0; last; }
+        }
+      }
+      if($is_clean) { $rep_acc = $acc; last; }
+    }
+
+    # Fallback: no candidate is clean-except-the-indel. Take the first
+    # (sorted) candidate with a CDS annotation, with a prominent WARNING --
+    # some protein beats none, but the possible degradation must be surfaced.
+    if(! defined $rep_acc) {
+      foreach my $acc (@accessions) {
+        if(exists $ftr_seq_coords_HH{$acc}{$ftr_idx}) {
+          $rep_acc = $acc;
+          ofile_OutputString($FH_HR->{"log"}, 1,
+            sprintf("# Exc protein: WARNING no clean-except-the-indel representative for %s %s ftr_idx=%d; falling back to %s -- emitted variant protein may be degraded\n",
+                    $exc_type, $ftr_name, $ftr_idx, $rep_acc));
+          last;
+        }
+      }
     }
     if(! defined $rep_acc) {
       ofile_OutputString($FH_HR->{"log"}, 1,
