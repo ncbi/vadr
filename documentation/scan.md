@@ -127,10 +127,12 @@ The `dengue` and `hcv` `<options key>` values use the `flavi` library due to
 the `--mkey flavi` in their `<options string>`, and `norovirus` 
 uses the `calici` library due to `--mkey calici` in its `<options string>`.
 
-Then, when parsing the output for the the scan against the `flavi`
-library, sequences are matched to either `dengue`, `hcv` or `flavi` by
+Then, when parsing the output for the scan against the `flavi`
+library, sequences are matched to `dengue` or `hcv` by
 checking if the best matching model for each sequence matches to
-`dengue` or `hcv` or `flavi`. A model matches to an `<options key>` if
+`dengue` or `hcv` (`flavi` itself is the default `<options key>`, used for any
+sequence that matches neither `dengue` nor `hcv`, as described below). A
+model matches to an `<options key>` if
 its `model name`, `group` or `subgroup` is identical to that `<options key>`
 *after lowercasing and removing all
 special characters* from the name, group or subgroup. For example, if a
