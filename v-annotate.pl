@@ -727,7 +727,7 @@ my $r2dt_dir = undef;
 if($do_draw_r2dt) {
   $r2dt_dir = $ENV{"R2DT_DIR"};
   if((! defined $r2dt_dir) || ($r2dt_dir eq "")) {
-    die "ERROR, --draw_r2dt requires the R2DT_DIR environment variable to be set\nto the R2DT install root, e.g.\n  export R2DT_DIR=/net/intdev/oblast01/infernal/git/RNAcentral/R2DT\n";
+    die "ERROR, --draw_r2dt requires the R2DT_DIR environment variable to be set\nto the R2DT install root, e.g.\n  export R2DT_DIR=/path/to/R2DT\n";
   }
   if(! -e "$r2dt_dir/r2dt.py") {
     die "ERROR, --draw_r2dt: \$R2DT_DIR/r2dt.py does not exist ($r2dt_dir/r2dt.py)\nCheck that R2DT_DIR points to the R2DT install root.\n";
