@@ -1,5 +1,27 @@
 # `v-annotate.pl` recombination detection
 
+> ### ⚠️ Status: experimental, not actively developed, and hidden from `-h`
+>
+> **This feature works and its examples below reproduce, but it is not actively developed
+> and has not been validated for false positives.** Development stopped in March 2026.
+>
+> * **The `--do_rc` and `--rc_*` options are not listed by `v-annotate.pl -h`.** They still
+>   exist and function normally; to see them, run **`v-annotate.pl --devhelp`**.
+> * Recombination detection is **off by default**. When `--do_rc` is not used, `v-annotate.pl`
+>   behaves exactly as if the feature were absent.
+> * The `recombin`/`POSSIBLE_RECOMBINATION` alert is **non-fatal** by design: it flags
+>   candidates for human review rather than reporting a definite event.
+> * **Known limitations.** On published test cases the method correctly detected all four
+>   HRV-A105/A21 recombinants of Goya et al., but on three further cases from Zhao et al. it
+>   called the wrong parent serotypes twice and missed the third entirely; the suspected cause
+>   is insufficient serotype diversity in the reference alignment. **The false-positive rate on
+>   ordinary, non-recombinant sequence has never been measured.** Results should be treated as
+>   candidates for review, not conclusions.
+> * Accuracy has **not** been compared against dedicated recombination-detection tools such as RDP.
+>
+> The remainder of this page describes the feature as implemented.
+
+
 * [Overview](#overview)
 * [How It Works](#how-it-works)
 * [Options](#options)
