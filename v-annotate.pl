@@ -207,6 +207,7 @@ utl_ExecHValidate(\%execs_H, undef);
 my %opt_HH = ();      
 my @opt_order_A = (); 
 my %opt_group_desc_H = ();
+my %opt_group_desc_dev_H = (); # group descriptions shown only with --devhelp, not with -h
 my $g = 0; # option group
 
 # Add all options to %opt_HH and @opt_order_A.
@@ -217,6 +218,7 @@ opt_Add("-h",           "boolean", 0,          0,    undef, undef,      undef,  
 $opt_group_desc_H{++$g} = "basic options";
 #     option            type       default group   requires incompat    preamble-output                                                                            help-output    
 opt_Add("-f",           "boolean", 0,         $g,    undef, undef,      "force directory overwrite",                                                               "force; if output dir exists, overwrite it",   \%opt_HH, \@opt_order_A);
+opt_Add("--devhelp",    "boolean", 0,         $g,    undef, undef,      undef,                                                                                     "display help, including hidden developer/experimental options", \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,         $g,    undef, undef,      "be verbose",                                                                              "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
 opt_Add("--atgonly",    "boolean", 0,         $g,    undef, undef,      "only consider ATG a valid start codon",                                                   "only consider ATG a valid start codon", \%opt_HH, \@opt_order_A);
 opt_Add("--minpvlen",   "integer", 30,        $g,    undef, undef,      "min CDS/mat_peptide/gene length for feature table output and protein validation is <n>",  "min CDS/mat_peptide/gene length for feature table output and protein validation is <n>", \%opt_HH, \@opt_order_A);
@@ -413,7 +415,7 @@ opt_Add("--split",      "boolean", 0,          $g,    undef,  "-p",       "split
 opt_Add("--cpu",        "integer", 1,          $g,    undef, undef,       "parallelize across <n> CPU workers (requires --split or --glsearch)",  "parallelize across <n> CPU workers (requires --split or --glsearch)", \%opt_HH, \@opt_order_A);
 opt_Add("--sidx",       "integer", 1,          $g,    undef,"--split",    "start sequence indexing at <n> in tabular output files",               "start sequence indexing at <n> in tabular output files", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options for experimental recombination detection";
+$opt_group_desc_dev_H{++$g} = "options for experimental recombination detection (not actively developed; see documentation/recombination-detection.md)";
 #     option            type       default  group   requires incompat   preamble-output                                                                                                    help-output
 opt_Add("--do_rc",      "boolean",  0,         $g,    undef,   undef,   "recombin/POSSIBLE_RECOMBINATION enable recombination detection (experimental, off by default)",      "recombin/POSSIBLE_RECOMBINATION enable recombination detection (experimental, off by default)", \%opt_HH, \@opt_order_A);
 opt_Add("--rc_thresh",  "real",     0.2,       $g,    undef,   undef,   "recombin/POSSIBLE_RECOMBINATION min per base bit score on each side of breakpoint is <x>",          "recombin/POSSIBLE_RECOMBINATION min per base bit score on each side of breakpoint is <x>", \%opt_HH, \@opt_order_A);
@@ -468,6 +470,7 @@ opt_Add("--nn_regionlen", "integer", 40,            $g,    undef,"--ignore_nncla
 my %GetOptions_H = ();
 my $options_okay = 
     &GetOptions('h'             => \$GetOptions_H{"-h"}, 
+                'devhelp'       => \$GetOptions_H{"--devhelp"},
 # basic options
                 'f'             => \$GetOptions_H{"-f"},
                 'v'             => \$GetOptions_H{"-v"},
@@ -692,9 +695,14 @@ select *STDOUT;
 $| = 1;
 
 # print help and exit if necessary
-if((! $options_okay) || ($GetOptions_H{"-h"})) { 
+if((! $options_okay) || ($GetOptions_H{"-h"}) || ($GetOptions_H{"--devhelp"})) { 
   ofile_OutputBanner(*STDOUT, $pkgname, $version, $releasedate, $synopsis, $date, undef);
-  opt_OutputHelp(*STDOUT, $usage, \%opt_HH, \@opt_order_A, \%opt_group_desc_H);
+  # with --devhelp, additionally show groups held in %opt_group_desc_dev_H (hidden from plain -h);
+  # opt_OutputHelp() only prints groups present in the hash it is passed, so no sqp_opts.pm change
+  # is needed to hide or reveal a group.
+  my %help_group_desc_H = %opt_group_desc_H;
+  if($GetOptions_H{"--devhelp"}) { %help_group_desc_H = (%opt_group_desc_H, %opt_group_desc_dev_H); }
+  opt_OutputHelp(*STDOUT, $usage, \%opt_HH, \@opt_order_A, \%help_group_desc_H);
   if(! $options_okay) { die "ERROR, unrecognized option;"; }
   else                { exit 0; } # -h, exit with 0 status
 }

@@ -706,10 +706,16 @@ Recombination detection is an **experimental** feature that is disabled by defau
 requires nearest-neighbor classification mode (i.e., a model info file with alignment files
 specifying group/subgroup information). Enable with `--do_rc`.
 
+**These options are not listed by `v-annotate.pl -h`.** They still exist and function
+normally; to see them in the help output, use `v-annotate.pl --devhelp`. The feature is not
+actively developed and its false-positive rate has not been measured; see
+[recombination-detection.md](recombination-detection.md) for its current status and known
+limitations.
+
 | .........option......... | explanation |
 |---------------------|--------------------|  
 | `--do_rc`           | enable recombination detection: flag sequences where the nearest-neighbor switches between different subgroups at some breakpoint position (experimental, off by default) |
-| `--rc_thresh <x>`   | for `--do_rc`, set the minimum per-nucleotide bit score differential required on each side of the breakpoint to report a [*recombin*](#recombin1) alert to `<x>`, the default value for `<x>` is `0.05` |
+| `--rc_thresh <x>`   | for `--do_rc`, set the minimum per-nucleotide bit score differential required on each side of the breakpoint to report a [*recombin*](#recombin1) alert to `<x>`, the default value for `<x>` is `0.2` |
 | `--rc_match <x>`    | for `--do_rc`, set the expected match probability for the homology model used in log-likelihood scoring to `<x>`, the default value for `<x>` is `0.95`; if the model info file specifies a `VADR-default-rc_match` value, that takes precedence when `--rc_match` is not explicitly set by the user |
 | `--rc_minlen <n>`   | for `--do_rc`, set the minimum number of non-gap aligned positions required on each side of the breakpoint to `<n>`, the default value for `<n>` is `10` |
 | `--rc_igself`       | for `--do_rc`, when testing a sequence that is also present in the model alignment, skip that model sequence as a candidate parent (prevents self-matching, useful when testing sequences within the reference set) |
