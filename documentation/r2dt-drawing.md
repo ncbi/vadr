@@ -31,16 +31,10 @@ scale, in every sequence's diagram, which is what makes them comparable.
 Structure that the template does not declare is never drawn, no matter what the
 sequence could form.
 
-Two things worth knowing before reading further:
-
-* Drawing is done for **every sequence classified to a model that has
-  templates, whether the sequence passes or fails**. A failing sequence is often
-  exactly the one worth looking at. Sequences that are not classified to any
-  model are not drawn.
-* A diagram covers **only the model positions the template declares**, and a
-  sequence that does not reach those positions gets no diagram at all, with a
-  warning rather than an error. See [Coverage](#coverage). This catches people
-  out, and it is the single most important part of this page.
+One thing is worth knowing before reading further. A diagram covers **only the
+model positions the template declares**, and a sequence that does not reach
+those positions gets no diagram at all, with a warning rather than an error.
+See [Coverage](#coverage).
 
 `--draw_r2dt` requires an R2DT installation, which VADR does not install. It
 also requires a model package whose `.minfo` file declares templates. Most
