@@ -2638,7 +2638,7 @@ sub draw_r2dt_figures {
   my $cwd = getcwd();
 
   # Site-specific environment for r2dt.py (PATH additions for infernal,
-  # Bio-Easel, jiffy, traveler; the venv python; R2DT_FAKE_RNA; etc.) is the
+  # Bio-Easel, jiffy, traveler; the venv python; etc.) is the
   # admin's responsibility via an optional site-config file that we source
   # before invoking r2dt.py (if it exists):
   #   $R2DT_DIR/r2dt-vadr-env.sh
