@@ -227,7 +227,7 @@ opt_Add("--keep",       "boolean", 0,         $g,    undef, undef,      "leaving
 
 $opt_group_desc_H{++$g} = "options for drawing R2DT secondary structure figures";
 #        option               type   default  group  requires incompat    preamble-output                                                     help-output
-opt_Add("--draw_r2dt",  "boolean", 0,         $g,    undef, undef,      "draw R2DT secondary structure SVG figures for pass-classified seqs",                       "draw R2DT secondary structure SVG figures for pass-classified seqs (requires \$R2DT_DIR env var)", \%opt_HH, \@opt_order_A);
+opt_Add("--draw_r2dt",  "boolean", 0,         $g,    undef, undef,      "draw R2DT secondary structure SVG figures for classified seqs with templates", "draw R2DT secondary structure SVG figures for all seqs classified to a model with R2DT templates, pass or fail (requires \$R2DT_DIR env var)", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for specifying classification";
 #        option               type   default  group  requires incompat    preamble-output                                                     help-output    
@@ -2585,7 +2585,8 @@ exit 0;
 # Subroutine:  draw_r2dt_figures()
 # Incept:      EPN, Tue Jun  2 2026
 #
-# Purpose:    For each pass-classified sequence, for each R2DT_TEMPLATE
+# Purpose:    For each sequence classified to a model with R2DT_TEMPLATE
+#             line(s) (pass or fail), for each R2DT_TEMPLATE
 #             applicable to that sequence's model, extract the sequence's
 #             aligned residues at the template's RF column ranges from the
 #             per-model RF-frame alignment (.align.afa), strip gaps, write
