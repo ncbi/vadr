@@ -2780,6 +2780,19 @@ sub draw_r2dt_figures {
       $extracted =~ s/[\-\.\~]//g; # strip gaps
       $extracted = uc($extracted);
 
+      if($extracted eq "") {
+        # zero residues extracted for this template's RF column ranges (e.g.
+        # a failing/partial sequence whose aligned region does not reach this
+        # part of the model). r2dt.py would just fail on an empty sequence
+        # (e.g. "cp9_Seq2Bands, i0: 1 > j0: 0"); short-circuit to the same
+        # warn-and-continue outcome without paying for the subprocess.
+        if(! defined $warn_FH) { open($warn_FH, ">", $r2dt_warn_file) || ofile_FileOpenFailure($r2dt_warn_file, $sub_name, $!, "writing", $FH_HR); }
+        print $warn_FH ("WARNING: sequence $seq_name has zero residues in template ${tmpl_name}'s RF column range(s); skipping r2dt.py\n");
+        $nwarn++;
+        print TSV ("$seq_name\t$passfail\t$tmpl_name\tfail\t-\t-\n");
+        next;
+      }
+
       # write 2-line input FASTA
       my $input_fa = $r2dt_input_dir . "/" . $seq_name . "-" . $tmpl_name . ".fa";
       open(IFA, ">", $input_fa) || ofile_FileOpenFailure($input_fa, $sub_name, $!, "writing", $FH_HR);
