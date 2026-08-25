@@ -28,12 +28,8 @@ positions the template covers, hands them to R2DT, and collects one SVG per
 (sequence, template) pair. Because every diagram is drawn on the same template
 layout, the same structural element is laid out the same way, at the same
 scale, in every sequence's diagram, which is what makes them comparable.
-
-**This is not structure prediction.** The structure shown comes from the
-template, not from folding the sequence. What varies between diagrams is which
-residues are present, which differ from the template consensus, and how R2DT
-colors them. If you want a structure predicted for a sequence, this is the wrong
-tool.
+Structure that the template does not declare is never drawn, no matter what the
+sequence could form.
 
 Two things worth knowing before reading further:
 
