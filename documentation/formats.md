@@ -228,7 +228,7 @@ be within `1` and the model's `length`. The key is documented in detail
 [here](r2dt-templates.md#minfo), and an annotated example file is
 [here](r2dt-files/example-r2dt.minfo).
 
-⚠ **WARNING: a `.minfo` file that contains `R2DT_TEMPLATE` lines cannot be
+**WARNING: a `.minfo` file that contains `R2DT_TEMPLATE` lines cannot be
 parsed by VADR 1.7 or earlier.** An older version of VADR rejects the file, and
 so rejects the *entire model package*, not just the figure drawing step.
 `R2DT_TEMPLATE` is first accepted by VADR 1.7.1. If you maintain a model

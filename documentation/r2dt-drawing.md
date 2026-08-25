@@ -26,8 +26,8 @@ each sequence that VADR classifies to a model that has one or more R2DT
 templates declared, VADR extracts the residues the sequence has at the model
 positions the template covers, hands them to R2DT, and collects one SVG per
 (sequence, template) pair. Because every diagram is drawn on the same template
-layout, the same structural element appears in the same place, at the same
-scale, in every sequence's diagram.
+layout, the same structural element is laid out the same way, at the same
+scale, in every sequence's diagram, which is what makes them comparable.
 
 **This is not structure prediction.** The structure shown comes from the
 template, not from folding the sequence. What varies between diagrams is which
@@ -73,18 +73,25 @@ install fails immediately rather than after the alignment stage.
 
 ### The R2DT version
 
-Use the R2DT version installed by `vadr-install.sh`. VADR does not state a
-minimum R2DT version, and a version other than the installed one has not been
-tested with `--draw_r2dt`.
+<!-- TODO: name the R2DT version installed by vadr-install.sh here, once
+     vadr-install.sh installs R2DT. -->
+
+`vadr-install.sh` does not currently install R2DT; you install it yourself,
+following [R2DT's own instructions](https://r2dt.readthedocs.io/).
+
+**VADR does not state a minimum R2DT version**, because it has not been tested
+against a range of them. Use a current R2DT release. If a future
+`vadr-install.sh` installs R2DT, use the version it installs.
 
 ### What R2DT itself needs for this code path
 
 VADR invokes R2DT as `r2dt.py draw --force_template`, which skips R2DT's own
 classification stage entirely. A minimal R2DT installation is therefore
-sufficient. R2DT's `requirements-minimal.txt` lists the Python packages needed
-for this path, all of them pure Python, plus the external programs Traveler,
-Infernal, and Bio-Easel and the Infernal/HMMER jiffy scripts. The larger set of
-dependencies R2DT needs for its full classification pipeline is not required.
+sufficient. R2DT ships a `requirements-minimal.txt` listing the Python packages
+this path needs, all of them pure Python. Beyond those, the path calls Traveler,
+Infernal (`cmalign` and several `esl-` miniapps), and a handful of Bio-Easel and
+jiffy Infernal/HMMER scripts. The larger set of dependencies R2DT needs for its
+full classification pipeline is not required.
 
 R2DT's [installation documentation](https://r2dt.readthedocs.io/) is the
 authoritative source for how to install it, and for what its current
@@ -156,7 +163,7 @@ Three outcomes are possible:
 * **The `.minfo` declares templates for the relevant model.** Those sequences
   are drawn, subject to [coverage](#coverage).
 
-### <a name="compat"></a>⚠ Backward compatibility warning for model package maintainers
+### <a name="compat"></a>Backward compatibility warning for model package maintainers
 
 **A `.minfo` file containing `R2DT_TEMPLATE` lines cannot be parsed by VADR 1.7
 or earlier.** Older versions reject the file as malformed, and the failure is
@@ -254,11 +261,11 @@ AB908162.1	PASS	zika-circular	fail	-	-
 
 The three `r2dt_status` values are:
 
-* **`ok`** — a diagram was produced.
-* **`fail`** — no diagram was produced for this pair. Some of these are
+* **`ok`**: a diagram was produced.
+* **`fail`**: no diagram was produced for this pair. Some of these are
   [coverage](#coverage) cases and some are genuine `r2dt.py` failures; the
   corresponding line in `.r2dt.warn` says which.
-* **`skipped`** — the sequence was classified to a model that has no
+* **`skipped`**: the sequence was classified to a model that has no
   `R2DT_TEMPLATE` lines. Nothing was attempted. There is one such row per
   sequence, not one per template.
 
@@ -297,10 +304,10 @@ black; a browser is the reliable way to look at one.
 
 Two examples ship with this documentation, both drawn on the same template:
 
-* [NC_035889.1-zika-linear.svg](r2dt-files/NC_035889.1-zika-linear.svg) —
+* [NC_035889.1-zika-linear.svg](r2dt-files/NC_035889.1-zika-linear.svg):
   a full length sequence, `r2dt_status` `ok`, `overlaps` `0`. Every position the
   template covers is present.
-* [KF383047.1-zika-linear.svg](r2dt-files/KF383047.1-zika-linear.svg) —
+* [KF383047.1-zika-linear.svg](r2dt-files/KF383047.1-zika-linear.svg):
   a partial sequence, also `ok` and `overlaps` `0`, but covering only part of
   the template. Compare it against the full length one. The whole first block of
   the template is absent, because this sequence has no residues there, and the
@@ -332,11 +339,12 @@ scale, but they are not overlayable without shifting one of them.
 A diagram is not a picture of the whole sequence. Everything outside those
 ranges is absent by construction, and its absence carries no meaning.
 
-⚠ **The `5'` and `3'` labels mark the ends of the drawn region, not the ends of
+**WARNING: the `5'` and `3'` labels mark the ends of the drawn region, not the ends of
 the sequence and not the ends of the genome.** For a partial sequence this is
 the one real risk of misreading a diagram. In the partial example above, the
-residue labeled `5'` sits several thousand positions into the model, because
-that is simply where this sequence's drawn residues begin. If the template
+residue labeled `5'` is at model position 10380, the start of the template's
+second range, because that is simply where this sequence's drawn residues
+begin. It is not the 5' end of anything. If the template
 carries numbering labels tied to genome coordinates, as the example templates
 do, those labels resolve the ambiguity, and checking them is worth the few
 seconds it takes. Whether a template has such labels is a choice made when the

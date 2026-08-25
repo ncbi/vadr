@@ -32,7 +32,7 @@ If you are trying to *use* templates that already exist rather than make new
 ones, you want [Drawing R2DT secondary structure figures with
 `v-annotate.pl`](r2dt-drawing.md#top) instead.
 
-⚠ **This is a hands-on procedure with a manual layout editing step in a
+**NOTE: this is a hands-on procedure with a manual layout editing step in a
 browser.** It is not a one-command build, and the layout step is the part that
 takes the longest and is easiest to get wrong. Budget accordingly.
 
@@ -88,13 +88,13 @@ The rules the ranges must obey, all enforced when the `.minfo` file is parsed:
 
 Two consequences that are easy to miss:
 
-* 🚩 **Multiple ranges are concatenated in the order given, and the template's
+* **Multiple ranges are concatenated in the order given, and the template's
   own consensus must be that same concatenation, in that same order.** The
   template does not know what the ranges are; it just receives a string of
   residues. If the template's consensus is not built from the same regions in
   the same order, you get a template that builds, aligns and draws, and draws
   nonsense.
-* 🚩 **Choosing the ranges is choosing the template's coverage.** A sequence
+* **Choosing the ranges is choosing the template's coverage.** A sequence
   that has no residues at these positions gets no diagram. If you want partial
   sequences drawn, the ranges have to be positions the partial sequences
   actually cover. See [r2dt-drawing.md](r2dt-drawing.md#coverage) for what the
@@ -120,7 +120,7 @@ which the `.cm` and the `.fasta` can be regenerated consistently.
 The `.xml` carries coordinates and nothing else. It contains no pair
 information and no pseudoknot information at all.
 
-### 🚩 Pseudoknots are not in the covariance model
+### Pseudoknots are not in the covariance model
 
 A covariance model is a stochastic context-free grammar and can only represent
 nested pairs. `cmbuild` silently discards the crossing pairs in `SS_cons`, and
@@ -178,7 +178,7 @@ using only `(` and `)`, so a template built this way cannot carry pseudoknots
 even if the underlying structure has them. Building the `.sto`, `.cm` and
 `.fasta` yourself, as steps 1 through 3 above describe, is what preserves them.
 
-### 🚩🚩 Two different WUSS conversions
+### WARNING: two different WUSS conversions
 
 The same `SS_cons` string is converted **twice, differently**, and confusing the
 two is a silent failure. The layout tool cannot lay out crossing pairs, so the
@@ -230,7 +230,7 @@ An annotated example file is at
 [r2dt-files/example-r2dt.minfo](r2dt-files/example-r2dt.minfo). The key is also
 documented in [formats.md](formats.md#minfo).
 
-⚠ **Adding `R2DT_TEMPLATE` lines to a `.minfo` file makes the whole model
+**WARNING: adding `R2DT_TEMPLATE` lines to a `.minfo` file makes the whole model
 package unreadable by VADR 1.7 and earlier.** If your users may be on an older
 VADR, see the
 [backward compatibility warning](r2dt-drawing.md#compat) before you edit a
@@ -267,12 +267,12 @@ works well enough to look fine.
   declare in the `.minfo` file must add up to the number of consensus positions
   the template has. In the example, `1..210` plus `10380..10807` is 210 plus 428
   is 638, and the CM's `CLEN` is 638.
-* 🚩 **The layout's base pair set matches `SS_cons`'s nested pair set, in both
+* **The layout's base pair set matches `SS_cons`'s nested pair set, in both
   directions.** A layout editor exports only the pairs it actually drew. A pair
   that was silently dropped during editing renders perfectly well and is very
   easy to miss. Check that every nested pair in `SS_cons` is in the layout and
   that every pair in the layout is in `SS_cons`.
-* 🚩 **A layout-only edit should change coordinates and nothing else.** Merge
+* **A layout-only edit should change coordinates and nothing else.** Merge
   the edited x/y values into the existing template rather than round-tripping
   the whole file through the editor. A whole-file round trip re-derives the
   structure from whatever the editor thinks the pairs are, which is how pairs
@@ -281,7 +281,7 @@ works well enough to look fine.
 * **End labels are not counted as residues.** Editors commonly draw `5'` and
   `3'` as text elements, and some exports include them in the residue list. One
   or two extra "residues" shifts every downstream index by one or two.
-* 🚩 **The shipped `.fasta` dot-bracket still contains the pseudoknot letter
+* **The shipped `.fasta` dot-bracket still contains the pseudoknot letter
   anchors, and they match `SS_cons`.** No other check on this list catches a
   template whose pseudoknots were converted away, and no rendered diagram will
   tell you either. See [the two conversions](#building).
