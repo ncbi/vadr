@@ -227,7 +227,7 @@ opt_Add("--keep",       "boolean", 0,         $g,    undef, undef,      "leaving
 
 $opt_group_desc_H{++$g} = "options for drawing R2DT secondary structure figures";
 #        option               type   default  group  requires incompat    preamble-output                                                     help-output
-opt_Add("--draw_r2dt",  "boolean", 0,         $g,    undef, undef,      "draw R2DT secondary structure SVG figures for pass-classified seqs",                       "draw R2DT secondary structure SVG figures for pass-classified seqs (requires \$R2DT_DIR env var)", \%opt_HH, \@opt_order_A);
+opt_Add("--draw_r2dt",  "boolean", 0,         $g,    undef, undef,      "draw R2DT secondary structure SVG figures for classified seqs with templates", "draw R2DT secondary structure SVG figures for all seqs classified to a model with R2DT templates, pass or fail (requires \$R2DT_DIR env var)", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for specifying classification";
 #        option               type   default  group  requires incompat    preamble-output                                                     help-output    
@@ -2585,7 +2585,8 @@ exit 0;
 # Subroutine:  draw_r2dt_figures()
 # Incept:      EPN, Tue Jun  2 2026
 #
-# Purpose:    For each pass-classified sequence, for each R2DT_TEMPLATE
+# Purpose:    For each sequence classified to a model with R2DT_TEMPLATE
+#             line(s) (pass or fail), for each R2DT_TEMPLATE
 #             applicable to that sequence's model, extract the sequence's
 #             aligned residues at the template's RF column ranges from the
 #             per-model RF-frame alignment (.align.afa), strip gaps, write
@@ -2648,17 +2649,25 @@ sub draw_r2dt_figures {
   # on the r2dt.py command below.
   my $r2dt_env_file = "$r2dt_dir/r2dt-vadr-env.sh";
 
-  # determine the set of pass-classified sequences in-memory using
-  # check_if_sequence_passes() (the same logic that writes .pass.list / .fail.list).
-  # We do NOT read .pass.list here because at the point this runs the .pass.list
-  # file handle may still be open/buffered and not yet flushed to disk.
-  my @pass_seq_A = ();
+  # determine the set of classified sequences to draw: any sequence assigned
+  # a model, whether it PASSed or FAILed VADR's overall pass/fail check (a
+  # failing sequence is often exactly the one a curator most wants a diagram
+  # of, to help diagnose the failure). Sequences with no model assignment
+  # (unclassified) are skipped -- there is nothing to draw for them.
+  #
+  # We also record each drawn sequence's pass/fail status, via
+  # check_if_sequence_passes() (the same logic that writes .pass.list /
+  # .fail.list), so it can be reported in the .r2dt.tsv summary. We do NOT
+  # read .pass.list here because at the point this runs the .pass.list file
+  # handle may still be open/buffered and not yet flushed to disk.
+  my @draw_seq_A = ();
+  my %seq_passfail_H = ();
   foreach my $seq_name (@{$seq_name_AR}) {
     my $mdl_name = (exists $seq2mdl_HR->{$seq_name}) ? $seq2mdl_HR->{$seq_name} : undef;
-    my $ftr_info_AR = ((defined $mdl_name) && (exists $ftr_info_HAHR->{$mdl_name})) ? \@{$ftr_info_HAHR->{$mdl_name}} : undef;
-    if(check_if_sequence_passes($seq_name, $ftr_info_AR, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $FH_HR)) {
-      push(@pass_seq_A, $seq_name);
-    }
+    if(! defined $mdl_name) { next; } # unclassified, nothing to draw
+    my $ftr_info_AR = (exists $ftr_info_HAHR->{$mdl_name}) ? \@{$ftr_info_HAHR->{$mdl_name}} : undef;
+    $seq_passfail_H{$seq_name} = (check_if_sequence_passes($seq_name, $ftr_info_AR, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $FH_HR)) ? "PASS" : "FAIL";
+    push(@draw_seq_A, $seq_name);
   }
 
   # set up output dirs and summary/warning files
@@ -2670,7 +2679,7 @@ sub draw_r2dt_figures {
   utl_RunCommand("mkdir -p $r2dt_out_dir",   opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
   open(TSV, ">", $r2dt_tsv_file) || ofile_FileOpenFailure($r2dt_tsv_file, $sub_name, $!, "writing", $FH_HR);
-  print TSV ("#seq_id\ttemplate_name\tr2dt_status\toverlaps\toutput_svg\n");
+  print TSV ("#seq_id\tpass_fail\ttemplate_name\tr2dt_status\toverlaps\toutput_svg\n");
   my $nwarn = 0;
   my $warn_FH = undef;
 
@@ -2686,12 +2695,13 @@ sub draw_r2dt_figures {
   my %mdl_aln_seq_HH = ();
   my %mdl_rfmap_HA   = ();
 
-  foreach my $seq_name (@pass_seq_A) {
-    my $mdl_name = (exists $seq2mdl_HR->{$seq_name}) ? $seq2mdl_HR->{$seq_name} : undef;
-    if(! defined $mdl_name) { next; } # shouldn't happen for a pass seq, but be safe
+  foreach my $seq_name (@draw_seq_A) {
+    my $mdl_name = $seq2mdl_HR->{$seq_name}; # guaranteed defined: @draw_seq_A only contains classified seqs, but check defensively
+    if(! defined $mdl_name) { next; }
+    my $passfail = $seq_passfail_H{$seq_name};
     # if this model has no R2DT_TEMPLATE lines, record 'skipped' and move on
     if((! exists $tmpl_info_HAR->{$mdl_name}) || (scalar(@{$tmpl_info_HAR->{$mdl_name}}) == 0)) {
-      print TSV ("$seq_name\t-\tskipped\t-\t-\n");
+      print TSV ("$seq_name\t$passfail\t-\tskipped\t-\t-\n");
       next;
     }
 
@@ -2740,7 +2750,7 @@ sub draw_r2dt_figures {
         if(! defined $warn_FH) { open($warn_FH, ">", $r2dt_warn_file) || ofile_FileOpenFailure($r2dt_warn_file, $sub_name, $!, "writing", $FH_HR); }
         print $warn_FH ("WARNING: no alignment row for sequence $seq_name in model $mdl_name .align.afa; cannot draw template $tmpl_name\n");
         $nwarn++;
-        print TSV ("$seq_name\t$tmpl_name\tfail\t-\t-\n");
+        print TSV ("$seq_name\t$passfail\t$tmpl_name\tfail\t-\t-\n");
       }
       next;
     }
@@ -2770,6 +2780,19 @@ sub draw_r2dt_figures {
       }
       $extracted =~ s/[\-\.\~]//g; # strip gaps
       $extracted = uc($extracted);
+
+      if($extracted eq "") {
+        # zero residues extracted for this template's RF column ranges (e.g.
+        # a failing/partial sequence whose aligned region does not reach this
+        # part of the model). r2dt.py would just fail on an empty sequence
+        # (e.g. "cp9_Seq2Bands, i0: 1 > j0: 0"); short-circuit to the same
+        # warn-and-continue outcome without paying for the subprocess.
+        if(! defined $warn_FH) { open($warn_FH, ">", $r2dt_warn_file) || ofile_FileOpenFailure($r2dt_warn_file, $sub_name, $!, "writing", $FH_HR); }
+        print $warn_FH ("WARNING: sequence $seq_name has zero residues in template ${tmpl_name}'s RF column range(s); skipping r2dt.py\n");
+        $nwarn++;
+        print TSV ("$seq_name\t$passfail\t$tmpl_name\tfail\t-\t-\n");
+        next;
+      }
 
       # write 2-line input FASTA
       my $input_fa = $r2dt_input_dir . "/" . $seq_name . "-" . $tmpl_name . ".fa";
@@ -2820,13 +2843,13 @@ sub draw_r2dt_figures {
             if((defined $oline) && ($oline =~ /^\s*(\d+)\s*$/)) { $overlaps = $1; }
           }
         }
-        print TSV ("$seq_name\t$tmpl_name\tok\t$overlaps\t$dst_svg\n");
+        print TSV ("$seq_name\t$passfail\t$tmpl_name\tok\t$overlaps\t$dst_svg\n");
       }
       else {
         if(! defined $warn_FH) { open($warn_FH, ">", $r2dt_warn_file) || ofile_FileOpenFailure($r2dt_warn_file, $sub_name, $!, "writing", $FH_HR); }
         print $warn_FH ("WARNING: r2dt.py failed (exit=$r2dt_exit) or produced no SVG for seq $seq_name template $tmpl_name; see $abs_r2dt_rundir.stdout\n");
         $nwarn++;
-        print TSV ("$seq_name\t$tmpl_name\tfail\t-\t-\n");
+        print TSV ("$seq_name\t$passfail\t$tmpl_name\tfail\t-\t-\n");
       }
 
       # remove the .fa.ssi index that r2dt's internal cmalign leaves next to the
