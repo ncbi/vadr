@@ -6,6 +6,7 @@
 * [Running `v-annotate.pl` inside the `v-scan.pl` wrapper](#scan)
 * [`v-annotate.pl` command-line options](#options)
   * [basic options](#options-basic)
+  * [options for drawing R2DT secondary structure figures](#options-r2dt)
   * [options for specifying expected sequence classification](#options-classification)
   * [options for controlling which alerts are fatal](#options-fatal)
   * [options related to model files](#options-modelfiles)
@@ -28,6 +29,7 @@
 * [Non-essential features: allowing sequences to pass despite fatal alerts for specific features](#mnf)
 * [Alert *exceptions*: ignoring alerts in specific model position ranges](#exceptions)
 * [Alternative classification mode based on nearest-neighbors](#nn)
+* [Drawing R2DT secondary structure figures](#r2dt)
 * [Other ways to modify default behavior for features by manually changing the `.minfo` file](#minfo)
 * [Limiting memory usage and multi-threading](#memory)
 * [Alternative parallelization using a cluster](#altparallel)
@@ -600,6 +602,12 @@ integer.
 | `--minpvlen <n>` | set the minimum length in nucleotides for CDS/mat_peptide/gene features to be output to feature tables and for protein validation analysis to `<n>`, default `<n>` is 30 |
 | `--nkb <n>`      | set the target number of Kb of sequence for each alignment job and/or chunk (with --split) to `<n>` Kb (thousand nucleotides), default `<n>` is `300` |
 | `--keep`         | keep [additional output files](formats.md#annotate-keep) that are normally removed |
+
+### `v-annotate.pl` options for drawing R2DT secondary structure figures<a name="options-r2dt"></a>
+
+| ......option.... | explanation | 
+|------------------|-------------|
+| `--draw_r2dt`    | draw [R2DT](https://r2dt.bio/) secondary structure SVG figures for all sequences classified to a model with R2DT templates, whether they pass or fail; requires the `$R2DT_DIR` environment variable to be set to an R2DT installation root, and a model info file that declares templates, as explained [here](r2dt-drawing.md#top) |
 
 ### `v-annotate.pl` options for specifying expected sequence classification<a name="options-classification"></a>
 
@@ -1454,6 +1462,17 @@ If your model is built from an alignment instead of a single sequence, you can d
 in the alignment file used to build the model and then classify sequences to those groups and subgroups based on similarity
 to the sequences in that alignment. For more information on this nearest-neighbor based classification mode see 
 [this file](nn-classification.md#top).
+
+---
+
+## <a name="r2dt"></a>Drawing R2DT secondary structure figures
+
+If a model has one or more [R2DT](https://r2dt.bio/) templates installed and declared in its
+model info (`.minfo`) file, the `--draw_r2dt` option will draw a secondary structure diagram for
+each sequence classified to that model, using the template's fixed layout so that every sequence's
+diagram is comparable to every other's. This requires a separate R2DT installation. For more
+information on running it see [this file](r2dt-drawing.md#top), and for adding templates to a
+model of your own see [this file](r2dt-templates.md#top).
 
 ---
 

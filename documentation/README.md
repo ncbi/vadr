@@ -23,6 +23,8 @@
   * [Basic Information on `v-annotate.pl` alerts](annotate.md#alerts)
   * [Additional information on `v-annotate.pl` alerts](annotate.md#alerts2)
 * [`v-annotate.pl` alternative classification mode based on nearest-neighbors](nn-classification.md#top)
+* [Drawing R2DT secondary structure figures with `v-annotate.pl`](r2dt-drawing.md#top)
+  * [Adding R2DT templates for a VADR model](r2dt-templates.md#top)
 * [***Advanced tutorial: building an RSV model library***](advbuild.md#top)
 * [Explanations and examples of `v-annotate.pl` detailed alert and error messages](alerts.md#top)
   * [Output fields with detailed alert and error messages](alerts.md#files)
