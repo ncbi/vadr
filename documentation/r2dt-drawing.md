@@ -322,8 +322,11 @@ entire point of templated drawing.
 The SVG canvas, however, is cropped to the residues actually drawn. A partial
 sequence's diagram is a smaller image whose origin sits at its own first drawn
 residue, not a full sized image with a blank region where the missing residues
-would be. Two diagrams from one template are directly comparable in shape and
-scale, but they are not overlayable without shifting one of them.
+would be, so a partial diagram will not overlay a complete one. Diagrams of
+sequences that cover the whole template usually do come out the same size, but
+not always, because the local adjustments described above can move an outermost
+residue and change the crop. Read the diagrams as comparable in shape and scale,
+not as overlayable.
 
 **The drawn region is only the template's declared model position ranges.**
 A diagram is not a picture of the whole sequence. Everything outside those
