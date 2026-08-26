@@ -2599,7 +2599,7 @@ exit 0;
 #             Output dir layout:
 #               <out_root>.r2dt-input/<seq>-<template>.fa  (input FASTAs)
 #               <out_root>.r2dt/<seq>/<seq>-<template>.svg  (colored SVGs)
-#               <out_root>.r2dt.tbl                         (summary table)
+#               <out_root>.rdt                             (summary table)
 #               <out_root>.r2dt.warn                        (warnings, if any)
 #
 # Arguments:
@@ -2657,7 +2657,7 @@ sub draw_r2dt_figures {
   #
   # We also record each drawn sequence's pass/fail status, via
   # check_if_sequence_passes() (the same logic that writes .pass.list /
-  # .fail.list), so it can be reported in the .r2dt.tbl summary. We do NOT
+  # .fail.list), so it can be reported in the .rdt summary. We do NOT
   # read .pass.list here because at the point this runs the .pass.list file
   # handle may still be open/buffered and not yet flushed to disk.
   my @draw_seq_A = ();
@@ -2673,13 +2673,13 @@ sub draw_r2dt_figures {
   # set up output dirs and summary/warning files
   my $r2dt_input_dir     = $out_root . ".r2dt-input";
   my $r2dt_out_dir       = $out_root . ".r2dt";
-  my $r2dt_out_dir_rel   = $dir_tail . ".vadr.r2dt"; # $r2dt_out_dir, relative to the output directory (for column 6 of the .r2dt.tbl table)
-  my $r2dt_tbl_file      = $out_root . ".r2dt.tbl";
+  my $r2dt_out_dir_rel   = $dir_tail . ".vadr.r2dt"; # $r2dt_out_dir, relative to the output directory (for column 6 of the .rdt table)
+  my $r2dt_tbl_file      = $out_root . ".rdt";
   my $r2dt_warn_file     = $out_root . ".r2dt.warn";
   utl_RunCommand("mkdir -p $r2dt_input_dir", opt_Get("-v", $opt_HHR), 0, $FH_HR);
   utl_RunCommand("mkdir -p $r2dt_out_dir",   opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
-  # rows for the .r2dt.tbl summary table, one per (seq, template) pair (or
+  # rows for the .rdt summary table, one per (seq, template) pair (or
   # per skipped seq), written via ofile_TableHumanOutput() below once all
   # rows are collected -- matches the space-delimited, column-aligned format
   # used by VADR's other per-run tables (.mdl/.cls/.ant/etc.)
@@ -2761,7 +2761,7 @@ sub draw_r2dt_figures {
 
     # per-seq output subdir
     my $seq_out_subdir     = $r2dt_out_dir     . "/" . $seq_name;
-    my $seq_out_subdir_rel = $r2dt_out_dir_rel . "/" . $seq_name; # relative counterpart, for the .r2dt.tbl table
+    my $seq_out_subdir_rel = $r2dt_out_dir_rel . "/" . $seq_name; # relative counterpart, for the .rdt table
     utl_RunCommand("mkdir -p $seq_out_subdir", opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
     foreach my $tmpl_HR (@{$tmpl_info_HAR->{$mdl_name}}) {
@@ -2833,7 +2833,7 @@ sub draw_r2dt_figures {
       # expected colored SVG: <r2dt_run_dir>/results/svg/<SEQ>-<template>.colored.svg
       my $src_svg = $abs_r2dt_rundir . "/results/svg/" . $seq_name . "-" . $tmpl_name . ".colored.svg";
       my $dst_svg     = $seq_out_subdir     . "/" . $seq_name . "-" . $tmpl_name . ".svg";
-      my $dst_svg_rel = $seq_out_subdir_rel . "/" . $seq_name . "-" . $tmpl_name . ".svg"; # path in the .r2dt.tbl table: relative to the output dir, not absolutized
+      my $dst_svg_rel = $seq_out_subdir_rel . "/" . $seq_name . "-" . $tmpl_name . ".svg"; # path in the .rdt table: relative to the output dir, not absolutized
 
       if(($r2dt_exit == 0) && (-s $src_svg)) {
         utl_RunCommand("cp $src_svg $dst_svg", opt_Get("-v", $opt_HHR), 0, $FH_HR);
@@ -2874,7 +2874,7 @@ sub draw_r2dt_figures {
 
   if(defined $warn_FH) { close($warn_FH); }
 
-  # write the .r2dt.tbl summary table: space-delimited, column-aligned, in
+  # write the .rdt summary table: space-delimited, column-aligned, in
   # the same style as VADR's other per-run tables (.mdl/.cls/.ant/etc.),
   # via ofile_TableHumanOutput().
   my @head_r2dt_AA = (["seq_id", "pass_fail", "template_name", "r2dt_status", "overlaps", "output_svg"]);
@@ -2884,7 +2884,7 @@ sub draw_r2dt_figures {
   close($tbl_FH);
 
   # register output files
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "r2dt.tbl", $r2dt_tbl_file, 1, 1, "R2DT figure summary (one row per seq,template pair)");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "rdt", $r2dt_tbl_file, 1, 1, "R2DT figure summary (one row per seq,template pair)");
   if($nwarn > 0) {
     ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "r2dt.warn", $r2dt_warn_file, 1, 1, "R2DT drawing warnings");
   }
