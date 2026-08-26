@@ -2599,7 +2599,7 @@ exit 0;
 #             Output dir layout:
 #               <out_root>.r2dt-input/<seq>-<template>.fa  (input FASTAs)
 #               <out_root>.r2dt/<seq>/<seq>-<template>.svg  (colored SVGs)
-#               <out_root>.r2dt.tsv                         (summary TSV)
+#               <out_root>.r2dt.tbl                         (summary table)
 #               <out_root>.r2dt.warn                        (warnings, if any)
 #
 # Arguments:
@@ -2657,7 +2657,7 @@ sub draw_r2dt_figures {
   #
   # We also record each drawn sequence's pass/fail status, via
   # check_if_sequence_passes() (the same logic that writes .pass.list /
-  # .fail.list), so it can be reported in the .r2dt.tsv summary. We do NOT
+  # .fail.list), so it can be reported in the .r2dt.tbl summary. We do NOT
   # read .pass.list here because at the point this runs the .pass.list file
   # handle may still be open/buffered and not yet flushed to disk.
   my @draw_seq_A = ();
@@ -2671,15 +2671,19 @@ sub draw_r2dt_figures {
   }
 
   # set up output dirs and summary/warning files
-  my $r2dt_input_dir = $out_root . ".r2dt-input";
-  my $r2dt_out_dir   = $out_root . ".r2dt";
-  my $r2dt_tsv_file  = $out_root . ".r2dt.tsv";
-  my $r2dt_warn_file = $out_root . ".r2dt.warn";
+  my $r2dt_input_dir     = $out_root . ".r2dt-input";
+  my $r2dt_out_dir       = $out_root . ".r2dt";
+  my $r2dt_out_dir_rel   = $dir_tail . ".vadr.r2dt"; # $r2dt_out_dir, relative to the output directory (for column 6 of the .r2dt.tbl table)
+  my $r2dt_tbl_file      = $out_root . ".r2dt.tbl";
+  my $r2dt_warn_file     = $out_root . ".r2dt.warn";
   utl_RunCommand("mkdir -p $r2dt_input_dir", opt_Get("-v", $opt_HHR), 0, $FH_HR);
   utl_RunCommand("mkdir -p $r2dt_out_dir",   opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
-  open(TSV, ">", $r2dt_tsv_file) || ofile_FileOpenFailure($r2dt_tsv_file, $sub_name, $!, "writing", $FH_HR);
-  print TSV ("#seq_id\tpass_fail\ttemplate_name\tr2dt_status\toverlaps\toutput_svg\n");
+  # rows for the .r2dt.tbl summary table, one per (seq, template) pair (or
+  # per skipped seq), written via ofile_TableHumanOutput() below once all
+  # rows are collected -- matches the space-delimited, column-aligned format
+  # used by VADR's other per-run tables (.mdl/.cls/.ant/etc.)
+  my @data_r2dt_AA = ();
   my $nwarn = 0;
   my $warn_FH = undef;
 
@@ -2701,7 +2705,7 @@ sub draw_r2dt_figures {
     my $passfail = $seq_passfail_H{$seq_name};
     # if this model has no R2DT_TEMPLATE lines, record 'skipped' and move on
     if((! exists $tmpl_info_HAR->{$mdl_name}) || (scalar(@{$tmpl_info_HAR->{$mdl_name}}) == 0)) {
-      print TSV ("$seq_name\t$passfail\t-\tskipped\t-\t-\n");
+      push(@data_r2dt_AA, [$seq_name, $passfail, "-", "skipped", "-", "-"]);
       next;
     }
 
@@ -2750,13 +2754,14 @@ sub draw_r2dt_figures {
         if(! defined $warn_FH) { open($warn_FH, ">", $r2dt_warn_file) || ofile_FileOpenFailure($r2dt_warn_file, $sub_name, $!, "writing", $FH_HR); }
         print $warn_FH ("WARNING: no alignment row for sequence $seq_name in model $mdl_name .align.afa; cannot draw template $tmpl_name\n");
         $nwarn++;
-        print TSV ("$seq_name\t$passfail\t$tmpl_name\tfail\t-\t-\n");
+        push(@data_r2dt_AA, [$seq_name, $passfail, $tmpl_name, "fail", "-", "-"]);
       }
       next;
     }
 
     # per-seq output subdir
-    my $seq_out_subdir = $r2dt_out_dir . "/" . $seq_name;
+    my $seq_out_subdir     = $r2dt_out_dir     . "/" . $seq_name;
+    my $seq_out_subdir_rel = $r2dt_out_dir_rel . "/" . $seq_name; # relative counterpart, for the .r2dt.tbl table
     utl_RunCommand("mkdir -p $seq_out_subdir", opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
     foreach my $tmpl_HR (@{$tmpl_info_HAR->{$mdl_name}}) {
@@ -2790,7 +2795,7 @@ sub draw_r2dt_figures {
         if(! defined $warn_FH) { open($warn_FH, ">", $r2dt_warn_file) || ofile_FileOpenFailure($r2dt_warn_file, $sub_name, $!, "writing", $FH_HR); }
         print $warn_FH ("WARNING: sequence $seq_name has zero residues in template ${tmpl_name}'s RF column range(s); skipping r2dt.py\n");
         $nwarn++;
-        print TSV ("$seq_name\t$passfail\t$tmpl_name\tfail\t-\t-\n");
+        push(@data_r2dt_AA, [$seq_name, $passfail, $tmpl_name, "fail", "-", "-"]);
         next;
       }
 
@@ -2827,7 +2832,8 @@ sub draw_r2dt_figures {
 
       # expected colored SVG: <r2dt_run_dir>/results/svg/<SEQ>-<template>.colored.svg
       my $src_svg = $abs_r2dt_rundir . "/results/svg/" . $seq_name . "-" . $tmpl_name . ".colored.svg";
-      my $dst_svg = $seq_out_subdir . "/" . $seq_name . "-" . $tmpl_name . ".svg";
+      my $dst_svg     = $seq_out_subdir     . "/" . $seq_name . "-" . $tmpl_name . ".svg";
+      my $dst_svg_rel = $seq_out_subdir_rel . "/" . $seq_name . "-" . $tmpl_name . ".svg"; # path in the .r2dt.tbl table: relative to the output dir, not absolutized
 
       if(($r2dt_exit == 0) && (-s $src_svg)) {
         utl_RunCommand("cp $src_svg $dst_svg", opt_Get("-v", $opt_HHR), 0, $FH_HR);
@@ -2843,13 +2849,13 @@ sub draw_r2dt_figures {
             if((defined $oline) && ($oline =~ /^\s*(\d+)\s*$/)) { $overlaps = $1; }
           }
         }
-        print TSV ("$seq_name\t$passfail\t$tmpl_name\tok\t$overlaps\t$dst_svg\n");
+        push(@data_r2dt_AA, [$seq_name, $passfail, $tmpl_name, "ok", $overlaps, $dst_svg_rel]);
       }
       else {
         if(! defined $warn_FH) { open($warn_FH, ">", $r2dt_warn_file) || ofile_FileOpenFailure($r2dt_warn_file, $sub_name, $!, "writing", $FH_HR); }
         print $warn_FH ("WARNING: r2dt.py failed (exit=$r2dt_exit) or produced no SVG for seq $seq_name template $tmpl_name; see $abs_r2dt_rundir.stdout\n");
         $nwarn++;
-        print TSV ("$seq_name\t$passfail\t$tmpl_name\tfail\t-\t-\n");
+        push(@data_r2dt_AA, [$seq_name, $passfail, $tmpl_name, "fail", "-", "-"]);
       }
 
       # remove the .fa.ssi index that r2dt's internal cmalign leaves next to the
@@ -2866,11 +2872,19 @@ sub draw_r2dt_figures {
     }
   }
 
-  close(TSV);
   if(defined $warn_FH) { close($warn_FH); }
 
+  # write the .r2dt.tbl summary table: space-delimited, column-aligned, in
+  # the same style as VADR's other per-run tables (.mdl/.cls/.ant/etc.),
+  # via ofile_TableHumanOutput().
+  my @head_r2dt_AA = (["seq_id", "pass_fail", "template_name", "r2dt_status", "overlaps", "output_svg"]);
+  my @clj_r2dt_A    = (1,         1,           1,               1,             0,          1); # overlaps (numeric) right justified; output_svg (ragged, free text) left justified like .alt's final 'detail' column
+  open(my $tbl_FH, ">", $r2dt_tbl_file) || ofile_FileOpenFailure($r2dt_tbl_file, $sub_name, $!, "writing", $FH_HR);
+  ofile_TableHumanOutput(\@data_r2dt_AA, \@head_r2dt_AA, \@clj_r2dt_A, undef, undef, "  ", "-", "#", "#", "", 0, $tbl_FH, undef, $FH_HR);
+  close($tbl_FH);
+
   # register output files
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "r2dt.tsv", $r2dt_tsv_file, 1, 1, "R2DT figure summary (one row per seq,template pair)");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "r2dt.tbl", $r2dt_tbl_file, 1, 1, "R2DT figure summary (one row per seq,template pair)");
   if($nwarn > 0) {
     ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "r2dt.warn", $r2dt_warn_file, 1, 1, "R2DT drawing warnings");
   }
