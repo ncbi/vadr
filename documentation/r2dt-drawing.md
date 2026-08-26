@@ -190,7 +190,7 @@ v-annotate.pl --draw_r2dt --mkey zikv-canonical --mdir /path/to/zika-models \
     zika.fa va-zika
 ```
 
-### Runtime cost
+### <a name="runtime"></a>Runtime cost
 
 `--draw_r2dt` runs `r2dt.py` once per (sequence, template) pair that has
 residues to draw. Each invocation performs an Infernal alignment of the
@@ -463,7 +463,7 @@ interactive shell does.
 
 ### The run is slow
 
-See [Runtime cost](#running). The drawing stage is one `r2dt.py` process per
+See [Runtime cost](#runtime). The drawing stage is one `r2dt.py` process per
 drawn pair and it is not parallelized.
 
 ## Adding templates for your own model<a name="adding"></a>
