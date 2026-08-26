@@ -397,6 +397,12 @@ if [ "$DOWNLOADORBUILD" != "build" ]; then
              echo "== cloning jiffy-infernal-hmmer-scripts at $JVERSION =="
              git clone https://github.com/nawrockie/jiffy-infernal-hmmer-scripts.git jiffy-infernal-hmmer-scripts
              (cd jiffy-infernal-hmmer-scripts && git checkout $JVERSION)
+             # R2DT runs these as commands found on PATH, but not all of them
+             # are executable in the repository, so make them all executable,
+             # exactly as R2DT's own base_image/Dockerfile does. Without this,
+             # r2dt.py fails with "Permission denied" on
+             # ali-pfam-lowercase-rf-gap-columns.pl and draws nothing.
+             chmod +x jiffy-infernal-hmmer-scripts/*.pl
 
              echo "== cloning traveler at $TVERSION =="
              git clone https://github.com/cusbg/traveler.git traveler
