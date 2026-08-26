@@ -17,9 +17,9 @@
 ## Scope of this page<a name="scope"></a>
 
 This page covers the VADR side of adding R2DT drawing support to a VADR model:
-the alignment, covariance model and structure FASTA that make up a template, how
-to install it, how to declare it in the model's `.minfo` file, how to test it,
-and the ways it can silently come out wrong.
+the four files that make up a template, how to install it, how to declare it in
+the model's `.minfo` file, how to test it, and the ways it can silently come out
+wrong.
 
 **Creating the layout itself is documented by R2DT, and this page links to that
 documentation rather than restating it.** R2DT's template documentation is at
