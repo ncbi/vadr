@@ -133,14 +133,22 @@ r2dt_failure () {
 # installed on, or echo nothing if there is none. The user's own python3 is
 # preferred when it is new enough, otherwise the newest suitable python3.X on
 # PATH is used. Set VADRPYTHON to override this entirely.
+r2dt_python_is_new_enough () {
+    $1 -c "import sys; sys.exit(0 if sys.version_info[:2] >= tuple(int(x) for x in \"$R2DTMINPYTHON\".split(\".\")) else 1)" > /dev/null 2>&1
+}
 r2dt_find_python () {
     if [ "$VADRPYTHON" != "" ]; then
-        echo "$VADRPYTHON"
+        # an explicitly requested interpreter is still checked, so that a stale
+        # or wrong VADRPYTHON is reported as such instead of failing later with
+        # a less obvious error
+        if r2dt_python_is_new_enough "$VADRPYTHON"; then
+            echo "$VADRPYTHON"
+        fi
         return
     fi
     for p in python3 python3.13 python3.12 python3.11 python3.10 python3.9; do
         if command -v $p > /dev/null 2>&1; then
-            if $p -c "import sys; sys.exit(0 if sys.version_info[:2] >= tuple(int(x) for x in \"$R2DTMINPYTHON\".split(\".\")) else 1)" > /dev/null 2>&1; then
+            if r2dt_python_is_new_enough $p; then
                 command -v $p
                 return
             fi
@@ -375,7 +383,11 @@ if [ "$DOWNLOADORBUILD" != "build" ]; then
     echo "  (see $R2DTLOG for the full log of this step)"
     R2DTPYTHON=`r2dt_find_python`
     if [ "$R2DTPYTHON" = "" ]; then
-        r2dt_failure "no python3 of version $R2DTMINPYTHON or later was found on your PATH. R2DT's python requirements cannot be installed without one. Install a newer python3, or set the VADRPYTHON environment variable to the full path of one, then rerun this script."
+        if [ "$VADRPYTHON" != "" ]; then
+            r2dt_failure "VADRPYTHON is set to '$VADRPYTHON', which is not a working python3 of version $R2DTMINPYTHON or later. R2DT's python requirements cannot be installed with it. Set VADRPYTHON to the full path of a newer python3, or unset it to let this script look for one, then rerun this script."
+        else
+            r2dt_failure "no python3 of version $R2DTMINPYTHON or later was found on your PATH. R2DT's python requirements cannot be installed without one. Install a newer python3, or set the VADRPYTHON environment variable to the full path of one, then rerun this script."
+        fi
     else
         echo "  Using python: $R2DTPYTHON (`$R2DTPYTHON --version 2>&1`)"
         # NOTE: the subshell below is deliberately NOT run as the condition of
