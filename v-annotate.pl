@@ -2589,7 +2589,7 @@ exit 0;
 #             line(s) (pass or fail), for each R2DT_TEMPLATE
 #             applicable to that sequence's model, extract the sequence's
 #             aligned residues at the template's RF column ranges from the
-#             per-model RF-frame alignment (.align.afa), strip gaps, write
+#             per-model RF-frame alignment (.align.stk), strip gaps, write
 #             a 2-line input FASTA, invoke r2dt.py draw --force_template,
 #             and bundle the resulting colored SVG into the output dir.
 #
@@ -2638,7 +2638,7 @@ sub draw_r2dt_figures {
   my $cwd = getcwd();
 
   # Site-specific environment for r2dt.py (PATH additions for infernal,
-  # Bio-Easel, jiffy, traveler; the venv python; R2DT_FAKE_RNA; etc.) is the
+  # Bio-Easel, jiffy, traveler; the venv python; etc.) is the
   # admin's responsibility via an optional site-config file that we source
   # before invoking r2dt.py (if it exists):
   #   $R2DT_DIR/r2dt-vadr-env.sh
@@ -2748,7 +2748,7 @@ sub draw_r2dt_figures {
       foreach my $tmpl_HR (@{$tmpl_info_HAR->{$mdl_name}}) {
         my $tmpl_name = $tmpl_HR->{"name"};
         if(! defined $warn_FH) { open($warn_FH, ">", $r2dt_warn_file) || ofile_FileOpenFailure($r2dt_warn_file, $sub_name, $!, "writing", $FH_HR); }
-        print $warn_FH ("WARNING: no alignment row for sequence $seq_name in model $mdl_name .align.afa; cannot draw template $tmpl_name\n");
+        print $warn_FH ("WARNING: no alignment row for sequence $seq_name in model $mdl_name .align.stk; cannot draw template $tmpl_name\n");
         $nwarn++;
         print TSV ("$seq_name\t$passfail\t$tmpl_name\tfail\t-\t-\n");
       }
