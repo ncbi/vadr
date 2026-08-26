@@ -2704,7 +2704,7 @@ sub draw_r2dt_figures {
     my $passfail = $seq_passfail_H{$seq_name};
     # if this model has no R2DT_TEMPLATE lines, record 'skipped' and move on
     if((! exists $tmpl_info_HAR->{$mdl_name}) || (scalar(@{$tmpl_info_HAR->{$mdl_name}}) == 0)) {
-      push(@data_r2dt_AA, [$seq_name, $passfail, "-", "skipped", "-", "-"]);
+      push(@data_r2dt_AA, [$seq_name, $passfail, "-", "skipped", "-", "-", "-", "-"]);
       next;
     }
 
@@ -2748,9 +2748,11 @@ sub draw_r2dt_figures {
     my $rfmap_AR = $mdl_rfmap_HA{$mdl_name};
     if(! defined $aln_seq) {
       # alignment row missing; record fail-noaln for each template, continue
+      # (coverage is unknown, not zero, because we have no alignment row to
+      # check at all -- distinct from fail-nocov's known-zero coverage)
       foreach my $tmpl_HR (@{$tmpl_info_HAR->{$mdl_name}}) {
         my $tmpl_name = $tmpl_HR->{"name"};
-        push(@data_r2dt_AA, [$seq_name, $passfail, $tmpl_name, "fail-noaln", "-", "-"]);
+        push(@data_r2dt_AA, [$seq_name, $passfail, $tmpl_name, "fail-noaln", "-", "-", "-", "-"]);
       }
       next;
     }
@@ -2760,22 +2762,51 @@ sub draw_r2dt_figures {
       my $ranges_AR = $tmpl_HR->{"ranges_AR"};
 
       # extract residues at each RF (match) column range (1-indexed, inclusive),
-      # concatenate in order, strip gaps, uppercase.
+      # concatenate in order, strip gaps, uppercase. Simultaneously track which
+      # RF columns within the template's ranges are actually covered (aligned
+      # to a real, non-gap residue in this sequence) so we can report the
+      # covered range(s) and percentage in the .rdt table (columns 6/7),
+      # regardless of whether r2dt.py ultimately runs/succeeds on this pair.
       # RF column N maps to alignment column $rfmap_AR->[N] (0-indexed).
       # We only take the residues at match columns (insert columns relative to
       # the model are not part of the template frame).
       my $extracted = "";
       my $max_rfcol = scalar(@{$rfmap_AR}) - 1; # highest valid RF column number
+      my $tmpl_declared_len = 0; # total declared length of this template's ranges (denominator for pct)
+      my @covered_sgm_A = ();    # covered RF-column sub-ranges, as [start,end] pairs (1-indexed)
+      my ($cov_start, $cov_end) = (undef, undef); # in-progress covered sub-range, if any
       foreach my $range_AR (@{$ranges_AR}) {
         my ($rfstart, $rfend) = ($range_AR->[0], $range_AR->[1]);
+        $tmpl_declared_len += ($rfend - $rfstart + 1);
         for(my $rfcol = $rfstart; $rfcol <= $rfend; $rfcol++) {
-          if($rfcol <= $max_rfcol) {
-            $extracted .= substr($aln_seq, $rfmap_AR->[$rfcol], 1);
+          my $rc = ($rfcol <= $max_rfcol) ? substr($aln_seq, $rfmap_AR->[$rfcol], 1) : "-";
+          $extracted .= $rc;
+          my $is_covered = (($rc ne "-") && ($rc ne ".") && ($rc ne "~")) ? 1 : 0;
+          if($is_covered) {
+            if((defined $cov_end) && ($rfcol == ($cov_end + 1))) { $cov_end = $rfcol; } # extend in-progress sub-range
+            else                                                 { $cov_start = $rfcol; $cov_end = $rfcol; } # start a new one
+          }
+          elsif(defined $cov_end) {
+            # a gap (or crossing from one declared range to a non-adjacent one)
+            # ends the in-progress covered sub-range
+            push(@covered_sgm_A, [$cov_start, $cov_end]);
+            ($cov_start, $cov_end) = (undef, undef);
           }
         }
       }
+      if(defined $cov_end) { push(@covered_sgm_A, [$cov_start, $cov_end]); } # close a sub-range still open at the end
       $extracted =~ s/[\-\.\~]//g; # strip gaps
       $extracted = uc($extracted);
+
+      # covered range(s) in VADR coords format, and pct of the template's
+      # declared length actually covered ("-" / "0.0" if none, one decimal
+      # place otherwise -- see brief 26_0501-159 summary for rationale)
+      my $covered_str = (scalar(@covered_sgm_A) > 0)
+          ? join(",", map { vdr_CoordsSegmentCreate($_->[0], $_->[1], "+", $FH_HR) } @covered_sgm_A)
+          : "-";
+      my $covered_len = 0;
+      foreach my $sgm_AR (@covered_sgm_A) { $covered_len += ($sgm_AR->[1] - $sgm_AR->[0] + 1); }
+      my $covered_pct = sprintf("%.1f", ($tmpl_declared_len > 0) ? (100. * $covered_len / $tmpl_declared_len) : 0.);
 
       if($extracted eq "") {
         # zero residues extracted for this template's RF column ranges (e.g.
@@ -2783,7 +2814,9 @@ sub draw_r2dt_figures {
         # part of the model). r2dt.py would just fail on an empty sequence
         # (e.g. "cp9_Seq2Bands, i0: 1 > j0: 0"); short-circuit to the same
         # fail-and-continue outcome without paying for the subprocess.
-        push(@data_r2dt_AA, [$seq_name, $passfail, $tmpl_name, "fail-nocov", "-", "-"]);
+        # (covered_str is necessarily "-" and covered_pct necessarily "0.0"
+        # here, since $extracted is only empty when nothing was covered.)
+        push(@data_r2dt_AA, [$seq_name, $passfail, $tmpl_name, "fail-nocov", "-", $covered_str, $covered_pct, "-"]);
         next;
       }
 
@@ -2840,10 +2873,10 @@ sub draw_r2dt_figures {
             if((defined $oline) && ($oline =~ /^\s*(\d+)\s*$/)) { $overlaps = $1; }
           }
         }
-        push(@data_r2dt_AA, [$seq_name, $passfail, $tmpl_name, "pass", $overlaps, $dst_svg_rel]);
+        push(@data_r2dt_AA, [$seq_name, $passfail, $tmpl_name, "pass", $overlaps, $covered_str, $covered_pct, $dst_svg_rel]);
       }
       else {
-        push(@data_r2dt_AA, [$seq_name, $passfail, $tmpl_name, "fail-r2dt", "-", "-"]);
+        push(@data_r2dt_AA, [$seq_name, $passfail, $tmpl_name, "fail-r2dt", "-", $covered_str, $covered_pct, "-"]);
       }
 
       # remove the .fa.ssi index that r2dt's internal cmalign leaves next to the
@@ -2857,8 +2890,8 @@ sub draw_r2dt_figures {
   # write the .rdt summary table: space-delimited, column-aligned, in
   # the same style as VADR's other per-run tables (.mdl/.cls/.ant/etc.),
   # via ofile_TableHumanOutput().
-  my @head_r2dt_AA = (["seq_id", "pass_fail", "template_name", "r2dt_status", "overlaps", "output_svg"]);
-  my @clj_r2dt_A    = (1,         1,           1,               1,             0,          1); # overlaps (numeric) right justified; output_svg (ragged, free text) left justified like .alt's final 'detail' column
+  my @head_r2dt_AA = (["seq_id", "pass_fail", "template_name", "r2dt_status", "overlaps", "covered_ranges", "covered_pct", "output_svg"]);
+  my @clj_r2dt_A    = (1,         1,           1,               1,             0,          1,                0,             1); # overlaps/covered_pct (numeric) right justified; output_svg (ragged, free text) left justified like .alt's final 'detail' column
   open(my $tbl_FH, ">", $r2dt_tbl_file) || ofile_FileOpenFailure($r2dt_tbl_file, $sub_name, $!, "writing", $FH_HR);
   ofile_TableHumanOutput(\@data_r2dt_AA, \@head_r2dt_AA, \@clj_r2dt_A, undef, undef, "  ", "-", "#", "#", "", 0, $tbl_FH, undef, $FH_HR);
   close($tbl_FH);
