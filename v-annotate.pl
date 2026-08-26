@@ -2593,14 +2593,16 @@ exit 0;
 #             a 2-line input FASTA, invoke r2dt.py draw --force_template,
 #             and bundle the resulting colored SVG into the output dir.
 #
-#             On r2dt.py failure for a (seq, template) pair: log a warning
-#             to <out_root>.r2dt.warn and continue.
+#             Each (seq, template) pair's outcome is recorded directly in
+#             the 'r2dt_status' column of the .rdt summary table (pass /
+#             fail-noaln / fail-nocov / fail-r2dt / skipped) -- there is no
+#             separate warning file.
 #
 #             Output dir layout:
-#               <out_root>.r2dt-input/<seq>-<template>.fa  (input FASTAs)
-#               <out_root>.r2dt/<seq>/<seq>-<template>.svg  (colored SVGs)
-#               <out_root>.rdt                             (summary table)
-#               <out_root>.r2dt.warn                        (warnings, if any)
+#               <out_root>.r2dt/<seq>-<template>.svg        (colored SVGs, always)
+#               <out_root>.rdt                               (summary table, always)
+#               <out_root>.r2dt-input/<seq>-<template>.fa    (input FASTAs, --keep only)
+#               <out_root>.r2dt-input/<seq>-<template>.r2dt-out/  (r2dt.py run tree, --keep only)
 #
 # Arguments:
 #  $out_root:               root name for output file names ($dir/$dir_tail.vadr)
@@ -2670,12 +2672,11 @@ sub draw_r2dt_figures {
     push(@draw_seq_A, $seq_name);
   }
 
-  # set up output dirs and summary/warning files
+  # set up output dirs and summary file
   my $r2dt_input_dir     = $out_root . ".r2dt-input";
   my $r2dt_out_dir       = $out_root . ".r2dt";
   my $r2dt_out_dir_rel   = $dir_tail . ".vadr.r2dt"; # $r2dt_out_dir, relative to the output directory (for column 6 of the .rdt table)
   my $r2dt_tbl_file      = $out_root . ".rdt";
-  my $r2dt_warn_file     = $out_root . ".r2dt.warn";
   utl_RunCommand("mkdir -p $r2dt_input_dir", opt_Get("-v", $opt_HHR), 0, $FH_HR);
   utl_RunCommand("mkdir -p $r2dt_out_dir",   opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
@@ -2684,8 +2685,6 @@ sub draw_r2dt_figures {
   # rows are collected -- matches the space-delimited, column-aligned format
   # used by VADR's other per-run tables (.mdl/.cls/.ant/etc.)
   my @data_r2dt_AA = ();
-  my $nwarn = 0;
-  my $warn_FH = undef;
 
   # cache, per model, of:
   #   $mdl_aln_seq_HH{$mdl}{$seq} => full aligned sequence string (incl gaps + inserts)
@@ -2748,21 +2747,13 @@ sub draw_r2dt_figures {
     my $aln_seq = $mdl_aln_seq_HH{$mdl_name}{$seq_name};
     my $rfmap_AR = $mdl_rfmap_HA{$mdl_name};
     if(! defined $aln_seq) {
-      # alignment row missing; warn + record fail for each template, continue
+      # alignment row missing; record fail-noaln for each template, continue
       foreach my $tmpl_HR (@{$tmpl_info_HAR->{$mdl_name}}) {
         my $tmpl_name = $tmpl_HR->{"name"};
-        if(! defined $warn_FH) { open($warn_FH, ">", $r2dt_warn_file) || ofile_FileOpenFailure($r2dt_warn_file, $sub_name, $!, "writing", $FH_HR); }
-        print $warn_FH ("WARNING: no alignment row for sequence $seq_name in model $mdl_name .align.afa; cannot draw template $tmpl_name\n");
-        $nwarn++;
-        push(@data_r2dt_AA, [$seq_name, $passfail, $tmpl_name, "fail", "-", "-"]);
+        push(@data_r2dt_AA, [$seq_name, $passfail, $tmpl_name, "fail-noaln", "-", "-"]);
       }
       next;
     }
-
-    # per-seq output subdir
-    my $seq_out_subdir     = $r2dt_out_dir     . "/" . $seq_name;
-    my $seq_out_subdir_rel = $r2dt_out_dir_rel . "/" . $seq_name; # relative counterpart, for the .rdt table
-    utl_RunCommand("mkdir -p $seq_out_subdir", opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
     foreach my $tmpl_HR (@{$tmpl_info_HAR->{$mdl_name}}) {
       my $tmpl_name = $tmpl_HR->{"name"};
@@ -2791,11 +2782,8 @@ sub draw_r2dt_figures {
         # a failing/partial sequence whose aligned region does not reach this
         # part of the model). r2dt.py would just fail on an empty sequence
         # (e.g. "cp9_Seq2Bands, i0: 1 > j0: 0"); short-circuit to the same
-        # warn-and-continue outcome without paying for the subprocess.
-        if(! defined $warn_FH) { open($warn_FH, ">", $r2dt_warn_file) || ofile_FileOpenFailure($r2dt_warn_file, $sub_name, $!, "writing", $FH_HR); }
-        print $warn_FH ("WARNING: sequence $seq_name has zero residues in template ${tmpl_name}'s RF column range(s); skipping r2dt.py\n");
-        $nwarn++;
-        push(@data_r2dt_AA, [$seq_name, $passfail, $tmpl_name, "fail", "-", "-"]);
+        # fail-and-continue outcome without paying for the subprocess.
+        push(@data_r2dt_AA, [$seq_name, $passfail, $tmpl_name, "fail-nocov", "-", "-"]);
         next;
       }
 
@@ -2806,9 +2794,12 @@ sub draw_r2dt_figures {
       close(IFA);
 
       # r2dt.py writes into its own output subdir, one per (seq, template).
+      # This lives alongside the input FASTA in $r2dt_input_dir (both are
+      # scratch/derived data, kept only with --keep) so the flat $r2dt_out_dir
+      # holds nothing but final SVGs.
       # absolutize VADR-side paths (we 'cd' into $r2dt_dir before running r2dt.py,
       # so relative paths would otherwise resolve against $r2dt_dir, not VADR cwd)
-      my $r2dt_run_dir = $seq_out_subdir . "/" . $tmpl_name . ".r2dt-out";
+      my $r2dt_run_dir = $r2dt_input_dir . "/" . $seq_name . "-" . $tmpl_name . ".r2dt-out";
       my $abs_input_fa    = ($input_fa    =~ m/^\//) ? $input_fa    : "$cwd/$input_fa";
       my $abs_r2dt_rundir = ($r2dt_run_dir =~ m/^\//) ? $r2dt_run_dir : "$cwd/$r2dt_run_dir";
       utl_RunCommand("rm -rf $abs_r2dt_rundir", opt_Get("-v", $opt_HHR), 0, $FH_HR);
@@ -2832,8 +2823,8 @@ sub draw_r2dt_figures {
 
       # expected colored SVG: <r2dt_run_dir>/results/svg/<SEQ>-<template>.colored.svg
       my $src_svg = $abs_r2dt_rundir . "/results/svg/" . $seq_name . "-" . $tmpl_name . ".colored.svg";
-      my $dst_svg     = $seq_out_subdir     . "/" . $seq_name . "-" . $tmpl_name . ".svg";
-      my $dst_svg_rel = $seq_out_subdir_rel . "/" . $seq_name . "-" . $tmpl_name . ".svg"; # path in the .rdt table: relative to the output dir, not absolutized
+      my $dst_svg     = $r2dt_out_dir     . "/" . $seq_name . "-" . $tmpl_name . ".svg";
+      my $dst_svg_rel = $r2dt_out_dir_rel . "/" . $seq_name . "-" . $tmpl_name . ".svg"; # path in the .rdt table: relative to the output dir, not absolutized
 
       if(($r2dt_exit == 0) && (-s $src_svg)) {
         utl_RunCommand("cp $src_svg $dst_svg", opt_Get("-v", $opt_HHR), 0, $FH_HR);
@@ -2849,13 +2840,10 @@ sub draw_r2dt_figures {
             if((defined $oline) && ($oline =~ /^\s*(\d+)\s*$/)) { $overlaps = $1; }
           }
         }
-        push(@data_r2dt_AA, [$seq_name, $passfail, $tmpl_name, "ok", $overlaps, $dst_svg_rel]);
+        push(@data_r2dt_AA, [$seq_name, $passfail, $tmpl_name, "pass", $overlaps, $dst_svg_rel]);
       }
       else {
-        if(! defined $warn_FH) { open($warn_FH, ">", $r2dt_warn_file) || ofile_FileOpenFailure($r2dt_warn_file, $sub_name, $!, "writing", $FH_HR); }
-        print $warn_FH ("WARNING: r2dt.py failed (exit=$r2dt_exit) or produced no SVG for seq $seq_name template $tmpl_name; see $abs_r2dt_rundir.stdout\n");
-        $nwarn++;
-        push(@data_r2dt_AA, [$seq_name, $passfail, $tmpl_name, "fail", "-", "-"]);
+        push(@data_r2dt_AA, [$seq_name, $passfail, $tmpl_name, "fail-r2dt", "-", "-"]);
       }
 
       # remove the .fa.ssi index that r2dt's internal cmalign leaves next to the
@@ -2863,16 +2851,8 @@ sub draw_r2dt_figures {
       if(-e "$input_fa.ssi") {
         utl_RunCommand("rm -f $input_fa.ssi", opt_Get("-v", $opt_HHR), 1, $FH_HR);
       }
-
-      # clean up the r2dt.py per-pair output tree unless --keep (we keep the
-      # input FASTAs and copied SVGs regardless; the full r2dt tree is large)
-      if(! $do_keep) {
-        utl_RunCommand("rm -rf $abs_r2dt_rundir $abs_r2dt_rundir.stdout", opt_Get("-v", $opt_HHR), 1, $FH_HR);
-      }
     }
   }
-
-  if(defined $warn_FH) { close($warn_FH); }
 
   # write the .rdt summary table: space-delimited, column-aligned, in
   # the same style as VADR's other per-run tables (.mdl/.cls/.ant/etc.),
@@ -2885,8 +2865,11 @@ sub draw_r2dt_figures {
 
   # register output files
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "rdt", $r2dt_tbl_file, 1, 1, "R2DT figure summary (one row per seq,template pair)");
-  if($nwarn > 0) {
-    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "r2dt.warn", $r2dt_warn_file, 1, 1, "R2DT drawing warnings");
+
+  # .r2dt-input/ (extracted input FASTAs and r2dt.py's own run trees) is
+  # derived/scratch data VADR can regenerate; remove it unless --keep.
+  if(! $do_keep) {
+    utl_RunCommand("rm -rf $r2dt_input_dir", opt_Get("-v", $opt_HHR), 1, $FH_HR);
   }
 
   return;
