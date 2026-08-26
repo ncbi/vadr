@@ -1130,7 +1130,11 @@ my %sgm_info_HAH = (); # hash of array of hashes with segment info
 my @reqd_mdl_keys_A = ("name", "length");
 my @reqd_ftr_keys_A = ("type", "coords");
 utl_FileValidateExistsAndNonEmpty($minfo_file, "model info file", undef, 1, $FH_HR);
-vdr_ModelInfoFileParse($minfo_file, \@reqd_mdl_keys_A, \@reqd_ftr_keys_A, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
+# %r2dt_tmpl_info_HA: key: model name, value: array of hashes (one per R2DT_TEMPLATE
+# for that model). Always populated by vdr_ModelInfoFileParse() (R2DT_TEMPLATE lines
+# are always parsed/validated), but only consulted below when --draw_r2dt is used.
+my %r2dt_tmpl_info_HA = ();
+vdr_ModelInfoFileParse($minfo_file, \@reqd_mdl_keys_A, \@reqd_ftr_keys_A, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR, \%r2dt_tmpl_info_HA);
 
 # validate %mdl_info_AH
 my $nmdl = utl_AHValidate(\@mdl_info_AH, \@reqd_mdl_keys_A, "ERROR reading model info from $minfo_file", $FH_HR);
@@ -1141,17 +1145,13 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   vdr_FeatureInfoValidateCoords(\@{$ftr_info_HAH{$mdl_name}}, $mdl_info_AH[$mdl_idx]{"length"}, $FH_HR);
 }
 
-# --draw_r2dt: parse R2DT_TEMPLATE lines from the .minfo, validate them against
-# the models we read, and verify each template's local_data dir exists under
+# --draw_r2dt: R2DT_TEMPLATE lines were already parsed and validated (against
+# the models we read) by vdr_ModelInfoFileParse() above, into %r2dt_tmpl_info_HA.
+# Here we just verify each referenced template's local_data dir exists under
 # $R2DT_DIR/data/local_data/<name>/.
-my %r2dt_tmpl_info_HA = (); # key: model name, value: array of hashes (one per R2DT_TEMPLATE for that model)
 if($do_draw_r2dt) {
-  # build a model name => CLEN (length) hash for range bounds validation
-  my %mdl_len_H = ();
-  for(my $mi = 0; $mi < $nmdl; $mi++) {
-    $mdl_len_H{$mdl_info_AH[$mi]{"name"}} = $mdl_info_AH[$mi]{"length"};
-  }
-  my $ntmpl = vdr_R2dtTemplateFileParse($minfo_file, \%mdl_len_H, \%r2dt_tmpl_info_HA, $FH_HR);
+  my $ntmpl = 0;
+  foreach my $r2dt_mdl (keys %r2dt_tmpl_info_HA) { $ntmpl += scalar(@{$r2dt_tmpl_info_HA{$r2dt_mdl}}); }
   if($ntmpl == 0) {
     ofile_FAIL("ERROR, --draw_r2dt used but no R2DT_TEMPLATE lines found in model info file:\n$minfo_file", 1, $FH_HR);
   }

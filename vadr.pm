@@ -177,6 +177,7 @@ require "sqp_utils.pm";
 # Subroutines related to model info files:
 # vdr_ModelInfoFileWrite()
 # vdr_ModelInfoFileParse()
+# vdr_R2dtTemplateRangesParse()
 # vdr_ModelInfoValidateExceptionsKeys()
 # vdr_ModelInfoSetClassificationAlignmentFile()
 # vdr_ModelInfoSetClassificationRefStartStopPositions()
@@ -5936,41 +5937,58 @@ sub vdr_ModelInfoFileWrite {
 # Subroutine: vdr_ModelInfoFileParse()
 # Incept:     EPN, Fri Mar 15 05:15:23 2019
 #
-# Synopsis: Parse a model info file for >= 1 models and collect 
-#           feature information for each model $model in 
-#           @{$ftr_info_HAHR->{$model}}.
+# Synopsis: Parse a model info file for >= 1 models and collect
+#           feature information for each model $model in
+#           @{$ftr_info_HAHR->{$model}}, and (optionally) R2DT_TEMPLATE
+#           information for each model in @{$tmpl_info_HAR->{$model}}.
 #
 #           This subroutine validates that keys in @{$reqd_mdl_keys_AR}
-#           are read and stored in $mdl_info_AHR, and that keys in 
+#           are read and stored in $mdl_info_AHR, and that keys in
 #           @{$reqd_ftr_keys_AR} are read and stored in $ftr_info_HAHR.
-# 
+#
 # Arguments:
 #  $in_file:          input .minfo file to parse
 #  $reqd_mdl_keys_AR: REF to array of required model   keys, e.g. ("name", "length")
 #  $reqd_ftr_keys_AR: REF to array of required feature keys, e.g. ("type", "coords")
 #  $mdl_info_AHR:     REF to array of hashes of model information, filled here
-#  $ftr_info_HAHR:    REF to hash of array of hashes with information 
+#  $ftr_info_HAHR:    REF to hash of array of hashes with information
 #                     on the features per model, filled here
 #  $FH_HR:            REF to hash of file handles, including "log" and "cmd"
+#  $tmpl_info_HAR:    OPTIONAL (7th arg). REF to hash of arrays of hashes
+#                     with R2DT_TEMPLATE information per model, filled here,
+#                     with keys "name" (template name), "model" (model name),
+#                     and "ranges_AR" (REF to array of [start,end] pairs,
+#                     1-indexed, in the model's RF frame). R2DT_TEMPLATE
+#                     lines are always parsed and validated regardless of
+#                     whether this arg is passed; if not passed, results are
+#                     collected into a throwaway local hash. Used by
+#                     v-annotate.pl --draw_r2dt only.
 #
 # Returns:    void
 #
 # Dies:       if unable to parse $in_file
 #             if a required mdl or ftr key does not exist
+#             if a R2DT_TEMPLATE line is invalid (missing 'name'/'ranges'
+#             key, malformed or out-of-bounds 'ranges' coords, or a
+#             'ranges' coords token with strand '-')
 #################################################################
 sub vdr_ModelInfoFileParse {
   my $sub_name = "vdr_ModelInfoFileParse";
   my $nargs_expected = 6;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  if((scalar(@_) != $nargs_expected) && (scalar(@_) != ($nargs_expected + 1))) { printf STDERR ("ERROR, $sub_name entered with %d != %d (or %d) input arguments.\n", scalar(@_), $nargs_expected, $nargs_expected+1); exit(1); }
 
-  my ($in_file, $reqd_mdl_keys_AR, $reqd_ftr_keys_AR, $mdl_info_AHR, $ftr_info_HAHR, $FH_HR) = @_;
-  
+  my ($in_file, $reqd_mdl_keys_AR, $reqd_ftr_keys_AR, $mdl_info_AHR, $ftr_info_HAHR, $FH_HR, $tmpl_info_HAR) = @_;
+  if(! defined $tmpl_info_HAR) {
+    my %local_tmpl_info_HA = (); # caller doesn't want R2DT_TEMPLATE info, but we still parse/validate it
+    $tmpl_info_HAR = \%local_tmpl_info_HA;
+  }
+
   my $format_str = "# VADR model info (.minfo) format specifications:\n";
   $format_str   .= "# Lines prefixed with '#' are ignored.\n";
-  $format_str   .= "# All other lines must begin with either: 'MODEL' or 'FEATURE'\n";
+  $format_str   .= "# All other lines must begin with either: 'MODEL', 'FEATURE', or 'R2DT_TEMPLATE'\n";
   $format_str   .= "# followed by one or more whitespace characters and then the model\n";
   $format_str   .= "# name <modelname> which cannot include whitespace.\n";
-  $format_str   .= "# On each line after <modelname>, both MODEL and FEATURE lines must\n";
+  $format_str   .= "# On each line after <modelname>, MODEL, FEATURE, and R2DT_TEMPLATE lines must\n";
   $format_str   .= "# contain 0 or more <key>:<value> pairs meeting the following criteria.\n";
   $format_str   .= "# <key> must not include any whitespace or ':' characters\n";
   $format_str   .= "# <value> must start *and* end with '\"' but include no other '\"'\n";
@@ -5980,34 +5998,38 @@ sub vdr_ModelInfoFileParse {
   $format_str   .= "# <key>:<value> pairs must be separated by one or more whitespace characters.\n";
   $format_str   .= "# <modelname> and the first <key>:<value> pair must be separated by one or\n";
   $format_str   .= "# more whitespace characters.\n";
+  $format_str   .= "# R2DT_TEMPLATE lines (used by v-annotate.pl --draw_r2dt only) require a\n";
+  $format_str   .= "# 'name' key and a 'ranges' key. 'ranges' value is 1 or more comma-separated\n";
+  $format_str   .= "# VADR coords tokens '<start>..<end>:<strand>' (strand must be '+'), e.g.\n";
+  $format_str   .= "# ranges:\"1..210:+,10380..10807:+\" -- NOT a bare '<start>..<end>' with no strand.\n";
 
   # example lines:
   #MODEL NC_039477 cmfile:"test/test.vadr.cm"
   #FEATURE NC_039477 type:"gene" coords:"5..5104:+" gene:"ORF1"
   #FEATURE NC_039477 type:"CDS" coords:"5..5104:+" gene:"ORF1" product:"nonstructural polyprotein"
+  #R2DT_TEMPLATE NC_039477 name:"zika-linear" ranges:"1..210:+,10380..10807:+"
 
-  my $mdl_name   = undef; # name of current model
-  my $ftr_idx    = undef; # index of current feature
-  my $mdl_idx    = -1;    # index of current model
-  my %mdl_read_H = ();    # keeps track of which model names we've seen MODEL lines for, to avoid duplicates
+  my $mdl_name    = undef; # name of current model
+  my $ftr_idx     = undef; # index of current feature
+  my $tmpl_idx    = undef; # index of current R2DT_TEMPLATE
+  my $mdl_idx     = -1;    # index of current model
+  my %mdl_read_H  = ();    # keeps track of which model names we've seen MODEL lines for, to avoid duplicates
+  my %mdl_idx_H   = ();    # map of model name to its index in $mdl_info_AHR
   open(IN, $in_file) || ofile_FileOpenFailure($in_file, $sub_name, $!, "reading", $FH_HR);
   while(my $line = <IN>) {
-    if(($line !~ /^#/) && ($line !~ /^R2DT_TEMPLATE\s/) && ($line !~ /^\s*$/)) {
-      # not a comment line, not an R2DT_TEMPLATE line, and not a blank line
+    if(($line !~ /^#/) && ($line !~ /^\s*$/)) {
+      # not a comment line and not a blank line
       # (blank lines are skipped so a minfo can be cat'd together with an
       #  example R2DT_TEMPLATE sidecar that includes blank separator lines)
-      # (R2DT_TEMPLATE lines are parsed separately by vdr_R2dtTemplateFileParse(),
-      #  invoked only when v-annotate.pl --draw_r2dt is used; they are ignored here
-      #  so that the standard MODEL/FEATURE parse is unaffected)
       my $orig_line = $line;
       chomp $line;
-      my $is_model_line = 0; # set to 1 if line we are parsing is a MODEL line, else it's a FEATURE line
+      my $line_type = undef; # "model", "feature", or "tmpl"
       if($line =~ /^MODEL\s+(\S+)\s*/) {
         $mdl_name = $1;
-        if($mdl_name =~ /[\)\(]/) { 
+        if($mdl_name =~ /[\)\(]/) {
           ofile_FAIL("ERROR in $sub_name, model info file has model named $mdl_name which contains '(' and/or ')', which are not allowed in model names", 1, $FH_HR);
         }
-        if(exists $mdl_read_H{$mdl_name}) { 
+        if(exists $mdl_read_H{$mdl_name}) {
           ofile_FAIL("ERROR in $sub_name, problem parsing $in_file: read multiple MODEL lines for $mdl_name, should only be 1; line:\n$orig_line\n", 1, $FH_HR);
         }
         $mdl_idx++;
@@ -6015,48 +6037,81 @@ sub vdr_ModelInfoFileParse {
         @{$ftr_info_HAHR->{$mdl_name}} = ();
         $mdl_info_AHR->[$mdl_idx]{"name"} = $mdl_name;
         $mdl_read_H{$mdl_name} = 1;
+        $mdl_idx_H{$mdl_name} = $mdl_idx;
 
-        $is_model_line = 1;
+        $line_type = "model";
         $line =~ s/^MODEL\s+(\S+)\s*//; # remove MODEL and model value
       }
-      elsif($line =~ /^FEATURE\s+(\S+)\s*/) { 
+      elsif($line =~ /^FEATURE\s+(\S+)\s*/) {
         $mdl_name = $1;
-        if(! exists $mdl_read_H{$mdl_name}) { 
+        if(! exists $mdl_read_H{$mdl_name}) {
           ofile_FAIL("ERROR in $sub_name, problem parsing $in_file: read FEATURE line for model $mdl_name before a MODEL line for $mdl_name; line:\n$orig_line\n", 1, $FH_HR);
         }
         $ftr_idx = scalar(@{$ftr_info_HAHR->{$mdl_name}});
         # initialize ftr_info for this model/feature pair
-        %{$ftr_info_HAHR->{$mdl_name}[$ftr_idx]} = (); 
+        %{$ftr_info_HAHR->{$mdl_name}[$ftr_idx]} = ();
+        $line_type = "feature";
         $line =~ s/^FEATURE\s+\S+\s*//; # remove FEATURE and model value
       }
-      else { 
-        ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, non-comment line does not start with 'MODEL <modelname>' or 'FEATURE <featurename>', line:\n$orig_line\n", 1, $FH_HR);
+      elsif($line =~ /^R2DT_TEMPLATE\s+(\S+)\s*/) {
+        $mdl_name = $1;
+        if(! exists $mdl_read_H{$mdl_name}) {
+          ofile_FAIL("ERROR in $sub_name, problem parsing $in_file: read R2DT_TEMPLATE line for model $mdl_name before a MODEL line for $mdl_name; line:\n$orig_line\n", 1, $FH_HR);
+        }
+        if(! exists $tmpl_info_HAR->{$mdl_name}) { @{$tmpl_info_HAR->{$mdl_name}} = (); }
+        $tmpl_idx = scalar(@{$tmpl_info_HAR->{$mdl_name}});
+        # initialize tmpl_info for this model/template pair
+        %{$tmpl_info_HAR->{$mdl_name}[$tmpl_idx]} = ();
+        $line_type = "tmpl";
+        $line =~ s/^R2DT_TEMPLATE\s+\S+\s*//; # remove R2DT_TEMPLATE and model value
       }
-      # if we get here we have either a MODEL or FEATURE line, parse the rest of it
-      while($line ne "") { 
-        if($line =~ /^([^\:\s]+)\:\"([^\"]+)\"\s*/) { 
+      else {
+        ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, non-comment line does not start with 'MODEL <modelname>', 'FEATURE <featurename>', or 'R2DT_TEMPLATE <modelname>', line:\n$orig_line\n", 1, $FH_HR);
+      }
+      # if we get here we have a MODEL, FEATURE, or R2DT_TEMPLATE line, parse the rest of it
+      while($line ne "") {
+        if($line =~ /^([^\:\s]+)\:\"([^\"]+)\"\s*/) {
           # key   must not include ':' or whitespace
           # value must begin and end with '"' but otherwise include no '"' characters
           my ($key, $value) = ($1, $2);
-          if($is_model_line) { 
+          if($line_type eq "model") {
             if(exists $mdl_info_AHR->[$mdl_idx]{$key}) {
               ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, read multiple values for key $key on MODEL line; line:\n$orig_line\n", 1, $FH_HR);
             }
             $mdl_info_AHR->[$mdl_idx]{$key} = $value;
           }
-          else { # feature line
+          elsif($line_type eq "feature") {
             if(exists $ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key}) {
               ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, read multiple values for key $key on FEATURE line; line:\n$orig_line\n", 1, $FH_HR);
             }
             $ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key} = $value;
             # printf("\tadded ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key} as $value\n");
           }
+          else { # R2DT_TEMPLATE line
+            if(exists $tmpl_info_HAR->{$mdl_name}[$tmpl_idx]{$key}) {
+              ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, read multiple values for key $key on R2DT_TEMPLATE line; line:\n$orig_line\n", 1, $FH_HR);
+            }
+            $tmpl_info_HAR->{$mdl_name}[$tmpl_idx]{$key} = $value;
+          }
           $line =~ s/^[^\:\s]+\:\"[^\"]+\"\s*//; # remove this key/value pair
         }
-        else { 
+        else {
           ofile_FAIL("ERROR in $sub_name, unable to parse $in_file, failed to parse key:value pairs in line:\n$orig_line\n$format_str\n", 1, $FH_HR);
         }
-      } 
+      }
+      if($line_type eq "tmpl") {
+        # finalize: require 'name' and 'ranges', validate/convert 'ranges'
+        if(! exists $tmpl_info_HAR->{$mdl_name}[$tmpl_idx]{"name"}) {
+          ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, R2DT_TEMPLATE line missing required key 'name'; line:\n$orig_line\n", 1, $FH_HR);
+        }
+        if(! exists $tmpl_info_HAR->{$mdl_name}[$tmpl_idx]{"ranges"}) {
+          ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, R2DT_TEMPLATE line missing required key 'ranges'; line:\n$orig_line\n", 1, $FH_HR);
+        }
+        my $tmpl_clen = (exists $mdl_idx_H{$mdl_name}) ? $mdl_info_AHR->[$mdl_idx_H{$mdl_name}]{"length"} : undef;
+        my $ranges_AR = vdr_R2dtTemplateRangesParse($tmpl_info_HAR->{$mdl_name}[$tmpl_idx]{"ranges"}, $tmpl_clen, $orig_line, $FH_HR);
+        $tmpl_info_HAR->{$mdl_name}[$tmpl_idx]{"ranges_AR"} = $ranges_AR;
+        $tmpl_info_HAR->{$mdl_name}[$tmpl_idx]{"model"}     = $mdl_name;
+      }
     }
   }
   close(IN);
@@ -6073,116 +6128,74 @@ sub vdr_ModelInfoFileParse {
 }
 
 #################################################################
-# Subroutine: vdr_R2dtTemplateFileParse()
-# Incept:     EPN, Tue Jun  2 2026
+# Subroutine: vdr_R2dtTemplateRangesParse()
+# Incept:     EPN, 2026-08-26 (replaces vdr_R2dtTemplateFileParse())
 #
-# Synopsis: Parse R2DT_TEMPLATE lines from a model info (.minfo) file.
-#           Used by v-annotate.pl --draw_r2dt only. R2DT_TEMPLATE lines
-#           are ignored by the standard vdr_ModelInfoFileParse().
+# Synopsis: Parse and validate the value of an R2DT_TEMPLATE line's
+#           'ranges' key: 1 or more comma-separated VADR coords tokens
+#           '<start>..<end>:<strand>', strand required to be '+' (R2DT
+#           template ranges are positions in the model's RF frame, which
+#           is always in the model's '+' sense), non-overlapping and
+#           monotonically increasing, and (if $clen defined) in bounds.
 #
-#           R2DT_TEMPLATE line format:
-#             R2DT_TEMPLATE name=<template_name> model=<vadr_model_name> ranges=<rfstart..rfend>[,<rfstart..rfend>]*
-#
-#           Fields:
-#             name:   R2DT template name (matches <R2DT_install>/data/local_data/<name>/)
-#             model:  VADR model name (must match a MODEL line's name)
-#             ranges: comma-separated list of inclusive, 1-indexed RF column
-#                     ranges in the VADR model's RF frame. Concatenated in the
-#                     order given to form the extracted sub-sequence.
-#
-#           Results are stored in @{$tmpl_info_HAR->{$model}}, one hash per
-#           R2DT_TEMPLATE applicable to that model, with keys:
-#             "name"      => template name
-#             "model"     => model name
-#             "ranges_AR" => ref to array of [start,end] pairs (1-indexed)
+#           Reuses vdr_CoordsSegmentValidate()/vdr_CoordsSegmentParse()
+#           (vadr.pm's general coords validator/parser) rather than
+#           duplicating coords-format logic; only the error messages
+#           and the '+'-only strand restriction are specific to
+#           R2DT_TEMPLATE ranges.
 #
 # Arguments:
-#  $in_file:        input .minfo file to parse
-#  $mdl_len_HR:     REF to hash, key: model name, value: model CLEN (length),
-#                   used to validate ranges are in bounds. Can be undef to skip
-#                   the in-bounds check.
-#  $tmpl_info_HAR:  REF to hash of arrays of hashes, filled here (see above)
-#  $FH_HR:          REF to hash of file handles, including "log" and "cmd"
+#  $ranges_str: value of the 'ranges' key, e.g. "1..210:+,10380..10807:+"
+#  $clen:       model length (CLEN), for in-bounds check. Can be undef
+#               to skip the in-bounds check.
+#  $orig_line:  the original R2DT_TEMPLATE line (for error messages)
+#  $FH_HR:      REF to hash of file handles, including "log" and "cmd"
 #
-# Returns:    number of R2DT_TEMPLATE lines parsed
+# Returns:    REF to array of [start,end] pairs (1-indexed)
 #
-# Dies:       if unable to parse a line
-#             if model name is unknown (not a key in $mdl_len_HR, if defined)
-#             if a range is out-of-bounds for the model CLEN
-#             if ranges are overlapping or non-monotonic
+# Dies: if $ranges_str is empty or malformed
+#       if any coords token has strand '-'
+#       if a range is out of bounds for $clen (when defined)
+#       if ranges overlap or are non-monotonic
 #################################################################
-sub vdr_R2dtTemplateFileParse {
-  my $sub_name = "vdr_R2dtTemplateFileParse";
+sub vdr_R2dtTemplateRangesParse {
+  my $sub_name = "vdr_R2dtTemplateRangesParse";
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
 
-  my ($in_file, $mdl_len_HR, $tmpl_info_HAR, $FH_HR) = @_;
+  my ($ranges_str, $clen, $orig_line, $FH_HR) = @_;
 
-  my $ntmpl = 0;
-  open(IN, $in_file) || ofile_FileOpenFailure($in_file, $sub_name, $!, "reading", $FH_HR);
-  while(my $line = <IN>) {
-    if($line =~ /^R2DT_TEMPLATE\s/) {
-      my $orig_line = $line;
-      chomp $line;
-      # parse the three required key=value fields (order-independent)
-      my ($tmpl_name, $tmpl_model, $tmpl_ranges) = (undef, undef, undef);
-      my $rest = $line;
-      $rest =~ s/^R2DT_TEMPLATE\s+//;
-      foreach my $tok (split(/\s+/, $rest)) {
-        if   ($tok =~ /^name=(\S+)$/)   { $tmpl_name   = $1; }
-        elsif($tok =~ /^model=(\S+)$/)  { $tmpl_model  = $1; }
-        elsif($tok =~ /^ranges=(\S+)$/) { $tmpl_ranges = $1; }
-        else {
-          ofile_FAIL("ERROR in $sub_name, unable to parse R2DT_TEMPLATE token '$tok'; expected name=, model=, or ranges=; line:\n$orig_line\n", 1, $FH_HR);
-        }
+  my @ranges_A = ();
+  my $prev_end = 0;
+  foreach my $tok (split(",", $ranges_str)) {
+    if(! vdr_CoordsSegmentValidate($tok, $FH_HR)) {
+      if($tok =~ /^\d+\.\.\d+$/) {
+        # the single most likely mistake: a bare "<start>..<end>" with no ":<strand>"
+        ofile_FAIL("ERROR in $sub_name, problem parsing R2DT_TEMPLATE ranges \"$ranges_str\", coordinate token '$tok' is missing a strand (expected VADR coords format '<start>..<end>:<strand>', e.g. '1..210:+', not a bare '<start>..<end>'); line:\n$orig_line\n", 1, $FH_HR);
       }
-      if(! defined $tmpl_name)   { ofile_FAIL("ERROR in $sub_name, R2DT_TEMPLATE line missing name= field; line:\n$orig_line\n", 1, $FH_HR); }
-      if(! defined $tmpl_model)  { ofile_FAIL("ERROR in $sub_name, R2DT_TEMPLATE line missing model= field; line:\n$orig_line\n", 1, $FH_HR); }
-      if(! defined $tmpl_ranges) { ofile_FAIL("ERROR in $sub_name, R2DT_TEMPLATE line missing ranges= field; line:\n$orig_line\n", 1, $FH_HR); }
-
-      # validate model reference
-      if((defined $mdl_len_HR) && (! exists $mdl_len_HR->{$tmpl_model})) {
-        ofile_FAIL("ERROR in $sub_name, R2DT_TEMPLATE references unknown model '$tmpl_model'; line:\n$orig_line\n", 1, $FH_HR);
-      }
-      my $clen = (defined $mdl_len_HR) ? $mdl_len_HR->{$tmpl_model} : undef;
-
-      # parse + validate ranges
-      my @ranges_A = ();
-      my $prev_end = 0;
-      foreach my $range (split(/,/, $tmpl_ranges)) {
-        if($range !~ /^(\d+)\.\.(\d+)$/) {
-          ofile_FAIL("ERROR in $sub_name, unable to parse R2DT_TEMPLATE range '$range', expected <start>..<end>; line:\n$orig_line\n", 1, $FH_HR);
-        }
-        my ($start, $end) = ($1, $2);
-        if($start < 1) {
-          ofile_FAIL("ERROR in $sub_name, R2DT_TEMPLATE range start $start < 1; line:\n$orig_line\n", 1, $FH_HR);
-        }
-        if($end < $start) {
-          ofile_FAIL("ERROR in $sub_name, R2DT_TEMPLATE range $range has end < start (non-monotonic within range); line:\n$orig_line\n", 1, $FH_HR);
-        }
-        if((defined $clen) && ($end > $clen)) {
-          ofile_FAIL("ERROR in $sub_name, R2DT_TEMPLATE range end $end > model $tmpl_model CLEN $clen (out of bounds); line:\n$orig_line\n", 1, $FH_HR);
-        }
-        if($start <= $prev_end) {
-          ofile_FAIL("ERROR in $sub_name, R2DT_TEMPLATE ranges overlap or are non-monotonic (range start $start <= previous range end $prev_end); line:\n$orig_line\n", 1, $FH_HR);
-        }
-        push(@ranges_A, [$start, $end]);
-        $prev_end = $end;
-      }
-      if(scalar(@ranges_A) == 0) {
-        ofile_FAIL("ERROR in $sub_name, R2DT_TEMPLATE has empty ranges; line:\n$orig_line\n", 1, $FH_HR);
-      }
-
-      if(! exists $tmpl_info_HAR->{$tmpl_model}) { @{$tmpl_info_HAR->{$tmpl_model}} = (); }
-      push(@{$tmpl_info_HAR->{$tmpl_model}}, { "name"      => $tmpl_name,
-                                               "model"     => $tmpl_model,
-                                               "ranges_AR" => \@ranges_A });
-      $ntmpl++;
+      ofile_FAIL("ERROR in $sub_name, problem parsing R2DT_TEMPLATE ranges \"$ranges_str\", unable to parse coordinate token '$tok'; expected VADR coords format '<start>..<end>:<strand>', e.g. '1..210:+'; line:\n$orig_line\n", 1, $FH_HR);
     }
+    my ($start, $end, $strand) = vdr_CoordsSegmentParse($tok, $FH_HR);
+    if($strand ne "+") {
+      ofile_FAIL("ERROR in $sub_name, problem parsing R2DT_TEMPLATE ranges \"$ranges_str\", coordinate token '$tok' has strand '$strand'; R2DT_TEMPLATE ranges are positions in the model's RF frame and must be strand '+'; line:\n$orig_line\n", 1, $FH_HR);
+    }
+    if($end < $start) {
+      ofile_FAIL("ERROR in $sub_name, problem parsing R2DT_TEMPLATE ranges \"$ranges_str\", coordinate token '$tok' has end < start (non-monotonic within range); line:\n$orig_line\n", 1, $FH_HR);
+    }
+    if((defined $clen) && ($end > $clen)) {
+      ofile_FAIL("ERROR in $sub_name, problem parsing R2DT_TEMPLATE ranges \"$ranges_str\", coordinate token '$tok' end $end > model CLEN $clen (out of bounds); line:\n$orig_line\n", 1, $FH_HR);
+    }
+    if($start <= $prev_end) {
+      ofile_FAIL("ERROR in $sub_name, problem parsing R2DT_TEMPLATE ranges \"$ranges_str\", coordinate token '$tok' start $start <= previous range end $prev_end (ranges must be non-overlapping and increasing); line:\n$orig_line\n", 1, $FH_HR);
+    }
+    push(@ranges_A, [$start, $end]);
+    $prev_end = $end;
   }
-  close(IN);
+  if(scalar(@ranges_A) == 0) {
+    ofile_FAIL("ERROR in $sub_name, R2DT_TEMPLATE line has empty 'ranges' value; line:\n$orig_line\n", 1, $FH_HR);
+  }
 
-  return $ntmpl;
+  return \@ranges_A;
 }
 
 #################################################################
