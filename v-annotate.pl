@@ -2787,14 +2787,19 @@ sub draw_r2dt_figures {
             else                                                 { $cov_start = $rfcol; $cov_end = $rfcol; } # start a new one
           }
           elsif(defined $cov_end) {
-            # a gap (or crossing from one declared range to a non-adjacent one)
-            # ends the in-progress covered sub-range
+            # a gap ends the in-progress covered sub-range
             push(@covered_sgm_A, [$cov_start, $cov_end]);
             ($cov_start, $cov_end) = (undef, undef);
           }
         }
+        # a declared range boundary always ends an in-progress covered
+        # sub-range, even if it ran all the way to this range's last column
+        # with no gap -- otherwise it would be silently dropped (not merged,
+        # not emitted) if the *next* range's first column is also covered,
+        # since that's indistinguishable from "still extending" by column
+        # number alone (ranges are not necessarily adjacent)
+        if(defined $cov_end) { push(@covered_sgm_A, [$cov_start, $cov_end]); ($cov_start, $cov_end) = (undef, undef); }
       }
-      if(defined $cov_end) { push(@covered_sgm_A, [$cov_start, $cov_end]); } # close a sub-range still open at the end
       $extracted =~ s/[\-\.\~]//g; # strip gaps
       $extracted = uc($extracted);
 
