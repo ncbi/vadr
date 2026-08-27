@@ -34,7 +34,7 @@ ones, you want [Drawing R2DT secondary structure figures with
 
 **NOTE: this is a hands-on procedure with a manual layout editing step in a
 browser.** It is not a one-command build, and the layout step is the part that
-takes the longest and is easiest to get wrong. Budget accordingly.
+takes the longest and is easiest to get wrong.
 
 ## What you need before starting<a name="prereqs"></a>
 
