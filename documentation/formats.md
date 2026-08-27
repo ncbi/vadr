@@ -17,6 +17,7 @@
   * [`.sqc` files](#sqc)
   * [`.sda` files](#sda)
   * [`.rpn` files](#rpn)
+  * [`.rdt` files](#rdt)
   * [`.dcr` files](#dcr)
   * [`.scn` files](#scn)
   * [`.alt.list` files](#altlist)
@@ -346,8 +347,9 @@ These files are listed in the table below
 | `.sqc` | per-sequence classification information | [va-noro.9.vadr.sqc](annotate-files/va-noro.9.vadr.sqc) | [description of format in this document](#sqc) |
 | `.sda` | per-sequence seed alignment information (only created if `-s` used) | [va-noro-s.9.vadr.sda](annotate-files/va-noro-s.9.vadr.sda) | [description of format in this document](#sda) |
 | `.rpn` | per-sequence N replacement information (only created if `-r` used)  | [va-noro-r.9.vadr.rpn](annotate-files/va-noro-r.9.vadr.rpn) | [description of format in this document](#rpn) |
+| `.rdt` | per-(sequence,template) R2DT figure summary (only created if `--draw_r2dt` used) | example excerpt in [description of format in this document](#rdt) | [description of format in this document](#rdt) |
 
-All nine types of tabular output files share the following
+All ten types of tabular output files share the following
 characteristics: 
 
 1. fields are separated by whitespace (with the possible exception of
@@ -648,6 +650,42 @@ va-noro-r.9`.
 |  14 | `nnt rp-full`         | number of Ns replaced in the `nreg rp-full` reg |
 |  15 | `nnt rp-part`         | number of Ns replaced in the `nreg rp-part` reg |
 |  16 | `detail_on_regions [S:seq,M:mdl,D:lendiff,N:#Ns, E:#non_N_match_expected, F:flush_direction,R:region_replaced?];` | string with details on each region; `S`: sequence positions of region; `M`: model positions of region; `D`:sequence length - model length; `N`: number of Ns in region; `E`: number of non-Ns that match expected / total non-Ns or `?/?` if replacement not attempted or `D` is 0 and region is entirely Ns; `F`: if `D` is 0 or `E` is `?/?` then `-`, else `5'` if shifting sequence region left gave higher `E` or `3'` if shifting right gave higher `E`; `R`: `Y` if region was replaced, `N` if not;
+
+---
+
+### Explanation of `.rdt`-suffixed output files<a name="rdt"></a>
+
+`.rdt` files are only output if the `v-annotate.pl --draw_r2dt` option is used.
+`.rdt` data lines have 6 fields, the names of which appear in the
+comment line at the top of the file. Unlike the other tabular output files
+described in this section, `.rdt` files do not have one data line per
+**sequence** — instead they have one data line per **(sequence, template)
+pair**: with `--draw_r2dt`, every sequence classified to a model that has one
+or more `R2DT_TEMPLATE` lines in its `.minfo` entry is drawn once per
+template, so a sequence with 2 available templates contributes 2 `.rdt` data
+lines. A classified sequence whose model has no `R2DT_TEMPLATE` lines
+contributes a single `skipped` data line instead (see `r2dt_status` below).
+Unclassified sequences do not appear in the `.rdt` file at all.
+
+Example excerpt (from a `v-annotate.pl --draw_r2dt` run on a set of Zika virus sequences
+against a model with two R2DT templates, `zika-linear` and `zika-circular`):
+```
+#seq_id      pass_fail  template_name  r2dt_status  overlaps  output_svg
+#----------  ---------  -------------  -----------  --------  ----------
+AY632535.2   FAIL       zika-linear    ok                  0  va-test12.vadr.r2dt-svg/AY632535.2/AY632535.2-zika-linear.svg
+AY632535.2   FAIL       zika-circular  ok                  0  va-test12.vadr.r2dt-svg/AY632535.2/AY632535.2-zika-circular.svg
+HQ234498.1   PASS       zika-linear    ok                  0  va-test12.vadr.r2dt-svg/HQ234498.1/HQ234498.1-zika-linear.svg
+HQ234498.1   PASS       zika-circular  ok                  0  va-test12.vadr.r2dt-svg/HQ234498.1/HQ234498.1-zika-circular.svg
+```
+
+| idx | field            | description |
+|-----|------------------|-------------|
+|   1 | `seq_id`         | sequence name |
+|   2 | `pass_fail`      | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alerts) |
+|   3 | `template_name`  | name of the R2DT template this data line pertains to, or `-` if `r2dt_status` is `skipped` |
+|   4 | `r2dt_status`     | `ok` if a colored SVG figure was successfully drawn for this (sequence, template) pair; `fail` if drawing was attempted but failed (see the `.rdt.warn` file for the reason); `skipped` if this sequence's model has no `R2DT_TEMPLATE` lines, so no template was attempted |
+|   5 | `overlaps`       | number of base pair overlaps reported by R2DT/Traveler for this figure, or `-` if `r2dt_status` is not `ok` |
+|   6 | `output_svg`     | path, relative to the output directory, of the colored SVG figure file, or `-` if `r2dt_status` is not `ok` |
 
 ---
 
