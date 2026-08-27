@@ -330,7 +330,7 @@ characteristics:
 3. data lines begin with a non-whitespace character other than `#`
 4. all lines are either comment lines or data lines
 
-Each of these nine tabular formats are explained in more detail below.
+Each of these ten tabular formats are explained in more detail below.
 All example files linked to below, except where otherwise stated, were created by the `v-annotate.pl` [example command](annotate.md#examplebasic)
 `v-annotate.pl $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-noro.9`.
 
@@ -628,26 +628,27 @@ va-noro-r.9`.
 ### Explanation of `.rdt`-suffixed output files<a name="rdt"></a>
 
 `.rdt` files are only output if the `v-annotate.pl --draw_r2dt` option is used.
-`.rdt` data lines have 6 fields, the names of which appear in the
+`.rdt` data lines have 8 fields, the names of which appear in the
 comment line at the top of the file. Unlike the other tabular output files
 described in this section, `.rdt` files do not have one data line per
-**sequence** — instead they have one data line per **(sequence, template)
-pair**: with `--draw_r2dt`, every sequence classified to a model that has one
+**sequence**: instead they have one data line per **(sequence, template)
+pair**. With `--draw_r2dt`, every sequence classified to a model that has one
 or more `R2DT_TEMPLATE` lines in its `.minfo` entry is drawn once per
 template, so a sequence with 2 available templates contributes 2 `.rdt` data
 lines. A classified sequence whose model has no `R2DT_TEMPLATE` lines
 contributes a single `skipped` data line instead (see `r2dt_status` below).
 Unclassified sequences do not appear in the `.rdt` file at all.
 
-Example excerpt (from a `v-annotate.pl --draw_r2dt` run on a set of Zika virus sequences
-against a model with two R2DT templates, `zika-linear` and `zika-circular`):
+Example excerpt (from a real `v-annotate.pl --draw_r2dt` run on two Zika virus
+sequences against a model with two R2DT templates, `zika-linear` and
+`zika-circular`):
 ```
-#seq_id      pass_fail  template_name  r2dt_status  overlaps  output_svg
-#----------  ---------  -------------  -----------  --------  ----------
-AY632535.2   FAIL       zika-linear    ok                  0  va-test12.vadr.r2dt-svg/AY632535.2/AY632535.2-zika-linear.svg
-AY632535.2   FAIL       zika-circular  ok                  0  va-test12.vadr.r2dt-svg/AY632535.2/AY632535.2-zika-circular.svg
-HQ234498.1   PASS       zika-linear    ok                  0  va-test12.vadr.r2dt-svg/HQ234498.1/HQ234498.1-zika-linear.svg
-HQ234498.1   PASS       zika-circular  ok                  0  va-test12.vadr.r2dt-svg/HQ234498.1/HQ234498.1-zika-circular.svg
+#seq_id      pass_fail  template_name  r2dt_status  overlaps  covered_ranges                                              covered_pct  output_svg
+#----------  ---------  -------------  -----------  --------  ----------------------------------------------------------  -----------  ----------
+AY632535.2   FAIL       zika-linear    pass                0  1..73:+,75..137:+,139..210:+,10380..10710:+,10712..10807:+         99.5  va-example.vadr.r2dt-svg/AY632535.2-zika-linear.svg
+AY632535.2   FAIL       zika-circular  pass                0  1..73:+,75..137:+,139..190:+,10666..10710:+,10712..10807:+         99.1  va-example.vadr.r2dt-svg/AY632535.2-zika-circular.svg
+NC_012532.1  FAIL       zika-linear    pass                0  1..73:+,75..137:+,139..210:+,10380..10710:+,10712..10807:+         99.5  va-example.vadr.r2dt-svg/NC_012532.1-zika-linear.svg
+NC_012532.1  FAIL       zika-circular  pass                0  1..73:+,75..137:+,139..190:+,10666..10710:+,10712..10807:+         99.1  va-example.vadr.r2dt-svg/NC_012532.1-zika-circular.svg
 ```
 
 | idx | field            | description |
@@ -655,9 +656,11 @@ HQ234498.1   PASS       zika-circular  ok                  0  va-test12.vadr.r2d
 |   1 | `seq_id`         | sequence name |
 |   2 | `pass_fail`      | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alerts) |
 |   3 | `template_name`  | name of the R2DT template this data line pertains to, or `-` if `r2dt_status` is `skipped` |
-|   4 | `r2dt_status`     | `ok` if a colored SVG figure was successfully drawn for this (sequence, template) pair; `fail` if drawing was attempted but failed (see the `.rdt.warn` file for the reason); `skipped` if this sequence's model has no `R2DT_TEMPLATE` lines, so no template was attempted |
-|   5 | `overlaps`       | number of base pair overlaps reported by R2DT/Traveler for this figure, or `-` if `r2dt_status` is not `ok` |
-|   6 | `output_svg`     | path, relative to the output directory, of the colored SVG figure file, or `-` if `r2dt_status` is not `ok` |
+|   4 | `r2dt_status`     | status of this (sequence, template) pair's drawing attempt: `pass` if a colored SVG figure was successfully drawn; `skipped` if this sequence's model has no `R2DT_TEMPLATE` lines, so no template was attempted; `fail-noaln` if the sequence has no row in the model's alignment; `fail-nocov` if the sequence has zero residues aligned within the template's declared ranges; `fail-r2dt` if `r2dt.py` was run but exited non-zero or produced no SVG |
+|   5 | `overlaps`       | number of base pair overlaps reported by R2DT/Traveler for this figure, or `-` if `r2dt_status` is not `pass` |
+|   6 | `covered_ranges` | comma-separated list, in VADR coords format, of the RF (model consensus/match) sub-ranges within the template's declared ranges that this sequence actually has non-gap residues aligned to, emitted in full with no merging or capping across templates, or `-` if none are covered |
+|   7 | `covered_pct`    | percentage (one decimal place) of the template's declared length actually covered by this sequence, `0.0` if none is covered |
+|   8 | `output_svg`     | path, relative to the output directory, of the colored SVG figure file, or `-` if `r2dt_status` is not `pass` |
 
 ---
 
