@@ -195,7 +195,7 @@ layout file needs the pseudoknots dropped.
 
 **Get the shipped one wrong and every pseudoknot vanishes from every diagram,
 with no error anywhere.** The template still builds, still aligns, and still
-draws. Nothing in `.r2dt.tsv` reports it, and it is invisible in a rendered
+draws. Nothing in the `.rdt` file reports it, and it is invisible in a rendered
 diagram unless you already know which pseudoknots should be there. This is the
 single most expensive mistake on this page, which is why the
 [checklist](#checklist) below has an item for it.
@@ -251,8 +251,8 @@ export R2DT_DIR=/path/to/R2DT
 v-annotate.pl --draw_r2dt --mdir <model dir> --mkey <model key> few.fa va-few
 ```
 
-Then read `va-few/va-few.vadr.r2dt.tsv` and check that the rows you expect are
-`ok` and that `overlaps` is `0`. A nonzero overlap count on a sequence that
+Then read `va-few/va-few.vadr.rdt` and check that the rows you expect are
+`pass` and that `overlaps` is `0`. A nonzero overlap count on a sequence that
 closely matches the template means the layout and the structure disagree, and
 is worth resolving before the template is used for real work.
 
@@ -347,8 +347,8 @@ Points this example illustrates:
 * **Coverage follows from the ranges.** `zika-circular` reaches only back to
   model position 10666, so a 3' fragment that stops before that gets no circular
   diagram even though it gets a linear one. That is exactly the `KF383047.1` row
-  in the example `.r2dt.tsv` in
-  [r2dt-drawing.md](r2dt-drawing.md#tsv).
+  in the example `.rdt` file in
+  [r2dt-drawing.md](r2dt-drawing.md#rdt).
 
 The two example SVGs shipped with this documentation,
 [NC_035889.1-zika-linear.svg](r2dt-files/NC_035889.1-zika-linear.svg) and

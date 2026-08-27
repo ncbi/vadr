@@ -33,13 +33,14 @@ sequence could form.
 
 One thing is worth knowing before reading further. A diagram covers **only the
 model positions the template declares**, and a sequence that does not reach
-those positions gets no diagram at all, with a warning rather than an error.
-See [Coverage](#coverage).
+those positions gets no diagram at all. That is recorded rather than raised as
+an error. See [Coverage](#coverage).
 
-`--draw_r2dt` requires an R2DT installation, which VADR does not install. It
-also requires a model package whose `.minfo` file declares templates. Most
-VADR model packages do not, and adding them is a model-building task covered on
-a separate page, [Adding R2DT templates for a VADR model](r2dt-templates.md#top).
+`--draw_r2dt` requires an R2DT installation, which `vadr-install.sh` installs
+for you. It also requires a model package whose `.minfo` file declares
+templates. Most VADR model packages do not, and adding them is a
+model-building task covered on a separate page,
+[Adding R2DT templates for a VADR model](r2dt-templates.md#top).
 
 Throughout this page, examples use a Zika virus model with two templates named
 `zika-linear` and `zika-circular`. Those names, and the model positions they
@@ -63,15 +64,24 @@ install fails immediately rather than after the alignment stage.
 
 ### The R2DT version
 
-<!-- TODO: name the R2DT version installed by vadr-install.sh here, once
-     vadr-install.sh installs R2DT. -->
+`vadr-install.sh` installs R2DT for you, along with Traveler and the helper
+scripts R2DT's drawing path needs. R2DT is the only optional dependency in that
+script: if it cannot be installed, the rest of the VADR installation still
+succeeds, and everything except `--draw_r2dt` works. The R2DT step needs
+`python3` and network access to PyPI, which the rest of the installation does
+not. See [install.md](install.md#r2dt) for the details and for what to do if
+that step fails.
 
-`vadr-install.sh` does not currently install R2DT; you install it yourself,
-following [R2DT's own instructions](https://r2dt.readthedocs.io/).
+**NOTE:** `vadr-install.sh` pins a specific reviewed commit on R2DT's `develop`
+branch rather than a release tag, because no R2DT release yet contains the
+drawing code VADR uses. The pinned commit is named in `vadr-install.sh` itself,
+in the `R2DTVERSION` variable.
 
-**VADR does not state a minimum R2DT version**, because it has not been tested
-against a range of them. Use a current R2DT release. If a future
-`vadr-install.sh` installs R2DT, use the version it installs.
+If you would rather install R2DT yourself, follow
+[R2DT's own instructions](https://r2dt.readthedocs.io/) and point `R2DT_DIR` at
+the result. **VADR does not state a minimum R2DT version**, because it has not
+been tested against a range of them. The commit `vadr-install.sh` pins is the
+one VADR is known to work with.
 
 ### What R2DT itself needs for this code path
 
@@ -203,11 +213,13 @@ you want a sample.
 
 ### `--keep`
 
-With `--keep`, VADR retains R2DT's full per-pair output tree and the captured
-`r2dt.py` standard output. Without it, both are deleted after the SVG has been
-copied out, since the tree is large. The extracted input FASTA files and the
-copied SVGs are kept either way. Retaining the tree is the main way to
-diagnose an `r2dt.py` failure; see [Troubleshooting](#troubleshooting).
+Without `--keep`, VADR keeps only the summary table and the diagrams. With
+`--keep` it also keeps `<out_root>.r2dt-input/`, which holds the residues
+extracted for each pair, R2DT's own output directory for that pair, and the
+captured `r2dt.py` standard output. That directory is scratch data VADR can
+regenerate, and it is large, so it is removed at the end of a run unless you ask
+for it. It is also where you look when `r2dt.py` fails; see
+[Troubleshooting](#troubleshooting).
 
 ## Output files<a name="output"></a>
 
@@ -215,29 +227,31 @@ With `--draw_r2dt`, `v-annotate.pl` creates the following, where `<out_root>` is
 `<output directory>/<output directory>.vadr`:
 
 ```
-<out_root>.r2dt.tsv                             summary table, one row per (sequence, template)
-<out_root>.r2dt.warn                            warnings, created only if at least one pair failed
-<out_root>.r2dt/<seq>/<seq>-<template>.svg      the diagrams
-<out_root>.r2dt-input/<seq>-<template>.fa       the extracted residues handed to r2dt.py
+<out_root>.rdt                                    summary table, one row per (sequence, template)
+<out_root>.r2dt-svg/<seq>-<template>.svg          the diagrams
+<out_root>.r2dt-input/<seq>-<template>.fa         the extracted residues, --keep only
+<out_root>.r2dt-input/<seq>-<template>.r2dt-out/  r2dt.py's own output directory, --keep only
 ```
 
-For the example command above, that is `va-zika/va-zika.vadr.r2dt.tsv`,
-`va-zika/va-zika.vadr.r2dt/`, and so on.
+For the example command above, that is `va-zika/va-zika.vadr.rdt`,
+`va-zika/va-zika.vadr.r2dt-svg/`, and so on.
 
-### <a name="tsv"></a>`.r2dt.tsv`
+### <a name="rdt"></a>`.rdt`
 
-A tab delimited summary, one row per (sequence, template) pair, with a comment
-line naming the columns. **This is the file to look at first.** Real output from
-a three sequence run:
+A space delimited, column aligned table with one row per (sequence, template)
+pair, in the same style as VADR's other per-run tables, with comment lines
+naming the columns. **This is the file to look at first.** Real output from a
+three sequence run:
 
 ```
-#seq_id	pass_fail	template_name	r2dt_status	overlaps	output_svg
-NC_035889.1	PASS	zika-linear	ok	0	va-zika/va-zika.vadr.r2dt/NC_035889.1/NC_035889.1-zika-linear.svg
-NC_035889.1	PASS	zika-circular	ok	0	va-zika/va-zika.vadr.r2dt/NC_035889.1/NC_035889.1-zika-circular.svg
-KF383047.1	PASS	zika-linear	ok	0	va-zika/va-zika.vadr.r2dt/KF383047.1/KF383047.1-zika-linear.svg
-KF383047.1	PASS	zika-circular	fail	-	-
-AB908162.1	PASS	zika-linear	fail	-	-
-AB908162.1	PASS	zika-circular	fail	-	-
+#seq_id      pass_fail  template_name  r2dt_status  overlaps  covered_ranges                                              covered_pct  output_svg
+#----------  ---------  -------------  -----------  --------  ----------------------------------------------------------  -----------  ----------
+AY632535.2   FAIL       zika-linear    pass                0  1..73:+,75..137:+,139..210:+,10380..10710:+,10712..10807:+         99.5  va-example.vadr.r2dt-svg/AY632535.2-zika-linear.svg
+AY632535.2   FAIL       zika-circular  pass                0  1..73:+,75..137:+,139..190:+,10666..10710:+,10712..10807:+         99.1  va-example.vadr.r2dt-svg/AY632535.2-zika-circular.svg
+NC_012532.1  FAIL       zika-linear    pass                0  1..73:+,75..137:+,139..210:+,10380..10710:+,10712..10807:+         99.5  va-example.vadr.r2dt-svg/NC_012532.1-zika-linear.svg
+NC_012532.1  FAIL       zika-circular  pass                0  1..73:+,75..137:+,139..190:+,10666..10710:+,10712..10807:+         99.1  va-example.vadr.r2dt-svg/NC_012532.1-zika-circular.svg
+KF383047.1   PASS       zika-linear    pass                0  10380..10637:+                                                     40.4  va-example.vadr.r2dt-svg/KF383047.1-zika-linear.svg
+KF383047.1   PASS       zika-circular  fail-nocov          -  -                                                                   0.0  -
 ```
 
 | column | meaning |
@@ -245,19 +259,28 @@ AB908162.1	PASS	zika-circular	fail	-	-
 | `seq_id` | sequence name |
 | `pass_fail` | `PASS` or `FAIL`, the sequence's overall VADR pass/fail status, the same status that determines whether it appears in `.pass.list` or `.fail.list`. Both are drawn. |
 | `template_name` | the R2DT template, or `-` for a `skipped` row |
-| `r2dt_status` | `ok`, `fail`, or `skipped` (see below) |
+| `r2dt_status` | what happened for this pair (see below) |
 | `overlaps` | Traveler's count of colliding drawn elements for this diagram, or `-` if no diagram was produced |
-| `output_svg` | path to the SVG, as `v-annotate.pl` wrote it, or `-` if no diagram was produced |
+| `covered_ranges` | the model (RF) sub-ranges within the template's declared ranges at which this sequence actually has residues, in VADR coords format, or `-` if none |
+| `covered_pct` | what percentage of the template's declared length those sub-ranges amount to, or `0.0` if none |
+| `output_svg` | path to the SVG, relative to the output directory, or `-` if no diagram was produced |
 
-The three `r2dt_status` values are:
+The `r2dt_status` values say what happened, so you do not have to look anywhere
+else to find out why a pair produced nothing:
 
-* **`ok`**: a diagram was produced.
-* **`fail`**: no diagram was produced for this pair. Some of these are
-  [coverage](#coverage) cases and some are genuine `r2dt.py` failures; the
-  corresponding line in `.r2dt.warn` says which.
+* **`pass`**: a diagram was produced.
 * **`skipped`**: the sequence was classified to a model that has no
   `R2DT_TEMPLATE` lines. Nothing was attempted. There is one such row per
   sequence, not one per template.
+* **`fail-nocov`**: the sequence has no residues at the template's declared
+  ranges, so there was nothing to draw and `r2dt.py` was not run. This is the
+  [coverage](#coverage) rule firing, and it is the common one.
+* **`fail-noaln`**: the sequence has no row in the model's alignment.
+* **`fail-r2dt`**: `r2dt.py` ran and either exited nonzero or produced no SVG.
+
+**WARNING: a run in which every pair failed still exits with status 0.** Missing
+diagrams are reported in this file and nowhere else, so a caller that does not
+read it sees only absent files.
 
 **`overlaps` is the field to scan for diagram quality.** It is Traveler's count
 of drawn elements that collide with one another. A well matched template and
@@ -265,26 +288,16 @@ target give `0`. A nonzero count means the template layout and this particular
 sequence disagree enough that the drawing is crowded, and the diagram is worth
 looking at before it is used for anything.
 
-### <a name="warn"></a>`.r2dt.warn`
+**`covered_pct` is the field to scan for coverage.** The example above shows why
+both matter: `KF383047.1` is a 3' fragment, so it covers 40.4% of `zika-linear`
+and none of `zika-circular`, whose ranges start further along. It gets one
+diagram, not two.
 
-Created only if at least one pair failed. One line per failure, saying which
-sequence, which template, and why. Continuing the example above:
+### <a name="svg"></a>`.r2dt-svg/<seq>-<template>.svg`
 
-```
-WARNING: sequence KF383047.1 has zero residues in template zika-circular's RF column range(s); skipping r2dt.py
-WARNING: sequence AB908162.1 has zero residues in template zika-linear's RF column range(s); skipping r2dt.py
-WARNING: sequence AB908162.1 has zero residues in template zika-circular's RF column range(s); skipping r2dt.py
-```
-
-The presence of this file is the signal that some sequences did not get all of
-the diagrams you might have expected. **`v-annotate.pl` still exits with status
-0.**
-
-### <a name="svg"></a>`.r2dt/<seq>/<seq>-<template>.svg`
-
-One SVG per drawn (sequence, template) pair, in a per-sequence subdirectory. The
-subdirectory is created for every drawn sequence, so a sequence for which every
-template failed leaves an empty directory behind rather than none.
+One SVG per drawn (sequence, template) pair, all in one flat directory. Only
+pairs that produced a diagram appear, so the file count matches the number of
+`pass` rows in the `.rdt` file.
 
 These are the R2DT *colored* SVGs, in which residues are colored according to
 how they relate to the template. They are self contained and open in any
@@ -295,20 +308,29 @@ black; a browser is the reliable way to look at one.
 Two examples ship with this documentation, both drawn on the same template:
 
 * [NC_035889.1-zika-linear.svg](r2dt-files/NC_035889.1-zika-linear.svg):
-  a full length sequence, `r2dt_status` `ok`, `overlaps` `0`. Every position the
-  template covers is present.
+  a full length sequence, `r2dt_status` `pass`, `overlaps` `0`. Every position
+  the template covers is present.
 * [KF383047.1-zika-linear.svg](r2dt-files/KF383047.1-zika-linear.svg):
-  a partial sequence, also `ok` and `overlaps` `0`, but covering only part of
+  a partial sequence, also `pass` and `overlaps` `0`, but covering only part of
   the template. Compare it against the full length one. The whole first block of
   the template is absent, because this sequence has no residues there, and the
   drawing simply starts where the sequence starts.
 
-### <a name="input"></a>`.r2dt-input/<seq>-<template>.fa`
+### <a name="input"></a>`.r2dt-input/`
 
-The two line FASTA file VADR extracted and handed to `r2dt.py`, one per pair
-that got as far as being attempted. These are kept whether or not `--keep` is
-used, because inspecting one is the quickest way to understand a failure. A
-short or absent file here **is** the coverage rule firing.
+**Only written with `--keep`.** For each pair that got as far as being
+attempted, this directory holds three things:
+
+```
+<seq>-<template>.fa                  the two line FASTA VADR extracted and handed to r2dt.py
+<seq>-<template>.r2dt-out/           r2dt.py's own output directory for that pair
+<seq>-<template>.r2dt-out.stdout     r2dt.py's captured standard output and standard error
+```
+
+The FASTA is the quickest way to understand a coverage failure, since a short
+file here **is** the coverage rule firing. The other two are what you need when
+`r2dt.py` itself failed, and the `.stdout` file is where R2DT's own error
+message will be.
 
 ## How to read a diagram<a name="reading"></a>
 
@@ -347,7 +369,7 @@ For what the residue colors mean, see R2DT's own
 [documentation](https://r2dt.readthedocs.io/). The color scheme is R2DT's, and
 VADR neither sets nor modifies it.
 
-Finally, use the [`overlaps`](#tsv) column as the machine readable quality
+Finally, use the [`overlaps`](#rdt) column as the machine readable quality
 signal. A diagram with a nonzero overlap count deserves a look before you trust
 it.
 
@@ -366,15 +388,16 @@ The failure is quiet:
 
 * `r2dt.py` is not run at all when the extraction is empty, and may fail when
   it is very short;
-* a line is written to `.r2dt.warn`;
-* the pair is recorded as `fail` in `.r2dt.tsv`;
+* the pair is recorded as `fail-nocov` in the `.rdt` file, with `covered_pct`
+  `0.0`;
 * **the run continues and `v-annotate.pl` exits with status 0.**
 
-A user who does not read `.r2dt.warn` or `.r2dt.tsv` sees only missing files.
+A user who does not read the `.rdt` file sees only missing files.
 
-**What to check, in order:** the `fail` rows in `.r2dt.tsv`, then the matching
-lines in `.r2dt.warn`, then, for rows whose warning is not about zero residues,
-the corresponding file in `.r2dt-input/`.
+**What to check, in order:** the `fail-nocov` rows in the `.rdt` file, then the
+`covered_ranges` and `covered_pct` columns of the rows that did draw, to see how
+much of the template each sequence actually reached. For a `fail-r2dt` row,
+rerun with `--keep` and read the pair's `.stdout` file in `.r2dt-input/`.
 
 ### Which sequences hit it
 
@@ -390,8 +413,8 @@ a property of the template, not of VADR.
 > between them is covered by neither. A fragment consisting only of coding
 > sequence therefore overlaps neither block and gets no diagram from either
 > template, no matter how long or how good it is. In one run of that model over
-> a set of 1026 partial sequences, 255 produced at least one diagram and 758
-> produced none.
+> a set of 1026 partial sequences, 1013 of which passed VADR and 13 of which
+> failed, 261 produced at least one diagram and 765 produced none.
 >
 > The arithmetic follows from the range choice. A model whose template covers
 > one contiguous, commonly sequenced region would see a very different split.
@@ -401,7 +424,7 @@ a property of the template, not of VADR.
 Choose ranges that the partial sequences you care about actually cover, or
 accept that only sequences spanning the ranges will be drawn. Running
 `--draw_r2dt` on a set of partial sequences is supported and produces correct
-output; you just need to read `.r2dt.tsv` to know what you got. Choosing a
+output; you just need to read the `.rdt` file to know what you got. Choosing a
 template's ranges is choosing its coverage, and that decision is discussed
 further in [r2dt-templates.md](r2dt-templates.md#decisions).
 
@@ -423,13 +446,13 @@ further in [r2dt-templates.md](r2dt-templates.md#decisions).
 
 All of these happen before any sequences are processed.
 
-### Non-fatal, warn and continue
+### Non-fatal, recorded and continue
 
 | condition | what happens |
 |-----------|--------------|
-| the sequence has zero residues at the template's ranges | warning, `fail` row, `r2dt.py` not run |
-| `r2dt.py` exits nonzero, or produces no SVG | warning naming the retained stdout file, `fail` row |
-| the sequence has no row in the model's alignment | warning, `fail` row for each of that model's templates |
+| the sequence has zero residues at the template's ranges | `fail-nocov` row, `r2dt.py` not run |
+| `r2dt.py` exits nonzero, or produces no SVG | `fail-r2dt` row. Rerun with `--keep` and read the pair's `.stdout` file for R2DT's own error message |
+| the sequence has no row in the model's alignment | `fail-noaln` row for each of that model's templates |
 
 ### Reproducing an `r2dt.py` failure by hand
 
@@ -453,9 +476,9 @@ Points worth noting:
   the template; VADR names it.
 * The file VADR looks for afterwards is
   `<run directory>/results/svg/<seq>-<template>.colored.svg`. If that file is
-  missing or empty, the pair is recorded as `fail` even if `r2dt.py` exited 0.
-* With `--keep`, the run directory and the captured stdout survive the run, and
-  the stdout is where R2DT's own error message will be.
+  missing or empty, the pair is recorded as `fail-r2dt` even if `r2dt.py` exited 0.
+* With `--keep`, the run directory and the captured stdout survive the run, in
+  `.r2dt-input/`, and the stdout is where R2DT's own error message will be.
 
 If `r2dt.py` fails on an input you can draw by hand, the difference is usually
 environment: check that `r2dt-vadr-env.sh` provides the same `PATH` your
