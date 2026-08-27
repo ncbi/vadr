@@ -178,7 +178,7 @@ using only `(` and `)`, so a template built this way cannot carry pseudoknots
 even if the underlying structure has them. Building the `.sto`, `.cm` and
 `.fasta` yourself, as steps 1 through 3 above describe, is what preserves them.
 
-### WARNING: two different WUSS conversions
+### <a name="wuss"></a>WARNING: two different WUSS conversions
 
 The same `SS_cons` string is converted **twice, differently**, and confusing the
 two is a silent failure. The layout tool cannot lay out crossing pairs, so the
@@ -284,7 +284,7 @@ works well enough to look fine.
 * **The shipped `.fasta` dot-bracket still contains the pseudoknot letter
   anchors, and they match `SS_cons`.** No other check on this list catches a
   template whose pseudoknots were converted away, and no rendered diagram will
-  tell you either. See [the two conversions](#building).
+  tell you either. See [the two conversions](#wuss).
 * **The smoke test exits 0, and the end-to-end test reports `overlaps` `0`.**
 * If you serve the layout JSON to a browser-based editor from a local web
   server, note that a plain static file server may be rejected by the editor
