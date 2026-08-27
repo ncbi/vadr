@@ -198,7 +198,7 @@ and check to see if `v-annotate.pl` detects those problems and
 reports them.
 
 Often times, however, the most readily available set of sequences is
-simply INSDC sequences of the viral species you are modelling. Many of
+simply INSDC sequences of the viral species you are modeling. Many of
 these will be of high quality without any sequencing errors,
 misassemblies or other artifacts, but some may have those types of errors.
 
@@ -586,7 +586,7 @@ sequence aligned to the `NC_001781` model in [Stockholm alignment file
 format](https://en.wikipedia.org/wiki/Stockholm_format), with
 reference positions numbered using rows with the header `#=GC
 RFCOL`. Below is an excerpt of that alignment file with the duplicated
-region annotated in an extra line that I've added labelled
+region annotated in an extra line that I've added labeled
 `dupregin`. The positions marked with `1` show the first instance of
 the repeated region, and those marked with `2` show the second
 instance. Note that these positions correspond to positions
@@ -844,7 +844,7 @@ KJ627322.1         TAACCCAAAAGAATCAACTGTTAGTGATACGAACGACCATGCCAAAAATAATGATACTACC
 The `111` at the top indicates the position of the `ATG` for the
 `M2-2` protein in the `NC_038325` model (the `RF` line in the
 alignment). Note that all 10 sequences have `ACG` aligned at these
-positions. The three nucleotides labelled with `222` that occur six
+positions. The three nucleotides labeled with `222` that occur six
 nucleotides downstream at positions `8165..8167` are 
 `ATG`, and are in-frame with the reference with positions
 `8159..8161`. Because the majority of RSV A sequences in our training
@@ -2772,7 +2772,7 @@ provide an alignment to `v-build.pl` are:
    [here](#https://github.com/ncbi/vadr/wiki/Rfam-based-structural-annotation-of-a-viral-genome-sequence))
 
 As an example, we can build a new CM for one of our RSV models that
-does a more consistent job of modelling the deletion in the attachment
+does a more consistent job of modeling the deletion in the attachment
 glycoprotein CDS. (I'm including this example not because it will
 address any common fatal alert instances, but just to provide an
 example of rebuilding the CM.)  Below is a doctored version of the
@@ -3077,7 +3077,7 @@ sequences that were maximally similar to all RSV sequences to begin
 with. Or, if we had a favorite sequence that was extremely well
 studied and annotated, we might want to start with that. The approach
 above is one that is reasonable if very little is known beforehand
-about the virus being modelled and its sequence diversity, but it
+about the virus being modeled and its sequence diversity, but it
 makes sense to take advantage of any expert knowledge you have when
 picking the initial representative sequences.
 

@@ -82,7 +82,7 @@ $rc_{\mathrm{mismatch}} = (1 - rc_{\mathrm{match}})/3$ ($\approx 0.017$).
 
 #### The null model
 
-The denominator encodes a **position-specific background model** that normalises
+The denominator encodes a **position-specific background model** that normalizes
 each position's score by the nucleotide diversity at that column in the model's
 seed alignment. Importantly, the goal here is *not* to distinguish homologous
 from non-homologous sequences: all sequences in the model alignment and the query
@@ -134,8 +134,8 @@ distinguish informative variable sites from uninformative conserved ones and
 reduces sensitivity to genuine parent switches at a recombination breakpoint.
 
 **Note on validation.** The null model formulation and LLR scoring used here have
-not been extensively characterised across a broad range of viruses or use cases.
-This is one reason the recombination detection feature is labelled **experimental**.
+not been extensively characterized across a broad range of viruses or use cases.
+This is one reason the recombination detection feature is labeled **experimental**.
 The default threshold (`--rc_thresh`) and match probability (`--rc_match`) represent
 initial reasonable choices but may need tuning for specific viruses or model
 alignments.

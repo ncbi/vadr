@@ -304,7 +304,7 @@ stated explicitly rather than implied.
 | `r2dt.py generate-template`, `generatecm`, `generatemodelinfo` | [R2DT docs/templates.md](https://github.com/r2dt-bio/R2DT/blob/main/docs/templates.md) |
 | the `data/local_data` convention itself, and R2DT's template library | [R2DT documentation](https://r2dt.readthedocs.io/) |
 | submitting a template upstream so others can use it | [R2DT docs/templates.md](https://github.com/r2dt-bio/R2DT/blob/main/docs/templates.md) |
-| R2DT's colour scheme and what its own outputs mean | [R2DT documentation](https://r2dt.readthedocs.io/) |
+| R2DT's color scheme and what its own outputs mean | [R2DT documentation](https://r2dt.readthedocs.io/) |
 | the Traveler intermediate XML format, and how overlaps are counted | [Traveler repository](https://github.com/cusbg/traveler) |
 | installing R2DT | [R2DT documentation](https://r2dt.readthedocs.io/) |
 
@@ -377,9 +377,9 @@ as though it covers the whole molecule, which is the main misreading risk
 described in [r2dt-drawing.md](r2dt-drawing.md#reading). If your templates cover
 non-contiguous regions, this is worth doing.
 
-### Colouring specific residue groups
+### Coloring specific residue groups
 
-R2DT's colored output supports a fixed set of text colour classes. If the
+R2DT's colored output supports a fixed set of text color classes. If the
 template's layout already carries them, specific residue groups can be
 highlighted, which is useful for showing which residues pair with which across
 a pseudoknot. The constraint is that only classes already present in the
