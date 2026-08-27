@@ -644,10 +644,10 @@ against a model with two R2DT templates, `zika-linear` and `zika-circular`):
 ```
 #seq_id      pass_fail  template_name  r2dt_status  overlaps  output_svg
 #----------  ---------  -------------  -----------  --------  ----------
-AY632535.2   FAIL       zika-linear    ok                  0  va-test12.vadr.r2dt/AY632535.2/AY632535.2-zika-linear.svg
-AY632535.2   FAIL       zika-circular  ok                  0  va-test12.vadr.r2dt/AY632535.2/AY632535.2-zika-circular.svg
-HQ234498.1   PASS       zika-linear    ok                  0  va-test12.vadr.r2dt/HQ234498.1/HQ234498.1-zika-linear.svg
-HQ234498.1   PASS       zika-circular  ok                  0  va-test12.vadr.r2dt/HQ234498.1/HQ234498.1-zika-circular.svg
+AY632535.2   FAIL       zika-linear    ok                  0  va-test12.vadr.r2dt-svg/AY632535.2/AY632535.2-zika-linear.svg
+AY632535.2   FAIL       zika-circular  ok                  0  va-test12.vadr.r2dt-svg/AY632535.2/AY632535.2-zika-circular.svg
+HQ234498.1   PASS       zika-linear    ok                  0  va-test12.vadr.r2dt-svg/HQ234498.1/HQ234498.1-zika-linear.svg
+HQ234498.1   PASS       zika-circular  ok                  0  va-test12.vadr.r2dt-svg/HQ234498.1/HQ234498.1-zika-circular.svg
 ```
 
 | idx | field            | description |

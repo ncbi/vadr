@@ -2599,7 +2599,7 @@ exit 0;
 #             separate warning file.
 #
 #             Output dir layout:
-#               <out_root>.r2dt/<seq>-<template>.svg        (colored SVGs, always)
+#               <out_root>.r2dt-svg/<seq>-<template>.svg    (colored SVGs, always)
 #               <out_root>.rdt                               (summary table, always)
 #               <out_root>.r2dt-input/<seq>-<template>.fa    (input FASTAs, --keep only)
 #               <out_root>.r2dt-input/<seq>-<template>.r2dt-out/  (r2dt.py run tree, --keep only)
@@ -2674,8 +2674,8 @@ sub draw_r2dt_figures {
 
   # set up output dirs and summary file
   my $r2dt_input_dir     = $out_root . ".r2dt-input";
-  my $r2dt_out_dir       = $out_root . ".r2dt";
-  my $r2dt_out_dir_rel   = $dir_tail . ".vadr.r2dt"; # $r2dt_out_dir, relative to the output directory (for column 6 of the .rdt table)
+  my $r2dt_out_dir       = $out_root . ".r2dt-svg";
+  my $r2dt_out_dir_rel   = $dir_tail . ".vadr.r2dt-svg"; # $r2dt_out_dir, relative to the output directory (for the output_svg column of the .rdt table)
   my $r2dt_tbl_file      = $out_root . ".rdt";
   utl_RunCommand("mkdir -p $r2dt_input_dir", opt_Get("-v", $opt_HHR), 0, $FH_HR);
   utl_RunCommand("mkdir -p $r2dt_out_dir",   opt_Get("-v", $opt_HHR), 0, $FH_HR);
@@ -2834,7 +2834,7 @@ sub draw_r2dt_figures {
       # r2dt.py writes into its own output subdir, one per (seq, template).
       # This lives alongside the input FASTA in $r2dt_input_dir (both are
       # scratch/derived data, kept only with --keep) so the flat $r2dt_out_dir
-      # holds nothing but final SVGs.
+      # (<out_root>.r2dt-svg) holds nothing but final SVGs.
       # absolutize VADR-side paths (we 'cd' into $r2dt_dir before running r2dt.py,
       # so relative paths would otherwise resolve against $r2dt_dir, not VADR cwd)
       my $r2dt_run_dir = $r2dt_input_dir . "/" . $seq_name . "-" . $tmpl_name . ".r2dt-out";
