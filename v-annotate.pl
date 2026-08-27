@@ -2589,7 +2589,7 @@ exit 0;
 #             line(s) (pass or fail), for each R2DT_TEMPLATE
 #             applicable to that sequence's model, extract the sequence's
 #             aligned residues at the template's RF column ranges from the
-#             per-model RF-frame alignment (.align.afa), strip gaps, write
+#             per-model RF-frame alignment (.align.stk), strip gaps, write
 #             a 2-line input FASTA, invoke r2dt.py draw --force_template,
 #             and bundle the resulting colored SVG into the output dir.
 #
@@ -2640,7 +2640,7 @@ sub draw_r2dt_figures {
   my $cwd = getcwd();
 
   # Site-specific environment for r2dt.py (PATH additions for infernal,
-  # Bio-Easel, jiffy, traveler; the venv python; R2DT_FAKE_RNA; etc.) is the
+  # Bio-Easel, jiffy, traveler; the venv python; etc.) is the
   # admin's responsibility via an optional site-config file that we source
   # before invoking r2dt.py (if it exists):
   #   $R2DT_DIR/r2dt-vadr-env.sh
