@@ -294,7 +294,7 @@ The first three files are the [`.log` file](formats.md#log), which is
 the same as the standard output printed to the screen currently being
 discussed, the [`.cmd` file](formats.md#cmd), and the [`.filelist`
 file](formats.md#filelist) which lists the output files created by
-`v-annotate.pl`. Next comes a [`.seqstat` file](annotate.md#seqstat)
+`v-annotate.pl`. Next comes a [`.seqstat` file](formats.md#annotate)
 with lengths for each sequence in the input file.
 
 `v-annotate.pl` also creates 
@@ -564,7 +564,7 @@ specific features* you can do that by modifying the `modelinfo` input
 file as explained [below](#mnf).
 
 ---
-## Running `v-annotate.pl` inside the `v-scan.pl` wrapper](#scan)
+## <a name="scan"></a>Running `v-annotate.pl` inside the `v-scan.pl` wrapper
 
 The `v-scan.pl` script can be used as a simple wrapper for
 `v-annotate.pl` if you want to use multiple model

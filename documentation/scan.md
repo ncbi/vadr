@@ -359,13 +359,13 @@ All of these files were created in the newly created directory
 `vs-n5`. The files that include `norovirus` in their name were created
 by `v-annotate.pl` and more information on those files and their
 formats can be found [here](formats.md#annotate). The [`v-annotate.pl`
-documentation](annotate.md#lib) also includes a description of several of these files.
+documentation](formats.md#lib) also includes a description of several of these files.
 
 The final four files are the [`.log` file](formats.md#log), which is
 the same as the standard output printed to the screen currently being
 discussed, the [`.cmd` file](formats.md#cmd), and the [`.filelist`
 file](formats.md#filelist) which lists the output files created by
-`v-scan.pl`, and finally the [`.lib` file](annotate.md#lib)
+`v-scan.pl`, and finally the [`.lib` file](formats.md#lib)
 which explains how many sequences matched to each library in the
 classification stage. 
 

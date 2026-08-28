@@ -82,7 +82,7 @@ approach](#limit) is included at the end of the tutorial.
   * [summary of model modifications](#step6-summary)
 * [Limitations of and alternatives to this approach](#limit)
   * [reference sequence selection](#limit-ref)
-  * [training sequence selection](#limit-train)
+  * [training sequence selection](#limit-training)
   * [replacing one model with multiple models](#limit-multiple)
   * [alignment-based models](#limit-align)
   * [incorporating secondary structure](#limit-secondary)
