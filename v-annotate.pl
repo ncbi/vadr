@@ -2757,6 +2757,21 @@ sub draw_r2dt_figures {
       next;
     }
 
+    # alignment column (0-indexed) -> submitted-sequence (1-indexed) position,
+    # for this seq's own alignment row. Used below to relabel R2DT's
+    # per-residue numbering ticks in submitted-sequence coordinates instead
+    # of extracted-fragment-relative ones (brief 26_0501-168). At a gap
+    # column this holds the position of the most recently seen residue;
+    # unused, since we only ever look this array up (via $rfmap_AR) at
+    # columns already known to hold a real residue.
+    my @aln_uapos_A = ();
+    my $uapos_ct = 0;
+    for(my $ci = 0; $ci < length($aln_seq); $ci++) {
+      my $ac = substr($aln_seq, $ci, 1);
+      if(($ac ne "-") && ($ac ne ".") && ($ac ne "~")) { $uapos_ct++; }
+      push(@aln_uapos_A, $uapos_ct);
+    }
+
     foreach my $tmpl_HR (@{$tmpl_info_HAR->{$mdl_name}}) {
       my $tmpl_name = $tmpl_HR->{"name"};
       my $ranges_AR = $tmpl_HR->{"ranges_AR"};
@@ -2771,6 +2786,9 @@ sub draw_r2dt_figures {
       # We only take the residues at match columns (insert columns relative to
       # the model are not part of the template frame).
       my $extracted = "";
+      my @extracted_uapos_raw_A = (); # parallel to (pre-strip) $extracted: submitted-sequence
+                                       # (1-indexed) position of each column, or undef at gap
+                                       # columns (filtered out below along with the gaps)
       my $max_rfcol = scalar(@{$rfmap_AR}) - 1; # highest valid RF column number
       my $tmpl_declared_len = 0; # total declared length of this template's ranges (denominator for pct)
       my @covered_sgm_A = ();    # covered RF-column sub-ranges, as [start,end] pairs (1-indexed)
@@ -2781,6 +2799,7 @@ sub draw_r2dt_figures {
         for(my $rfcol = $rfstart; $rfcol <= $rfend; $rfcol++) {
           my $rc = ($rfcol <= $max_rfcol) ? substr($aln_seq, $rfmap_AR->[$rfcol], 1) : "-";
           $extracted .= $rc;
+          push(@extracted_uapos_raw_A, ($rfcol <= $max_rfcol) ? $aln_uapos_A[$rfmap_AR->[$rfcol]] : undef);
           my $is_covered = (($rc ne "-") && ($rc ne ".") && ($rc ne "~")) ? 1 : 0;
           if($is_covered) {
             if((defined $cov_end) && ($rfcol == ($cov_end + 1))) { $cov_end = $rfcol; } # extend in-progress sub-range
@@ -2800,8 +2819,20 @@ sub draw_r2dt_figures {
         # number alone (ranges are not necessarily adjacent)
         if(defined $cov_end) { push(@covered_sgm_A, [$cov_start, $cov_end]); ($cov_start, $cov_end) = (undef, undef); }
       }
-      $extracted =~ s/[\-\.\~]//g; # strip gaps
-      $extracted = uc($extracted);
+      # strip gaps, keeping @extracted_uapos_A in sync: one entry per residue
+      # that survives (i.e. one per residue traveler actually draws), holding
+      # its submitted-sequence (1-indexed) position, in drawn order
+      # (brief 26_0501-168).
+      my @extracted_uapos_A = ();
+      my $extracted_stripped = "";
+      for(my $ei = 0; $ei < length($extracted); $ei++) {
+        my $ec = substr($extracted, $ei, 1);
+        if(($ec ne "-") && ($ec ne ".") && ($ec ne "~")) {
+          $extracted_stripped .= $ec;
+          push(@extracted_uapos_A, $extracted_uapos_raw_A[$ei]);
+        }
+      }
+      $extracted = uc($extracted_stripped);
 
       # covered range(s) in VADR coords format, and pct of the template's
       # declared length actually covered ("-" / "0.0" if none, one decimal
@@ -2865,7 +2896,11 @@ sub draw_r2dt_figures {
       my $dst_svg_rel = $r2dt_out_dir_rel . "/" . $seq_name . "-" . $tmpl_name . ".svg"; # path in the .rdt table: relative to the output dir, not absolutized
 
       if(($r2dt_exit == 0) && (-s $src_svg)) {
-        utl_RunCommand("cp $src_svg $dst_svg", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+        # copy the SVG, rewriting each numbered tick from its 1-indexed
+        # position in the drawn (extracted-fragment) residue order to the
+        # corresponding submitted-sequence position in @extracted_uapos_A
+        # (brief 26_0501-168). Nothing else in the SVG is touched.
+        r2dt_relabel_svg_copy($src_svg, $dst_svg, \@extracted_uapos_A, $sub_name, $FH_HR);
         # read the overlap count from the per-(seq,template) .overlaps file that
         # r2dt.py / traveler writes (a single integer). On read failure leave '-'.
         # Must read before the run-tree cleanup below.
@@ -2909,6 +2944,63 @@ sub draw_r2dt_figures {
   if(! $do_keep) {
     utl_RunCommand("rm -rf $r2dt_input_dir", opt_Get("-v", $opt_HHR), 1, $FH_HR);
   }
+
+  return;
+}
+
+#################################################################
+# Subroutine:  r2dt_relabel_svg_copy()
+# Incept:      EPN, Fri Aug 28 2026
+#
+# Purpose:    Copy an R2DT/traveler colored SVG from $src_svg to $dst_svg,
+#             rewriting the integer inside each
+#             '<text ... class="numbering-label sequential" ...>N</text>'
+#             element from its 1-indexed position N in the drawn
+#             (extracted-fragment) residue order to the corresponding
+#             submitted-sequence position $uapos_AR->[N-1]. Nothing else
+#             in the SVG is modified (see brief 26_0501-168).
+#
+# Arguments:
+#  $src_svg:   path to the source (traveler-written) SVG
+#  $dst_svg:   path to write the relabeled SVG to
+#  $uapos_AR:  REF to array, $uapos_AR->[$i] is the submitted-sequence
+#              (1-indexed) position of the (0-indexed) $i'th drawn residue,
+#              i.e. of drawn (1-indexed) position ($i+1)
+#  $caller_sub_name: name of calling sub, for error messages
+#  $FH_HR:     REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies:       if $src_svg can't be read, $dst_svg can't be written, or a
+#             'numbering-label sequential' value is out of range of
+#             $uapos_AR (would indicate the drawn-index/extracted-order
+#             assumption this design rests on, verified in brief 26_0501-168
+#             Task 1, has broken)
+#
+#################################################################
+sub r2dt_relabel_svg_copy {
+  my $sub_name = "r2dt_relabel_svg_copy";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($src_svg, $dst_svg, $uapos_AR, $caller_sub_name, $FH_HR) = @_;
+
+  open(SRCSVG, $src_svg) || ofile_FileOpenFailure($src_svg, $caller_sub_name, $!, "reading", $FH_HR);
+  my $svg_str = do { local $/; <SRCSVG> };
+  close(SRCSVG);
+
+  my $n_drawn = scalar(@{$uapos_AR});
+  $svg_str =~ s/(<text[^>]*class=\"numbering-label sequential\"[^>]*>)(\d+)(<\/text>)/
+    my ($pre, $n, $post) = ($1, $2, $3);
+    if(($n < 1) || ($n > $n_drawn)) {
+      ofile_FAIL("ERROR in $sub_name, called from $caller_sub_name, numbering-label sequential value $n in $src_svg is out of range 1..$n_drawn of drawn residues", 1, $FH_HR);
+    }
+    $pre . $uapos_AR->[$n-1] . $post
+  /ge;
+
+  open(DSTSVG, ">", $dst_svg) || ofile_FileOpenFailure($dst_svg, $caller_sub_name, $!, "writing", $FH_HR);
+  print DSTSVG $svg_str;
+  close(DSTSVG);
 
   return;
 }
