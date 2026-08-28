@@ -1,0 +1,57 @@
+# Example R2DT_TEMPLATE lines for a VADR model info (.minfo) file.
+#
+# Add lines like these to the relevant MODEL's .minfo file (or to a sidecar
+# .minfo passed to v-annotate.pl with --mdir) to enable R2DT secondary
+# structure figure drawing with 'v-annotate.pl --draw_r2dt'.
+#
+# Documentation:
+#   documentation/r2dt-drawing.md    (using --draw_r2dt)
+#   documentation/r2dt-templates.md  (building and installing a template)
+#
+# WARNING: a .minfo file containing R2DT_TEMPLATE lines cannot be parsed by
+# VADR 1.7 or earlier. Such a version rejects the whole model package, not
+# just the drawing step. R2DT_TEMPLATE is first accepted by VADR 1.7.1.
+#
+# Syntax:
+#   R2DT_TEMPLATE name=<r2dt_template_name> model=<vadr_model_name> ranges=<start>..<end>[,<start>..<end>]*
+#
+#   name    R2DT template name; a directory of that name must exist at
+#           $R2DT_DIR/data/local_data/<name>/
+#   model   VADR model name; must match a MODEL line's name in this .minfo
+#   ranges  comma-separated list of inclusive, 1-indexed model (RF) position
+#           ranges in the VADR model's own coordinate frame
+#
+# The three fields may appear in any order. All three are required.
+#
+# Rules for ranges, all enforced when the file is parsed, all fatal if broken:
+#   - each range is <start>..<end> with start >= 1 and end >= start
+#   - end must not exceed the model's consensus length (the MODEL line's
+#     length: value)
+#   - ranges on one line must be in ASCENDING order and must NOT OVERLAP
+#
+# The residues a sequence has at these positions are concatenated in the order
+# the ranges are given, gaps are stripped, and the result is what R2DT draws.
+# So the template's own consensus must be that same concatenation, in that
+# same order, and the ranges must sum to the template's consensus length.
+#
+# Choosing the ranges is choosing the template's coverage: a sequence with no
+# residues at these positions gets no diagram, with a warning rather than an
+# error. See documentation/r2dt-drawing.md.
+#
+# One line per (model, template) pair. A model may have any number of
+# templates; one is the common case.
+
+# ---------------------------------------------------------------------------
+# General form (substitute your own names and ranges):
+#
+# R2DT_TEMPLATE name=<template_name> model=<model_name> ranges=<start>..<end>
+#
+# ---------------------------------------------------------------------------
+# Filled-in EXAMPLE ONLY, from a Zika virus model with two templates. Both
+# templates cover a block at each end of the genome, because that is where
+# this particular genome's structured elements are; that shape is a property
+# of the genome, not of the mechanism. A model with one contiguous structured
+# region would declare a single range.
+
+R2DT_TEMPLATE name=zika-linear   model=MG807646 ranges=1..210,10380..10807
+R2DT_TEMPLATE name=zika-circular model=MG807646 ranges=1..190,10666..10807

@@ -214,6 +214,30 @@ Model info files have two types of lines:
 
 (A third type of line is allowed: comment lines prefixed with `#` are allowed, and ignored.)
 
+A fourth, optional line type, `R2DT_TEMPLATE`, is read only by `v-annotate.pl`
+when the `--draw_r2dt` option is used, and is ignored otherwise. It declares
+which R2DT secondary structure template(s) apply to a model and which of the
+model's consensus (RF) positions feed each one:
+
+```
+R2DT_TEMPLATE name=<r2dt_template_name> model=<vadr_model_name> ranges=<start>..<end>[,<start>..<end>]*
+```
+
+The `ranges` value is a comma-separated list of inclusive, 1-indexed model
+position ranges, which must be in ascending order, must not overlap, and must
+be within `1` and the model's `length`. The key is documented in detail
+[here](r2dt-templates.md#minfo), and an annotated example file is
+[here](r2dt-files/example-r2dt.minfo).
+
+**WARNING: a `.minfo` file that contains `R2DT_TEMPLATE` lines cannot be
+parsed by VADR 1.7 or earlier.** An older version of VADR rejects the file, and
+so rejects the *entire model package*, not just the figure drawing step.
+`R2DT_TEMPLATE` is first accepted by VADR 1.7.1. If you maintain a model
+package whose users may be running an older VADR, keep the `R2DT_TEMPLATE`
+lines in a separate copy of the `.minfo` file in its own directory, supplied
+with `--mdir`, or ship a version of the package with the lines removed. More
+detail is [here](r2dt-drawing.md#compat).
+
 `MODEL` or `FEATURE` is always followed by one or more whitespace
 characters and then the model name `<modelname>` which cannot include
 whitespace.  `FEATURE` lines for model `<modelname>` must occur after
@@ -301,6 +325,8 @@ references on the file type/format.
 | `.alt.list`  | tab-delimited file of all fatal alerts listed in `.fail.tbl` | [va-noro.9.vadr.alt.list](annotate-files/va-noro.9.vadr.alt.list) | [description of format in this document](#altlist) |
 | `.<m>.<f>.<i>.fa` | FASTA format sequence file with predicted sequences for feature type `<f>` number `<i>` annotated using model `<m>` from the `.minfo` file | [va-noro.9.vadr.NC_039477.CDS.2.fa](annotate-files/va-noro.9.vadr.NC_039477.CDS.2.fa) | https://en.wikipedia.org/wiki/FASTA_format, sequence naming conventions described [here](#seqnames) |
 | `.seqstat`   | output of `esl-seqstat -a` run on input sequence file, with lengths of all sequences | [va-noro.9.vadr.seqstat](annotate-files/va-noro.9.vadr.seqstat) | no further documentation |
+| `.r2dt-svg/` | directory of the drawn secondary structure figures, one SVG file per drawn (sequence, template) pair, named `<seq>-<template>.svg` (only created if `--draw_r2dt` used) | [NC_035889.1-zika-linear.svg](r2dt-files/NC_035889.1-zika-linear.svg) | [description](r2dt-drawing.md#svg) |
+| `.r2dt-input/` | directory of the residues extracted for each (sequence, template) pair and handed to R2DT, together with R2DT's own output directory and captured standard output for that pair (only created if `--draw_r2dt` and `--keep` are both used) | - | [description](r2dt-drawing.md#input) |
 
 ---
 
