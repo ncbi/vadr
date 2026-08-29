@@ -2974,10 +2974,14 @@ sub draw_r2dt_figures {
 #             element from its 1-indexed position N in the drawn
 #             (extracted-fragment) residue order to the corresponding
 #             submitted-sequence position $uapos_AR->[N-1] (brief
-#             26_0501-168), and inserting a "//" region-break marker
-#             between every pair of adjacent drawn residues that belong to
-#             different declared R2DT_TEMPLATE ranges (brief 26_0501-169).
-#             No other geometry in the SVG is modified.
+#             26_0501-168), shifting that same element's 'x' when its digit
+#             count changed, to keep the (traveler-centred, text-anchor:middle)
+#             label from growing into the residue it labels -- a workaround
+#             for a traveler defect, not a VADR one (brief 26_0501-170), and
+#             inserting a "//" region-break marker between every pair of
+#             adjacent drawn residues that belong to different declared
+#             R2DT_TEMPLATE ranges (brief 26_0501-169). No other geometry in
+#             the SVG is modified.
 #
 # Arguments:
 #  $src_svg:      path to the source (traveler-written) SVG
@@ -3015,13 +3019,73 @@ sub r2dt_relabel_svg_copy {
   close(SRCSVG);
 
   my $n_drawn = scalar(@{$uapos_AR});
-  $svg_str =~ s/(<text[^>]*class=\"numbering-label sequential\"[^>]*>)(\d+)(<\/text>)/
-    my ($pre, $n, $post) = ($1, $2, $3);
+
+  # WORKAROUND for a traveler defect (brief 26_0501-170), not a VADR
+  # regression: traveler centres each numbering-label ('text-anchor: middle'
+  # in this SVG's own global stylesheet rule below) on an $x it chose for the
+  # SHORT drawn-index-based text it originally wrote, with no allowance for a
+  # wider replacement. Brief 26_0501-168 rewrites these labels to (generally
+  # longer) submitted-sequence coordinates, so a widened label can grow into
+  # the residue it labels. traveler's own shipped output has the identical
+  # defect on long template-numbering labels (verified in this brief's own
+  # summary against a native, unmodified R2DT render) -- this is not specific
+  # to what we write into the label. Fixed here, not upstream: nothing goes
+  # to traveler before Anton's pending R2DT release exists.
+  #
+  # font size for numbering-label text, read from this SVG's own global
+  # stylesheet rule (the same rule read below in
+  # r2dt_break_marker_svg_fragment() for the break-marker's nucleotide font
+  # size) -- NOT hardcoded, since it varies by render (this file's own rule
+  # is ~14px; the same render's 'colored.json' 'font' class reports ~8.7px
+  # for a different purpose, so only this SVG's own text{} rule is the right
+  # source for what actually gets drawn here).
+  my $label_font_size = 14.0; # fallback only, overwritten below if found
+  if($svg_str =~ /text(?:\.\w+)?\{[^\}]*font-size:\s*([\d.]+)px/) { $label_font_size = $1; }
+  # Helvetica Bold's digit glyphs (0-9) all share one tabular advance width,
+  # 0.556 em -- confirmed against this brief's own measured label widths at
+  # this file's 13.999933931044053px font size: "450" (3 digits) is
+  # 3 * 0.556 * 13.999933931044053 = 23.35px and "10608" (5 digits) is
+  # 5 * 0.556 * 13.999933931044053 = 38.92px, both exactly matching.
+  my $digit_advance = 0.556 * $label_font_size;
+
+  # snapshot of the SOURCE text, taken before any label is rewritten, so the
+  # residue lookup below (needed only when a label's width actually changes,
+  # to decide which way to shift it) always searches the untouched original.
+  # Residue '<text>' elements are never modified by this substitution, but
+  # taking an explicit snapshot keeps that independence explicit rather than
+  # relying on Perl's s///ge evaluation order.
+  my $orig_svg_str = $svg_str;
+
+  $svg_str =~ s{<text\s+x="([-\d.]+)"\s+y="([-\d.]+)"([^>]*class="numbering-label sequential"[^>]*)>(\d+)</text>}{
+    my ($old_x, $old_y, $attrs, $n) = ($1, $2, $3, $4);
     if(($n < 1) || ($n > $n_drawn)) {
       ofile_FAIL("ERROR in $sub_name, called from $caller_sub_name, numbering-label sequential value $n in $src_svg is out of range 1..$n_drawn of drawn residues", 1, $FH_HR);
     }
-    $pre . $uapos_AR->[$n-1] . $post
-  /ge;
+    my $new_n = $uapos_AR->[$n-1];
+    my $new_x = $old_x;
+    # only labels whose DIGIT COUNT actually changes are touched -- anything
+    # else must come out byte-identical to what traveler wrote
+    if(length("$new_n") != length("$n")) {
+      # $n is itself the residue's 1-indexed drawn position (the
+      # drawn-index/extracted-order assumption verified in brief 26_0501-168
+      # Task 1), so it can be looked up directly, with no separate mapping.
+      my ($res_x, $res_y) = r2dt_svg_residue_xy($orig_svg_str, $n, $src_svg, $sub_name, $caller_sub_name, $FH_HR);
+      my $dx = $old_x - $res_x;
+      my $dy = $old_y - $res_y;
+      # shift the label away from its residue by half the width it gained
+      # (or toward it, by half the width it lost), so the edge FACING the
+      # residue stays exactly where traveler put it -- this preserves
+      # traveler's own spacing rather than inventing new spacing.
+      my $delta = (length("$new_n") - length("$n")) * $digit_advance;
+      if(abs($dx) >= abs($dy)) { # label sits to a SIDE of its residue
+        $new_x = ($dx < 0) ? ($old_x - ($delta / 2.0)) : ($old_x + ($delta / 2.0));
+      }
+      # else: label sits roughly above/below its residue -- centred growth
+      # is symmetric left/right and does not head toward the residue, so no
+      # horizontal shift is needed
+    }
+    "<text x=\"$new_x\" y=\"$old_y\"$attrs>$new_n</text>"
+  }ge;
 
   # find every region break: a break is between drawn (1-indexed) positions
   # $d and ($d+1) wherever they came from different declared ranges. Exact,
