@@ -3215,11 +3215,17 @@ sub r2dt_break_marker_svg_fragment {
 #
 # Purpose:    Return the (x,y) SVG coordinate of the drawn (1-indexed)
 #             residue $d, found via traveler's own per-residue
-#             '<title>N (position.label in template: ...)</title>' element
-#             (N == $d, since the '5\'' sentinel occupies title index 0,
-#             shifting every real residue's title index to equal its
-#             1-indexed drawn position) immediately followed by its
-#             '<text x="..." y="...">' element.
+#             '<title>N (...)</title>' element (N == $d, since the '5\''
+#             sentinel occupies title index 0, shifting every real residue's
+#             title index to equal its 1-indexed drawn position) immediately
+#             followed by its '<text x="..." y="...">' element. The
+#             parenthesized part varies -- '(position.label in template:
+#             ...)' for an ordinary matched residue, but '(inserted)' for a
+#             residue traveler's own template-relative alignment treats as
+#             an insertion (drawn class "red") -- so it is matched
+#             generically, not restricted to the 'position.label' form
+#             (brief 26_0501-169 Task 3: a break can land next to, or even
+#             on, an inserted residue; both still have real coordinates).
 #
 # Arguments:
 #  $svg_str:  the full SVG text (searched, not modified)
@@ -3231,8 +3237,7 @@ sub r2dt_break_marker_svg_fragment {
 #
 # Returns:    ($x, $y)
 #
-# Dies:       if no matching '<title>$d (position.label...' + '<text ...>'
-#             pair is found
+# Dies:       if no matching '<title>$d (...)' + '<text ...>' pair is found
 #
 #################################################################
 sub r2dt_svg_residue_xy {
@@ -3241,10 +3246,10 @@ sub r2dt_svg_residue_xy {
 
   my ($svg_str, $d, $src_svg, $sub_name, $caller_sub_name, $FH_HR) = @_;
 
-  if($svg_str =~ /<title>\Q$d\E\s+\(position\.label[^)]*\)<\/title>\s*<text\s+x="([-\d.]+)"\s+y="([-\d.]+)"/) {
+  if($svg_str =~ /<title>\Q$d\E\s+\([^)]*\)<\/title>\s*<text\s+x="([-\d.]+)"\s+y="([-\d.]+)"/) {
     return ($1, $2);
   }
-  ofile_FAIL("ERROR in $sub_name, called from $caller_sub_name, could not find drawn residue ${d}'s '<title>$d (position.label...' + <text> element in $src_svg", 1, $FH_HR);
+  ofile_FAIL("ERROR in $sub_name, called from $caller_sub_name, could not find drawn residue ${d}'s '<title>$d (...)' + <text> element in $src_svg", 1, $FH_HR);
   return (undef, undef); # NOT REACHED
 }
 
