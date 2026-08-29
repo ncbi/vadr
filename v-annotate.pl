@@ -2789,17 +2789,28 @@ sub draw_r2dt_figures {
       my @extracted_uapos_raw_A = (); # parallel to (pre-strip) $extracted: submitted-sequence
                                        # (1-indexed) position of each column, or undef at gap
                                        # columns (filtered out below along with the gaps)
+      my @extracted_rangeidx_raw_A = (); # parallel to (pre-strip) $extracted: 0-indexed position
+                                          # of the declared range (within $ranges_AR) each column
+                                          # came from. Used below to find region breaks exactly --
+                                          # a break is between two adjacent DRAWN residues whose
+                                          # range index differs (brief 26_0501-169). This is exact
+                                          # (no distance threshold): a small in-range gap (e.g. a
+                                          # dropped model-insert column) never changes range index,
+                                          # so it can never be mistaken for a genuine region break.
       my $max_rfcol = scalar(@{$rfmap_AR}) - 1; # highest valid RF column number
       my $tmpl_declared_len = 0; # total declared length of this template's ranges (denominator for pct)
       my @covered_sgm_A = ();    # covered RF-column sub-ranges, as [start,end] pairs (1-indexed)
       my ($cov_start, $cov_end) = (undef, undef); # in-progress covered sub-range, if any
+      my $range_idx = -1;
       foreach my $range_AR (@{$ranges_AR}) {
+        $range_idx++;
         my ($rfstart, $rfend) = ($range_AR->[0], $range_AR->[1]);
         $tmpl_declared_len += ($rfend - $rfstart + 1);
         for(my $rfcol = $rfstart; $rfcol <= $rfend; $rfcol++) {
           my $rc = ($rfcol <= $max_rfcol) ? substr($aln_seq, $rfmap_AR->[$rfcol], 1) : "-";
           $extracted .= $rc;
           push(@extracted_uapos_raw_A, ($rfcol <= $max_rfcol) ? $aln_uapos_A[$rfmap_AR->[$rfcol]] : undef);
+          push(@extracted_rangeidx_raw_A, $range_idx);
           my $is_covered = (($rc ne "-") && ($rc ne ".") && ($rc ne "~")) ? 1 : 0;
           if($is_covered) {
             if((defined $cov_end) && ($rfcol == ($cov_end + 1))) { $cov_end = $rfcol; } # extend in-progress sub-range
@@ -2824,12 +2835,14 @@ sub draw_r2dt_figures {
       # its submitted-sequence (1-indexed) position, in drawn order
       # (brief 26_0501-168).
       my @extracted_uapos_A = ();
+      my @extracted_rangeidx_A = (); # parallel to @extracted_uapos_A (brief 26_0501-169)
       my $extracted_stripped = "";
       for(my $ei = 0; $ei < length($extracted); $ei++) {
         my $ec = substr($extracted, $ei, 1);
         if(($ec ne "-") && ($ec ne ".") && ($ec ne "~")) {
           $extracted_stripped .= $ec;
           push(@extracted_uapos_A, $extracted_uapos_raw_A[$ei]);
+          push(@extracted_rangeidx_A, $extracted_rangeidx_raw_A[$ei]);
         }
       }
       $extracted = uc($extracted_stripped);
@@ -2899,8 +2912,11 @@ sub draw_r2dt_figures {
         # copy the SVG, rewriting each numbered tick from its 1-indexed
         # position in the drawn (extracted-fragment) residue order to the
         # corresponding submitted-sequence position in @extracted_uapos_A
-        # (brief 26_0501-168). Nothing else in the SVG is touched.
-        r2dt_relabel_svg_copy($src_svg, $dst_svg, \@extracted_uapos_A, $sub_name, $FH_HR);
+        # (brief 26_0501-168), and inserting a "//" region-break marker
+        # between any two adjacent drawn residues that fall in different
+        # declared R2DT_TEMPLATE ranges (brief 26_0501-169). No other
+        # geometry in the SVG is touched.
+        r2dt_relabel_svg_copy($src_svg, $dst_svg, \@extracted_uapos_A, \@extracted_rangeidx_A, $sub_name, $FH_HR);
         # read the overlap count from the per-(seq,template) .overlaps file that
         # r2dt.py / traveler writes (a single integer). On read failure leave '-'.
         # Must read before the run-tree cleanup below.
@@ -2957,33 +2973,42 @@ sub draw_r2dt_figures {
 #             '<text ... class="numbering-label sequential" ...>N</text>'
 #             element from its 1-indexed position N in the drawn
 #             (extracted-fragment) residue order to the corresponding
-#             submitted-sequence position $uapos_AR->[N-1]. Nothing else
-#             in the SVG is modified (see brief 26_0501-168).
+#             submitted-sequence position $uapos_AR->[N-1] (brief
+#             26_0501-168), and inserting a "//" region-break marker
+#             between every pair of adjacent drawn residues that belong to
+#             different declared R2DT_TEMPLATE ranges (brief 26_0501-169).
+#             No other geometry in the SVG is modified.
 #
 # Arguments:
-#  $src_svg:   path to the source (traveler-written) SVG
-#  $dst_svg:   path to write the relabeled SVG to
-#  $uapos_AR:  REF to array, $uapos_AR->[$i] is the submitted-sequence
-#              (1-indexed) position of the (0-indexed) $i'th drawn residue,
-#              i.e. of drawn (1-indexed) position ($i+1)
+#  $src_svg:      path to the source (traveler-written) SVG
+#  $dst_svg:      path to write the relabeled/marked-up SVG to
+#  $uapos_AR:     REF to array, $uapos_AR->[$i] is the submitted-sequence
+#                 (1-indexed) position of the (0-indexed) $i'th drawn
+#                 residue, i.e. of drawn (1-indexed) position ($i+1)
+#  $rangeidx_AR:  REF to array, parallel to $uapos_AR: $rangeidx_AR->[$i]
+#                 is the 0-indexed declared-R2DT_TEMPLATE-range that the
+#                 $i'th drawn residue was extracted from
 #  $caller_sub_name: name of calling sub, for error messages
 #  $FH_HR:     REF to hash of file handles
 #
 # Returns:    void
 #
-# Dies:       if $src_svg can't be read, $dst_svg can't be written, or a
+# Dies:       if $src_svg can't be read, $dst_svg can't be written, a
 #             'numbering-label sequential' value is out of range of
 #             $uapos_AR (would indicate the drawn-index/extracted-order
 #             assumption this design rests on, verified in brief 26_0501-168
-#             Task 1, has broken)
+#             Task 1, has broken), or (at a detected break) the SVG has no
+#             '<title>N (position.label...' element for a drawn index N
+#             (would indicate traveler's per-residue <title> convention,
+#             verified in brief 26_0501-169, has changed)
 #
 #################################################################
 sub r2dt_relabel_svg_copy {
   my $sub_name = "r2dt_relabel_svg_copy";
-  my $nargs_exp = 5;
+  my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($src_svg, $dst_svg, $uapos_AR, $caller_sub_name, $FH_HR) = @_;
+  my ($src_svg, $dst_svg, $uapos_AR, $rangeidx_AR, $caller_sub_name, $FH_HR) = @_;
 
   open(SRCSVG, $src_svg) || ofile_FileOpenFailure($src_svg, $caller_sub_name, $!, "reading", $FH_HR);
   my $svg_str = do { local $/; <SRCSVG> };
@@ -2998,11 +3023,250 @@ sub r2dt_relabel_svg_copy {
     $pre . $uapos_AR->[$n-1] . $post
   /ge;
 
+  # find every region break: a break is between drawn (1-indexed) positions
+  # $d and ($d+1) wherever they came from different declared ranges. Exact,
+  # no distance threshold (brief 26_0501-169 Task 1) -- a small in-range gap
+  # (e.g. a dropped model-insert column) never changes $rangeidx_AR, so it
+  # can never be mistaken for a genuine region break. A sequence covering
+  # only one declared range never has an adjacent pair with differing
+  # range index, so no marker is drawn for it (Task 3, fragment case).
+  my @break_frag_A = ();
+  for(my $i = 0; $i < ($n_drawn - 1); $i++) {
+    if($rangeidx_AR->[$i] != $rangeidx_AR->[$i+1]) {
+      my $omitted_nt = $uapos_AR->[$i+1] - $uapos_AR->[$i] - 1;
+      push(@break_frag_A, r2dt_break_marker_svg_fragment($svg_str, $i+1, $i+2, $omitted_nt,
+                                                           $src_svg, $sub_name, $caller_sub_name, $FH_HR));
+    }
+  }
+  if(scalar(@break_frag_A) > 0) {
+    my $n_before = scalar(@break_frag_A);
+    my $inserted = join("", @break_frag_A);
+    my $n_subs = ($svg_str =~ s/(<\/g><\/svg>\s*)\z/$inserted$1/);
+    if($n_subs != 1) {
+      ofile_FAIL("ERROR in $sub_name, called from $caller_sub_name, could not find the closing '</g></svg>' to insert $n_before region-break marker(s) into $src_svg", 1, $FH_HR);
+    }
+  }
+
   open(DSTSVG, ">", $dst_svg) || ofile_FileOpenFailure($dst_svg, $caller_sub_name, $!, "writing", $FH_HR);
   print DSTSVG $svg_str;
   close(DSTSVG);
 
   return;
+}
+
+#################################################################
+# Subroutine:  r2dt_break_marker_svg_fragment()
+# Incept:      EPN, Sat Aug 29 2026
+#
+# Purpose:    Build one "//" region-break marker (in the spirit of the
+#             zika manuscript's post-render 'build_linear_gap_marker()' /
+#             'build_circular_gap_marker()', but native to --draw_r2dt and
+#             styling-independent of that pipeline): an erase-pad plus a
+#             double diagonal slash at the midpoint of the two drawn
+#             residues flanking a region break, plus a label giving the
+#             exact number of omitted nucleotides. The two flanking
+#             residues' own letters are visually replaced by the marker
+#             (same as the manuscript precedent) -- no coordinate in the
+#             SVG is moved, only painted over, since brief 26_0501-169's
+#             own measurement found the two residues are drawn immediately
+#             adjacent (median-spacing apart, no gap to draw into).
+#
+#             Orientation (horizontal vs vertical slash stacking) is
+#             chosen from the ACTUAL local geometry at this break (whether
+#             the two flanking residues differ more in x or in y), not
+#             from a linear/circular template assumption -- this is what
+#             lets one implementation serve both templates (brief
+#             26_0501-169 Task 2).
+#
+# Arguments:
+#  $svg_str:    the full (already numbering-relabeled) SVG text, searched
+#               (not modified) for the two flanking residues' coordinates,
+#               the nucleotide font size, and nearby numbering-label
+#               positions to avoid colliding with
+#  $d_a, $d_b:  1-indexed drawn positions of the two flanking residues
+#               (always $d_b == $d_a + 1)
+#  $omitted_nt: exact number of submitted-sequence nucleotides omitted
+#               between them (>= 0)
+#  $src_svg:    source SVG path, for error messages only
+#  $sub_name:   name of this sub, for error messages
+#  $caller_sub_name: name of the ultimate calling sub, for error messages
+#  $FH_HR:      REF to hash of file handles
+#
+# Returns:    the SVG fragment (a string starting and ending with a <g> tag)
+#
+# Dies:       if either flanking residue's '<title>N (position.label...'
+#             element can't be found
+#
+#################################################################
+sub r2dt_break_marker_svg_fragment {
+  my $sub_name2 = "r2dt_break_marker_svg_fragment";
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name2 entered with wrong number of input args"; }
+
+  my ($svg_str, $d_a, $d_b, $omitted_nt, $src_svg, $sub_name, $caller_sub_name, $FH_HR) = @_;
+
+  my ($xa, $ya) = r2dt_svg_residue_xy($svg_str, $d_a, $src_svg, $sub_name, $caller_sub_name, $FH_HR);
+  my ($xb, $yb) = r2dt_svg_residue_xy($svg_str, $d_b, $src_svg, $sub_name, $caller_sub_name, $FH_HR);
+
+  # document extent, so the label can be kept on-canvas (brief 26_0501-169
+  # Task 3: found by rendering, not anticipated in advance -- the circular
+  # template's break sits near the drawing's own right edge, so the
+  # to-the-right default placement below can otherwise run off-canvas)
+  my ($doc_w, $doc_h) = (undef, undef);
+  if($svg_str =~ /<svg[^>]*\swidth="([\d.]+)"[^>]*\sheight="([\d.]+)"/s) { ($doc_w, $doc_h) = ($1, $2); }
+
+  # nucleotide font size, read from this SVG's own stylesheet (falls back to
+  # a reasonable default if, somehow, the rule isn't found -- not fatal,
+  # since a wrong size only affects the marker's own cosmetics)
+  my $nt_size = 10.0;
+  if($svg_str =~ /text(?:\.\w+)?\{[^\}]*font-size:\s*([\d.]+)px/) { $nt_size = $1; }
+
+  my $cx = ($xa + $xb) / 2.0;
+  my $cy = ($ya + $yb) / 2.0;
+  my $backbone_horizontal = (abs($xb - $xa) >= abs($yb - $ya)) ? 1 : 0;
+  my $glyph_half = $nt_size * 0.75;
+  my $sep        = $nt_size * 0.55; # separation between the two slash lines
+  my $halfgw     = $nt_size * 0.7;  # half-length of each slash line
+  my $margin     = 2.0;
+  my ($pad_w, $pad_h);
+  if($backbone_horizontal) {
+    $pad_w = abs($xb - $xa) + (2 * $glyph_half) + $margin;
+    $pad_h = (2 * $glyph_half) + $margin;
+  }
+  else {
+    $pad_w = (2 * $glyph_half) + $margin;
+    $pad_h = abs($yb - $ya) + (2 * $glyph_half) + $margin;
+  }
+
+  my $frag = sprintf("<g><rect x=\"%.2f\" y=\"%.2f\" width=\"%.2f\" height=\"%.2f\" fill=\"white\" />",
+                      $cx - ($pad_w / 2.0), $cy - ($pad_h / 2.0), $pad_w, $pad_h);
+  if($backbone_horizontal) {
+    foreach my $off ((-1 * $sep / 2.0), ($sep / 2.0)) {
+      my $ocx = $cx + $off;
+      $frag .= sprintf("<line x1=\"%.2f\" y1=\"%.2f\" x2=\"%.2f\" y2=\"%.2f\" stroke=\"black\" stroke-width=\"1.2\" stroke-linecap=\"round\" />",
+                        $ocx - $halfgw, $cy + $halfgw, $ocx + $halfgw, $cy - $halfgw);
+    }
+  }
+  else {
+    foreach my $off ((-1 * $sep / 2.0), ($sep / 2.0)) {
+      my $ocy = $cy + $off;
+      $frag .= sprintf("<line x1=\"%.2f\" y1=\"%.2f\" x2=\"%.2f\" y2=\"%.2f\" stroke=\"black\" stroke-width=\"1.2\" stroke-linecap=\"round\" />",
+                        $cx - $halfgw, $ocy + $halfgw, $cx + $halfgw, $ocy - $halfgw);
+    }
+  }
+
+  # label: exact omitted-nucleotide count, comma-separated for readability
+  my $omitted_str = r2dt_commify_int($omitted_nt);
+  my $label = "$omitted_str nt";
+  my $label_font_size = $nt_size * 1.5;
+  # default placement: above the glyph if the backbone runs horizontally
+  # here, to the right of it if the backbone runs vertically here (matches
+  # the manuscript precedent's own linear-vs-circular placement, but chosen
+  # from local geometry, not a template-identity flag)
+  my ($label_x, $label_y, $anchor);
+  if($backbone_horizontal) {
+    $label_x = $cx;
+    $label_y = $cy - ($pad_h / 2.0) - ($label_font_size * 0.5) - 2.0;
+    $anchor  = "middle";
+  }
+  else {
+    $label_x = $cx + ($pad_w / 2.0) + 3.0;
+    $label_y = $cy + ($label_font_size * 0.3);
+    $anchor  = "start";
+  }
+  # avoid colliding with a numbering-label tick: if any 'numbering-label
+  # sequential' element in the (already relabeled) SVG lies within one
+  # label-font-size of our candidate label position, flip to the other
+  # side of the glyph instead (brief 26_0501-169 Task 3)
+  my $collide_radius = $label_font_size * 3.0;
+  while($svg_str =~ /<text\s+x="([-\d.]+)"\s+y="([-\d.]+)"\s+class="numbering-label sequential"/g) {
+    my ($nx, $ny) = ($1, $2);
+    if((abs($nx - $label_x) < $collide_radius) && (abs($ny - $label_y) < $collide_radius)) {
+      if($backbone_horizontal) { $label_y = $cy + ($pad_h / 2.0) + ($label_font_size * 0.9); }
+      else                     { $label_x = $cx - ($pad_w / 2.0) - 3.0; $anchor = "end"; }
+      last;
+    }
+  }
+  # keep the label on-canvas: a 'start'-anchored label that would run past
+  # the document's right edge, or an 'end'-anchored one that would run past
+  # the left edge, is flipped to the opposite anchor/side instead (found by
+  # actually rendering a real circular-template break, not anticipated in
+  # advance -- see brief 26_0501-169 summary)
+  if(defined $doc_w) {
+    my $label_width_est = length($label) * $label_font_size * 0.6;
+    if(($anchor eq "start") && (($label_x + $label_width_est) > $doc_w)) {
+      $label_x = $cx - ($pad_w / 2.0) - 3.0; $anchor = "end";
+    }
+    elsif(($anchor eq "end") && (($label_x - $label_width_est) < 0)) {
+      $label_x = $cx + ($pad_w / 2.0) + 3.0; $anchor = "start";
+    }
+  }
+
+  $frag .= sprintf("<text x=\"%.2f\" y=\"%.2f\" style=\"font-size: %.2fpx; font-family: Helvetica, Arial, sans-serif; font-weight: bold; fill: black; text-anchor: %s;\">%s</text>",
+                    $label_x, $label_y, $label_font_size, $anchor, $label);
+  $frag .= "</g>";
+
+  return $frag;
+}
+
+#################################################################
+# Subroutine:  r2dt_svg_residue_xy()
+# Incept:      EPN, Sat Aug 29 2026
+#
+# Purpose:    Return the (x,y) SVG coordinate of the drawn (1-indexed)
+#             residue $d, found via traveler's own per-residue
+#             '<title>N (position.label in template: ...)</title>' element
+#             (N == $d, since the '5\'' sentinel occupies title index 0,
+#             shifting every real residue's title index to equal its
+#             1-indexed drawn position) immediately followed by its
+#             '<text x="..." y="...">' element.
+#
+# Arguments:
+#  $svg_str:  the full SVG text (searched, not modified)
+#  $d:        1-indexed drawn residue position
+#  $src_svg:  source SVG path, for error messages only
+#  $sub_name: name of the calling marker-building sub, for error messages
+#  $caller_sub_name: name of the ultimate calling sub, for error messages
+#  $FH_HR:    REF to hash of file handles
+#
+# Returns:    ($x, $y)
+#
+# Dies:       if no matching '<title>$d (position.label...' + '<text ...>'
+#             pair is found
+#
+#################################################################
+sub r2dt_svg_residue_xy {
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR r2dt_svg_residue_xy entered with wrong number of input args"; }
+
+  my ($svg_str, $d, $src_svg, $sub_name, $caller_sub_name, $FH_HR) = @_;
+
+  if($svg_str =~ /<title>\Q$d\E\s+\(position\.label[^)]*\)<\/title>\s*<text\s+x="([-\d.]+)"\s+y="([-\d.]+)"/) {
+    return ($1, $2);
+  }
+  ofile_FAIL("ERROR in $sub_name, called from $caller_sub_name, could not find drawn residue ${d}'s '<title>$d (position.label...' + <text> element in $src_svg", 1, $FH_HR);
+  return (undef, undef); # NOT REACHED
+}
+
+#################################################################
+# Subroutine:  r2dt_commify_int()
+# Incept:      EPN, Sat Aug 29 2026
+#
+# Purpose:    Return a non-negative integer with comma thousands
+#             separators, e.g. 10169 -> "10,169". No new CPAN dependency:
+#             plain regex, no Number::Format.
+#
+# Arguments:
+#  $n: a non-negative integer
+#
+# Returns:    string
+#
+#################################################################
+sub r2dt_commify_int {
+  my ($n) = @_;
+  my $s = "$n";
+  1 while($s =~ s/^(-?\d+)(\d{3})/$1,$2/);
+  return $s;
 }
 
 #################################################################
