@@ -370,11 +370,7 @@ from its own position 1 the two coincide; for a fragment, or a record numbered
 some other way relative to the genome, they do not, and the tick is only a
 position within the record you gave VADR. This is what resolves the `5'`/`3'`
 ambiguity above: checking the nearest tick tells you where the drawn region
-starts in the sequence you submitted, and is worth the few seconds it takes. A
-template can separately declare its own numbering, typically set to genome
-coordinates by whoever authored it; that is drawn alongside, not instead of,
-the submitted-sequence ticks. See
-[r2dt-templates.md](r2dt-templates.md#numbering).
+starts in the sequence you submitted, and is worth the few seconds it takes.
 
 **A `//` marker with a nucleotide count marks a break between declared
 ranges.** When a template declares more than one model position range and a

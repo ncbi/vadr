@@ -363,19 +363,8 @@ the effort, because it keeps the structures consistent between them.
 
 ## Optional refinements<a name="numbering"></a>
 
-Both of these are optional, both are template properties chosen by whoever
-authors the template, and both are more example than mechanism.
-
-### Genome-coordinate numbering labels
-
-Traveler draws periodic position labels, and the numbers it draws come from
-`numbering-label` attributes on the `<point>` elements of the layout XML. If you
-set them to coordinates in your model's frame rather than to positions within
-the template, every diagram carries the information a reader
-needs to place it. This is what stops a partial sequence's diagram from reading
-as though it covers the whole molecule, which is the main misreading risk
-described in [r2dt-drawing.md](r2dt-drawing.md#reading). If your templates cover
-non-contiguous regions, this is worth doing.
+This is optional, a template property chosen by whoever authors the template,
+and more example than mechanism.
 
 ### Coloring specific residue groups
 
