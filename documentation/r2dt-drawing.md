@@ -357,13 +357,40 @@ ranges is absent by construction, and its absence carries no meaning.
 **WARNING: the `5'` and `3'` labels mark the ends of the drawn region, not the ends of
 the sequence and not the ends of the genome.** For a partial sequence this is
 the one real risk of misreading a diagram. In the partial example above, the
-residue labeled `5'` is at model position 10380, the start of the template's
-second range, because that is simply where this sequence's drawn residues
-begin. It is not the 5' end of anything. If the template
-carries numbering labels tied to genome coordinates, as the example templates
-do, those labels resolve the ambiguity, and checking them is worth the few
-seconds it takes. Whether a template has such labels is a choice made when the
-template is authored; see [r2dt-templates.md](r2dt-templates.md#numbering).
+residue labeled `5'` is simply where this sequence's drawn residues begin. It
+is not the 5' end of anything.
+
+**The periodic numbering ticks are always submitted-sequence positions.** VADR
+rewrites every tick Traveler draws along a diagram from its position within the
+drawn, extracted residues to the corresponding position in the sequence exactly
+as you submitted it, for every template, whether or not the template's own
+layout declares numbering of its own. A tick therefore tells you where you are
+in *that sequence record*, not in the genome. For a complete genome numbered
+from its own position 1 the two coincide; for a fragment, or a record numbered
+some other way relative to the genome, they do not, and the tick is only a
+position within the record you gave VADR. This is what resolves the `5'`/`3'`
+ambiguity above: checking the nearest tick tells you where the drawn region
+starts in the sequence you submitted, and is worth the few seconds it takes.
+
+**A `//` marker with a nucleotide count marks a break between declared
+ranges.** When a template declares more than one model position range and a
+sequence's drawn residues span the boundary between two of them, VADR draws a
+`//` between the two flanking residues, labeled with the exact number of
+submitted-sequence nucleotides that lie between them and are not drawn. The
+count is a property of that sequence, not of the template: two full length
+Zika genomes in one run got `10,169 nt` and `10,157 nt` at the same boundary,
+a real 12 nt difference between the two genomes' lengths, not an off-by-one.
+A sequence whose drawn residues fall entirely within one declared range gets
+no marker, because there is no boundary to cross; the partial-sequence example
+above is this case, since its drawn residues never leave the template's second
+range. **The count is not recoverable from the [`covered_ranges`](#rdt)
+column**, which is in model (RF) coordinates: subtracting those gives the same
+gap, `10,169`, for both sequences above, because both reach the same model
+positions on either side of the boundary. The two counts differ because the
+sequences themselves differ in length across the omitted stretch, something
+`covered_ranges` does not report since that stretch is outside every declared
+range. Treat the label as VADR's own count, not one you can check by hand from
+the `.rdt` file.
 
 For what the residue colors mean, see R2DT's own
 [documentation](https://r2dt.readthedocs.io/). The color scheme is R2DT's, and
