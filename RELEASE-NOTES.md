@@ -1,5 +1,28 @@
 # VADR 1.x release notes 
 
+### VADR 1.7.1 release (September 2026)
+  * adds `--draw_r2dt` option to `v-annotate.pl` for drawing secondary
+    structure diagrams of classified sequences using
+    [R2DT](https://r2dt.bio/); `vadr-install.sh` now installs R2DT
+    alongside VADR, pinned to R2DT release `v2.3`
+  * adds two new documentation pages: `documentation/r2dt-drawing.md`
+    and `documentation/r2dt-templates.md`
+  * backward compatibility warning for model package maintainers: a
+    `.minfo` file containing `R2DT_TEMPLATE` lines cannot be parsed by
+    VADR 1.7 or earlier; the entire model package becomes unusable with
+    an older VADR, not just the drawing feature. `R2DT_TEMPLATE` is
+    first accepted by VADR 1.7.1. If you maintain a model package whose
+    users may still be on an older VADR, keep the `R2DT_TEMPLATE` lines
+    in a separate copy of the `.minfo` file (with users who want drawing
+    pointing at it via `--mdir`), or ship a version of the package with
+    those lines stripped for older-VADR users. See
+    `documentation/r2dt-drawing.md#compat` for details.
+  * `--draw_r2dt` output: a `<out_root>.rdt` summary table (one row per
+    sequence/template pair), diagrams in `<out_root>.r2dt-svg/`, and a
+    `r2dt_status` column with values `pass` / `skipped` / `fail-nocov` /
+    `fail-noaln` / `fail-r2dt`; there is no `.r2dt.warn` file
+
+---
 ### VADR 1.7 release (September 2025): Major update
   * introduces `v-scan.pl` script for autodetection of
     appropriate model library and annotation using that library
