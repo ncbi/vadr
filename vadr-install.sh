@@ -63,18 +63,11 @@ MPXVVERSION="1.4.2-1"
 # hmmer (not needed in this release, we can use infernal's hmmer executables)
 #HVERSION="3.4"
 # R2DT (used only by 'v-annotate.pl --draw_r2dt')
-#
-# TODO: BEFORE VADR 1.7.1 IS RELEASED, REPLACE THIS COMMIT WITH AN R2DT RELEASE
-# TODO: TAG. R2DT has no release that contains the drawing code VADR requires,
-# TODO: so this pins a reviewed commit on the R2DT 'develop' branch instead.
-# TODO: A release tag must replace it before 1.7.1 ships.
-R2DTVERSION="a3ad3588e5015ff5cbbc7c56cf6e8f57dce2aa93"
-# traveler, the program R2DT uses to render diagrams. This commit, and the patch
-# applied on top of it, are both taken from R2DT's own base_image/Dockerfile and
-# base_image/patches/, so they are properties of R2DTVERSION and must be updated
-# together with it.
-TVERSION="78c1cd63dcf40be83d97d07b8eb9eb6a9dc63f7f"
-TPATCH="traveler-pr20-pk-per-bp.patch"
+R2DTVERSION="v2.3"
+# traveler, the program R2DT uses to render diagrams. This commit is taken from
+# R2DT's own base_image/Dockerfile, so it is a property of R2DTVERSION and must
+# be updated together with it.
+TVERSION="4b4abd25f07b67c677e8ec57eda9b63bcb448e0a"
 # jiffy-infernal-hmmer-scripts, also required by R2DT's drawing path, also
 # pinned by R2DT's base_image/Dockerfile
 JVERSION="31d6c3b826d432a30620507830749cee58e15e68"
@@ -419,8 +412,6 @@ if [ "$DOWNLOADORBUILD" != "build" ]; then
              echo "== cloning traveler at $TVERSION =="
              git clone https://github.com/cusbg/traveler.git traveler
              (cd traveler && git checkout $TVERSION)
-             echo "== applying R2DT's traveler patch $TPATCH =="
-             (cd traveler && git apply --verbose "$R2DTDIR/base_image/patches/$TPATCH")
              echo "== installing the <bits/stdc++.h> portability shim =="
              mkdir -p traveler/src/include/bits
              cp vadr/traveler-mods/bits-stdcxx-shim.h traveler/src/include/bits/stdc++.h

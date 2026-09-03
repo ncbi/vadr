@@ -72,15 +72,13 @@ succeeds, and everything except `--draw_r2dt` works. The R2DT step needs
 not. See [install.md](install.md#r2dt) for the details and for what to do if
 that step fails.
 
-**NOTE:** `vadr-install.sh` pins a specific reviewed commit on R2DT's `develop`
-branch rather than a release tag, because no R2DT release yet contains the
-drawing code VADR uses. The pinned commit is named in `vadr-install.sh` itself,
-in the `R2DTVERSION` variable.
+**NOTE:** `vadr-install.sh` pins a specific R2DT release tag, named in
+`vadr-install.sh` itself in the `R2DTVERSION` variable.
 
 If you would rather install R2DT yourself, follow
 [R2DT's own instructions](https://r2dt.readthedocs.io/) and point `R2DT_DIR` at
 the result. **VADR does not state a minimum R2DT version**, because it has not
-been tested against a range of them. The commit `vadr-install.sh` pins is the
+been tested against a range of them. The release `vadr-install.sh` pins is the
 one VADR is known to work with.
 
 ### What R2DT itself needs for this code path
