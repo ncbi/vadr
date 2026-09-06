@@ -17,6 +17,11 @@
     pointing at it via `--mdir`), or ship a version of the package with
     those lines stripped for older-VADR users. See
     `documentation/r2dt-drawing.md#compat` for details.
+  * adds the `zika` model library to the set installed by
+    `vadr-install.sh`; the Zika models include `R2DT_TEMPLATE` lines and so
+    require this release or later
+  * updates the flavi model library to version `1.7-2`, which adds the
+    `flavi-no-zika.mlist` model list for use with `--mlist`
   * `--draw_r2dt` output: a `<out_root>.rdt` summary table (one row per
     sequence/template pair), diagrams in `<out_root>.r2dt-svg/`, and a
     `r2dt_status` column with values `pass` / `skipped` / `fail-nocov` /

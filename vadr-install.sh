@@ -54,7 +54,8 @@ MM2VERSIONGITNOV="2.30"
 VVERSION="vadr-$VERSION"
 # vadr models
 CALICIVERSION="1.2-1"
-FLAVIVERSION="1.7-1"
+FLAVIVERSION="1.7-2"
+ZIKAVERSION="1.7.1-1"
 CORONAVERSION="1.3-3"
 SARSCOV2VERSION="1.3-2"
 FLUVERSION="1.6.3-2"
@@ -326,6 +327,13 @@ if [ "$DOWNLOADORBUILD" != "build" ]; then
         curl -k -L -o vadr-models-$v.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/${v}viridae/$FLAVIVERSION/vadr-models-$v-$FLAVIVERSION.tar.gz
         tar xfz vadr-models-$v.tar.gz
         mv vadr-models-$v-$FLAVIVERSION vadr-models-$v
+        rm vadr-models-$v.tar.gz
+    done
+    for v in zika; do 
+        echo "Downloading VADR $v models ($ZIKAVERSION) ... "
+        curl -k -L -o vadr-models-$v.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/$v/$ZIKAVERSION/vadr-models-$v-$ZIKAVERSION.tar.gz
+        tar xfz vadr-models-$v.tar.gz
+        mv vadr-models-$v-$ZIKAVERSION vadr-models-$v
         rm vadr-models-$v.tar.gz
     done
     for v in corona; do 
