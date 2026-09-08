@@ -55,7 +55,7 @@ VVERSION="vadr-$VERSION"
 # vadr models
 CALICIVERSION="1.2-1"
 FLAVIVERSION="1.7-2"
-ZIKAVERSION="1.7.1-1"
+ZIKAVERSION="1.7.1-2"
 CORONAVERSION="1.3-3"
 SARSCOV2VERSION="1.3-2"
 FLUVERSION="1.6.3-2"
@@ -626,6 +626,24 @@ export PATH="$R2DTVENVDIR/bin:$VADRINSTALLDIR/infernal/binaries:$VADRINSTALLDIR/
 export PERL5LIB="$VADRINSTALLDIR/Bio-Easel/blib/lib:$VADRINSTALLDIR/Bio-Easel/blib/arch:\$PERL5LIB"
 EOF
             echo "Wrote $R2DTDIR/r2dt-vadr-env.sh"
+            echo "Installing R2DT templates shipped with the zika models ... "
+            # The zika model package (downloaded above) ships its own R2DT
+            # templates under r2dt-templates/, referenced by the R2DT_TEMPLATE
+            # lines in its .minfo. Symlink each into R2DT's own template
+            # directory so --draw_r2dt finds them with no manual step. A
+            # relative symlink (not absolute, not a copy) is used deliberately:
+            # relative survives the whole install tree being moved (both
+            # endpoints are under $VADRINSTALLDIR), and a symlink -- rather
+            # than a copy -- fails loudly (a dangling link) if the model
+            # package is later upgraded with revised templates, instead of
+            # silently drawing with stale template data.
+            mkdir -p "$R2DTDIR/data/local_data"
+            for t in zika-linear zika-circular; do
+                if [ ! -e "$R2DTDIR/data/local_data/$t" ]; then
+                    ln -s ../../../vadr-models-zika/r2dt-templates/$t "$R2DTDIR/data/local_data/$t" 2>/dev/null \
+                      || cp -r "$VADRINSTALLDIR/vadr-models-zika/r2dt-templates/$t" "$R2DTDIR/data/local_data/$t"
+                fi
+            done
             echo "Finished installing R2DT."
             echo "------------------------------------------------------------"
         fi
