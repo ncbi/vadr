@@ -36,9 +36,9 @@ set -e
 VADRINSTALLDIR=$PWD
 
 # versions
-VERSION="1.7"
+VERSION="1.7.1"
 # bio-easel (need this version info here only so we can check out correct easel branch in Bio-Easel/src)
-BEVERSION="Bio-Easel-0.17"
+BEVERSION="Bio-Easel-0.18"
 # blast+
 BVERSION="2.17.0"
 # infernal
@@ -54,7 +54,8 @@ MM2VERSIONGITNOV="2.30"
 VVERSION="vadr-$VERSION"
 # vadr models
 CALICIVERSION="1.2-1"
-FLAVIVERSION="1.7-1"
+FLAVIVERSION="1.7-2"
+ZIKAVERSION="1.7.1-2"
 CORONAVERSION="1.3-3"
 SARSCOV2VERSION="1.3-2"
 FLUVERSION="1.6.3-2"
@@ -326,6 +327,13 @@ if [ "$DOWNLOADORBUILD" != "build" ]; then
         curl -k -L -o vadr-models-$v.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/${v}viridae/$FLAVIVERSION/vadr-models-$v-$FLAVIVERSION.tar.gz
         tar xfz vadr-models-$v.tar.gz
         mv vadr-models-$v-$FLAVIVERSION vadr-models-$v
+        rm vadr-models-$v.tar.gz
+    done
+    for v in zika; do 
+        echo "Downloading VADR $v models ($ZIKAVERSION) ... "
+        curl -k -L -o vadr-models-$v.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/$v/$ZIKAVERSION/vadr-models-$v-$ZIKAVERSION.tar.gz
+        tar xfz vadr-models-$v.tar.gz
+        mv vadr-models-$v-$ZIKAVERSION vadr-models-$v
         rm vadr-models-$v.tar.gz
     done
     for v in corona; do 
@@ -601,8 +609,11 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
 # rather than hardcoded in VADR. If this file is removed, --draw_r2dt will only
 # work if 'python \$R2DT_DIR/r2dt.py' already works in the calling environment.
 #
-# The paths below were determined when VADR was installed. If this installation
-# is moved, they must be updated.
+# The paths below are expressed relative to \$R2DT_DIR (set by the caller,
+# v-annotate.pl dies if it is unset), rather than baked in as the absolute
+# paths this installation happened to have. That makes this file -- and so
+# the whole install tree -- relocatable: move the tree, re-set R2DT_DIR to
+# the new location, and these paths resolve correctly with no edits here.
 
 # The python virtual environment holding R2DT's python requirements is put
 # first, so that 'python' resolves to it. The virtual environment is put on PATH
@@ -612,12 +623,30 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
 # The remaining directories hold the external programs R2DT calls:
 #   Infernal (cmalign, cmbuild, and the esl-* Easel miniapps), the Bio-Easel
 #   scripts, the jiffy Infernal/HMMER scripts, and traveler.
-export PATH="$R2DTVENVDIR/bin:$VADRINSTALLDIR/infernal/binaries:$VADRINSTALLDIR/Bio-Easel/scripts:$R2DTJIFFYDIR:$R2DTTRAVELERDIR/bin:\$PATH"
+export PATH="\${R2DT_DIR}/../r2dt-venv/bin:\${R2DT_DIR}/../infernal/binaries:\${R2DT_DIR}/../Bio-Easel/scripts:\${R2DT_DIR}/../jiffy-infernal-hmmer-scripts:\${R2DT_DIR}/../traveler/bin:\$PATH"
 
 # The Bio-Easel perl modules, needed by the Bio-Easel and jiffy scripts above.
-export PERL5LIB="$VADRINSTALLDIR/Bio-Easel/blib/lib:$VADRINSTALLDIR/Bio-Easel/blib/arch:\$PERL5LIB"
+export PERL5LIB="\${R2DT_DIR}/../Bio-Easel/blib/lib:\${R2DT_DIR}/../Bio-Easel/blib/arch:\$PERL5LIB"
 EOF
             echo "Wrote $R2DTDIR/r2dt-vadr-env.sh"
+            echo "Installing R2DT templates shipped with the zika models ... "
+            # The zika model package (downloaded above) ships its own R2DT
+            # templates under r2dt-templates/, referenced by the R2DT_TEMPLATE
+            # lines in its .minfo. Symlink each into R2DT's own template
+            # directory so --draw_r2dt finds them with no manual step. A
+            # relative symlink (not absolute, not a copy) is used deliberately:
+            # relative survives the whole install tree being moved (both
+            # endpoints are under $VADRINSTALLDIR), and a symlink -- rather
+            # than a copy -- fails loudly (a dangling link) if the model
+            # package is later upgraded with revised templates, instead of
+            # silently drawing with stale template data.
+            mkdir -p "$R2DTDIR/data/local_data"
+            for t in zika-linear zika-circular; do
+                if [ ! -e "$R2DTDIR/data/local_data/$t" ]; then
+                    ln -s ../../../vadr-models-zika/r2dt-templates/$t "$R2DTDIR/data/local_data/$t" 2>/dev/null \
+                      || cp -r "$VADRINSTALLDIR/vadr-models-zika/r2dt-templates/$t" "$R2DTDIR/data/local_data/$t"
+                fi
+            done
             echo "Finished installing R2DT."
             echo "------------------------------------------------------------"
         fi

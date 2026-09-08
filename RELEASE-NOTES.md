@@ -1,5 +1,46 @@
 # VADR 1.x release notes 
 
+### VADR 1.7.1 release (September 2026)
+  * adds `--draw_r2dt` option to `v-annotate.pl` for drawing secondary
+    structure diagrams of classified sequences using
+    [R2DT](https://r2dt.bio/); `vadr-install.sh` now installs R2DT
+    alongside VADR, pinned to R2DT release `v2.3`
+  * adds two new documentation pages: `documentation/r2dt-drawing.md`
+    and `documentation/r2dt-templates.md`
+  * backward compatibility warning for model package maintainers: a
+    `.minfo` file containing `R2DT_TEMPLATE` lines cannot be parsed by
+    VADR 1.7 or earlier; the entire model package becomes unusable with
+    an older VADR, not just the drawing feature. `R2DT_TEMPLATE` is
+    first accepted by VADR 1.7.1. If you maintain a model package whose
+    users may still be on an older VADR, keep the `R2DT_TEMPLATE` lines
+    in a separate copy of the `.minfo` file (with users who want drawing
+    pointing at it via `--mdir`), or ship a version of the package with
+    those lines stripped for older-VADR users. See
+    `documentation/r2dt-drawing.md#compat` for details.
+  * adds the `zika` model library to the set installed by
+    `vadr-install.sh`; the Zika models include `R2DT_TEMPLATE` lines and so
+    require this release or later. The package also ships the two R2DT
+    templates those lines name, and `vadr-install.sh` installs them into
+    `$R2DT_DIR/data/local_data/`, so `--draw_r2dt` works for Zika with no
+    manual template installation
+  * updates the flavi model library to version `1.7-2`, which adds the
+    `flavi-no-zika.mlist` model list for use with `--mlist`
+  * `v-scan.pl`: adds a `zika` entry to `vadr.config` and restricts the
+    generic `flavi` entry with `--mlist flavi-no-zika.mlist`, so Zika
+    sequences are annotated with the zika models rather than with the two
+    Zika models the flavi library also contains
+  * the `r2dt-vadr-env.sh` site-configuration file written by
+    `vadr-install.sh` now expresses its paths relative to `$R2DT_DIR`
+    instead of absolute paths fixed at install time, so a VADR
+    installation can be moved without editing it
+  * updates dependencies installed with VADR:
+    - Bio-Easel version 0.18
+  * `--draw_r2dt` output: a `<out_root>.rdt` summary table (one row per
+    sequence/template pair), diagrams in `<out_root>.r2dt-svg/`, and a
+    `r2dt_status` column with values `pass` / `skipped` / `fail-nocov` /
+    `fail-noaln` / `fail-r2dt`; there is no `.r2dt.warn` file
+
+---
 ### VADR 1.7 release (September 2025): Major update
   * introduces `v-scan.pl` script for autodetection of
     appropriate model library and annotation using that library

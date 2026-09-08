@@ -90,8 +90,8 @@ my $executable    = "build-add-to-blast-db.pl";
 my $usage         = "Usage: $executable [-options]\n\t<path to .minfo file>\n\t<path to blast db dir>\n\t<model name>\n\t<nt-accn-to-add>\n\t\<nt-coords-to-add>\n\t<model-CDS-feature-coords>\n\t<name for output directory>\n";
 my $synopsis      = "$executable :: add a single protein to a VADR blastx protein database";
 my $date          = scalar localtime();
-my $version       = "1.7";
-my $releasedate   = "Sep 2025";
+my $version       = "1.7.1";
+my $releasedate   = "Sep 2026";
 my $pkgname       = "VADR";
 
 # print help and exit if necessary
