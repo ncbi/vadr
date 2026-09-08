@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # 
-# version: 1.6.4 [Jun 2024]
+# version: 1.7.1 [Sep 2026]
 #
 # vadr.pm
 # Eric Nawrocki
@@ -177,9 +177,13 @@ require "sqp_utils.pm";
 # Subroutines related to model info files:
 # vdr_ModelInfoFileWrite()
 # vdr_ModelInfoFileParse()
-# vdr_ModelInfoCoordListValueBreakdown()
-# vdr_ModelInfoValidateExceptionKeys()
-#
+# vdr_R2dtTemplateRangesParse()
+# vdr_ModelInfoValidateExceptionsKeys()
+# vdr_ModelInfoSetClassificationAlignmentFile()
+# vdr_ModelInfoSetClassificationRefStartStopPositions()
+# vdr_ModelInfoCheckForFileKey()
+# vdr_ModelInfoSetNumericalValue()
+# 
 # Subroutines related to cmalign output:
 # vdr_CmalignCheckStdOutput()
 # vdr_CmalignParseInsertFile()
@@ -2079,7 +2083,7 @@ sub vdr_FeatureTypeIsCdsOrMatPeptideOrGene {
 # Purpose:    Can feature $ftr_idx become a misc_feature?
 #             Currently the definition of which feature types
 #             cannot become misc_features is hard-coded in this
-#             subroutine.
+#             subroutine (currently ONLY CDS can become misc_features).
 #
 # Arguments: 
 #  $ftr_info_AHR:   ref to the feature info array of hashes 
@@ -2097,10 +2101,10 @@ sub vdr_FeatureTypeCanBecomeMiscFeature {
 
   my ($ftr_info_AHR, $ftr_idx) = @_;
 
-  return (($ftr_info_AHR->[$ftr_idx]{"type"} ne "gene") && 
-          ($ftr_info_AHR->[$ftr_idx]{"type"} ne "5'UTR") && 
-          ($ftr_info_AHR->[$ftr_idx]{"type"} ne "3'UTR") && 
-          ($ftr_info_AHR->[$ftr_idx]{"type"} ne "operon")) ? 1 : 0;
+  # prior to version 1.7.1, this subroutine returned '1' if feature type was
+  # not any of: "gene", "5'UTR", "3'UTR", and "operon".
+  # now it only returns '1' if type is "CDS"
+  return ($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") ? 1 : 0;
 }
 
 #################################################################
@@ -3093,13 +3097,13 @@ sub vdr_AlertInfoInitialize {
   vdr_AlertInfoAdd($alt_info_HHR, "indf5lcc", "feature",
                    "INDEFINITE_ANNOTATION_START", # short description
                    "alignment to homology model has low confidence at 5' boundary for feature that is or matches a CDS", # long description
-                   0, 0, 0, 1, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   0, 0, 0, 1, "indf5lc_exc", "coords-value", # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indf5lcn", "feature",
                    "INDEFINITE_ANNOTATION_START", # short description
                    "alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS", # long description
-                   0, 1, 0, 1, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   0, 1, 0, 1, "indf5lc_exc", "coords-value", # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indf5plg", "feature",
@@ -3123,13 +3127,13 @@ sub vdr_AlertInfoInitialize {
   vdr_AlertInfoAdd($alt_info_HHR, "indf3lcc", "feature",
                    "INDEFINITE_ANNOTATION_END", # short description
                    "alignment to homology model has low confidence at 3' boundary for feature that is or matches a CDS", # long description
-                   0, 0, 0, 1, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   0, 0, 0, 1, "indf3lc_exc", "coords-value", # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indf3lcn", "feature",
                    "INDEFINITE_ANNOTATION_END", # short description
                    "alignment to homology model has low confidence at 3' boundary for feature that does not match a CDS", # long description
-                   0, 1, 0, 1, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   0, 1, 0, 1, "indf3lc_exc", "coords-value", # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indf3plg", "feature",
@@ -3267,6 +3271,34 @@ sub vdr_AlertInfoInitialize {
   vdr_AlertInfoAdd($alt_info_HHR, "ambgcd3c", "feature",
                    "AMBIGUITY_IN_STOP_CODON", # short description
                    "3' complete CDS ends with canonical nt but includes ambiguous nt in its stop codon", # long description
+                   0, 0, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   $FH_HR); 
+  vdr_AlertInfoAdd($alt_info_HHR, "nnindfcl", "sequence",
+                   "INDEFINITE_CLASSIFICATION_NN", # short description
+                   "low difference between fractional identity of sequence and its nearest neighbor (NN) and sequence and its 2nd NN", # long description
+                   0, 0, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   $FH_HR);
+  vdr_AlertInfoAdd($alt_info_HHR, "nnloidcl", "sequence",
+                   "LOW_ID_CLASSIFICATION_NN", # short description
+                   "low fractional identity of sequence and its nearest neighbor model sequence", # long description
+                   0, 0, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   $FH_HR); 
+  vdr_AlertInfoAdd($alt_info_HHR, "nnalrgcl", "sequence",
+                   "ALT_REGION_CLASSIFICATION_NN", # short description
+                   "alternative alignment region used to find nearest neighbor b/c sequence does not include specified region", # long description
+                   0, 0, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   $FH_HR); 
+  vdr_AlertInfoAdd($alt_info_HHR, "nnptrgcl", "sequence",
+                   "PARTIAL_REGION_CLASSIFICATION_NN", # short description
+                   "only part of the specified alignment region used to find nearest neighbor b/c sequence doesn't span full region", # long description
+                   0, 0, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
+                   $FH_HR); 
+  # 'recombin' alert: non-fatal (causes_failure=0) because the feature is
+  # experimental and shelved as of Feb 26 2026. Only reported when --do_rc is
+  # used. See the --rc_* option block in v-annotate.pl for status/next-steps.
+  vdr_AlertInfoAdd($alt_info_HHR, "recombin", "sequence",
+                   "POSSIBLE_RECOMBINATION", # short description
+                   "possible recombination detected in sequence", # long description
                    0, 0, 0, 0, undef, undef, # always_fails, causes_failure, prevents_annot, misc_not_failure, exc_key, exc_type
                    $FH_HR); 
 
@@ -5236,6 +5268,42 @@ sub vdr_CoordsProteinRelativeToAbsolute {
 }
 
 #################################################################
+# Subroutine: vdr_CoordsProteinRelativeExceedsAbsolute()
+#
+# Incept:     EPN, 2026
+#
+# Synopsis: Return '1' if any nucleotide position implied by protein
+#           coordinates <$rel_pt_coords> exceeds the length of nucleotide
+#           coordinates <$abs_nt_coords>, else return '0'.
+#
+#           Use this to guard calls to vdr_CoordsProteinRelativeToAbsolute()
+#           (which dies on such a position): a protein position can exceed
+#           the reference CDS frame when the blastx library contains a
+#           registered protein longer than the model's reference CDS (e.g.
+#           HIV-1 env with insertions relative to the model). See github
+#           issue #84; this was originally only guarded at the cdsstopp
+#           ('trcstop') call site but the same condition can occur at
+#           several other protein-validation call sites.
+#
+# Arguments:
+#  $abs_nt_coords:  nucleotide coordinates in full sequence [1..seqlen]
+#  $rel_pt_coords:  relative protein coordinates
+#  $FH_HR:          REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:   '1' if $rel_pt_coords implies a position exceeding $abs_nt_coords length, else '0'.
+#
+#################################################################
+sub vdr_CoordsProteinRelativeExceedsAbsolute {
+  my $sub_name = "vdr_CoordsProteinRelativeExceedsAbsolute";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+
+  my ($abs_nt_coords, $rel_pt_coords, $FH_HR) = @_;
+
+  return (vdr_CoordsMax(vdr_CoordsProteinToNucleotide($rel_pt_coords, $FH_HR), $FH_HR) > vdr_CoordsLength($abs_nt_coords, $FH_HR)) ? 1 : 0;
+}
+
+#################################################################
 # Subroutine: vdr_CoordsProteinToNucleotide()
 #
 # Incept:     EPN, Fri Mar 20 07:40:19 2020
@@ -5869,41 +5937,58 @@ sub vdr_ModelInfoFileWrite {
 # Subroutine: vdr_ModelInfoFileParse()
 # Incept:     EPN, Fri Mar 15 05:15:23 2019
 #
-# Synopsis: Parse a model info file for >= 1 models and collect 
-#           feature information for each model $model in 
-#           @{$ftr_info_HAHR->{$model}}.
+# Synopsis: Parse a model info file for >= 1 models and collect
+#           feature information for each model $model in
+#           @{$ftr_info_HAHR->{$model}}, and (optionally) R2DT_TEMPLATE
+#           information for each model in @{$tmpl_info_HAR->{$model}}.
 #
 #           This subroutine validates that keys in @{$reqd_mdl_keys_AR}
-#           are read and stored in $mdl_info_AHR, and that keys in 
+#           are read and stored in $mdl_info_AHR, and that keys in
 #           @{$reqd_ftr_keys_AR} are read and stored in $ftr_info_HAHR.
-# 
+#
 # Arguments:
 #  $in_file:          input .minfo file to parse
 #  $reqd_mdl_keys_AR: REF to array of required model   keys, e.g. ("name", "length")
 #  $reqd_ftr_keys_AR: REF to array of required feature keys, e.g. ("type", "coords")
 #  $mdl_info_AHR:     REF to array of hashes of model information, filled here
-#  $ftr_info_HAHR:    REF to hash of array of hashes with information 
+#  $ftr_info_HAHR:    REF to hash of array of hashes with information
 #                     on the features per model, filled here
 #  $FH_HR:            REF to hash of file handles, including "log" and "cmd"
+#  $tmpl_info_HAR:    OPTIONAL (7th arg). REF to hash of arrays of hashes
+#                     with R2DT_TEMPLATE information per model, filled here,
+#                     with keys "name" (template name), "model" (model name),
+#                     and "ranges_AR" (REF to array of [start,end] pairs,
+#                     1-indexed, in the model's RF frame). R2DT_TEMPLATE
+#                     lines are always parsed and validated regardless of
+#                     whether this arg is passed; if not passed, results are
+#                     collected into a throwaway local hash. Used by
+#                     v-annotate.pl --draw_r2dt only.
 #
 # Returns:    void
 #
 # Dies:       if unable to parse $in_file
 #             if a required mdl or ftr key does not exist
+#             if a R2DT_TEMPLATE line is invalid (missing 'name'/'ranges'
+#             key, malformed or out-of-bounds 'ranges' coords, or a
+#             'ranges' coords token with strand '-')
 #################################################################
 sub vdr_ModelInfoFileParse {
   my $sub_name = "vdr_ModelInfoFileParse";
   my $nargs_expected = 6;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  if((scalar(@_) != $nargs_expected) && (scalar(@_) != ($nargs_expected + 1))) { printf STDERR ("ERROR, $sub_name entered with %d != %d (or %d) input arguments.\n", scalar(@_), $nargs_expected, $nargs_expected+1); exit(1); }
 
-  my ($in_file, $reqd_mdl_keys_AR, $reqd_ftr_keys_AR, $mdl_info_AHR, $ftr_info_HAHR, $FH_HR) = @_;
-  
+  my ($in_file, $reqd_mdl_keys_AR, $reqd_ftr_keys_AR, $mdl_info_AHR, $ftr_info_HAHR, $FH_HR, $tmpl_info_HAR) = @_;
+  if(! defined $tmpl_info_HAR) {
+    my %local_tmpl_info_HA = (); # caller doesn't want R2DT_TEMPLATE info, but we still parse/validate it
+    $tmpl_info_HAR = \%local_tmpl_info_HA;
+  }
+
   my $format_str = "# VADR model info (.minfo) format specifications:\n";
   $format_str   .= "# Lines prefixed with '#' are ignored.\n";
-  $format_str   .= "# All other lines must begin with either: 'MODEL' or 'FEATURE'\n";
+  $format_str   .= "# All other lines must begin with either: 'MODEL', 'FEATURE', or 'R2DT_TEMPLATE'\n";
   $format_str   .= "# followed by one or more whitespace characters and then the model\n";
   $format_str   .= "# name <modelname> which cannot include whitespace.\n";
-  $format_str   .= "# On each line after <modelname>, both MODEL and FEATURE lines must\n";
+  $format_str   .= "# On each line after <modelname>, MODEL, FEATURE, and R2DT_TEMPLATE lines must\n";
   $format_str   .= "# contain 0 or more <key>:<value> pairs meeting the following criteria.\n";
   $format_str   .= "# <key> must not include any whitespace or ':' characters\n";
   $format_str   .= "# <value> must start *and* end with '\"' but include no other '\"'\n";
@@ -5913,29 +5998,38 @@ sub vdr_ModelInfoFileParse {
   $format_str   .= "# <key>:<value> pairs must be separated by one or more whitespace characters.\n";
   $format_str   .= "# <modelname> and the first <key>:<value> pair must be separated by one or\n";
   $format_str   .= "# more whitespace characters.\n";
+  $format_str   .= "# R2DT_TEMPLATE lines (used by v-annotate.pl --draw_r2dt only) require a\n";
+  $format_str   .= "# 'name' key and a 'ranges' key. 'ranges' value is 1 or more comma-separated\n";
+  $format_str   .= "# VADR coords tokens '<start>..<end>:<strand>' (strand must be '+'), e.g.\n";
+  $format_str   .= "# ranges:\"1..210:+,10380..10807:+\" -- NOT a bare '<start>..<end>' with no strand.\n";
 
   # example lines:
   #MODEL NC_039477 cmfile:"test/test.vadr.cm"
   #FEATURE NC_039477 type:"gene" coords:"5..5104:+" gene:"ORF1"
   #FEATURE NC_039477 type:"CDS" coords:"5..5104:+" gene:"ORF1" product:"nonstructural polyprotein"
+  #R2DT_TEMPLATE NC_039477 name:"zika-linear" ranges:"1..210:+,10380..10807:+"
 
-  my $mdl_name   = undef; # name of current model
-  my $ftr_idx    = undef; # index of current feature
-  my $mdl_idx    = -1;    # index of current model
-  my %mdl_read_H = ();    # keeps track of which model names we've seen MODEL lines for, to avoid duplicates
+  my $mdl_name    = undef; # name of current model
+  my $ftr_idx     = undef; # index of current feature
+  my $tmpl_idx    = undef; # index of current R2DT_TEMPLATE
+  my $mdl_idx     = -1;    # index of current model
+  my %mdl_read_H  = ();    # keeps track of which model names we've seen MODEL lines for, to avoid duplicates
+  my %mdl_idx_H   = ();    # map of model name to its index in $mdl_info_AHR
   open(IN, $in_file) || ofile_FileOpenFailure($in_file, $sub_name, $!, "reading", $FH_HR);
-  while(my $line = <IN>) { 
-    if($line !~ /^#/) { 
-      # not a comment line
+  while(my $line = <IN>) {
+    if(($line !~ /^#/) && ($line !~ /^\s*$/)) {
+      # not a comment line and not a blank line
+      # (blank lines are skipped so a minfo can be cat'd together with an
+      #  example R2DT_TEMPLATE sidecar that includes blank separator lines)
       my $orig_line = $line;
       chomp $line;
-      my $is_model_line = 0; # set to 1 if line we are parsing is a MODEL line, else it's a FEATURE line
-      if($line =~ /^MODEL\s+(\S+)\s*/) { 
+      my $line_type = undef; # "model", "feature", or "tmpl"
+      if($line =~ /^MODEL\s+(\S+)\s*/) {
         $mdl_name = $1;
-        if($mdl_name =~ /[\)\(]/) { 
+        if($mdl_name =~ /[\)\(]/) {
           ofile_FAIL("ERROR in $sub_name, model info file has model named $mdl_name which contains '(' and/or ')', which are not allowed in model names", 1, $FH_HR);
         }
-        if(exists $mdl_read_H{$mdl_name}) { 
+        if(exists $mdl_read_H{$mdl_name}) {
           ofile_FAIL("ERROR in $sub_name, problem parsing $in_file: read multiple MODEL lines for $mdl_name, should only be 1; line:\n$orig_line\n", 1, $FH_HR);
         }
         $mdl_idx++;
@@ -5943,48 +6037,81 @@ sub vdr_ModelInfoFileParse {
         @{$ftr_info_HAHR->{$mdl_name}} = ();
         $mdl_info_AHR->[$mdl_idx]{"name"} = $mdl_name;
         $mdl_read_H{$mdl_name} = 1;
+        $mdl_idx_H{$mdl_name} = $mdl_idx;
 
-        $is_model_line = 1;
+        $line_type = "model";
         $line =~ s/^MODEL\s+(\S+)\s*//; # remove MODEL and model value
       }
-      elsif($line =~ /^FEATURE\s+(\S+)\s*/) { 
+      elsif($line =~ /^FEATURE\s+(\S+)\s*/) {
         $mdl_name = $1;
-        if(! exists $mdl_read_H{$mdl_name}) { 
+        if(! exists $mdl_read_H{$mdl_name}) {
           ofile_FAIL("ERROR in $sub_name, problem parsing $in_file: read FEATURE line for model $mdl_name before a MODEL line for $mdl_name; line:\n$orig_line\n", 1, $FH_HR);
         }
         $ftr_idx = scalar(@{$ftr_info_HAHR->{$mdl_name}});
         # initialize ftr_info for this model/feature pair
-        %{$ftr_info_HAHR->{$mdl_name}[$ftr_idx]} = (); 
+        %{$ftr_info_HAHR->{$mdl_name}[$ftr_idx]} = ();
+        $line_type = "feature";
         $line =~ s/^FEATURE\s+\S+\s*//; # remove FEATURE and model value
       }
-      else { 
-        ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, non-comment line does not start with 'MODEL <modelname>' or 'FEATURE <featurename>', line:\n$orig_line\n", 1, $FH_HR);
+      elsif($line =~ /^R2DT_TEMPLATE\s+(\S+)\s*/) {
+        $mdl_name = $1;
+        if(! exists $mdl_read_H{$mdl_name}) {
+          ofile_FAIL("ERROR in $sub_name, problem parsing $in_file: read R2DT_TEMPLATE line for model $mdl_name before a MODEL line for $mdl_name; line:\n$orig_line\n", 1, $FH_HR);
+        }
+        if(! exists $tmpl_info_HAR->{$mdl_name}) { @{$tmpl_info_HAR->{$mdl_name}} = (); }
+        $tmpl_idx = scalar(@{$tmpl_info_HAR->{$mdl_name}});
+        # initialize tmpl_info for this model/template pair
+        %{$tmpl_info_HAR->{$mdl_name}[$tmpl_idx]} = ();
+        $line_type = "tmpl";
+        $line =~ s/^R2DT_TEMPLATE\s+\S+\s*//; # remove R2DT_TEMPLATE and model value
       }
-      # if we get here we have either a MODEL or FEATURE line, parse the rest of it
-      while($line ne "") { 
-        if($line =~ /^([^\:\s]+)\:\"([^\"]+)\"\s*/) { 
+      else {
+        ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, non-comment line does not start with 'MODEL <modelname>', 'FEATURE <featurename>', or 'R2DT_TEMPLATE <modelname>', line:\n$orig_line\n", 1, $FH_HR);
+      }
+      # if we get here we have a MODEL, FEATURE, or R2DT_TEMPLATE line, parse the rest of it
+      while($line ne "") {
+        if($line =~ /^([^\:\s]+)\:\"([^\"]+)\"\s*/) {
           # key   must not include ':' or whitespace
           # value must begin and end with '"' but otherwise include no '"' characters
           my ($key, $value) = ($1, $2);
-          if($is_model_line) { 
+          if($line_type eq "model") {
             if(exists $mdl_info_AHR->[$mdl_idx]{$key}) {
               ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, read multiple values for key $key on MODEL line; line:\n$orig_line\n", 1, $FH_HR);
             }
             $mdl_info_AHR->[$mdl_idx]{$key} = $value;
           }
-          else { # feature line
+          elsif($line_type eq "feature") {
             if(exists $ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key}) {
               ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, read multiple values for key $key on FEATURE line; line:\n$orig_line\n", 1, $FH_HR);
             }
             $ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key} = $value;
             # printf("\tadded ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key} as $value\n");
           }
+          else { # R2DT_TEMPLATE line
+            if(exists $tmpl_info_HAR->{$mdl_name}[$tmpl_idx]{$key}) {
+              ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, read multiple values for key $key on R2DT_TEMPLATE line; line:\n$orig_line\n", 1, $FH_HR);
+            }
+            $tmpl_info_HAR->{$mdl_name}[$tmpl_idx]{$key} = $value;
+          }
           $line =~ s/^[^\:\s]+\:\"[^\"]+\"\s*//; # remove this key/value pair
         }
-        else { 
+        else {
           ofile_FAIL("ERROR in $sub_name, unable to parse $in_file, failed to parse key:value pairs in line:\n$orig_line\n$format_str\n", 1, $FH_HR);
         }
-      } 
+      }
+      if($line_type eq "tmpl") {
+        # finalize: require 'name' and 'ranges', validate/convert 'ranges'
+        if(! exists $tmpl_info_HAR->{$mdl_name}[$tmpl_idx]{"name"}) {
+          ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, R2DT_TEMPLATE line missing required key 'name'; line:\n$orig_line\n", 1, $FH_HR);
+        }
+        if(! exists $tmpl_info_HAR->{$mdl_name}[$tmpl_idx]{"ranges"}) {
+          ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, R2DT_TEMPLATE line missing required key 'ranges'; line:\n$orig_line\n", 1, $FH_HR);
+        }
+        my $tmpl_clen = (exists $mdl_idx_H{$mdl_name}) ? $mdl_info_AHR->[$mdl_idx_H{$mdl_name}]{"length"} : undef;
+        my $ranges_AR = vdr_R2dtTemplateRangesParse($tmpl_info_HAR->{$mdl_name}[$tmpl_idx]{"ranges"}, $tmpl_clen, $orig_line, $FH_HR);
+        $tmpl_info_HAR->{$mdl_name}[$tmpl_idx]{"ranges_AR"} = $ranges_AR;
+        $tmpl_info_HAR->{$mdl_name}[$tmpl_idx]{"model"}     = $mdl_name;
+      }
     }
   }
   close(IN);
@@ -5992,12 +6119,83 @@ sub vdr_ModelInfoFileParse {
   # verify we read what we need
   utl_AHValidate($mdl_info_AHR, $reqd_mdl_keys_AR, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing", $FH_HR);
   my $nmdl = scalar(@{$mdl_info_AHR});
-  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
     utl_AHValidate($ftr_info_HAHR->{$mdl_name}, $reqd_ftr_keys_AR, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing for model " . $mdl_info_AHR->[$mdl_idx]{"name"}, $FH_HR);
   }
 
   return;
+}
+
+#################################################################
+# Subroutine: vdr_R2dtTemplateRangesParse()
+# Incept:     EPN, 2026-08-26 (replaces vdr_R2dtTemplateFileParse())
+#
+# Synopsis: Parse and validate the value of an R2DT_TEMPLATE line's
+#           'ranges' key: 1 or more comma-separated VADR coords tokens
+#           '<start>..<end>:<strand>', strand required to be '+' (R2DT
+#           template ranges are positions in the model's RF frame, which
+#           is always in the model's '+' sense), non-overlapping and
+#           monotonically increasing, and (if $clen defined) in bounds.
+#
+#           Reuses vdr_CoordsSegmentValidate()/vdr_CoordsSegmentParse()
+#           (vadr.pm's general coords validator/parser) rather than
+#           duplicating coords-format logic; only the error messages
+#           and the '+'-only strand restriction are specific to
+#           R2DT_TEMPLATE ranges.
+#
+# Arguments:
+#  $ranges_str: value of the 'ranges' key, e.g. "1..210:+,10380..10807:+"
+#  $clen:       model length (CLEN), for in-bounds check. Can be undef
+#               to skip the in-bounds check.
+#  $orig_line:  the original R2DT_TEMPLATE line (for error messages)
+#  $FH_HR:      REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    REF to array of [start,end] pairs (1-indexed)
+#
+# Dies: if $ranges_str is empty or malformed
+#       if any coords token has strand '-'
+#       if a range is out of bounds for $clen (when defined)
+#       if ranges overlap or are non-monotonic
+#################################################################
+sub vdr_R2dtTemplateRangesParse {
+  my $sub_name = "vdr_R2dtTemplateRangesParse";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+
+  my ($ranges_str, $clen, $orig_line, $FH_HR) = @_;
+
+  my @ranges_A = ();
+  my $prev_end = 0;
+  foreach my $tok (split(",", $ranges_str)) {
+    if(! vdr_CoordsSegmentValidate($tok, $FH_HR)) {
+      if($tok =~ /^\d+\.\.\d+$/) {
+        # the single most likely mistake: a bare "<start>..<end>" with no ":<strand>"
+        ofile_FAIL("ERROR in $sub_name, problem parsing R2DT_TEMPLATE ranges \"$ranges_str\", coordinate token '$tok' is missing a strand (expected VADR coords format '<start>..<end>:<strand>', e.g. '1..210:+', not a bare '<start>..<end>'); line:\n$orig_line\n", 1, $FH_HR);
+      }
+      ofile_FAIL("ERROR in $sub_name, problem parsing R2DT_TEMPLATE ranges \"$ranges_str\", unable to parse coordinate token '$tok'; expected VADR coords format '<start>..<end>:<strand>', e.g. '1..210:+'; line:\n$orig_line\n", 1, $FH_HR);
+    }
+    my ($start, $end, $strand) = vdr_CoordsSegmentParse($tok, $FH_HR);
+    if($strand ne "+") {
+      ofile_FAIL("ERROR in $sub_name, problem parsing R2DT_TEMPLATE ranges \"$ranges_str\", coordinate token '$tok' has strand '$strand'; R2DT_TEMPLATE ranges are positions in the model's RF frame and must be strand '+'; line:\n$orig_line\n", 1, $FH_HR);
+    }
+    if($end < $start) {
+      ofile_FAIL("ERROR in $sub_name, problem parsing R2DT_TEMPLATE ranges \"$ranges_str\", coordinate token '$tok' has end < start (non-monotonic within range); line:\n$orig_line\n", 1, $FH_HR);
+    }
+    if((defined $clen) && ($end > $clen)) {
+      ofile_FAIL("ERROR in $sub_name, problem parsing R2DT_TEMPLATE ranges \"$ranges_str\", coordinate token '$tok' end $end > model CLEN $clen (out of bounds); line:\n$orig_line\n", 1, $FH_HR);
+    }
+    if($start <= $prev_end) {
+      ofile_FAIL("ERROR in $sub_name, problem parsing R2DT_TEMPLATE ranges \"$ranges_str\", coordinate token '$tok' start $start <= previous range end $prev_end (ranges must be non-overlapping and increasing); line:\n$orig_line\n", 1, $FH_HR);
+    }
+    push(@ranges_A, [$start, $end]);
+    $prev_end = $end;
+  }
+  if(scalar(@ranges_A) == 0) {
+    ofile_FAIL("ERROR in $sub_name, R2DT_TEMPLATE line has empty 'ranges' value; line:\n$orig_line\n", 1, $FH_HR);
+  }
+
+  return \@ranges_A;
 }
 
 #################################################################
@@ -6012,9 +6210,9 @@ sub vdr_ModelInfoFileParse {
 #             '_exc', and dies if any such keys are not valid.
 #             
 # Arguments: 
-#  $mdl_info_HR:    ref to the model info hash (for one model)
+#  $mdl_info_HR:  ref to the model info hash (for one model)
 #  $alt_info_HHR: ref to the alert info hash of hashes
-#  $FH_HR:          ref to hash of file handles, including "log" and "cmd"
+#  $FH_HR:        ref to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
 #
@@ -6056,6 +6254,236 @@ sub vdr_ModelInfoValidateExceptionKeys {
       }
     }
   }
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_ModelInfoSetClassificationAlignmentFile()
+# Incept:     EPN, Tue Dec  9 16:04:43 2025
+#
+# Purpose:    Set the "CLASS_ALN_FILE" key for a model, if 
+#             existing group/subgroup values indicate a file
+#             should be used for nearest-neighbor based
+#             classification.
+#             
+# Arguments: 
+#  $mdl_info_HR:  ref to the model info hash (for one model)
+#  $aln_file:     the alignment file to set CLASS_ALN_FILE to
+#  $FH_HR:        ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       never
+#
+################################################################# 
+sub vdr_ModelInfoSetClassificationAlignmentFile {
+  my $sub_name = "vdr_ModelInfoSetClassificationAlignmentFile";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mdl_info_HR, $aln_file, $FH_HR) = @_;
+
+  if(defined $mdl_info_HR->{"CLASS_ALN_FILE"}) {
+    # if this is already set, undefine it 
+    $mdl_info_HR->{"CLASS_ALN_FILE"} = undef;
+  }    
+
+  $mdl_info_HR->{"CLASS_ALN_FILE"} = $aln_file;
+
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_ModelInfoGetClassificationAlignmentFile()
+# Incept:     EPN, Tue Dec  9 16:04:43 2025
+#
+# Purpose:    Return the "CLASS_ALN_FILE" key for a model.
+#             
+# Arguments: 
+#  $mdl_info_HR:  ref to the model info hash (for one model)
+#  $FH_HR:        ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    $mdl_info_HR->{"CLASS_ALN_FILE"}
+#
+# Dies:       never
+#
+################################################################# 
+sub vdr_ModelInfoGetClassificationAlignmentFile {
+  my $sub_name = "vdr_ModelInfoGetClassificationAlignmentFile";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mdl_info_HR, $FH_HR) = @_;
+
+  my $retval = (defined $mdl_info_HR->{"CLASS_ALN_FILE"}) ? $mdl_info_HR->{"CLASS_ALN_FILE"} : undef;
+
+  return $retval;
+}
+
+#################################################################
+# Subroutine: vdr_ModelInfoSetClassificationRefStartStopPositions()
+# Incept:     EPN, Wed Dec 10 10:29:47 2025
+#
+# Purpose:    Set the "CLASS_RF_START_POS" and "CLASS_RF_STOP_POS"
+#             values for a given model.
+#             
+# Arguments: 
+#  $mdl_info_HR:  ref to the model info hash (for one model)
+#  $FH_HR:        ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       never
+#
+################################################################# 
+sub vdr_ModelInfoSetClassificationRefStartAndStopPositions {
+  my $sub_name = "vdr_ModelInfoSetClassificationRefStartAndStopPositions";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mdl_info_HR, $rf_start_pos, $rf_stop_pos, $FH_HR) = @_;
+
+  my $mdl_name = $mdl_info_HR->{"name"};
+  my $mdl_len = $mdl_info_HR->{"length"};
+
+  my $class_aln_file = vdr_ModelInfoGetClassificationAlignmentFile($mdl_info_HR, $FH_HR);
+  # a bunch of sanity checks
+  if(! defined $mdl_len) { 
+    ofile_FAIL("ERROR, in $sub_name, model length not defined", 1, $FH_HR);
+  }
+  if((! defined $rf_start_pos) && (defined $rf_stop_pos)) { 
+    ofile_FAIL("ERROR, in $sub_name, for model $mdl_name alignment file $class_aln_file has #=GF VADR-classification-rf-stop-pos annotation but not #=GF VADR-classification-rf-start-pos annotation", 1, $FH_HR);
+  }
+  if((defined $rf_start_pos) && (defined $rf_stop_pos)) {
+    if(($rf_start_pos < 1) || ($rf_start_pos > $mdl_len)) {
+      ofile_FAIL("ERROR, in $sub_name, for model $mdl_name alignment file $class_aln_file has #=GF VADR-classification-rf-start-pos $rf_start_pos, but $rf_start_pos is an invalid position (must be 1..$mdl_len)", 1, $FH_HR);
+    }
+    if(($rf_stop_pos < 1) || ($rf_stop_pos > $mdl_len)) {
+      ofile_FAIL("ERROR, in $sub_name, for model $mdl_name alignment file $class_aln_file has #=GF VADR-classification-rf-stop-pos $rf_stop_pos, but $rf_stop_pos is an invalid position (must be 1..$mdl_len)", 1, $FH_HR);
+    }
+    if($rf_start_pos > $rf_stop_pos) { 
+      ofile_FAIL("ERROR, in $sub_name, for model $mdl_name alignment file $class_aln_file has #=GF VADR-classification-rf-start/stop-pos, but start ($rf_start_pos) > stop ($rf_stop_pos)", 1, $FH_HR);
+    }
+  }
+  $mdl_info_HR->{"CLASS_RF_START_POS"} = $rf_start_pos;
+  $mdl_info_HR->{"CLASS_RF_STOP_POS"}  = $rf_stop_pos;
+
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_ModelInfoGetClassificationRefStartStopPositions()
+# Incept:     EPN, Wed Dec 10 10:29:47 2025
+#
+# Purpose:    Return the "CLASS_RF_START_POS" and "CLASS_RF_STOP_POS"
+#             values for a given model.
+#             
+# Arguments: 
+#  $mdl_info_HR:  ref to the model info hash (for one model)
+#  $FH_HR:        ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    Two values:
+#             $mdl_info_HR->{"CLASS_RF_START_POS"}
+#             $mdl_info_HR->{"CLASS_RF_STOP_POS"}
+#
+# Dies:       never
+#
+################################################################# 
+sub vdr_ModelInfoGetClassificationRefStartAndStopPositions {
+  my $sub_name = "vdr_ModelInfoGetClassificationRefStartAndStopPositions";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mdl_info_HR, $FH_HR) = @_;
+
+  my $retval1 = (defined $mdl_info_HR->{"CLASS_RF_START_POS"}) ? $mdl_info_HR->{"CLASS_RF_START_POS"} : undef;
+  my $retval2 = (defined $mdl_info_HR->{"CLASS_RF_STOP_POS"})  ? $mdl_info_HR->{"CLASS_RF_STOP_POS"} : undef;
+  
+  return($retval1, $retval2);
+}
+
+#################################################################
+# Subroutine: vdr_ModelInfoCheckForFileKey()
+# Incept:     EPN, Wed Dec 10 14:03:50 2025
+#
+# Purpose:    Check if a model info hash value has a :FILE: prefix
+#             and if so, return the remainder of the value after :FILE:
+#             is removed.
+#             
+# Arguments: 
+#  $value:    ref to the value
+#
+# Returns:    undef if $value does not start with ":FILE:"
+#             remainder of $value if it does start with ":FILE:"
+#
+# Dies:       never
+#
+################################################################# 
+sub vdr_ModelInfoCheckForFileKey {
+  my $sub_name = "vdr_ModelInfoCheckForFileKey";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($value) = (@_);
+
+  my $retval = undef;
+  if($value =~ /^\:FILE\:(.+)$/) {
+    $retval = $1;
+  }
+  return $retval;
+}
+
+#################################################################
+# Subroutine: vdr_ModelInfoSetNumericalValue()
+# Incept:     EPN, Wed Jan 22 2026
+#
+# Purpose:    Set a numerical value in a model info hash after
+#             validating it is within specified bounds (if defined).
+#             Allows small tolerance for floating point precision.
+#             
+# Arguments: 
+#  $mdl_info_HR:  ref to model info hash
+#  $key:          key name to set
+#  $value:        numerical value to set
+#  $min:          minimum allowed value (undef if no minimum)
+#  $max:          maximum allowed value (undef if no maximum)
+#  $FH_HR:        REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies:       if $value is not defined, not numerical, or outside bounds
+#
+################################################################# 
+sub vdr_ModelInfoSetNumericalValue {
+  my $sub_name = "vdr_ModelInfoSetNumericalValue";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mdl_info_HR, $key, $value, $min, $max, $FH_HR) = (@_);
+
+  my $tolerance = 0.000001; # tolerance for floating point comparison
+
+  # check that value is defined and numerical
+  if(! defined $value) { 
+    ofile_FAIL("ERROR in $sub_name, value for key $key is not defined", 1, $FH_HR);
+  }
+  if($value !~ /^[\+\-]?\d+\.?\d*$/ && $value !~ /^[\+\-]?\d*\.?\d+$/) { 
+    ofile_FAIL("ERROR in $sub_name, value for key $key ($value) is not numerical", 1, $FH_HR);
+  }
+
+  # check minimum bound if defined
+  if(defined $min && ($value < ($min - $tolerance))) {
+    ofile_FAIL("ERROR in $sub_name, value for key $key ($value) is less than minimum allowed value ($min)", 1, $FH_HR);
+  }
+
+  # check maximum bound if defined
+  if(defined $max && ($value > ($max + $tolerance))) {
+    ofile_FAIL("ERROR in $sub_name, value for key $key ($value) is greater than maximum allowed value ($max)", 1, $FH_HR);
+  }
+
+  # value is valid, set it in the hash
+  $mdl_info_HR->{$key} = $value;
+
   return;
 }
 
@@ -6586,7 +7014,7 @@ sub vdr_MergeOutputGetFileList {
 # Dies: if $check_exists is 1 and a file to merge does not exist
 # 
 ################################################################# 
-sub vdr_MergeOutputMdlTabularFile { 
+sub OLD_vdr_MergeOutputMdlTabularFile { 
   my $nargs_exp = 6;
   my $sub_name = "vdr_MergeOutputMdlTabularFile";
   if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
@@ -6688,6 +7116,143 @@ sub vdr_MergeOutputMdlTabularFile {
   push(@data_mdl_AA, ["-", $model, $group_H{$model}, $subgroup_H{$model}, $num_seqs_H{$model}, $num_pass_H{$model}, $num_fail_H{$model}]);
   $model = "*none*";
   push(@data_mdl_AA, ["-", $model, $group_H{$model}, $subgroup_H{$model}, $num_seqs_H{$model}, $num_pass_H{$model}, $num_fail_H{$model}]);
+  push(@data_mdl_AA, []); # separator line
+
+  my $merged_file = $out_root_no_vadr . ".vadr" . $out_sfx; # merged file to create by concatenating files in chunk dirs
+  ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "mdl", $merged_file, 1, 1, "per-model tabular summary file");
+  ofile_TableHumanOutput(\@data_mdl_AA, \@head_mdl_AA, \@clj_mdl_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"mdl"}, undef, $FH_HR);
+
+  return;
+}
+
+#################################################################
+# Subroutine:  vdr_MergeOutputMdlTabularFile()
+# Incept:      EPN, Fri Mar 19 13:27:00 2021
+#
+# Purpose:    With --split, merge .mdl tabular output files from 
+#             multiple output directories in @{$chunk_outdir_AR} 
+#             into a single file.
+#
+# Arguments: 
+#   $out_root_no_vadr:  root name for output file names, without '.vadr' suffix
+#   $ofile_desc:        description for %{$ofile_info_HHR}
+#   $do_check_exists:   '1' to check if all files to merge exist before concatenating and fail if not
+#   $chunk_outdir_AR:   ref to array of output directories with files we are merging
+#   $opt_HHR:           ref to 2D hash of option values, see top of sqp_opts.pm for description
+#   $ofile_info_HHR:    ref to the 2D hash of output file information, ADDED TO HERE 
+#
+# Returns:     void
+# 
+# Dies: if $check_exists is 1 and a file to merge does not exist
+# 
+################################################################# 
+sub vdr_MergeOutputMdlTabularFile { 
+  my $nargs_exp = 6;
+  my $sub_name = "vdr_MergeOutputMdlTabularFile";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($out_root_no_vadr, $ofile_desc, $do_check_exists, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+  my $out_sfx   = ".mdl";
+
+  my $out_dir_tail = utl_RemoveDirPath($out_root_no_vadr);
+
+  # make list of files to concatenate
+  my @filelist_A = (); # array of files to concatenate to make $merged_file
+  vdr_MergeOutputGetFileList($out_root_no_vadr, $out_sfx, $do_check_exists, \@filelist_A, $chunk_outdir_AR, $FH_HR);
+
+  # th head_* definitions should be (manually) kept consistent with output_tabular()
+  # alternatively we could parse the header lines in the files we want to merge,
+  # but not doing that currently
+  my @head_mdl_AA = ();
+  my @data_mdl_AA = ();
+  @{$head_mdl_AA[0]} = ("",    "",      "",      "",         "num",  "num",  "num");
+  @{$head_mdl_AA[1]} = ("idx", "model", "group", "subgroup", "seqs", "pass", "fail");
+  my @clj_mdl_A      = (1,     1,       1,       1,          0,      0,      0);
+
+  # read each .mdl file and store info in it
+  my ($idx, $model, $group, $subgroup, $num_seqs, $num_pass, $num_fail);
+  #my %group_H    = (); # key: model name, value: group
+  #my %subgroup_H = (); # key: model name, value: subgroup
+  my %num_seqs_mdl_H   = (); # key1: model name, value num seqs
+  my %num_seqs_HH      = (); # key1: model name, key2: "GROUP:<group>:SUBGROUP:<subgroup>", value: num seqs
+  my %num_pass_HH      = (); # key1: model name, key2: "GROUP:<group>:SUBGROUP:<subgroup>", value: num passing seqs
+  my %num_fail_HH      = (); # key1: model name, key2: "GROUP:<group>:SUBGROUP:<subgroup>", value: num failing seqs
+  for(my $i = 0; $i < scalar(@filelist_A); $i++) { 
+    open(IN, $filelist_A[$i]) || ofile_FileOpenFailure($filelist_A[$i], $sub_name, $!, "reading", $FH_HR);
+    while(my $line = <IN>) { 
+      ##                                                    num   num   num
+      ##idx  model               group         subgroup    seqs  pass  fail
+      ##---  ------------------  ------------  ----------  ----  ----  ----
+      #1     NC_045512           Sarbecovirus  SARS-CoV-2     2     1     1
+      #2     NC_045512-MW422255  Sarbecovirus  SARS-CoV-2     1     1     0
+      ##---  ------------------  ------------  ----------  ----  ----  ----
+      #-     *all*               -             -              3     2     1
+      #-     *none*              -             -              0     0     0
+      ##---  ------------------  ------------  ----------  ----  ----  ----
+      if($line !~ m/^\#/) { 
+        chomp $line;
+        if($line =~ m/^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\d+)\s+(\d+)\s+(\d+)$/) { 
+          ($idx, $model, $group, $subgroup, $num_seqs, $num_pass, $num_fail) = ($1, $2, $3, $4, $5, $6, $7);
+        }
+        else { 
+          ofile_FAIL("ERROR in $sub_name unable to parse $filelist_A[$i] file line:\n$line\n", 1, $FH_HR);
+        }
+        if(! defined $num_seqs_HH{$model}) {
+	  %{$num_seqs_HH{$model}} = ();
+	  %{$num_pass_HH{$model}} = ();
+	  %{$num_fail_HH{$model}} = ();
+	}
+	my $grp_subgrp = ":GROUP:$group:SUBGROUP:$subgroup";
+        if(! defined $num_seqs_HH{$model}{$grp_subgrp}) {
+	  $num_seqs_HH{$model}{$grp_subgrp} = 0;
+	  $num_pass_HH{$model}{$grp_subgrp} = 0;
+	  $num_fail_HH{$model}{$grp_subgrp} = 0;
+	}
+        $num_seqs_mdl_H{$model} += $num_seqs;
+        $num_seqs_HH{$model}{$grp_subgrp} += $num_seqs;
+        $num_pass_HH{$model}{$grp_subgrp} += $num_pass;
+        $num_fail_HH{$model}{$grp_subgrp} += $num_fail;
+      }
+    }
+  }
+
+  my @tmp_mdl_tbl_order_A = (sort { $num_seqs_mdl_H{$b} <=> $num_seqs_mdl_H{$a} or 
+                                        $a cmp $b 
+                             } keys (%num_seqs_mdl_H));
+
+  # remove special "*all*" and "*none*" lines from @tmp_mdl_order_A to make @mdl_order_A
+  my $mdl_tbl_idx = 0;
+  my @mdl_grp_subgrp_tbl_order_A = ();
+  my $grp_subgrp;
+  foreach $model (@tmp_mdl_tbl_order_A) { 
+    if(($model ne "*all*") && ($model ne "*none*")) { 
+      my @grp_subgrp_tbl_order_A = (sort { $num_seqs_HH{$model}{$b} <=> $num_seqs_HH{$model}{$a} or 
+					       $a cmp $b 
+				    } keys (%{$num_seqs_HH{$model}}));
+      
+      foreach $grp_subgrp (@grp_subgrp_tbl_order_A) {
+	if($num_seqs_HH{$model}{$grp_subgrp} > 0) { 
+	  $mdl_tbl_idx++;
+	  if($grp_subgrp =~ /^:GROUP:(\S+):SUBGROUP:(\S+)$/) {
+	    my ($mdl_group, $mdl_subgroup) = ($1, $2); 
+	    push(@data_mdl_AA, [$mdl_tbl_idx, $model, $mdl_group, $mdl_subgroup, $num_seqs_HH{$model}{$grp_subgrp}, $num_pass_HH{$model}{$grp_subgrp}, $num_fail_HH{$model}{$grp_subgrp}]);
+	  }
+	  else {
+	    ofile_FAIL("ERROR in $sub_name unable to parse :GROUP:<group>:SUBGROUP:<subgroup> group/subgroup key $grp_subgrp", 1, $FH_HR);
+	  }
+	}
+      }
+    }
+  }
+  # add mdl summary line
+  push(@data_mdl_AA, []); # separator line
+  $model = "*all*";
+  $grp_subgrp = ":GROUP:-:SUBGROUP:-";
+  push(@data_mdl_AA, ["-", $model, "-", "-", $num_seqs_HH{$model}{$grp_subgrp}, $num_pass_HH{$model}{$grp_subgrp}, $num_fail_HH{$model}{$grp_subgrp}]);
+  $model = "*none*";
+  push(@data_mdl_AA, ["-", $model, "-", "-", $num_seqs_HH{$model}{$grp_subgrp}, $num_pass_HH{$model}{$grp_subgrp}, $num_fail_HH{$model}{$grp_subgrp}]);
   push(@data_mdl_AA, []); # separator line
 
   my $merged_file = $out_root_no_vadr . ".vadr" . $out_sfx; # merged file to create by concatenating files in chunk dirs

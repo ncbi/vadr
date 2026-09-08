@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # 
-# version: 1.7 [Sep 2025]
+# version: 1.7.1 [Sep 2026]
 #
 # vadr_seed.pm
 # Eric Nawrocki
@@ -514,20 +514,27 @@ sub parse_blastn_results {
               $scsum_HHH{$cur_mdl_name}{$cur_seq_name}{$cur_seq_strand} = 0.;
             }
             $scsum_HHH{$cur_mdl_name}{$cur_seq_name}{$cur_seq_strand} += $cur_H{"BITSCORE"};
-          }            
+          }      
           else { 
             # in output mode 2, but we only output if this hit is 
             # a <seq>/<model> pair where <seq> is classified to <model>
+	    # $cur_mdl_name may be of form <seqname>:MODEL:<mdlname> if
+	    # there are multiple sequences for each model (this can only
+	    # occur if $stg_key begins with "rpn")
+	    my $cur_mdlsq_mdl_name = $cur_mdl_name;
+	    my ($cur_mdlsq_name, $cur_mdl_name) = breakdown_mdlsq_mdl_name($cur_mdlsq_mdl_name);
+
             if((defined $seq2mdl_HR->{$cur_seq_name}) &&  
                ($seq2mdl_HR->{$cur_seq_name} eq $cur_mdl_name)) { 
               #target name         accession query name           accession mdl mdl from   mdl to seq from   seq to strand trunc pass   gc  bias  score   E-value inc description of target
+	      #$cur_mdl_name = "hrvA.df";
               if(! defined $tblout_FH_H{$cur_mdl_name}) { 
                 ofile_FAIL("ERROR in $sub_name, read unexpected model name: $cur_mdl_name", 1, $FH_HR);
               }
-              $cur_FH = $tblout_FH_H{$cur_mdl_name};
+	      $cur_FH = $tblout_FH_H{$cur_mdl_name};
               printf $cur_FH ("%-s  -  %-s  -  blastn  %d  %d  %d  %d  %s  -  -  -  0.0  %8.1f  %s  ?  -\n", 
                               $cur_seq_name,
-                              $cur_mdl_name,
+                              $cur_mdlsq_mdl_name,
                               $cur_mdl_start,
                               $cur_mdl_stop,
                               $cur_seq_start, 
@@ -538,7 +545,7 @@ sub parse_blastn_results {
               # and output indel info to a separate file
               $cur_FH = $indel_FH_H{$cur_mdl_name};
               printf $cur_FH ("%s  %s  %s  %s  %s  %s  %s  %s\n",
-                              $cur_mdl_name,
+                              $cur_mdlsq_mdl_name,
                               $cur_seq_name,
                               vdr_CoordsSegmentCreate($cur_mdl_start, $cur_mdl_stop, "+", $FH_HR),
                               $cur_H{"HLEN"},
@@ -2876,6 +2883,40 @@ sub parse_minimap2_cigar_to_seed_coords {
 
   return ($ret_sda_mdl_coords, $ret_sda_seq_coords);
 }
+
+#################################################################
+# Subroutine:  breakdown_mdlsq_mdl_name()
+# Incept:      EPN, Tue Sep 16 09:40:49 2025
+#
+# Purpose:    Given a string that is either just a model name (e.g. NC_045512) or
+#             a model sequence name, followed by ":MODEL:" and then a model name
+#             e.g. "KY369887:MODEL:hrvA". Return the <mdlsq_name> and <mdl_name>.
+#             In first case, (NC_045512) both <mdlsq_name> and <mdl_name> are just
+#             the input string ("NC_045512").
+# 
+# Arguments: 
+#   $mdlsq_mdl_name: input string
+#
+# Returns:     Two values:
+# $mdlsq_name:  name of mdlsq
+# $mdl_name:    name of model
+# 
+################################################################# 
+sub breakdown_mdlsq_mdl_name {
+  my $nargs_exp = 1;
+  my $sub_name = "breakdown_mdlsq_mdl_name";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($mdlsq_mdl_name) = (@_);
+  
+  my $mdlsq_name = $mdlsq_mdl_name;
+  my $mdl_name   = $mdlsq_mdl_name;
+  if($mdlsq_mdl_name =~ /(\S+)\:MODEL\:(\S+)/) {
+    ($mdlsq_name, $mdl_name) = ($1, $2);
+  }
+
+  return ($mdlsq_name, $mdl_name);
+}  
 
 ###########################################################################
 # the next line is critical, a perl module must return a true value

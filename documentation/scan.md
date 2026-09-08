@@ -127,10 +127,12 @@ The `dengue` and `hcv` `<options key>` values use the `flavi` library due to
 the `--mkey flavi` in their `<options string>`, and `norovirus` 
 uses the `calici` library due to `--mkey calici` in its `<options string>`.
 
-Then, when parsing the output for the the scan against the `flavi`
-library, sequences are matched to either `dengue`, `hcv` or `flavi` by
+Then, when parsing the output for the scan against the `flavi`
+library, sequences are matched to `dengue` or `hcv` by
 checking if the best matching model for each sequence matches to
-`dengue` or `hcv` or `flavi`. A model matches to an `<options key>` if
+`dengue` or `hcv` (`flavi` itself is the default `<options key>`, used for any
+sequence that matches neither `dengue` nor `hcv`, as described below). A
+model matches to an `<options key>` if
 its `model name`, `group` or `subgroup` is identical to that `<options key>`
 *after lowercasing and removing all
 special characters* from the name, group or subgroup. For example, if a
@@ -207,9 +209,9 @@ v-scan.pl -h
 You'll see something like the following output:
 ```
 # v-scan.pl :: scan and annotate sequences against VADR model libraries 
-# VADR 1.7 (Sep 2025)
+# VADR 1.7.1 (Sep 2026)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Tue Sep  2 10:39:19 2025
+# date:    Fri Sep  4 11:37:51 2026
 #
 Usage: v-scan.pl [-options] <fasta file to annotate> <output directory to create>
 ```
@@ -357,13 +359,13 @@ All of these files were created in the newly created directory
 `vs-n5`. The files that include `norovirus` in their name were created
 by `v-annotate.pl` and more information on those files and their
 formats can be found [here](formats.md#annotate). The [`v-annotate.pl`
-documentation](annotate.md#lib) also includes a description of several of these files.
+documentation](formats.md#lib) also includes a description of several of these files.
 
 The final four files are the [`.log` file](formats.md#log), which is
 the same as the standard output printed to the screen currently being
 discussed, the [`.cmd` file](formats.md#cmd), and the [`.filelist`
 file](formats.md#filelist) which lists the output files created by
-`v-scan.pl`, and finally the [`.lib` file](annotate.md#lib)
+`v-scan.pl`, and finally the [`.lib` file](formats.md#lib)
 which explains how many sequences matched to each library in the
 classification stage. 
 

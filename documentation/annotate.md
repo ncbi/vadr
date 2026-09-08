@@ -6,6 +6,7 @@
 * [Running `v-annotate.pl` inside the `v-scan.pl` wrapper](#scan)
 * [`v-annotate.pl` command-line options](#options)
   * [basic options](#options-basic)
+  * [options for drawing R2DT secondary structure figures](#options-r2dt)
   * [options for specifying expected sequence classification](#options-classification)
   * [options for controlling which alerts are fatal](#options-fatal)
   * [options related to model files](#options-modelfiles)
@@ -27,6 +28,8 @@
 * [Additional information on `v-annotate.pl` alerts](#alerts2)
 * [Non-essential features: allowing sequences to pass despite fatal alerts for specific features](#mnf)
 * [Alert *exceptions*: ignoring alerts in specific model position ranges](#exceptions)
+* [Alternative classification mode based on nearest-neighbors](#nn)
+* [Drawing R2DT secondary structure figures](#r2dt)
 * [Other ways to modify default behavior for features by manually changing the `.minfo` file](#minfo)
 * [Limiting memory usage and multi-threading](#memory)
 * [Alternative parallelization using a cluster](#altparallel)
@@ -291,7 +294,7 @@ The first three files are the [`.log` file](formats.md#log), which is
 the same as the standard output printed to the screen currently being
 discussed, the [`.cmd` file](formats.md#cmd), and the [`.filelist`
 file](formats.md#filelist) which lists the output files created by
-`v-annotate.pl`. Next comes a [`.seqstat` file](annotate.md#seqstat)
+`v-annotate.pl`. Next comes a [`.seqstat` file](formats.md#annotate)
 with lengths for each sequence in the input file.
 
 `v-annotate.pl` also creates 
@@ -498,7 +501,7 @@ Then the sequence and model coordinates pertaining to the alert and
 the lengths of those regions are listed in columns 9 to 12.
 A more detailed description of the problem can be found in the final column.
 All possible alerts are listed in the [alert
-table](#alerttable).
+table](#alerts).
 For some examples of different types of alerts see 
     [here](alerts.md#examples).
 
@@ -561,7 +564,7 @@ specific features* you can do that by modifying the `modelinfo` input
 file as explained [below](#mnf).
 
 ---
-## Running `v-annotate.pl` inside the `v-scan.pl` wrapper](#scan)
+## <a name="scan"></a>Running `v-annotate.pl` inside the `v-scan.pl` wrapper
 
 The `v-scan.pl` script can be used as a simple wrapper for
 `v-annotate.pl` if you want to use multiple model
@@ -600,12 +603,18 @@ integer.
 | `--nkb <n>`      | set the target number of Kb of sequence for each alignment job and/or chunk (with --split) to `<n>` Kb (thousand nucleotides), default `<n>` is `300` |
 | `--keep`         | keep [additional output files](formats.md#annotate-keep) that are normally removed |
 
+### `v-annotate.pl` options for drawing R2DT secondary structure figures<a name="options-r2dt"></a>
+
+| ......option.... | explanation | 
+|------------------|-------------|
+| `--draw_r2dt`    | draw [R2DT](https://r2dt.bio/) secondary structure SVG figures for all sequences classified to a model with R2DT templates, whether they pass or fail; requires the `$R2DT_DIR` environment variable to be set to an R2DT installation root, and a model info file that declares templates, as explained [here](r2dt-drawing.md#top) |
+
 ### `v-annotate.pl` options for specifying expected sequence classification<a name="options-classification"></a>
 
 | ..........option.......... | explanation | 
 |--------|-------------| 
 | `--group <s>`     | specify that the expected classification of all sequences is group `<s>`, sequences determined to *not* be in this group will trigger an *incgroup* alert |
-| `--subgroup <s2>` | specify that the expected classification of all sequences is subgroup `<s>` within group `<s2>` from `--group <s2>`, sequences determined to *not* be in this group will trigger an *incsubgrp* alert; requires `--group` |
+| `--subgroup <s2>` | specify that the expected classification of all sequences is subgroup `<s>` within group `<s2>` from `--group <s2>`, sequences determined to *not* be in this group will trigger an *incsbgrp* alert; requires `--group` |
 
 ### `v-annotate.pl` options for controlling which alerts are *fatal* and cause a sequence to FAIL <a name="options-fatal"></a>
 
@@ -663,8 +672,11 @@ In the table below, `<n>` represents a positive interger argument and
 | ...........option........... | relevant alert code(s) | relevant error(s) | default value that triggers alert | explanation |
 |---------------------|---------------------|----------------|-----------------------------------|-------------|
 | `--lowsc <x>`       | [*lowscore*](#lowscore1)                             | LOW_SCORE                              | < 0.3  | <a name="options-alerts-lowsc"></a> set bits per nt threshold for alert to `<x>` | 
-| `--indefclass <x>`  | [*indfclas*](#indfclas1)                             | INDEFINITE_CLASSIFICATION              | < 0.03 | <a name="options-alerts-indefclas"></a> set bits per nt difference threshold for alert between top two models (not in same subgroup) to `<x>` |
-| `--incspec <x>`     | [*incgroup*](#incgroup1), [*incsubgrp*](#incsubgrp1) | INCORRECT_SPECIFIED_GROUP, INCORRECT_SPECIFIED_SUBGROUP | < 0.2   | <a name="options-alerts-incspec"></a> set bits per nt difference threshold for alert between best-matching model `<m>` and highest-scoring model in specified group `<s1>` (from `--group <s1>`) or subgroup `<s2>` (from `--subgroup <s2>`), where `<m>` is not in group/subgroup `<s1>`/`<s2>` to `<x>` |
+| `--indefclass <x>`  | [*indfclas*](#indfclas1)                             | INDEFINITE_CLASSIFICATION              | < 0.03 | <a name="options-alerts-indefclass"></a> set bits per nt difference threshold for alert between top two models (not in same subgroup) to `<x>` |
+| `--nn_indefclass <x>`| [*nnindfcl*](#nnindfcl1)                            | INDEFINITE_CLASSIFICATION_NN           | < 0.05 | <a name="options-alerts-nn_indefclass"></a> set fractional difference threshold for alert between top two nearest neighbors (not in same subgroup) to `<x>`, only relevant in nearest-neighbor classification mode when model info file specifies an alignment file for group and subgroup definition |
+| `--nn_lowidclass <x>`| [*nnloidcl*](#nnloidcl1)                            | LOW_ID_CLASSIFICATION_NN               | < 0.75 | <a name="options-alerts-nn_lowidclass"></a> set fractional identity threshold for alert to `<x>`, only relevant in nearest-neighbor classification mode when model info file specifies an alignment file for group and subgroup definition |
+| `--nn_partregclass <x>`| [*nnptrgcl*](#nnptrgcl1)                          | PARTIAL_REGION_CLASSIFICATION_NN       | < 0.5   | <a name="options-alerts-nn_partregclass"></a> set threshold for fractional length within pre-specified NN region for alert to `<x>`, only relevant in nearest-neighbor classification mode when model info file specifies an alignment file for group and subgroup definition |
+| `--incspec <x>`     | [*incgroup*](#incgroup1), [*incsbgrp*](#incsbgrp1) | INCORRECT_SPECIFIED_GROUP, INCORRECT_SPECIFIED_SUBGROUP | < 0.2   | <a name="options-alerts-incspec"></a> set bits per nt difference threshold for alert between best-matching model `<m>` and highest-scoring model in specified group `<s1>` (from `--group <s1>`) or subgroup `<s2>` (from `--subgroup <s2>`), where `<m>` is not in group/subgroup `<s1>`/`<s2>` to `<x>` |
 | `--lowcov <x>`      | [*lowcovrg*](#lowcovrg1)                             | LOW_COVERAGE                           | < 0.9  | <a name="options-alerts-lowcov"></a> set fractional coverage threshold for alert to `<x>` |
 | `--dupregolp <n>`   | [*dupregin*](#dupregin1)                             | DUPLICATE_REGIONS                      | >= 20  | <a name="options-alerts-dupreg"></a>set min number of model position overlap for alert to  `<n>` positions | 
 | `--dupregsc <x>`    | [*dupregin*](#dupregin1)                             | DUPLICATE_REGIONS                      | >= 10.0| <a name="options-alerts-dupreg"></a> set min bit score of weaker overlapping hit to  `<x>` bits | 
@@ -684,10 +696,10 @@ In the table below, `<n>` represents a positive interger argument and
 | `--nmiscftrthr <n>` | [*nmiscftr*](#nmiscftr1)                             | TOO_MANY_MISC_FEATURES                 | >= 4   | <a name="options-alerts-nmiscftr"></a>  set minimum number of misc_features per sequence for alert to `<n>` |
 | `--indefann <x>`    | [*indf5lcc*](#indf5lcc1), [*indf5lcn*](#indf5lcn1), [*indf3lcc*](#indf3lcc1), [*indf3lcn*](#indf3lcn1)   | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.8 | <a name="options-alerts-indefann"></a> set posterior probability threshold for non-mat_peptide features for alert to `<x>` |
 | `--indefann_mp <x>` | [*indf5lcc*](#indf5lcc1), [*indf5lcn*](#indf5lcn1), [*indf3lcc*](#indf3lcc1), [*indf3lcn*](#indf3lcn1) | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.6 | <a name="options-alerts-indefann_mp"></a> set posterior probability threshold for mat_peptide features for alert to `<x>` |
-| `--fstminntt <n>`   | [*fsthicft*](#fsthicft1), [*fstlocft*](#fstlocft1), [*fstukct5*](#fstukct51) | POSSIBLE_FRAMESHIFT_HIGH_CONF, POSSIBLE_FRAMESHIFT_LO_CONF, POSSIBLE_FRAMESHIFT | >= 4 | <a name="options-alerts-fstminntt"></a> set maximum allowed length of aligned region in different frame in which frame is not restored before CDS end to `<n>` |
+| `--fstminntt <n>`   | [*fsthicft*](#fsthicft1), [*fstlocft*](#fstlocft1), [*fstukcft*](#fstukcft1) | POSSIBLE_FRAMESHIFT_HIGH_CONF, POSSIBLE_FRAMESHIFT_LO_CONF, POSSIBLE_FRAMESHIFT | >= 4 | <a name="options-alerts-fstminntt"></a> set maximum allowed length of aligned region in different frame in which frame is not restored before CDS end to `<n>` |
 | `--fstminnti <n>`   | [*fsthicfi*](#fsthicfi1), [*fstlocfi*](#fstlocfi1), [*fstukcfi*](#fstukcfi1) | POSSIBLE_FRAMESHIFT_HIGH_CONF, POSSIBLE_FRAMESHIFT_LO_CONF, POSSIBLE_FRAMESHIFT | >= 6 | <a name="options-alerts-fstminnti"></a> set maximum allowed length of aligned region in different frame in which frame is restored before CDS end to `<n>` |
-| `--fsthighthr <x>`  | [*fsthicnf*](#fsthicnf1)                             | POSSIBLE_FRAMESHIFT_HIGH_CONF         | >= 0.8  | <a name="options-alerts-fsthighthr"></a> set average posterior probability threshold for potentially frameshifted region for high confidence alert to `<x>` |
-| `--fstlowthr <x>`   | [*fstlocnf*](#fstlocnf1)                             | POSSIBLE_FRAMESHIFT_LOW_CONF          | >= 0.0  | <a name="options-alerts-fstlowthr"></a> set average posterior probability threshold for potentially frameshifted region for low confidence alert to `<x>` |
+| `--fsthighthr <x>`  | [*fsthicft*](#fsthicft1), [*fsthicfi*](#fsthicfi1)                             | POSSIBLE_FRAMESHIFT_HIGH_CONF         | >= 0.8  | <a name="options-alerts-fsthighthr"></a> set average posterior probability threshold for potentially frameshifted region for high confidence alert to `<x>` |
+| `--fstlowthr <x>`   | [*fstlocft*](#fstlocft1), [*fstlocfi*](#fstlocfi1)                             | POSSIBLE_FRAMESHIFT_LOW_CONF          | >= 0.0  | <a name="options-alerts-fstlowthr"></a> set average posterior probability threshold for potentially frameshifted region for low confidence alert to `<x>` |
 | `--xalntol <n>`     | [*indf5pst*](#indf5pst1), [*indf3pst*](#indf3pst1)   | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | > 5 | <a name="options-alerts-xalntol"></a> set maximum allowed difference in nucleotides between predicted blastx and CM start/end without alert to `<n>` (blastx coordinates must be internal to CM coordinates) |
 | `--xmaxins <n>`     | [*insertnp*](#insertnp1)                             | INSERTION_OF_NT                       | > 27    | <a name="options-alerts-xmaxins"></a> set maximum allowed nucleotide insertion length in blastx validation alignment without alert to `<n>` |
 | `--xmaxdel <n>`     | [*deletinp*](#deletinp1)                             | DELETION_OF_NT                        | > 27    | <a name="options-alerts-xmaxdel"></a> set maximum allowed nucleotide deletion length in blastx validation alignment without alert to `<n>` |
@@ -695,6 +707,27 @@ In the table below, `<n>` represents a positive interger argument and
 | `--nmaxdel <n>`     | [*deletinn*](#deletinn1)                             | DELETION_OF_NT                        | > 27    | <a name="options-alerts-nmaxdel"></a> set maximum allowed nucleotide deletion length in CDS nt  alignment without alert to `<n>` |
 | `--xlonescore <n>`  | [*indfantp*](#indfantp1)                             | INDEFINITE_ANNOTATION                 | >= 80   | <a name="options-alerts-xlonescore"></a> set minimum blastx *raw* score for a lone blastx hit not supported by CM analysis for alert to `<n>` | 
 | `--hlonescore <n>`  | [*indfantp*](#indfantp1)                             | INDEFINITE_ANNOTATION                 | >= 10   | <a name="options-alerts-hlonescore"></a>  set minimum hmmer bit score for a lone hmmsearch hit not supported by CM analysis for alert to `<n>` | 
+
+### `v-annotate.pl` options for experimental recombination detection <a name="options-recomb"></a>
+
+Recombination detection is an **experimental** feature that is disabled by default. It
+requires nearest-neighbor classification mode (i.e., a model info file with alignment files
+specifying group/subgroup information). Enable with `--do_rc`.
+
+**These options are not listed by `v-annotate.pl -h`.** They still exist and function
+normally; to see them in the help output, use `v-annotate.pl --devhelp`. The feature is not
+actively developed and its false-positive rate has not been measured; see
+[recombination-detection.md](recombination-detection.md) for its current status and known
+limitations.
+
+| .........option......... | explanation |
+|---------------------|--------------------|  
+| `--do_rc`           | enable recombination detection: flag sequences where the nearest-neighbor switches between different subgroups at some breakpoint position (experimental, off by default) |
+| `--rc_thresh <x>`   | for `--do_rc`, set the minimum per-nucleotide bit score differential required on each side of the breakpoint to report a [*recombin*](#recombin1) alert to `<x>`, the default value for `<x>` is `0.2` |
+| `--rc_match <x>`    | for `--do_rc`, set the expected match probability for the homology model used in log-likelihood scoring to `<x>`, the default value for `<x>` is `0.95`; if the model info file specifies a `VADR-default-rc_match` value, that takes precedence when `--rc_match` is not explicitly set by the user |
+| `--rc_minlen <n>`   | for `--do_rc`, set the minimum number of non-gap aligned positions required on each side of the breakpoint to `<n>`, the default value for `<n>` is `10` |
+| `--rc_igself`       | for `--do_rc`, when testing a sequence that is also present in the model alignment, skip that model sequence as a candidate parent (prevents self-matching, useful when testing sequences within the reference set) |
+| `--rc_iglist <s>`   | for `--do_rc`, ignore model sequences whose group.subgroup string contains any token in the comma-separated list `<s>` as a candidate parent |
 
 ### `v-annotate.pl` options for controlling cmalign alignment stage <a name="options-align"></a>
 
@@ -826,7 +859,7 @@ between hits for content of Ns. Ns in regions that satisfy the following three c
 are then replaced with the expected nucleotide at each corresponding position:
 
 * missing sequence region must be at least 5 nt
-  (controllable with `--r_minlen` option)
+  
 
 * length of missing sequence region must equal length of
    missing model region
@@ -877,6 +910,7 @@ with format described [here](formats.md#rpn).
 | `--r_prof`          | for `-r`, use slower profile methods, not blastn, to identify Ns to replaced |
 | `--r_list`          | for `-r`, only use models listed in file `<s>` for N replacement stage |
 | `--r_only <s>`      | for `-r`, only use model named `<s>` for N replacement stage |
+| `--r_file <s>`      | for `-r`, use blastn db in file `<s>`, can have multiple seqs per model but all sequence names must either equal a model name, or be `<seqname>:MODEL:<mdlname>` where `<mdlname>` is a model name |
 | `--r_blastnws <n>`  | for `-r`, set the blastn `-word_size` parameter to `<n>`, the default value for `<n>` is `7` |
 | `--r_blastnrw <n>`  | for `-r`, set the blastn `-reward` parameter to `<n>`, the default value for `<n>` is `1` |
 | `--r_blastnpn <n>`  | for `-r`, set the blastn `-penalty` parameter to `<n>`, the default value for `<n>` is `-2` |
@@ -956,6 +990,7 @@ explained more [here](#memory).
 | `--forcedcrins`  | force insert type alignment doctoring, requires `--cmindi`, mainly useful for debugging/testing |
 | `--xnoid`        | ignore blastx hits that are full length and 100% identical, mainly useful for testing |
 | `--intlen <n>`   | define intron as any gap >= `<n>` nucleotides between segments in a CDS, only relevant for identifying canonical splice sites, the default value for `<n>` is `40` |
+| `--nn_regionlen <n>`| define minimum length for region-specific NN-based classification to `<n>` nucleotides. If a sequence has fewer than `<n>` nucleotides spanning the region, NN-based classification will use the entire sequence instead. The default value for `<n>` is `40`, if the user-defined region length is `<m>` with `<m> < <n>`, then `<m>` will be used |
 
 ## Information on `v-annotate.pl` alerts <a name="alerts"></a>
 
@@ -967,10 +1002,10 @@ v-annotate.pl --alt_list
 
 The table below contains the same information as in the `--alt_list` output,
 with sequences organized according to whether they are fatal or not. 
-[*Always fatal*](#alertlist-always) alert codes are always fatal and cannot be changed using the 
+[*Always fatal*](#always1) alert codes are always fatal and cannot be changed using the 
 `--alt_pass` options. All other alert codes can be changed from *fatal* to *non-fatal*
 by using the `--alt_pass` option, or from *non-fatal* to *fatal* using the `--alt_fail` option.
-An example is included [below](#alerttoggle).
+An example is included [below](#examplealtpass).
 
 In the table below, the **type** column reports if each alert pertains to an entire
 `sequence` or a specific annotated `feature` within a sequence. The
@@ -1013,7 +1048,7 @@ exception ranges are not allowed.
 | [*cdsstopp*](#cdsstopp2)  | feature  | yes   | CDS_HAS_STOP_CODON              | <a name="cdsstopp1"></a> stop codon in protein-based alignment | - | - |
 | [*fsthicft*](#fsthicft2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_HIGH_CONF   | <a name="fsthicft1"></a> high confidence possible frameshift in CDS (frame not restored before end) (not reported if `--glsearch`| `fst_exc` | coords-only |
 | [*fsthicfi*](#fsthicfi2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_HIGH_CONF   | <a name="fsthicfi1"></a> high confidence possible frameshift in CDS (frame restored before end) (not reported if `--glsearch`)| `fst_exc` | coords-only |
-| [*fstukcf3*](#fstukcft2)  | feature  | yes   | POSSIBLE_FRAMESHIFT             | <a name="fstukcft1"></a> possible frameshift in CDS (frame not restored before end) (only reported if `--glsearch`) | `fst_exc` | coords-only |
+| [*fstukcft*](#fstukcft2)  | feature  | yes   | POSSIBLE_FRAMESHIFT             | <a name="fstukcft1"></a> possible frameshift in CDS (frame not restored before end) (only reported if `--glsearch`) | `fst_exc` | coords-only |
 | [*fstukcfi*](#fstukcfi2)  | feature  | yes   | POSSIBLE_FRAMESHIFT             | <a name="fstukcfi1"></a> possible frameshift in CDS (frame restored before end) (only reported if `--glsearch`) | `fst_exc` | coords-only |
 | [*mutspst5*](#mutspst52)  | feature  | yes   | MUTATION_AT_SPLICE_SITE         | <a name="mutspst51"></a> expected splice site at 5' end of intron (GT) could not be identified (only reported for CDS with `canon_splice_sites` set to 1 in `.minfo` file) | - | - |
 | [*mutspst3*](#mutspst32)  | feature  | yes   | MUTATION_AT_SPLICE_SITE         | <a name="mutspst31"></a> expected splice site at 3' end of intron (AG) could not be identified (only reported for CDS with `canon_splice_sites` set to 1 in `.minfo` file) | - | - |
@@ -1046,7 +1081,7 @@ exception ranges are not allowed.
 | [*qstsbgrp*](#qstsbgrp2)  | sequence | never | QUESTIONABLE_SPECIFIED_SUBGROUP | <a name="qstsbgrp1"></a> best overall model is not from specified subgroup  | - | - |
 | [*qstgroup*](#qstgroup2)  | sequence | never | QUESTIONABLE_SPECIFIED_GROUP    | <a name="qstgroup1"></a> best overall model is not from specified group  | - | - |
 | [*ambgnt5s*](#ambgnt5s2)  | sequence | never | AMBIGUITY_AT_START              | <a name="ambgnt5s1"></a> first nucleotide of the sequence is an ambiguous nucleotide | - | - |
-| [*ambgnt3s*](#ambgnt3s2)  | sequence | never | AMBIGUITY_AT_END                | <a name="ambgnt3s2"></a> final nucleotide of the sequence is an ambiguous nucleotide | - | - |
+| [*ambgnt3s*](#ambgnt3s2)  | sequence | never | AMBIGUITY_AT_END                | <a name="ambgnt3s1"></a> final nucleotide of the sequence is an ambiguous nucleotide | - | - |
 | [*indfclas*](#indfclas2)  | sequence | never | INDEFINITE_CLASSIFICATION       | <a name="indfclas1"></a> low score difference between best overall model and second best model (not in best model's subgroup)  | - | - |
 | [*lowscore*](#lowscore2)  | sequence | never | LOW_SCORE                       | <a name="lowscore1"></a> score to homology model below low threshold | - | - |
 | [*biasdseq*](#biasdseq2)  | sequence | never | BIASED_SEQUENCE                 | <a name="biasdseq1"></a> high fraction of score attributed to biased sequence composition  | - | - |
@@ -1070,6 +1105,11 @@ exception ranges are not allowed.
 | [*ambgnt3c*](#ambgnt3c2)  | feature  | no    | AMBIGUITY_AT_CDS_END            | <a name="ambgnt3c1"></a> final nucleotide of CDS is an ambiguous nucleotide |  - | - |
 | [*ambgcd5c*](#ambgcd5c2)  | feature  | no    | AMBIGUITY_IN_START_CODON        | <a name="ambgcd5c1"></a> 5' complete CDS starts with canonical nt but includes ambiguous nt in its start codon | - | - |
 | [*ambgcd3c*](#ambgcd3c2)  | feature  | no    | AMBIGUITY_IN_STOP_CODON         | <a name="ambgcd3c1"></a> 3' complete CDS ends with canonical nt but includes ambiguous nt in its stop codon | - | - |
+| [*nnindfcl*](#nnindfcl2)  | sequence | never | INDEFINITE_CLASSIFICATION_NN    | <a name="nnindfcl1"></a> low difference between fractional identity of sequence and its nearest neighbor and sequence and its 2nd nearest neighbor | - | - |
+| [*nnloidcl*](#nnloidcl2)  | sequence | never | LOW_ID_CLASSIFICATION_NN        | <a name="nnloidcl1"></a> low fractional identity of sequence and its nearest neighbor model sequence | - | - 
+| [*nnalrgcl*](#nnalrgcl2)  | sequence | never | ALT_REGION_CLASSIFICATION_NN    | <a name="nnalrgcl1"></a> alternative alignment region used to find nearest neighbor b/c sequence does not include specified region | - | - |
+| [*nnptrgcl*](#nnptrgcl2)  | sequence | never | PARTIAL_REGION_CLASSIFICATION_NN| <a name="nnptrgcl1"></a> only part of the specified alignment region used to find nearest neighbor b/c sequence doesn't span full region | - | - |
+| [*recombin*](#recombin2)  | sequence | never | POSSIBLE_RECOMBINATION          | <a name="recombin1"></a> possible recombination detected: nearest-neighbor switches subgroup at some breakpoint position (only reported with `--do_rc`) | - | - |
 
 ### Additional information on `v-annotate.pl` alerts <a name="alerts2"></a> 
 
@@ -1105,7 +1145,7 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*indfstrn*](#indfstrn1)  | INDEFINITE_STRAND               | [`--indefstr`](#options-alerts-indefstr) | - | - <a name="indfstrn2"></a> | 
 | [*lowsim5s*](#lowsim5s1)  | LOW_SIMILARITY_START            | [`--lowsim5seq`](#options-alerts-lowsim5seq) | - | - <a name="lowsim5s2"></a> | 
 | [*lowsim3s*](#lowsim3s1)  | LOW_SIMILARITY_END              | [`--lowsim3seq`](#options-alerts-lowsim3seq) | - | - <a name="lowsim3s2"></a> | 
-| [*lowsimis*](#lowsimis1)  | LOW_SIMILARITY                  | [`--lowsimint`](#options-alerts-lowsimint) | - | - <a name="lowsimis2"></a> |
+| [*lowsimis*](#lowsimis1)  | LOW_SIMILARITY                  | [`--lowsimiseq`](#options-alerts-lowsimiseq) | - | - <a name="lowsimis2"></a> |
 | [*nmiscftr*](#nmiscftr1)  | TOO_MANY_MISC_FEATURES          | [`--nmiscftrthr`](#options-alerts-nmiscftr) | all | - <a name="nmiscftr2"></a> | 
 | [*deletins*](#deletins1)  | DELETION_OF_FEATURE             | none | all | - <a name="deletins2"></a> | 
 | [*mutstart*](#mutstart1)  | MUTATION_AT_START               | [`--atgonly`](#options-basic-atgonly) | CDS | - <a name="mutstart2"></a> | 
@@ -1122,7 +1162,7 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*mutspst5*](#mutspst51)  | MUTATION_AT_SPLICE_SITE         | [`--ignore_canonss`, `--force-canonss`, `--intlen`](#options-ignore) | CDS | - <a name="mutspst52"></a> |
 | [*mutspst3*](#mutspst31)  | MUTATION_AT_SPLICE_SITE         | [`--ignore_canonss`, `--force-canonss`, `--intlen`](#options-ignore) | CDS | - <a name="mutspst32"></a> |
 | [*peptrans*](#peptrans1)  | PEPTIDE_TRANSLATION_PROBLEM     | none | mat_peptide | - <a name="peptrans2"></a> | 
-| [*pepadjcy*](#pepadjcy1)  | PEPTIDE_ADJACENCY_PROBLEM       | none | mat_peptide | - <a name="pepadcy2"></a> | 
+| [*pepadjcy*](#pepadjcy1)  | PEPTIDE_ADJACENCY_PROBLEM       | none | mat_peptide | - <a name="pepadjcy2"></a> | 
 | [*indfantp*](#indfantp1)  | INDEFINITE_ANNOTATION           | [`--xlonescore`](#options-alerts-xlonescore) | CDS | - <a name="indfantp2"></a> | 
 | [*indfantn*](#indfantn1)  | INDEFINITE_ANNOTATION           | none | CDS | - <a name="indfantn2"></a> | 
 | [*indf5gap*](#indf5gap1)  | INDEFINITE_ANNOTATION_START     | none | all | - <a name="indf5gap2"></a> | 
@@ -1152,33 +1192,42 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*qstgroup*](#qstgroup1)  | QUESTIONABLE_SPECIFIED_GROUP    | none | - | - <a name="qstgroup2"></a> | 
 | [*ambgnt5s*](#ambgnt5s1)  | AMBIGUITY_AT_START              | none | - | - <a name="ambgnt5s2"></a> | 
 | [*ambgnt3s*](#ambgnt3s1)  | AMBIGUITY_AT_END                | none | - | - <a name="ambgnt3s2"></a> | 
-| [*indfclas*](#indfclas1)  | INDEFINITE_CLASSIFICATION       | [`--indefclas`](#options-alerts-indefclas) | - | - <a name="indfclas2"></a> | 
-| [*lowscore*](#lowscore1)  | LOW_SCORE                       | [`--lowsc`](#options-alerts-lowscore) | - | - <a name="lowscore2"></a> | 
+| [*indfclas*](#indfclas1)  | INDEFINITE_CLASSIFICATION       | [`--indefclass`](#options-alerts-indefclass) | - | - <a name="indfclas2"></a> | 
+| [*lowscore*](#lowscore1)  | LOW_SCORE                       | [`--lowsc`](#options-alerts-lowsc) | - | - <a name="lowscore2"></a> | 
 | [*biasdseq*](#biasdseq1)  | BIASED_SEQUENCE                 | [`--biasfrac`](#options-alerts-biasfrac) | - | - <a name="biasdseq2"></a> | 
 | [*extrant5*](#extrant51)  | EXTRA_SEQUENCE_START            | [`--extrant5`](#options-alerts-extrant5) | - | - <a name="extrant52"></a> |
 | [*extrant3*](#extrant31)  | EXTRA_SEQUENCE_END              | [`--extrant3`](#options-alerts-extrant3) | - | - <a name="extrant32"></a> |<
-| [*unjoinbl*](#unjoinbl1)  | UNJOINABLE_SUBSEQ_ALIGNMENTS    | none | - | <a name="unjoinbl12"></a> |
-| [*deletina*](#deletina1)  | DELETION_OF_FEATURE             | [`--ignore_isdel`](#options-alerts-ignore) | all | - <a name="deletina2"></a> | 
+| [*unjoinbl*](#unjoinbl1)  | UNJOINABLE_SUBSEQ_ALIGNMENTS    | none | - | <a name="unjoinbl2"></a> |
+| [*deletina*](#deletina1)  | DELETION_OF_FEATURE             | [`--ignore_isdel`](#options-ignore) | all | - <a name="deletina2"></a> | 
 | [*ambgntrp*](#ambgntrp1)  | N_RICH_REGION_NOT_REPLACED      | [`--r_diffno`, `--r_diffmaxdel`, `--r_diffmaxins`, `--r_diffminnonn`, `--r_diffminfract`](#options-replace) | - | - <a name="ambgntrp2"></a> | 
-| [*fstlocft*](#fstlocft1)  | POSSIBLE_FRAMESHIFT_LOW_CONF    | [`--fstlothr`, `--fstminntt`](#options-alerts-fstminntt) | CDS | - <a name="fstlocft2"></a> |
-| [*fstlocfi*](#fstlocfi1)  | POSSIBLE_FRAMESHIFT_LOW_CONF    | [`--fstlothr`, `--fstminnti`](#options-alerts-fstminnti) | CDS | - <a name="fstlocfi2"></a> |
+| [*fstlocft*](#fstlocft1)  | POSSIBLE_FRAMESHIFT_LOW_CONF    | [`--fstlowthr`, `--fstminntt`](#options-alerts-fstminntt) | CDS | - <a name="fstlocft2"></a> |
+| [*fstlocfi*](#fstlocfi1)  | POSSIBLE_FRAMESHIFT_LOW_CONF    | [`--fstlowthr`, `--fstminnti`](#options-alerts-fstminnti) | CDS | - <a name="fstlocfi2"></a> |
 | [*indf5lcc*](#indf5lcc1)  | INDEFINITE_ANNOTATION_START     | [`--indefann`, `--indefann_mp`](#options-alerts-indefann) | CDS and any gene or mat_peptide with identical start coordinate to a CDS | - <a name="indf5lcc2"></a> | 
 | [*indf3lcc*](#indf3lcc1)  | INDEFINITE_ANNOTATION_END       | [`--indefann`, `--indefann_mp`](#options-alerts-indefann) | CDS and any gene with identical stop coordinate to CDS | - <a name="indf3lcc2"></a> | 
 | [*insertnn*](#insertnn1)  | INSERTION_OF_NT                 | [`--nmaxins`](#options-alerts-nmaxins) | CDS | - <a name="insertnn2"></a> |
 | [*deletinn*](#deletinn1)  | DELETION_OF_NT                  | [`--nmaxdel`](#options-alerts-nmaxdel) | CDS | - <a name="deletinn2"></a> |
 | [*lowsim5c*](#lowsim5c1)  | LOW_FEATURE_SIMILARITY_START    | [`--lowsim5ftr`](#options-alerts-lowsim5ftr) | CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim5c2"></a> | 
-| [*lowsim3c*](#lowsim3c1)  | LOW_FEATURE_SIMILARITY_END      | [`--lowsim3ftr`](#options-alerts-lowsim3frt) | CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim3c2"></a> | 
-| [*lowsimic*](#lowsimic1)  | LOW_FEATURE_SIMILARITY          | [`--lowsimiftr`](#options-alerts-lowsimftr)  | CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsimic2"></a> | 
-| [*ambgnt5f*](#ambgnt5s1)  | AMBIGUITY_AT_FEATURE_START      | none | - | - <a name="ambgnt5s2"></a> | 
-| [*ambgnt3f*](#ambgnt3s1)  | AMBIGUITY_AT_FEATURE_END        | none | - | - <a name="ambgnt3s2"></a> | 
+| [*lowsim3c*](#lowsim3c1)  | LOW_FEATURE_SIMILARITY_END      | [`--lowsim3ftr`](#options-alerts-lowsim3ftr) | CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim3c2"></a> | 
+| [*lowsimic*](#lowsimic1)  | LOW_FEATURE_SIMILARITY          | [`--lowsimiftr`](#options-alerts-lowsimiftr)  | CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsimic2"></a> | 
+| [*ambgnt5f*](#ambgnt5f1)  | AMBIGUITY_AT_FEATURE_START      | none | - | - <a name="ambgnt5f2"></a> | 
+| [*ambgnt3f*](#ambgnt3f1)  | AMBIGUITY_AT_FEATURE_END        | none | - | - <a name="ambgnt3f2"></a> | 
 | [*ambgnt5c*](#ambgnt5c1)  | AMBIGUITY_AT_CDS_START          | none | CDS | - <a name="ambgnt5c2"></a> | 
 | [*ambgnt3c*](#ambgnt3c1)  | AMBIGUITY_AT_CDS_END            | none | CDS | - <a name="ambgnt3c2"></a> | 
 | [*ambgcd5c*](#ambgcd5c1)  | AMBIGUITY_IN_START_CODON        | none | CDS | - <a name="ambgcd5c2"></a> | 
 | [*ambgcd3c*](#ambgcd3c1)  | AMBIGUITY_IN_STOP_CODON         | none | CDS | - <a name="ambgcd3c2"></a> | 
+| [*ambgnt5c*](#ambgnt5c1)  | AMBIGUITY_AT_CDS_START          | none | CDS | - <a name="ambgnt5c2"></a> | 
+| [*ambgnt3c*](#ambgnt3c1)  | AMBIGUITY_AT_CDS_END            | none | CDS | - <a name="ambgnt3c2"></a> | 
+| [*ambgcd5c*](#ambgcd5c1)  | AMBIGUITY_IN_START_CODON        | none | CDS | - <a name="ambgcd5c2"></a> | 
+| [*ambgcd3c*](#ambgcd3c1)  | AMBIGUITY_IN_STOP_CODON         | none | CDS | - <a name="ambgcd3c2"></a> | 
+| [*nnindfcl*](#nnindfcl1)  | INDEFINITE_CLASSIFICATION_NN    | [`--nn_indefclass`](#options-alerts-nn_indefclass) | - | - <a name="nnindfcl2"></a> | 
+| [*nnloidcl*](#nnloidcl1)  | LOW_ID_CLASSIFICATION_NN        | [`--nn_lowidclass`](#options-alerts-nn_lowidclass) | - | - <a name="nnloidcl2"></a> | 
+| [*nnalrgcl*](#nnalrgcl1)  | ALT_REGION_CLASSIFICATION_NN    | none | - | - <a name="nnalrgcl2"></a> | 
+| [*nnptrgcl*](#nnptrgcl1)  | PARTIAL_REGION_CLASSIFICATION_NN| [`--nn_partregclass`](#options-alerts-nn_partregclass) | - | - <a name="nnptrgcl2"></a> |
+| [*recombin*](#recombin1)  | POSSIBLE_RECOMBINATION          | [`--rc_thresh`, `--rc_match`, `--rc_minlen`, `--rc_igself`, `--rc_iglist`](#options-recomb) | - | - <a name="recombin2"></a> |
 
 ---
 
-## <a name="mnf"></a>Non-essential features: allowing sequences to pass despite fatal alerts for specific features
+## <a name="mnf"></a>Non-essential features:allowing sequences to pass despite fatal alerts for specific features
 
 It is possible to specify that certain features are *non-essential* and so
 have relaxed requirements. Some alerts that are normally fatal are not
@@ -1354,6 +1403,10 @@ should be added to the model line (line starting with `MODEL`):
 | *fstlocfi*   | POSSIBLE_FRAMESHIFT_LOW_CONF   | `fst_exc`       | coords-only          | feature (CDS)|
 | *extrant5*   | EXTRA_SEQUENCE_START           | `extrant5_exc`  | coords-value*        | model | 
 | *extrant3*   | EXTRA_SEQUENCE_END             | `extrant3_exc`  | coords-value*        | model | 
+| *indf5lcn*   | INDEFINITE_ANNOTATION_START    | `indf5lc_exc`   | coords-value**       | feature (non-CDS) |
+| *indf5lcc*   | INDEFINITE_ANNOTATION_START    | `indf5lc_exc`   | coords-value**       | feature (CDS)     |
+| *indf3lcn*   | INDEFINITE_ANNOTATION_START    | `indf3lc_exc`   | coords-value***      | feature (non-CDS) |
+| *indf3lcc*   | INDEFINITE_ANNOTATION_START    | `indf3lc_exc`   | coords-value***      | feature (CDS)     |
 
 If you specify a given exception key and value in the model info file,
 it will mean that all alerts with that specific key will have
@@ -1386,14 +1439,40 @@ multiple position ranges and values, separate with commas.
 The alert codes which allow exception ranges can also be viewed by
 running `v-annotate.pl` with the `--alt_list` option.
 
-For `extrant5_exc` the `coords` must be `1..1:+`. For `extrant3_exc`,
+`*` For `extrant5_exc` the `coords` must be `1..1:+`. For `extrant3_exc`,
 the coords must be `<mdllen>..<mdllen>:+` where `<mdllen>` is the
 length of the reference model.
+
+`**` For `indf5lc_exc` the `coords` must be `<n>..<n>:+` or `<n>..<n>:-` where `<n>` is the
+5'-most position of the feature.
+
+`***` For `indf3lc_exc` the `coords` must be `<n>..<n>:+` or `<n>..<n>:-` where `<n>` is the
+3'-most position of the feature.
 
 Prior to VADR version 1.6, some alert exceptions in model info files
 were permitted in different formats. As of version 1.6, the formats
 above are enforced, but the formats present in publicly available
 model files created prior to v1.6 are also compatible with v1.6+.
+
+---
+
+## <a name="nn"></a>Alternative classification mode based on nearest-neighbors
+
+If your model is built from an alignment instead of a single sequence, you can define groups and subgroups for each sequence
+in the alignment file used to build the model and then classify sequences to those groups and subgroups based on similarity
+to the sequences in that alignment. For more information on this nearest-neighbor based classification mode see 
+[this file](nn-classification.md#top).
+
+---
+
+## <a name="r2dt"></a>Drawing R2DT secondary structure figures
+
+If a model has one or more [R2DT](https://r2dt.bio/) templates installed and declared in its
+model info (`.minfo`) file, the `--draw_r2dt` option will draw a secondary structure diagram for
+each sequence classified to that model, using the template's fixed layout so that every sequence's
+diagram is comparable to every other's. This requires a separate R2DT installation. For more
+information on running it see [this file](r2dt-drawing.md#top), and for adding templates to a
+model of your own see [this file](r2dt-templates.md#top).
 
 ---
 

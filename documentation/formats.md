@@ -17,7 +17,9 @@
   * [`.sqc` files](#sqc)
   * [`.sda` files](#sda)
   * [`.rpn` files](#rpn)
+  * [`.rdt` files](#rdt)
   * [`.dcr` files](#dcr)
+  * [`.scn` files](#scn)
   * [`.alt.list` files](#altlist)
   * [additional output files saved with the `--keep` option](#annotate-keep)
 * [`v-scan.pl` output files](#scan)
@@ -212,6 +214,30 @@ Model info files have two types of lines:
 
 (A third type of line is allowed: comment lines prefixed with `#` are allowed, and ignored.)
 
+A fourth, optional line type, `R2DT_TEMPLATE`, is read only by `v-annotate.pl`
+when the `--draw_r2dt` option is used, and is ignored otherwise. It declares
+which R2DT secondary structure template(s) apply to a model and which of the
+model's consensus (RF) positions feed each one:
+
+```
+R2DT_TEMPLATE name=<r2dt_template_name> model=<vadr_model_name> ranges=<start>..<end>[,<start>..<end>]*
+```
+
+The `ranges` value is a comma-separated list of inclusive, 1-indexed model
+position ranges, which must be in ascending order, must not overlap, and must
+be within `1` and the model's `length`. The key is documented in detail
+[here](r2dt-templates.md#minfo), and an annotated example file is
+[here](r2dt-files/example-r2dt.minfo).
+
+**WARNING: a `.minfo` file that contains `R2DT_TEMPLATE` lines cannot be
+parsed by VADR 1.7 or earlier.** An older version of VADR rejects the file, and
+so rejects the *entire model package*, not just the figure drawing step.
+`R2DT_TEMPLATE` is first accepted by VADR 1.7.1. If you maintain a model
+package whose users may be running an older VADR, keep the `R2DT_TEMPLATE`
+lines in a separate copy of the `.minfo` file in its own directory, supplied
+with `--mdir`, or ship a version of the package with the lines removed. More
+detail is [here](r2dt-drawing.md#compat).
+
 `MODEL` or `FEATURE` is always followed by one or more whitespace
 characters and then the model name `<modelname>` which cannot include
 whitespace.  `FEATURE` lines for model `<modelname>` must occur after
@@ -299,6 +325,8 @@ references on the file type/format.
 | `.alt.list`  | tab-delimited file of all fatal alerts listed in `.fail.tbl` | [va-noro.9.vadr.alt.list](annotate-files/va-noro.9.vadr.alt.list) | [description of format in this document](#altlist) |
 | `.<m>.<f>.<i>.fa` | FASTA format sequence file with predicted sequences for feature type `<f>` number `<i>` annotated using model `<m>` from the `.minfo` file | [va-noro.9.vadr.NC_039477.CDS.2.fa](annotate-files/va-noro.9.vadr.NC_039477.CDS.2.fa) | https://en.wikipedia.org/wiki/FASTA_format, sequence naming conventions described [here](#seqnames) |
 | `.seqstat`   | output of `esl-seqstat -a` run on input sequence file, with lengths of all sequences | [va-noro.9.vadr.seqstat](annotate-files/va-noro.9.vadr.seqstat) | no further documentation |
+| `.r2dt-svg/` | directory of the drawn secondary structure figures, one SVG file per drawn (sequence, template) pair, named `<seq>-<template>.svg` (only created if `--draw_r2dt` used) | [NC_035889.1-zika-linear.svg](r2dt-files/NC_035889.1-zika-linear.svg) | [description](r2dt-drawing.md#svg) |
+| `.r2dt-input/` | directory of the residues extracted for each (sequence, template) pair and handed to R2DT, together with R2DT's own output directory and captured standard output for that pair (only created if `--draw_r2dt` and `--keep` are both used) | - | [description](r2dt-drawing.md#input) |
 
 ---
 
@@ -317,8 +345,9 @@ These files are listed in the table below
 | `.sqc` | per-sequence classification information | [va-noro.9.vadr.sqc](annotate-files/va-noro.9.vadr.sqc) | [description of format in this document](#sqc) |
 | `.sda` | per-sequence seed alignment information (only created if `-s` used) | [va-noro-s.9.vadr.sda](annotate-files/va-noro-s.9.vadr.sda) | [description of format in this document](#sda) |
 | `.rpn` | per-sequence N replacement information (only created if `-r` used)  | [va-noro-r.9.vadr.rpn](annotate-files/va-noro-r.9.vadr.rpn) | [description of format in this document](#rpn) |
+| `.rdt` | per-(sequence,template) R2DT figure summary (only created if `--draw_r2dt` used) | example excerpt in [description of format in this document](#rdt) | [description of format in this document](#rdt) |
 
-All nine types of tabular output files share the following
+All ten types of tabular output files share the following
 characteristics: 
 
 1. fields are separated by whitespace (with the possible exception of
@@ -327,7 +356,7 @@ characteristics:
 3. data lines begin with a non-whitespace character other than `#`
 4. all lines are either comment lines or data lines
 
-Each of these nine tabular formats are explained in more detail below.
+Each of these ten tabular formats are explained in more detail below.
 All example files linked to below, except where otherwise stated, were created by the `v-annotate.pl` [example command](annotate.md#examplebasic)
 `v-annotate.pl $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-noro.9`.
 
@@ -622,6 +651,45 @@ va-noro-r.9`.
 
 ---
 
+### Explanation of `.rdt`-suffixed output files<a name="rdt"></a>
+
+`.rdt` files are only output if the `v-annotate.pl --draw_r2dt` option is used.
+`.rdt` data lines have 8 fields, the names of which appear in the
+comment line at the top of the file. Unlike the other tabular output files
+described in this section, `.rdt` files do not have one data line per
+**sequence**: instead they have one data line per **(sequence, template)
+pair**. With `--draw_r2dt`, every sequence classified to a model that has one
+or more `R2DT_TEMPLATE` lines in its `.minfo` entry is drawn once per
+template, so a sequence with 2 available templates contributes 2 `.rdt` data
+lines. A classified sequence whose model has no `R2DT_TEMPLATE` lines
+contributes a single `skipped` data line instead (see `r2dt_status` below).
+Unclassified sequences do not appear in the `.rdt` file at all.
+
+Example excerpt (from a real `v-annotate.pl --draw_r2dt` run on two Zika virus
+sequences against a model with two R2DT templates, `zika-linear` and
+`zika-circular`):
+```
+#seq_id      pass_fail  template_name  r2dt_status  overlaps  covered_ranges                                              covered_pct  output_svg
+#----------  ---------  -------------  -----------  --------  ----------------------------------------------------------  -----------  ----------
+AY632535.2   FAIL       zika-linear    pass                0  1..73:+,75..137:+,139..210:+,10380..10710:+,10712..10807:+         99.5  va-example.vadr.r2dt-svg/AY632535.2-zika-linear.svg
+AY632535.2   FAIL       zika-circular  pass                0  1..73:+,75..137:+,139..190:+,10666..10710:+,10712..10807:+         99.1  va-example.vadr.r2dt-svg/AY632535.2-zika-circular.svg
+NC_012532.1  FAIL       zika-linear    pass                0  1..73:+,75..137:+,139..210:+,10380..10710:+,10712..10807:+         99.5  va-example.vadr.r2dt-svg/NC_012532.1-zika-linear.svg
+NC_012532.1  FAIL       zika-circular  pass                0  1..73:+,75..137:+,139..190:+,10666..10710:+,10712..10807:+         99.1  va-example.vadr.r2dt-svg/NC_012532.1-zika-circular.svg
+```
+
+| idx | field            | description |
+|-----|------------------|-------------|
+|   1 | `seq_id`         | sequence name |
+|   2 | `pass_fail`      | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alerts) |
+|   3 | `template_name`  | name of the R2DT template this data line pertains to, or `-` if `r2dt_status` is `skipped` |
+|   4 | `r2dt_status`     | status of this (sequence, template) pair's drawing attempt: `pass` if a colored SVG figure was successfully drawn; `skipped` if this sequence's model has no `R2DT_TEMPLATE` lines, so no template was attempted; `fail-noaln` if the sequence has no row in the model's alignment; `fail-nocov` if the sequence has zero residues aligned within the template's declared ranges; `fail-r2dt` if `r2dt.py` was run but exited non-zero or produced no SVG |
+|   5 | `overlaps`       | number of base pair overlaps reported by R2DT/Traveler for this figure, or `-` if `r2dt_status` is not `pass` |
+|   6 | `covered_ranges` | comma-separated list, in VADR coords format, of the RF (model consensus/match) sub-ranges within the template's declared ranges that this sequence actually has non-gap residues aligned to, emitted in full with no merging or capping across templates, or `-` if none are covered |
+|   7 | `covered_pct`    | percentage (one decimal place) of the template's declared length actually covered by this sequence, `0.0` if none is covered |
+|   8 | `output_svg`     | path, relative to the output directory, of the colored SVG figure file, or `-` if `r2dt_status` is not `pass` |
+
+---
+
 ### Explanation of `.dcr`-suffixed output files<a name="dcr"></a>
 
 `.dcr` data lines have 17 fields, the names of which appear in the
@@ -701,6 +769,43 @@ header section.
 |  15 | `new codon`           | start or stop codon after potential doctoring (swap) | 
 |  16 | `dcr iter`            | doctoring iteration, `1` if first time the gap and nucleotide may be swapped, `2` if second (swapping back because first swap invalidated previously valid start/stop codon), cannot exceed `2` |
 |  17 | `did swap`            | `yes` if doctoring (swap) took place because it created a valid start or stop codon, `no` if doctoring (swap) did not occur because it would not have created a valid start or stop codon |
+
+---
+### Explanation of `.scn`-suffixed output files<a name="scn"></a>
+
+`.scn` data lines have 19 fields, the names of which appear in the first two
+comment lines in each file. There is one data line for each **sequence** in the
+input sequence file that `v-annotate.pl` processed. `.scn` files will only be created if at least one model in the model info file used by `v-annotate.pl` includes `group` and `subgroup` values (e.g. `:FILE:evB.stk`) that indicate that an alignment file should be used to determine group and subgroup info. If so, classification will be performed by comparing each aligned input sequence against all model sequences in the classification alignment file (e.g. `evB.stk`), and the group/subgroup of the model sequence with the highest percent identity to the input sequence will be assigned to the input sequence. That model sequence is referred to as the *nearest neighbor* in the field descriptions below and is listed in the `seq1` field. 
+
+The model sequence with the highest percent identity to the input sequence that has a different subgroup from the nearest-neighbor will be listed in the `seq2` field. The group and subgroup values for each model sequence in the model Stockholm format alignment file (e.g. `evB.stk`) must be annotated as `#=GS <seqname> GP` and `#=GS <seqname> SG` values (e.g. `#=GS AY302539.1 GP EVB` and `#=GS AY302539.1 SG E13`). 
+
+If the model Stockholm format alignment file (e.g. `evB.stk`) includes special annotation to define classification start and stop positions (e.g. `#=GF VADR-classification-rf-start-pos 2467` and `#=GF VADR-classification-rf-stop-pos  3393`) then the nearest-neighbor classification will be based on only on those model positions (e.g. `2467..3393`) and percent identities will indicate similarity only within that region. The region used for the classification is included in the `nnregion_seqspan mdl_coords` (model position range that the sequence actually spans) and `nnregion_full mdl_coords` (model position range used for the classification) fields.
+
+
+[Example file](annotate-files/evB.10.vadr.scn).
+
+| idx | field                 | description |
+|-----|-----------------------|-------------|
+|   1 | `seq idx`             | index of sequence in the input file |
+|   2 | `seq name`            | sequence name | 
+|   3 | `seq len`             | length of the sequence with name `seq name` | 
+|   4 | `p/f`                 | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alerts) |
+|   5 | `ant`                 | `yes` if this sequence was annotated, `no` if not, due to a per-sequence alert that prevents annotation |
+|   6 | `model`               | name of the best-matching model for this sequence, this is the model with the top-scoring hit for this sequence in the classification stage |
+|   7 | `grp1`                | group of nearest-neighbor model sequence (`seq1`), read from model alignment file, or `-` if none (or if no subgroups read from `model1`'s alignment file) |
+|   8 | `sub grp1`            | subgroup of nearest-neighbor model sequence (`seq1`) read from model alignment file, or `-` if none (or if no groups read from `model1`'s alignment file) |
+|   9 | `fract id1`           | fractional identity of nearest-neighbor model sequence (`seq1`) calculated as number of identical nucleotides in nongap reference positions within `nnregion mdl_coords` between `seq name` and `seq1` |
+|  10 | `seq1`                | nearest-neighbor sequence name, defined as model sequence with highest percent identity to `seq name` in reference (`RF`) positions in range `nnregion mdl_coords` |
+|  11 | `grp2`                | group of second nearest-neighbor model sequence (`seq2`), read from model alignment file or `-` if none (or if no groups read from `model1`'s alignment file) |
+|  12 | `sub grp2`            | subgroup of second nearest-neighbor model sequence (`seq2`), read from model alignment file or `-` if none (or if no subgroups read from `model1`'s alignment file) |
+|  13 | `fract id2`           | fractional identity of second nearest-neighbor model sequence (`seq2`) calculated as number of identical nucleotides in nongap reference positions within `nnregion mdl_coords` between `seq name` and `seq2` |
+|  14 | `seq2`                | second nearest-neighbor sequence name, defined as model sequence with highest percent identity to `seq name` in reference (`RF`) positions in range `nnregion mdl_coords` that does not have the same `subgroup` as `seq1` (subgroup of `-` is considered different from all subgroup values) |
+|  15 | `fid diff`            | `fract id1 - fract id2` |
+|  16 | `nnregion_seqspan mdl_coords`  | the model reference position span that includes nucleotides for this sequence within the `nnregion mdl_coords` region of model reference (RF) positions |
+|  17 | `nnregion mdl_coords`  | the model reference position span used for the determination of the nearest-neighbor model sequences, this will be the full model (`1..<mdl_len>:+`) unless a different span was defined in the model Stockholm alignment file in with `#=GF VADR-classification-rf-start-pos <startpos>` and `#=GF VADR-classification-rf-stop-pos  <stoppos>` annotation|
+|  18 | `nnregion covrg`      | `nnregion_seqspan mdl_coords` divided by `nnregion mdl_coords` |
+|  19 | `seq alerts`          | per-sequence alerts that pertain to this sequence, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one, `-` if none |
+
 
 ---
 

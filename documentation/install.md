@@ -4,6 +4,7 @@
   * [Mac installation requires Xcode](#xcode)
   * [Alternative two step installation](#alt-install)
   * [Installing Inline, LWP, and Mozilla modules if installation fails](#inline)
+* [Installation of R2DT](#r2dt)
 * [Setting environment variables](#environment)
 * [Verifying successful installation](#tests)
 * [VADR-specific modifications to FASTA](#fastamods)
@@ -59,6 +60,9 @@ Heng Li's (minimap2)[https://github.com/lh3/minimap2]. (The VADR
 installation script modifies the FASTA package slightly prior to
 installing it to allow alignment of long sequences up to 250Kb using
 the `glsearch` executable. This is described more [here](#fastamods).)
+It will also install [R2DT](https://github.com/r2dt-bio/R2DT), which
+`v-annotate.pl` uses to draw secondary structure diagrams with the
+`--draw_r2dt` option. This is described more [here](#r2dt).
 
 The installation requires that you have the perl Inline module
 installed on your system. If not, the installation script may
@@ -130,6 +134,88 @@ If this is the case, try installing `Inline::C` with this command:
 
 ---
 
+## <a name="r2dt"></a> Installation of R2DT
+
+`vadr-install.sh` also installs
+[R2DT](https://github.com/r2dt-bio/R2DT), the program `v-annotate.pl`
+uses to draw secondary structure diagrams when it is run with the
+`--draw_r2dt` option. R2DT is used for nothing else, so if you do not
+use `--draw_r2dt` you do not need it.
+
+**NOTE:** the R2DT step has two requirements that the rest of the
+installation does not have:
+
+* `python3`, version 3.9 or later, on your `PATH`. On systems where
+  `python3` is an older version, `vadr-install.sh` will look for a
+  `python3.9` through `python3.13` instead. You can also point it at a
+  specific interpreter by setting the `VADRPYTHON` environment
+  variable to the full path of one before running the script.
+* network access to [PyPI](https://pypi.org), from which R2DT's python
+  packages are installed. These are installed into a python virtual
+  environment in the `r2dt-venv` directory that `vadr-install.sh`
+  creates, so nothing is installed into your system python and nothing
+  else on your system is affected.
+
+`git` is also required, as it is used to fetch R2DT and the two
+programs R2DT needs that VADR does not otherwise install:
+[traveler](https://github.com/cusbg/traveler), which renders the
+diagrams, and
+[jiffy-infernal-hmmer-scripts](https://github.com/nawrockie/jiffy-infernal-hmmer-scripts).
+The Infernal and Bio-Easel installations R2DT also requires are the
+same ones `vadr-install.sh` installs for VADR itself, so there is only
+ever one copy of each.
+
+While installing R2DT, `vadr-install.sh` will print lines like:
+
+```
+Downloading R2DT (needed only by 'v-annotate.pl --draw_r2dt') ...
+  (see <full path to directory in which you ran vadr-install.sh>/r2dt-install.log for the full log of this step)
+  Using python: /usr/bin/python3.11 (Python 3.11.13)
+Finished downloading R2DT.
+```
+
+and later, in the build stage:
+
+```
+Building traveler (the renderer R2DT uses) ...
+  (appending to <full path to directory in which you ran vadr-install.sh>/r2dt-install.log)
+Finished building traveler.
+------------------------------------------------------------
+Writing R2DT site configuration ...
+Wrote <full path to directory in which you ran vadr-install.sh>/R2DT/r2dt-vadr-env.sh
+Finished installing R2DT.
+```
+
+The full output of both stages is written to `r2dt-install.log` in the
+directory you ran `vadr-install.sh` in, rather than to the screen.
+
+The last of those steps writes the file `R2DT/r2dt-vadr-env.sh`, which
+`v-annotate.pl` reads each time it draws diagrams to find R2DT and the
+programs R2DT calls. It records the paths of this installation, so if
+you move the installation to another directory you will need to edit
+it, or rerun `vadr-install.sh` in the new directory.
+
+Finally, R2DT is found through the `R2DT_DIR` environment variable, so
+the instructions `vadr-install.sh` prints at the end will include a
+line setting it, as described in the next section.
+
+**WARNING:** R2DT is the one dependency whose installation is allowed
+to fail without failing the whole installation, because VADR is fully
+functional without it. If the R2DT step does not complete, the script
+prints a warning explaining why, repeats it at the end, and installs
+the rest of VADR normally. In that case `v-annotate.pl --draw_r2dt`
+will not work but nothing else will be affected. To try again after
+fixing the reported problem, delete the `R2DT`, `r2dt-venv`,
+`traveler` and `jiffy-infernal-hmmer-scripts` directories and rerun
+`vadr-install.sh`.
+
+**NOTE:** the diagrams `--draw_r2dt` draws are drawn from templates
+that come with VADR model files, so a model file with no R2DT
+templates in it will produce no diagrams even when R2DT is installed
+correctly. See [`r2dt-drawing.md`](r2dt-drawing.md#top) for more.
+
+---
+
 ## Setting VADR environment variables <a name="environment"></a>
 
 As mentioned above, when you run `vadr-install.sh`, instructions will be
@@ -164,6 +250,7 @@ export VADRSEQUIPDIR="$VADRINSTALLDIR/sequip"
 export VADRBLASTDIR="$VADRINSTALLDIR/ncbi-blast/bin"
 export VADRFASTADIR="$VADRINSTALLDIR/fasta/bin"
 export VADRMINIMAP2DIR="$VADRINSTALLDIR/minimap2"
+export R2DT_DIR="$VADRINSTALLDIR/R2DT"
 export PERL5LIB="$VADRSCRIPTSDIR":"$VADRSEQUIPDIR":"$VADRBIOEASELDIR/blib/lib":"$VADRBIOEASELDIR/blib/arch":"$PERL5LIB"
 export PATH="$VADRSCRIPTSDIR":"$PATH"
 
@@ -193,6 +280,7 @@ setenv VADRSEQUIPDIR "$VADRINSTALLDIR/sequip"
 setenv VADRBLASTDIR "$VADRINSTALLDIR/ncbi-blast/bin"
 setenv VADRFASTADIR "$VADRINSTALLDIR/fasta/bin"
 setenv VADRMINIMAP2DIR "$VADRINSTALLDIR/minimap2"
+setenv R2DT_DIR "$VADRINSTALLDIR/R2DT"
 setenv PERL5LIB "$VADRSCRIPTSDIR":"$VADRSEQUIPDIR":"$VADRBIOEASELDIR/blib/lib":"$VADRBIOEASELDIR/blib/arch":"$PERL5LIB"
 setenv PATH "$VADRSCRIPTSDIR":"$PATH"
 
