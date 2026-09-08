@@ -609,8 +609,11 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
 # rather than hardcoded in VADR. If this file is removed, --draw_r2dt will only
 # work if 'python \$R2DT_DIR/r2dt.py' already works in the calling environment.
 #
-# The paths below were determined when VADR was installed. If this installation
-# is moved, they must be updated.
+# The paths below are expressed relative to \$R2DT_DIR (set by the caller,
+# v-annotate.pl dies if it is unset), rather than baked in as the absolute
+# paths this installation happened to have. That makes this file -- and so
+# the whole install tree -- relocatable: move the tree, re-set R2DT_DIR to
+# the new location, and these paths resolve correctly with no edits here.
 
 # The python virtual environment holding R2DT's python requirements is put
 # first, so that 'python' resolves to it. The virtual environment is put on PATH
@@ -620,10 +623,10 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
 # The remaining directories hold the external programs R2DT calls:
 #   Infernal (cmalign, cmbuild, and the esl-* Easel miniapps), the Bio-Easel
 #   scripts, the jiffy Infernal/HMMER scripts, and traveler.
-export PATH="$R2DTVENVDIR/bin:$VADRINSTALLDIR/infernal/binaries:$VADRINSTALLDIR/Bio-Easel/scripts:$R2DTJIFFYDIR:$R2DTTRAVELERDIR/bin:\$PATH"
+export PATH="\${R2DT_DIR}/../r2dt-venv/bin:\${R2DT_DIR}/../infernal/binaries:\${R2DT_DIR}/../Bio-Easel/scripts:\${R2DT_DIR}/../jiffy-infernal-hmmer-scripts:\${R2DT_DIR}/../traveler/bin:\$PATH"
 
 # The Bio-Easel perl modules, needed by the Bio-Easel and jiffy scripts above.
-export PERL5LIB="$VADRINSTALLDIR/Bio-Easel/blib/lib:$VADRINSTALLDIR/Bio-Easel/blib/arch:\$PERL5LIB"
+export PERL5LIB="\${R2DT_DIR}/../Bio-Easel/blib/lib:\${R2DT_DIR}/../Bio-Easel/blib/arch:\$PERL5LIB"
 EOF
             echo "Wrote $R2DTDIR/r2dt-vadr-env.sh"
             echo "Installing R2DT templates shipped with the zika models ... "
