@@ -19,9 +19,22 @@
     `documentation/r2dt-drawing.md#compat` for details.
   * adds the `zika` model library to the set installed by
     `vadr-install.sh`; the Zika models include `R2DT_TEMPLATE` lines and so
-    require this release or later
+    require this release or later. The package also ships the two R2DT
+    templates those lines name, and `vadr-install.sh` installs them into
+    `$R2DT_DIR/data/local_data/`, so `--draw_r2dt` works for Zika with no
+    manual template installation
   * updates the flavi model library to version `1.7-2`, which adds the
     `flavi-no-zika.mlist` model list for use with `--mlist`
+  * `v-scan.pl`: adds a `zika` entry to `vadr.config` and restricts the
+    generic `flavi` entry with `--mlist flavi-no-zika.mlist`, so Zika
+    sequences are annotated with the zika models rather than with the two
+    Zika models the flavi library also contains
+  * the `r2dt-vadr-env.sh` site-configuration file written by
+    `vadr-install.sh` now expresses its paths relative to `$R2DT_DIR`
+    instead of absolute paths fixed at install time, so a VADR
+    installation can be moved without editing it
+  * updates dependencies installed with VADR:
+    - Bio-Easel version 0.18
   * `--draw_r2dt` output: a `<out_root>.rdt` summary table (one row per
     sequence/template pair), diagrams in `<out_root>.r2dt-svg/`, and a
     `r2dt_status` column with values `pass` / `skipped` / `fail-nocov` /
